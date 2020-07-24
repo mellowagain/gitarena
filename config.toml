@@ -1,0 +1,4 @@
+# GitArena config file
+
+bind = "localhost:8080"
+database = "postgresql://root@localhost/gitarena?sslmode=require"

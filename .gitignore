@@ -30,3 +30,5 @@
 
 ### GitArena ###
 logs/
+src/config.rs
+debug_config.toml

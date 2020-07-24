@@ -1,19 +1,40 @@
 #![forbid(unsafe_code)]
 
-use anyhow::{Result, Context};
+use anyhow::{Result, Context, anyhow};
 use chrono::Local;
+use config::Config;
 use fern::{Dispatch, log_file};
 use log::{LevelFilter, info, warn, error, debug};
+use std::borrow::Cow;
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::io::stdout;
 use std::path::Path;
+
+mod config;
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
     init_logger()?;
 
+    let cfg = load_config().context("Unable to load config file.")?;
+
     Ok(())
+}
+
+fn load_config() -> Result<Cow<'static, Config>> {
+    let cfg_str = env::var("GITARENA_CONFIG").unwrap_or("config.toml".to_owned());
+    let cfg_path = Path::new(cfg_str.as_str());
+
+    if !cfg_path.is_file() {
+        return Err(anyhow!("Config file does not exist: {}", cfg_path.display()));
+    }
+
+    match Config::load_from(cfg_path) {
+        Ok(config) => Ok(config),
+        Err(err) => Err(anyhow!("Unable to load config file: {}", err)),
+    }
 }
 
 fn init_logger() -> Result<()> {
