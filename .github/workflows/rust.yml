@@ -11,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Cache
+      uses: actions/cache@v2.1.0
+      with:
+        path: target 
+        key: gitarena-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          gitarena-
     - name: Build
       run: cargo build --verbose
     - name: Run tests
