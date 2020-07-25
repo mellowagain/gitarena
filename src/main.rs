@@ -5,6 +5,7 @@ use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
 use log::{LevelFilter, info, warn, error, debug};
+use sqlx::PgPool;
 use std::borrow::Cow;
 use std::env;
 use std::error::Error;
@@ -19,6 +20,14 @@ async fn main() -> Result<()> {
     init_logger()?;
 
     let cfg = load_config().context("Unable to load config file.")?;
+
+    info!("Successfully loaded config file.");
+
+    let db_pool = PgPool::new(&cfg.database).await?;
+    sqlx::query("SELECT 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
+
+    info!("Successfully connected to database.");
+
 
     Ok(())
 }
@@ -60,6 +69,7 @@ fn init_logger() -> Result<()> {
             ))
         })
         .level(LevelFilter::Debug)
+        .level_for("sqlx", LevelFilter::Info)
         .chain(stdout())
         .chain(log_file(format!("logs/{}.log", Local::now().timestamp_millis()))?)
         .apply()
