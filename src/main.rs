@@ -1,14 +1,14 @@
 #![forbid(unsafe_code)]
 
+use actix_web::{App, HttpServer};
 use anyhow::{Result, Context, anyhow};
 use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
 use log::{LevelFilter, info, warn, error, debug};
 use sqlx::PgPool;
-use std::borrow::Cow;
+use std::borrow::{Cow, Borrow};
 use std::env;
-use std::error::Error;
 use std::fs;
 use std::io::stdout;
 use std::path::Path;
@@ -28,6 +28,16 @@ async fn main() -> Result<()> {
 
     info!("Successfully connected to database.");
 
+    let bind_address: &str = cfg.bind.borrow();
+
+    let server = HttpServer::new(move || {
+        App::new()
+            .data(db_pool.clone())
+    }).bind(bind_address).context("Unable to bind HTTP server.")?;
+
+    server.run().await.context("Unable to start HTTP server.")?;
+
+    info!("Thank you and goodbye.");
 
     Ok(())
 }
@@ -64,7 +74,7 @@ fn init_logger() -> Result<()> {
                 "[{}] {} {} - {}",
                 record.target(),
                 record.level(),
-                record.file().unwrap_or("null"),
+                record.module_path().unwrap_or("null"),
                 message
             ))
         })
