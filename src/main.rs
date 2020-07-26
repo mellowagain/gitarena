@@ -1,40 +1,47 @@
 #![forbid(unsafe_code)]
 
 use actix_web::{App, HttpServer};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
+use lazy_static::lazy_static;
 use log::{info, LevelFilter};
-use sqlx::PgPool;
+use sqlx::pool::PoolConnection;
+use sqlx::{PgConnection, PgPool};
 use std::borrow::{Borrow, Cow};
 use std::env;
 use std::fs;
 use std::io::stdout;
 use std::path::Path;
 
+mod captcha;
 mod config;
 mod crypto;
+mod routes;
 mod user;
+
+type PgPoolConnection = PoolConnection<PgConnection>;
+
+lazy_static! {
+    static ref CONFIG: Cow<'static, Config> = load_config();
+}
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
     init_logger()?;
 
-    let cfg = load_config().context("Unable to load config file.")?;
-
-    info!("Successfully loaded config file.");
-
-    let db_pool = PgPool::new(&cfg.database).await?;
-    sqlx::query("SELECT 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
+    let db_pool = PgPool::new(&CONFIG.database).await?;
+    sqlx::query("select 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
 
     info!("Successfully connected to database.");
 
-    let bind_address: &str = cfg.bind.borrow();
+    let bind_address: &str = CONFIG.bind.borrow();
 
     let server = HttpServer::new(move || {
         App::new()
             .data(db_pool.clone())
+            .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;
 
     server.run().await.context("Unable to start HTTP server.")?;
@@ -44,17 +51,17 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn load_config() -> Result<Cow<'static, Config>> {
+fn load_config() -> Cow<'static, Config> {
     let cfg_str = env::var("GITARENA_CONFIG").unwrap_or("config.toml".to_owned());
     let cfg_path = Path::new(cfg_str.as_str());
 
     if !cfg_path.is_file() {
-        return Err(anyhow!("Config file does not exist: {}", cfg_path.display()));
+        panic!("Config file does not exist: {}", cfg_path.display());
     }
 
     match Config::load_from(cfg_path) {
-        Ok(config) => Ok(config),
-        Err(err) => Err(anyhow!("Unable to load config file: {}", err)),
+        Ok(config) => config,
+        Err(err) => panic!("Unable to load config file: {}", err),
     }
 }
 

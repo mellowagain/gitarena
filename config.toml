@@ -2,3 +2,5 @@
 
 bind = "localhost:8080"
 database = "postgresql://root@localhost/gitarena?sslmode=require"
+hcaptcha_site_key = ""
+hcaptcha_secret = ""
