@@ -32,3 +32,6 @@
 logs/
 src/config.rs
 debug_config.toml
+
+### GitArena Proc Macros ###
+gitarena-proc-macro/Cargo.lock

@@ -1027,6 +1027,7 @@ dependencies = [
  "config_struct",
  "fern",
  "git2",
+ "gitarena-proc-macro",
  "log",
  "rand",
  "rust-argon2",
@@ -1034,6 +1035,10 @@ dependencies = [
  "sqlx",
  "toml 0.5.6",
 ]
+
+[[package]]
+name = "gitarena-proc-macro"
+version = "0.0.1"
 
 [[package]]
 name = "gloo-timers"

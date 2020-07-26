@@ -15,6 +15,7 @@ anyhow = "1.0.31"
 chrono = "0.4.13"
 fern = "0.6.0"
 git2 = "0.13.8"
+gitarena-proc-macro = { version = "0.0.1", path = "gitarena-proc-macro" }
 log = "0.4.11"
 rand = "0.7.3"
 rust-argon2 = { version = "0.8.2", features = ["crossbeam-utils"] }
@@ -24,3 +25,6 @@ toml = "0.5.6"
 
 [build-dependencies]
 config_struct = { version = "0.5.0", features = ["toml-parsing"] }
+
+[workspace]
+members = [".", "gitarena-proc-macro"]
