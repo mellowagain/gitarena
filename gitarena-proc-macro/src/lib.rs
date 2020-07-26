@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use proc_macro::TokenStream;
 
 #[proc_macro]
