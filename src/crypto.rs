@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
+use crate::user::User;
 use rand::Rng;
 
-const CHARSET : &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
-const ARGON_CONFIG : Config = Config {
+const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+const ARGON_CONFIG: Config = Config {
     ad: &[],
     hash_length: 32,
     lanes: 4,
@@ -32,7 +33,7 @@ pub(crate) fn hash_password(password: String) -> Result<(String, String)> {
     ).context("Failed to hash password.")?, salt))
 }
 
-pub(crate) fn check_password(user: &crate::user::User, password: String) -> Result<bool> {
+pub(crate) fn check_password(user: &User, password: String) -> Result<bool> {
     Ok(argon2::verify_encoded(
         user.password.as_str(), password.as_bytes()
     ).with_context(|| format!("Failed to check password for user #{}.", user.id))?)
