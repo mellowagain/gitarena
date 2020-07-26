@@ -1,19 +1,21 @@
 #![forbid(unsafe_code)]
 
 use actix_web::{App, HttpServer};
-use anyhow::{Result, Context, anyhow};
+use anyhow::{anyhow, Context, Result};
 use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
-use log::{LevelFilter, info, warn, error, debug};
+use log::{info, LevelFilter};
 use sqlx::PgPool;
-use std::borrow::{Cow, Borrow};
+use std::borrow::{Borrow, Cow};
 use std::env;
 use std::fs;
 use std::io::stdout;
 use std::path::Path;
 
 mod config;
+mod crypto;
+mod user;
 
 #[actix_rt::main]
 async fn main() -> Result<()> {

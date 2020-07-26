@@ -16,6 +16,8 @@ chrono = "0.4.13"
 fern = "0.6.0"
 git2 = "0.13.8"
 log = "0.4.11"
+rand = "0.7.3"
+rust-argon2 = { version = "0.8.2", features = ["crossbeam-utils"] }
 serde = { version = "1.0.114", features = ["derive"] }
 sqlx = { version = "0.3.5", features = ["postgres", "tls"] }
 toml = "0.5.6"
