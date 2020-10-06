@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 
 pub(crate) async fn verify_captcha(token: &String) -> Result<bool> {
-    let api_key: &str = CONFIG.hcaptcha_secret.borrow();
+    let api_key: &str = CONFIG.hcaptcha.secret.borrow();
 
     let response: HCaptchaResponse = Client::new()
         .post("https://hcaptcha.com/siteverify")
