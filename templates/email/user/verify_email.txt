@@ -1,0 +1,13 @@
+subject: Verify your e-mail address
+---
+
+Hi {{username}}
+
+Thanks for signing up to GitArena. Please verify your e-mail address by clicking the link:
+{{link}}
+
+If you did not create the account, please ignore this e-mail. The account will be automatically
+deactivated if no e-mail has been verified within 24 hours.
+
+--
+GitArena | https://gitarena.com

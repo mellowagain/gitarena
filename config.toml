@@ -2,5 +2,15 @@
 
 bind = "localhost:8080"
 database = "postgresql://root@localhost/gitarena?sslmode=require"
-hcaptcha_site_key = ""
-hcaptcha_secret = ""
+
+[hcaptcha]
+site_key = ""
+secret = ""
+
+[smtp]
+server = "smtp.gitarena.com"
+port = 465
+tls = true
+email_address = "noreply@gitarena.com"
+username = "root"
+password = "hunter2"

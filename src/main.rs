@@ -18,7 +18,9 @@ use std::path::Path;
 mod captcha;
 mod config;
 mod crypto;
+mod mail;
 mod routes;
+mod templates;
 mod user;
 
 type PgPoolConnection = PoolConnection<PgConnection>;
