@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, post, Responder, web};
 use crate::user::User;
-use crate::{captcha, PgPoolConnection, templates};
+use crate::{captcha, PgPoolConnection, RedisClient, templates};
 use gitarena_proc_macro::generate_bail;
 use log::error;
 use log::info;
@@ -17,7 +17,7 @@ generate_bail!(RegisterJsonResponse {
                });
 
 #[post("/api/user")]
-pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, db_pool: web::Data<PgPool>) -> impl Responder {
+pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, db_pool: web::Data<PgPool>, redis_client: web::Data<RedisClient>) -> impl Responder {
     let connection: PgPoolConnection = bail!(db_pool.acquire().await);
     let mut transaction: Transaction<PgPoolConnection> = bail!(connection.begin().await);
 

@@ -24,6 +24,7 @@ mod templates;
 mod user;
 
 type PgPoolConnection = PoolConnection<PgConnection>;
+type RedisClient = redis::Client;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
@@ -38,11 +39,17 @@ async fn main() -> Result<()> {
 
     info!("Successfully connected to database.");
 
+    let redis_address: &str = CONFIG.redis.borrow();
+
+    let redis_client = RedisClient::open(redis_address)?;
+    redis_client.get_async_connection().await.context("Unable to connect to redis.")?;
+
     let bind_address: &str = CONFIG.bind.borrow();
 
     let server = HttpServer::new(move || {
         App::new()
             .data(db_pool.clone())
+            .data(redis_client.clone())
             .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;
 
@@ -79,6 +86,12 @@ fn init_logger() -> Result<()> {
         fs::create_dir(logs_dir).context("Unable to create `logs` directory.")?;
     }
 
+    let level = if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
     Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -89,8 +102,9 @@ fn init_logger() -> Result<()> {
                 message
             ))
         })
-        .level(LevelFilter::Debug)
+        .level(level)
         .level_for("sqlx", LevelFilter::Info)
+        .level_for("reqwest", LevelFilter::Info)
         .chain(stdout())
         .chain(log_file(format!("logs/{}.log", Local::now().timestamp_millis()))?)
         .apply()
