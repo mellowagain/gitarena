@@ -640,19 +640,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "combine"
-version = "4.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2809f67365382d65fd2b6d9c22577231b954ed27400efeafbe687bda75abcc0b"
-dependencies = [
- "bytes",
- "futures-util",
- "memchr",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1180,7 +1167,6 @@ dependencies = [
  "lettre_email",
  "log",
  "rand 0.7.3",
- "redis",
  "regex",
  "reqwest",
  "rust-argon2",
@@ -2176,27 +2162,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
-]
-
-[[package]]
-name = "redis"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95357caf2640abc54651b93c98a8df4fe1ccbf44b8e601ccdf43d5c1451f29ac"
-dependencies = [
- "async-std",
- "async-trait",
- "bytes",
- "combine",
- "dtoa",
- "futures-util",
- "itoa",
- "percent-encoding",
- "pin-project-lite",
- "sha1",
- "tokio",
- "tokio-util 0.3.1",
- "url",
 ]
 
 [[package]]
