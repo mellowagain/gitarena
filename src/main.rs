@@ -18,12 +18,14 @@ use std::path::Path;
 mod captcha;
 mod config;
 mod crypto;
+mod error;
 mod mail;
 mod routes;
 mod templates;
 mod user;
 
 type PgPoolConnection = PoolConnection<PgConnection>;
+type GaE = error::GitArenaError;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
