@@ -10,3 +10,19 @@ create table users
 
 create unique index users_username_uindex
 	on users (username);
+
+create table user_verifications
+(
+    id      serial                   not null
+        constraint user_verifications_pk
+            primary key,
+    user_id integer                  not null,
+    hash    char(32)                 not null,
+    expires timestamp with time zone not null
+);
+
+create unique index user_verifications_hash_uindex
+    on user_verifications (hash);
+
+create unique index user_verifications_user_id_uindex
+    on user_verifications (user_id);

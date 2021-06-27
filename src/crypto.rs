@@ -1,9 +1,12 @@
+use crate::user::User;
+
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
-use crate::user::User;
 use rand::Rng;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+const HEX_CHARSET: &[u8] = b"abcdef0123456789";
+
 const ARGON_CONFIG: Config = Config {
     ad: &[],
     hash_length: 32,
@@ -22,6 +25,15 @@ pub(crate) fn random_string(length: usize) -> String {
     (0..length).map(|_| {
         let index = rng.gen_range(0, CHARSET.len());
         CHARSET[index] as char
+    }).collect()
+}
+
+pub(crate) fn random_hex_string(length: usize) -> String {
+    let mut rng = rand::thread_rng();
+
+    (0..length).map(|_| {
+        let index = rng.gen_range(0, HEX_CHARSET.len());
+        HEX_CHARSET[index] as char
     }).collect()
 }
 

@@ -1,11 +1,11 @@
-use anyhow::{anyhow, Context, Result};
 use crate::templates::plain::{render, Template, TemplateContext};
-use crate::{CONFIG, crypto, mail, PgPoolConnection};
-use lettre::Message;
-use sqlx::pool::PoolConnection;
-use sqlx::postgres::PgQueryAs;
-use sqlx::{Connection, Executor, FromRow, PgConnection, PgPool, Transaction};
+use crate::{CONFIG, crypto, mail};
+
 use std::borrow::Borrow;
+
+use anyhow::{bail, Context, Result};
+use lettre::Message;
+use sqlx::{Executor, FromRow, PgPool, Postgres, Transaction};
 
 #[derive(FromRow)]
 pub(crate) struct User {
@@ -32,15 +32,16 @@ impl User {
         })
     }
 
-    /// Saves this user to the database and populates the user id.
-    /// If a error gets returned, the user was not inserted into the database.
-    pub(crate) async fn save(&mut self, database_pool: &PgPool) -> Result<()> {
-        if self.id > 0 {
-            return Err(anyhow!("User id ({}) already saved to database", self.id));
-        }
+    pub(crate) fn is_saved(&self) -> bool {
+        self.id > -1
+    }
 
-        let connection = database_pool.acquire().await.context("Unable to acquire connection.")?;
-        let mut transaction: Transaction<PgPoolConnection> = connection.begin().await.context("Unable to start transaction.")?;
+    /// Saves this user to the database and populates the user id.
+    /// If a error gets returned, the transaction should be cancelled in order to not insert the user
+    pub(crate) async fn save(&mut self, transaction: &mut Transaction<'_, Postgres>) -> Result<()> {
+        if self.is_saved() {
+            bail!("User id ({}) already saved to database", self.id);
+        }
 
         transaction.execute(
             sqlx::query("insert into users (username, email, password, salt) values ($1, $2, $3, $4);")
@@ -51,17 +52,15 @@ impl User {
         ).await.context("Failed to insert user into database.")?;
 
         let (id,): (i64,) = sqlx::query_as("select currval(pg_get_serial_sequence('users', 'id'));")
-            .fetch_one(&mut transaction)
+            .fetch_one(transaction)
             .await
             .context("Failed to acquire user id.")?;
 
-        if id > std::i32::MAX as i64 {
-            return Err(anyhow!("Returned user id ({}) does not fit into i32.", id));
+        if id > i32::MAX as i64 {
+            bail!("Returned user id ({}) does not fit into i32.", id);
         }
 
         self.id = id as i32;
-
-        transaction.commit().await?;
 
         Ok(())
     }
@@ -84,7 +83,7 @@ impl User {
         let email_body = render(body.to_string(), context);
 
         if !tags.contains_key("subject") {
-            return Err(anyhow!("Template {} does not contain subject tag.", tags.get("template_name").unwrap()));
+            bail!("Template {} does not contain subject tag.", tags.get("template_name").unwrap());
         }
 
         let subject = tags.get("subject").unwrap();

@@ -1,8 +1,8 @@
 # GitArena config file
 
 bind = "localhost:8080"
+domain = "https://gitarena.com"
 database = "postgresql://root@localhost/gitarena?sslmode=require"
-redis = "redis://localhost"
 
 [hcaptcha]
 site_key = ""

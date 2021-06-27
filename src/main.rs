@@ -1,5 +1,12 @@
 #![forbid(unsafe_code)]
 
+use std::borrow::{Borrow, Cow};
+use std::env;
+use std::fs;
+use std::io::stdout;
+use std::path::Path;
+use std::time::Duration;
+
 use actix_web::{App, HttpServer};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -7,13 +14,7 @@ use config::Config;
 use fern::{Dispatch, log_file};
 use lazy_static::lazy_static;
 use log::{info, LevelFilter};
-use sqlx::pool::PoolConnection;
-use sqlx::{PgConnection, PgPool};
-use std::borrow::{Borrow, Cow};
-use std::env;
-use std::fs;
-use std::io::stdout;
-use std::path::Path;
+use sqlx::postgres::PgPoolOptions;
 
 mod captcha;
 mod config;
@@ -23,8 +24,8 @@ mod mail;
 mod routes;
 mod templates;
 mod user;
+mod verification;
 
-type PgPoolConnection = PoolConnection<PgConnection>;
 type GaE = error::GitArenaError;
 
 lazy_static! {
@@ -35,7 +36,12 @@ lazy_static! {
 async fn main() -> Result<()> {
     init_logger()?;
 
-    let db_pool = PgPool::new(&CONFIG.database).await?;
+    let db_pool = PgPoolOptions::new()
+        .max_connections(num_cpus::get() as u32)
+        .connect_timeout(Duration::from_secs(10))
+        .connect(&CONFIG.database)
+        .await?;
+
     sqlx::query("select 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
 
     info!("Successfully connected to database.");

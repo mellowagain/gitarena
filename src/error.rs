@@ -1,13 +1,22 @@
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
+use actix_web::dev::HttpResponseBuilder;
 use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use anyhow::Error as AnyhowError;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use serde_json::json;
+use thiserror::Error;
 
-pub struct GitArenaError {
+#[derive(Error, Debug)]
+pub(crate) enum GAErrors {
+    #[error("{1}")]
+    HttpError(u16, String)
+}
+
+pub(crate) struct GitArenaError {
     error: AnyhowError
 }
 
@@ -28,11 +37,10 @@ impl Serialize for GitArenaError {
         where
             S: Serializer,
     {
-        //let s = format!("{}", self.error);
-        //let sr: &str = s.as_str();
+        let cause = format!("{}", self.error);
 
         let mut state = serializer.serialize_struct("GitArenaError", 1)?;
-        state.serialize_field("error", /*sr*/"Internal server error occurred")?;
+        state.serialize_field("error", cause.as_str())?;
         state.end()
     }
 }
@@ -45,13 +53,28 @@ impl From<AnyhowError> for GitArenaError {
 
 impl ResponseError for GitArenaError {
     fn status_code(&self) -> StatusCode {
-        //if let Some(a) = self.err.downcast_ref::<Error>() {
-        //}
-
-        StatusCode::INTERNAL_SERVER_ERROR
+        if let Some(e) = self.error.downcast_ref::<GAErrors>() {
+            match e {
+                GAErrors::HttpError(status_code, _) => StatusCode::from_u16(*status_code)
+            }.unwrap_or(StatusCode::IM_A_TEAPOT) // A programmer passed a invalid status code
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 
     fn error_response(&self) -> HttpResponse {
-        HttpResponse::InternalServerError().json(self)
+        let message = if let Some(e) = self.error.downcast_ref::<GAErrors>() {
+            match e {
+                GAErrors::HttpError(_, message) => message
+            }
+        } else {
+            "Internal server error occurred"
+        };
+
+        let json = json!({
+            "error": format!("{}", message)
+        });
+
+        HttpResponseBuilder::new(self.status_code()).json(json)
     }
 }
