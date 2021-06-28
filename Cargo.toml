@@ -1,12 +1,12 @@
 [package]
 name = "gitarena"
 version = "0.0.1"
-authors = ["Marc Steiner <contact@marcsteiner.me>"]
+authors = ["Mari <me@cutegirl.tech>"]
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/Marc3842h/gitarena"
+repository = "https://github.com/mellowagain/gitarena"
 
 [dependencies]
 actix-rt = "1.1.1"
