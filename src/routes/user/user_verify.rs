@@ -7,16 +7,15 @@ use log::info;
 use serde_json::json;
 use sqlx::PgPool;
 
-async fn verify(hash: web::Path<(String,)>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let token = &hash.0.0;
-
+// GET /api/verify/{hash}
+async fn verify(web::Path((token,)): web::Path<(String,)>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if token.len() != 32 || !token.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(HttpError(400, "Token is illegal".to_owned()).into());
     }
 
     let mut transaction = db_pool.begin().await?;
 
-    let option: Option<(i32, i32)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1;")
+    let option: Option<(i32, i32)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
         .bind(&token)
         .fetch_optional(&mut transaction)
         .await?;
@@ -27,19 +26,14 @@ async fn verify(hash: web::Path<(String,)>, db_pool: web::Data<PgPool>) -> Resul
 
     let (row_id, user_id) = option.unwrap();
 
-    sqlx::query("update users set email_verified = true where id = $1;")
-        .bind(&user_id)
-        .execute(&mut transaction)
-        .await?;
-
-    sqlx::query("update user_verifications set expires = now() - interval '1 day' where id = $1;")
+    sqlx::query("update user_verifications set expires = now() - interval '1 day' where id = $1")
         .bind(&row_id)
         .execute(&mut transaction)
         .await?;
 
     transaction.commit().await?;
 
-    info!("User {} verified their e-mail", user_id);
+    info!("User id {} verified their e-mail", user_id);
 
     Ok(web::Json(json!({
         "success": true

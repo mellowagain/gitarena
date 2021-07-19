@@ -37,16 +37,16 @@ pub(crate) fn random_hex_string(length: usize) -> String {
     }).collect()
 }
 
-pub(crate) fn hash_password(password: String) -> Result<(String, String)> {
+pub(crate) fn hash_password(password: &String) -> Result<String> {
     let salt = random_string(16);
 
-    Ok((argon2::hash_encoded(
+    Ok(argon2::hash_encoded(
         password.as_bytes(), salt.as_bytes(), &ARGON_CONFIG
-    ).context("Failed to hash password.")?, salt))
+    ).context("Failed to hash password")?)
 }
 
-pub(crate) fn check_password(user: &User, password: String) -> Result<bool> {
+pub(crate) fn check_password(user: &User, password: &String) -> Result<bool> {
     Ok(argon2::verify_encoded(
         user.password.as_str(), password.as_bytes()
-    ).with_context(|| format!("Failed to check password for user #{}.", user.id))?)
+    ).with_context(|| format!("Failed to check password for user #{}", user.id))?)
 }

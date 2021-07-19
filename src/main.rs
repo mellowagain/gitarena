@@ -7,6 +7,7 @@ use std::io::stdout;
 use std::path::Path;
 use std::time::Duration;
 
+use actix_session::CookieSession;
 use actix_web::{App, HttpServer};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -15,13 +16,13 @@ use fern::{Dispatch, log_file};
 use lazy_static::lazy_static;
 use log::{info, LevelFilter};
 use sqlx::postgres::PgPoolOptions;
-use actix_session::CookieSession;
 use time::Duration as TimeDuration;
 
 mod captcha;
 mod config;
 mod crypto;
 mod error;
+mod extensions;
 mod mail;
 mod routes;
 mod templates;
@@ -53,13 +54,18 @@ async fn main() -> Result<()> {
 
     let server = HttpServer::new(move || {
         let secret = (CONFIG.secret.borrow() as &str).as_bytes();
-        let session = CookieSession::signed(secret).name("ga_session").secure(false);
-        let persistent_session = CookieSession::signed(secret).name("ga_psession").expires_in_time(TimeDuration::weeks(4)).secure(false);
+        let domain: &str = CONFIG.domain.borrow();
+        let secure = domain.starts_with("https");
+
+        let session = CookieSession::signed(secret)
+            .name("gitarena")
+            .max_age(TimeDuration::days(10).whole_seconds())
+            .http_only(true)
+            .secure(secure);
 
         App::new()
             .data(db_pool.clone())
             .wrap(session)
-            .wrap(persistent_session)
             //.configure(routes::repository::init)
             .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;
@@ -121,7 +127,7 @@ fn init_logger() -> Result<()> {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{}] {} {} - {}",
-                record.target(),
+                record.target().split("::").next().unwrap_or("null"),
                 record.level(),
                 record.module_path().unwrap_or("null"),
                 message

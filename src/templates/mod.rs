@@ -1,6 +1,6 @@
 use crate::templates::plain::Template;
+
 use lazy_static::lazy_static;
-use std::collections::HashMap;
 
 pub(crate) mod plain;
 
@@ -12,5 +12,12 @@ fn parse_template(template_path: String) -> Template {
     match plain::parse(template_path) {
         Ok(template) => template,
         Err(err) => panic!("Failed to parse template: {}", err)
+    }
+}
+
+#[macro_export]
+macro_rules! template_context {
+    ($input:expr) => {
+        Some($input.iter().cloned().collect())
     }
 }

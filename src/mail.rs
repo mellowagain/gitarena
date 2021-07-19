@@ -1,8 +1,24 @@
-use anyhow::{Context, Result};
 use crate::CONFIG;
+use crate::user::User;
+
+use std::borrow::Borrow;
+
+use anyhow::{Context, Result};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, Message, Tokio02Connector, Tokio02Transport};
-use std::borrow::Borrow;
+
+pub(crate) async fn send_user_mail(user: &User, subject: &String, body: String) -> Result<()> {
+    let address: &str = CONFIG.smtp.email_address.borrow();
+
+    let message = Message::builder()
+        .from(format!("GitArena <{}>", address).parse().context("Unable to parse `from` email.")?)
+        .to(format!("{} <{}>", user.username, user.email).parse().context("Unable to parse `to` email.")?)
+        .subject(subject)
+        .body(body)
+        .context("Unable to build email.")?;
+
+    Ok(send_mail(message).await?)
+}
 
 pub(crate) async fn send_mail(message: Message) -> Result<()> {
     let server: &str = CONFIG.smtp.server.borrow();
