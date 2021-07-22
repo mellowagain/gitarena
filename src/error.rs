@@ -5,6 +5,7 @@ use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use anyhow::Error as AnyhowError;
+use log::error;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::json;
@@ -71,10 +72,16 @@ impl ResponseError for GitArenaError {
             "Internal server error occurred"
         };
 
+        let status_code = self.status_code();
+
+        if status_code.is_server_error() {
+            error!("Error occurred while handling route: {}", self.error.root_cause())
+        }
+
         let json = json!({
             "error": format!("{}", message)
         });
 
-        HttpResponseBuilder::new(self.status_code()).json(json)
+        HttpResponseBuilder::new(status_code).json(json)
     }
 }

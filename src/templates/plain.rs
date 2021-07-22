@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -6,8 +6,8 @@ use std::path::Path;
 pub(crate) type Template = (String, HashMap<String, String>);
 pub(crate) type TemplateContext = HashMap<String, String>;
 
-pub(crate) fn parse(mut template_path: String) -> Result<Template> {
-    let mut template_dir = Path::new("templates/");
+pub(crate) fn parse(template_path: String) -> Result<Template> {
+    let template_dir = Path::new("templates/");
     let path = template_dir.join(&template_path);
 
     let content = fs::read_to_string(path)?;
