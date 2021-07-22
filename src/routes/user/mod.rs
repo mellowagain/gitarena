@@ -5,7 +5,7 @@ mod user_login;
 mod user_verify;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
-    config.service(user_create::handle_post);
-    config.service(user_login::handle_post);
-    config.service(user_verify::handle_get);
+    config.service(user_create::register);
+    //config.service(user_login::login);
+    config.service(user_verify::verify);
 }

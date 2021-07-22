@@ -1,17 +1,18 @@
 use crate::error::GAErrors::HttpError;
 use crate::user::User;
 use crate::verification::send_verification_mail;
-use crate::{captcha, GaE, crypto, extensions};
+use crate::{captcha, crypto, extensions};
 
 use actix_session::Session;
-use actix_web::{HttpResponse, post, Responder, Result as ActixResult, web, HttpRequest};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
+use gitarena_macros::route;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-// POST /api/users
-async fn register(session: Session, body: web::Json<RegisterJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route("/api/user", method="POST")]
+pub(crate) async fn register(session: Session, body: web::Json<RegisterJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let username = &body.username;
@@ -106,9 +107,4 @@ pub(crate) struct RegisterJsonRequest {
 struct RegisterJsonResponse {
     success: bool,
     id: i32
-}
-
-#[post("/api/user")]
-pub(crate) async fn handle_post(session: Session, body: web::Json<RegisterJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> ActixResult<impl Responder> {
-    Ok(register(session, body, request, db_pool).await.map_err(|e| -> GaE { e.into() }))
 }

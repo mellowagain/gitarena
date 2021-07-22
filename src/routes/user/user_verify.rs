@@ -1,14 +1,17 @@
 use crate::error::GAErrors::HttpError;
-use crate::GaE;
 
-use actix_web::{get, Responder, Result as ActixResult, web};
+use actix_web::{Responder, web};
 use anyhow::Result;
+use gitarena_macros::route;
 use log::info;
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
 
-// GET /api/verify/{hash}
-async fn verify(web::Path((token,)): web::Path<(String,)>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route("/api/verify/{token}", method="GET")]
+pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let token = &verify_request.token;
+
     if token.len() != 32 || !token.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(HttpError(400, "Token is illegal".to_owned()).into());
     }
@@ -40,7 +43,7 @@ async fn verify(web::Path((token,)): web::Path<(String,)>, db_pool: web::Data<Pg
     })))
 }
 
-#[get("/api/verify/{hash}")]
-pub(crate) async fn handle_get(hash: web::Path<(String,)>, db_pool: web::Data<PgPool>) -> ActixResult<impl Responder> {
-    Ok(verify(hash, db_pool).await.map_err(|e| -> GaE { e.into() }))
+#[derive(Deserialize)]
+pub(crate) struct VerifyRequest {
+    token: String
 }
