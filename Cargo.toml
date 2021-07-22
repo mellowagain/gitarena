@@ -16,6 +16,7 @@ anyhow = "1.0.41"
 chrono = "0.4.19"
 fern = "0.6.0"
 git2 = "0.13.20"
+gitarena-macros = { path = "gitarena-macros" }
 lazy_static = "1.4.0"
 lettre = { version = "0.10.0-alpha.2", features = ["smtp-transport", "tokio02", "tokio02-native-tls"] }
 lettre_email = "0.9.4"
