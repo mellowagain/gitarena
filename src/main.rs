@@ -30,8 +30,6 @@ mod templates;
 mod user;
 mod verification;
 
-type GaE = error::GitArenaError;
-
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
 }
