@@ -5,7 +5,7 @@ use crate::verification::send_verification_mail;
 use crate::{captcha, crypto};
 
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use log::info;
@@ -27,10 +27,8 @@ pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity,
         return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
     }
 
-    let lowered_username = username.to_lowercase();
-
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = $1);")
-        .bind(&lowered_username)
+    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
+        .bind(username)
         .fetch_one(&mut transaction)
         .await?;
 
