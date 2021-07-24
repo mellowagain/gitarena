@@ -1,11 +1,11 @@
 use crate::templates::plain::render;
 use crate::user::User;
-use crate::{CONFIG, crypto, mail, templates, template_context};
+use crate::{CONFIG, crypto, mail, template_context, templates};
 
 use std::borrow::Borrow;
 
-use anyhow::bail;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use chrono::Utc;
 use sqlx::{Postgres, Transaction};
 
 pub(crate) async fn send_verification_mail(user: &User, transaction: &mut Transaction<'_, Postgres>) -> Result<()> {
@@ -39,7 +39,26 @@ pub(crate) async fn send_verification_mail(user: &User, transaction: &mut Transa
     Ok(())
 }
 
+/// Checks if the user is still in grace period (24 hours).
+/// In this grace period the user can do all actions even without having a verified email address
+pub(crate) async fn is_grace_period(user: &User) -> bool {
+    let user_creation = &user.created_at;
+    let now = Utc::now();
+    let difference = user_creation.signed_duration_since(now);
+
+    difference.num_hours() < 24
+}
+
 /// Checks if the user has failed to verify their email address within 24 hours
-pub(crate) async fn has_failed(_user: &User, _transaction: &mut Transaction<'_, Postgres>) -> Result<bool> {
-    todo!()
+pub(crate) async fn is_pending(user: &User, transaction: &mut Transaction<'_, Postgres>) -> Result<bool> {
+    if is_grace_period(&user).await {
+        return Ok(false);
+    }
+
+    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from user_verifications where user_id = $1)")
+        .bind(&user.id)
+        .fetch_one(transaction)
+        .await?;
+
+    Ok(exists)
 }
