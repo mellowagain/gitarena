@@ -1,5 +1,5 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::is_identifier;
+use crate::extensions::{is_identifier, is_fs_legal};
 use crate::user::User;
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto};
@@ -25,6 +25,10 @@ pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity,
 
     if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_identifier(&c)) {
         return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+    }
+
+    if !is_fs_legal(username).await {
+        return Err(HttpError(400, "Username is illegal".to_owned()).into());
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")

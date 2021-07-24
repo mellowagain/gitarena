@@ -37,3 +37,22 @@ pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: 
 pub(crate) fn is_identifier(c: &char) -> bool {
     c.is_ascii_alphanumeric() || c == &'-' || c == &'_'
 }
+
+/// Checks for illegal file and directory names on Windows.
+/// This function assumes that the input has already been checked with [`is_identifier`][0].
+///
+/// [0]: crate::extensions::is_identifier
+pub(crate) async fn is_fs_legal(input: &String) -> bool {
+    let mut legal = input != "CON";
+    legal &= input != "PRN";
+    legal &= input != "AUX";
+    legal &= input != "NUL";
+    legal &= input != "LST";
+
+    for i in 0..=9 {
+        legal &= input != format!("COM{}", i);
+        legal &= input != format!("LPT{}", i);
+    }
+
+    legal
+}
