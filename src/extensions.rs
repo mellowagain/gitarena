@@ -50,8 +50,8 @@ pub(crate) async fn is_fs_legal(input: &String) -> bool {
     legal &= input != "LST";
 
     for i in 0..=9 {
-        legal &= input != format!("COM{}", i);
-        legal &= input != format!("LPT{}", i);
+        legal &= input != &format!("COM{}", i);
+        legal &= input != &format!("LPT{}", i);
     }
 
     legal
