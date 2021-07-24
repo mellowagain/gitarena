@@ -1,6 +1,10 @@
 use crate::user::User;
 
+use std::fs;
+use std::path::Path;
+
 use actix_web::HttpRequest;
+use anyhow::{Context, Result};
 use log::warn;
 use sqlx::{Transaction, Postgres};
 
@@ -55,4 +59,17 @@ pub(crate) async fn is_fs_legal(input: &String) -> bool {
     }
 
     legal
+}
+
+pub(crate) fn create_dir_if_not_exists(path: &Path) -> Result<()> {
+    if !path.is_dir() {
+        // Check if path is a file and not a directory
+        if path.exists() {
+            return fs::remove_file(path).context("Unable to delete file")
+        }
+
+        return fs::create_dir_all(path).context("Unable to create directory")
+    }
+
+    Ok(())
 }

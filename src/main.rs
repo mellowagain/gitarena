@@ -1,8 +1,9 @@
 #![forbid(unsafe_code)]
 
+use crate::extensions::create_dir_if_not_exists;
+
 use std::borrow::{Borrow, Cow};
 use std::env;
-use std::fs;
 use std::io::stdout;
 use std::path::Path;
 use std::time::Duration;
@@ -37,6 +38,8 @@ lazy_static! {
 #[actix_rt::main]
 async fn main() -> Result<()> {
     init_logger()?;
+
+    create_dir_if_not_exists(Path::new(CONFIG.repositories.base_dir.borrow() as &str))?;
 
     let db_pool = PgPoolOptions::new()
         .max_connections(num_cpus::get() as u32)
@@ -106,16 +109,7 @@ fn load_config() -> Cow<'static, Config> {
 }
 
 fn init_logger() -> Result<()> {
-    let logs_dir = Path::new("logs");
-
-    if !logs_dir.is_dir() {
-        // Check if `logs` is a file and not a directory
-        if logs_dir.exists() {
-            fs::remove_file(logs_dir).context("Unable to delete `logs` file.")?;
-        }
-
-        fs::create_dir(logs_dir).context("Unable to create `logs` directory.")?;
-    }
+    create_dir_if_not_exists(Path::new("logs"))?;
 
     let level = if cfg!(debug_assertions) {
         LevelFilter::Debug
