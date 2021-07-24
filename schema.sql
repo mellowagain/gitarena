@@ -29,3 +29,16 @@ create unique index if not exists user_verifications_hash_uindex
 
 create unique index if not exists user_verifications_user_id_uindex
     on user_verifications (user_id);
+
+create table if not exists repositories
+(
+    id          serial       not null
+        constraint repositories_pk
+            primary key,
+    owner       integer      not null
+        constraint repositories_users_id_fk
+            references users (id)
+            on delete cascade,
+    name        varchar(32)  not null,
+    description varchar(256) not null
+);
