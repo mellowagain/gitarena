@@ -9,8 +9,8 @@ license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 
 [dependencies]
+actix-identity = "0.3.1"
 actix-rt = "1.1.1"
-actix-session = "0.4.1"
 actix-web = "3.2.0"
 anyhow = "1.0.41"
 chrono = "0.4.19"

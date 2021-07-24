@@ -12,6 +12,7 @@ pub(crate) struct User {
     pub(crate) email: String,
     pub(crate) password: String,
     pub(crate) disabled: bool,
+    pub(crate) session: String,
     pub(crate) created_at: DateTime<Utc>
 }
 
@@ -28,6 +29,7 @@ impl User {
             email: "".to_owned(),
             password: "".to_owned(),
             disabled: false,
+            session: "".to_owned(),
             created_at: *UTC_DT
         }
     }
@@ -55,6 +57,10 @@ impl User {
     pub(crate) fn disabled(&mut self, disabled: bool) -> &mut User {
         self.disabled = disabled;
         self
+    }
+
+    pub(crate) fn identity_str(&self) -> String {
+        format!("{}${}", &self.id, &self.session)
     }
 
     pub(crate) fn is_valid(&self) -> bool {

@@ -29,7 +29,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     let (row_id, user_id) = option.unwrap();
 
-    sqlx::query("update user_verifications set expires = now() - interval '1 day' where id = $1")
+    sqlx::query("delete from user_verifications where id = $1")
         .bind(&row_id)
         .execute(&mut transaction)
         .await?;

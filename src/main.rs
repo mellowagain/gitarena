@@ -7,7 +7,7 @@ use std::io::stdout;
 use std::path::Path;
 use std::time::Duration;
 
-use actix_session::CookieSession;
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{App, HttpServer};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -24,9 +24,9 @@ mod crypto;
 mod error;
 mod extensions;
 mod mail;
+//mod repository;
 mod routes;
 mod templates;
-//mod repository;
 mod user;
 mod verification;
 
@@ -55,15 +55,17 @@ async fn main() -> Result<()> {
         let domain: &str = CONFIG.domain.borrow();
         let secure = domain.starts_with("https");
 
-        let session = CookieSession::signed(secret)
-            .name("gitarena")
-            .max_age(TimeDuration::days(10).whole_seconds())
-            .http_only(true)
-            .secure(secure);
+        let identity_service = IdentityService::new(
+            CookieIdentityPolicy::new(secret)
+                .name("gitarena-auth")
+                .max_age(TimeDuration::days(10).whole_seconds())
+                .http_only(true)
+                .secure(secure)
+        );
 
         App::new()
             .data(db_pool.clone())
-            .wrap(session)
+            .wrap(identity_service)
             //.configure(routes::repository::init)
             .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;

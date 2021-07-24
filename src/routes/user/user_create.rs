@@ -1,18 +1,23 @@
 use crate::error::GAErrors::HttpError;
 use crate::user::User;
 use crate::verification::send_verification_mail;
-use crate::{captcha, crypto, extensions};
+use crate::{captcha, crypto};
 
-use actix_session::Session;
+use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use gitarena_macros::route;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 #[route("/api/user", method="POST")]
-pub(crate) async fn register(session: Session, body: web::Json<RegisterJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    if id.identity().is_some() {
+        // Maybe just redirect to home page?
+        return Err(HttpError(401, "Already logged in".to_owned()).into());
+    }
+
     let mut transaction = db_pool.begin().await?;
 
     let username = &body.username;
@@ -64,21 +69,7 @@ pub(crate) async fn register(session: Session, body: web::Json<RegisterJsonReque
 
     send_verification_mail(&user, &mut transaction).await?;
 
-    let user_agent = extensions::get_user_agent(&request).unwrap_or_default()
-        .chars()
-        .take(256)
-        .collect::<String>();
-
-    let (hash,): (String,) = sqlx::query_as("insert into user_sessions (user_id, user_agent) values ($1, $2) returning session")
-        .bind(&user.id)
-        .bind(user_agent)
-        .fetch_one(&mut transaction)
-        .await
-        .context("Failed to create user session")?;
-
-    if session.set("user_session", hash).is_err() {
-        return Err(HttpError(500, "Failed to set user session".to_owned()).into());
-    }
+    id.remember(user.identity_str());
 
     transaction.commit().await?;
 
