@@ -31,3 +31,9 @@ pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: 
         None => None
     }
 }
+
+/// Checks if the character is alphanumeric (`a-z, 0-9`), a dash (`-`) or a underscore (`_`)
+#[inline]
+pub(crate) fn is_identifier(c: &char) -> bool {
+    c.is_ascii_alphanumeric() || c == &'-' || c == &'_'
+}

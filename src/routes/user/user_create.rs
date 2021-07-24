@@ -1,4 +1,5 @@
 use crate::error::GAErrors::HttpError;
+use crate::extensions::is_identifier;
 use crate::user::User;
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto};
@@ -22,7 +23,7 @@ pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity,
 
     let username = &body.username;
 
-    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_username(&c)) {
+    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_identifier(&c)) {
         return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
     }
 
@@ -79,11 +80,6 @@ pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity,
         success: true,
         id: user.id
     }).await)
-}
-
-#[inline]
-fn is_username(c: &char) -> bool {
-    c.is_ascii_alphanumeric() || c == &'-' || c == &'_'
 }
 
 #[derive(Deserialize)]
