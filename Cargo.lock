@@ -1266,9 +1266,11 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "anyhow",
+ "base64 0.13.0",
  "chrono",
  "config_struct",
  "fern",
+ "futures",
  "git2",
  "gitarena-macros",
  "lazy_static",
@@ -1276,6 +1278,7 @@ dependencies = [
  "lettre_email",
  "log",
  "num_cpus",
+ "qstring",
  "rand 0.7.3",
  "regex",
  "reqwest",
@@ -1283,6 +1286,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "subprocess",
  "thiserror",
  "time 0.2.27",
  "tinytemplate",
@@ -2151,6 +2155,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "qstring"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d464fae65fff2680baf48019211ce37aaec0c78e9264c84a3e484717f965104e"
+dependencies = [
+ "percent-encoding",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2891,6 +2904,16 @@ checksum = "8ee348cb74b87454fff4b551cbf727025810a004f88aeacae7f85b87f4e9a1c1"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
+]
+
+[[package]]
+name = "subprocess"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "334b801f9ca2529ba9605109f1d2835f15aff94cd6cfe5afe6ce8cf71e5fd3c4"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
 ]
 
 [[package]]

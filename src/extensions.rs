@@ -8,8 +8,8 @@ use anyhow::{Context, Result};
 use log::warn;
 use sqlx::{Transaction, Postgres};
 
-pub(crate) fn get_user_agent(request: &HttpRequest) -> Option<&str> {
-    request.headers().get("user-agent")?.to_str().ok()
+pub(crate) fn get_header<'a>(request: &'a HttpRequest, header: &'a str) -> Option<&'a str> {
+    request.headers().get(header)?.to_str().ok()
 }
 
 pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: &mut Transaction<'_, Postgres>) -> Option<User> {

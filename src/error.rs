@@ -32,7 +32,7 @@ impl Display for GitArenaError {
 
 impl Debug for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.error)
+        write!(f, "{:?}", self.error)
     }
 }
 
