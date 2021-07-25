@@ -15,18 +15,20 @@ pub(crate) fn get_user_agent(request: &HttpRequest) -> Option<&str> {
 pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: &mut Transaction<'_, Postgres>) -> Option<User> {
     match identity {
         Some(id_str) => {
-            let mut split = id_str.splitn(1, '$');
+            let mut split = id_str.splitn(2, '$');
+
             let id = split.next().unwrap_or_else(|| {
-                warn!("Unable to parse identity string `{}`", id_str);
-                "unknown"
-            });
+                warn!("Unable to parse id from identity string `{}`", id_str);
+                "-1"
+            }).parse::<i32>().unwrap_or(-1);
+
             let session = split.next().unwrap_or_else(|| {
-                warn!("Unable to parse identity string `{}`", id_str);
+                warn!("Unable to parse session from identity string `{}`", id_str);
                 "unknown"
             });
 
             sqlx::query_as::<_, User>("select * from users where id = $1 and session = $2 limit 1")
-                .bind(id)
+                .bind(&id)
                 .bind(session)
                 .fetch_one(transaction)
                 .await

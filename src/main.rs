@@ -39,8 +39,6 @@ lazy_static! {
 async fn main() -> Result<()> {
     init_logger()?;
 
-    create_dir_if_not_exists(Path::new(CONFIG.repositories.base_dir.borrow() as &str))?;
-
     let db_pool = PgPoolOptions::new()
         .max_connections(num_cpus::get() as u32)
         .connect_timeout(Duration::from_secs(10))
@@ -69,7 +67,7 @@ async fn main() -> Result<()> {
         App::new()
             .data(db_pool.clone())
             .wrap(identity_service)
-            //.configure(routes::repository::init)
+            .configure(routes::repository::init)
             .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;
 
