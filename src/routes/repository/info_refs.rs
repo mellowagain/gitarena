@@ -1,6 +1,7 @@
 use crate::config::CONFIG;
 use crate::error::GAErrors::GitError;
 use crate::repository::Repository;
+use crate::routes::repository::GitRequest;
 
 use std::borrow::Borrow;
 use std::convert::TryFrom;
@@ -16,7 +17,6 @@ use futures::StreamExt;
 use gitarena_macros::route;
 use log::error;
 use qstring::QString;
-use serde::Deserialize;
 use sqlx::PgPool;
 use subprocess::{Exec, ExitStatus, Redirection};
 
@@ -212,10 +212,4 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, mut body: web::Payload
     transaction.commit().await?;
 
     Ok(response.body(output_lines.join("\n")))
-}
-
-#[derive(Deserialize)]
-pub(crate) struct GitRequest {
-    username: String,
-    repository: String
 }
