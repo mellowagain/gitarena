@@ -13,6 +13,7 @@ pub(crate) async fn capabilities(service: &str) -> Result<Bytes> {
 
         .write_text(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")))?
         .write_text("ls-refs")?
+        .write_text("unborn")?
         .write_text("fetch=shallow")?
         .write_text("server-option")?
         .write_text("object-format=sha1")?

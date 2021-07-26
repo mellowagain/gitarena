@@ -2,10 +2,9 @@ use crate::user::User;
 use crate::config::CONFIG;
 
 use std::borrow::Borrow;
-use std::path::Path;
 
 use anyhow::Result;
-use git2::Repository as LibGit2Repository;
+use git2::Repository as Git2Repository;
 use sqlx::{FromRow, Postgres, Transaction};
 
 #[derive(FromRow)]
@@ -19,13 +18,13 @@ pub(crate) struct Repository {
 
 impl Repository {
     pub(crate) async fn create_fs(&self, owner_username: &str) -> Result<()> {
-        let repo_base_dir: &str = CONFIG.repositories.base_dir.borrow();
-        let path_str = format!("{}/{}/{}", repo_base_dir, owner_username, &self.name);
-        let path = Path::new(path_str.as_str());
-
-        LibGit2Repository::init(path)?;
+        Git2Repository::init(self.get_fs_path(owner_username).await)?;
 
         Ok(())
+    }
+
+    pub(crate) async fn libgit2(&self, owner_username: &str) -> Result<Git2Repository> {
+        Ok(Git2Repository::open(self.get_fs_path(owner_username).await)?)
     }
 
     pub(crate) async fn get_owner(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<User> {
@@ -33,5 +32,11 @@ impl Repository {
             .bind(self.owner)
             .fetch_one(transaction)
             .await?)
+    }
+
+    pub(crate) async fn get_fs_path(&self, owner_username: &str) -> String {
+        let repo_base_dir: &str = CONFIG.repositories.base_dir.borrow();
+
+        format!("{}/{}/{}", repo_base_dir, owner_username, &self.name)
     }
 }
