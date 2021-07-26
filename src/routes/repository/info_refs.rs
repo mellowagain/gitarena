@@ -68,5 +68,6 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     Ok(HttpResponse::Ok()
         .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+        .header("Content-Type", "application/x-git-upload-pack-advertisement")
         .body(capabilities(service).await?))
 }
