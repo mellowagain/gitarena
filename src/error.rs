@@ -80,10 +80,11 @@ impl ResponseError for GitArenaError {
                         }))
                 }
                 GAErrors::GitError(_, message_option) => {
-                    let mut response = HttpResponseBuilder::new(self.status_code())
-                        .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
-                        .header("Expires", "Fri, 01 Jan 1980 00:00:00 GMT")
-                        .header("Pragma", "no-cache");
+                    let mut response = HttpResponseBuilder::new(self.status_code());
+
+                    // https://git-scm.com/docs/http-protocol/en#_smart_server_response
+                    // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
+                    response.header("Cache-Control", "no-cache, max-age=0, must-revalidate");
 
                     if let Some(message) = message_option {
                         return response.body(message);
