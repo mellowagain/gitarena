@@ -1,13 +1,12 @@
 use crate::user::User;
 use crate::config::CONFIG;
-use crate::extensions::create_dir_if_not_exists;
 
 use std::borrow::Borrow;
 use std::path::Path;
 
 use anyhow::Result;
+use git2::Repository as LibGit2Repository;
 use sqlx::{FromRow, Postgres, Transaction};
-use std::fs::File;
 
 #[derive(FromRow)]
 pub(crate) struct Repository {
@@ -24,14 +23,7 @@ impl Repository {
         let path_str = format!("{}/{}/{}", repo_base_dir, owner_username, &self.name);
         let path = Path::new(path_str.as_str());
 
-        create_dir_if_not_exists(path)?;
-
-        if !self.private {
-            let daemon_export_path_str = format!("{}/git-daemon-export-ok", path_str);
-            let daemon_export_path = Path::new(daemon_export_path_str.as_str());
-
-            File::create(daemon_export_path)?;
-        }
+        LibGit2Repository::init(path)?;
 
         Ok(())
     }
