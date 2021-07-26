@@ -1,10 +1,11 @@
 use crate::error::GAErrors::GitError;
+use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use qstring::QString;
@@ -21,6 +22,12 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     if service != "git-upload-pack" {
         return Err(GitError(400, None).into());
+    }
+
+    let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
+
+    if git_protocol != "version=2" {
+        return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
     }
 
     let mut transaction = db_pool.begin().await?;
@@ -41,28 +48,10 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
         .fetch_optional(&mut transaction)
         .await?;
 
-    let is_none = repo_option.is_none();
-
-    // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
-    if is_none || repo_option.unwrap().private {
-        if !basic_auth::is_present(&request).await {
-            return Ok(HttpResponse::Unauthorized()
-                .header("WWW-Authenticate", "Basic realm=\"GitArena\", charset=\"UTF-8\"")
-                .finish());
-        }
-
-        let user = basic_auth::authenticate(&request, &mut transaction).await?;
-
-        if is_none {
-            return Err(GitError(404, None).into());
-        }
-
-        // Check if the user has access rights to the repository
-        // TODO: Check for collaborators, currently only checks for owner
-        if user.username.to_lowercase() != uri.username.to_lowercase() {
-            return Err(GitError(404, None).into());
-        }
-    }
+    let (_, _) = match basic_auth::validate_repo_access(repo_option,"application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
+        Either::A(tuple) => tuple,
+        Either::B(response) => return Ok(response)
+    };
 
     transaction.commit().await?;
 
