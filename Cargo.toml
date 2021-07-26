@@ -16,7 +16,7 @@ anyhow = "1.0.41"
 base64 = "0.13.0"
 chrono = "0.4.19"
 fern = "0.6.0"
-futures = "0.3.15"
+git-packetline = "0.5.0"
 git2 = "0.13.20"
 gitarena-macros = { path = "gitarena-macros" }
 lazy_static = "1.4.0"
@@ -32,7 +32,6 @@ rust-argon2 = { version = "0.8.3", features = ["crossbeam-utils"] }
 serde = { version = "1.0.126", features = ["derive"] }
 serde_json = "1.0.64"
 sqlx = { version = "0.4.2", features = ["runtime-actix-native-tls", "chrono", "json", "postgres", "tls"] }
-subprocess = "0.2.7"
 thiserror = "1.0.25"
 time = "0.2.27"
 tinytemplate = "1.2.1"

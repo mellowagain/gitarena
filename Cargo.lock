@@ -583,6 +583,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90682c8d613ad3373e66de8c6411e0ae2ab2571e879d2efbf73558cc66f21279"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "build_const"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1244,6 +1253,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
 
 [[package]]
+name = "git-packetline"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77486597c1ec0640b2a13710f46df0c4e3445d966a2c722c2f778ab6de698ce0"
+dependencies = [
+ "bstr",
+ "hex",
+ "quick-error 2.0.1",
+]
+
+[[package]]
 name = "git2"
 version = "0.13.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,7 +1290,7 @@ dependencies = [
  "chrono",
  "config_struct",
  "fern",
- "futures",
+ "git-packetline",
  "git2",
  "gitarena-macros",
  "lazy_static",
@@ -1286,7 +1306,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "subprocess",
  "thiserror",
  "time 0.2.27",
  "tinytemplate",
@@ -2170,6 +2189,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
+name = "quick-error"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
+
+[[package]]
 name = "quote"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2478,7 +2503,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52e44394d2086d010551b14b53b1f24e31647570cd1deb0379e2c21b329aba00"
 dependencies = [
  "hostname",
- "quick-error",
+ "quick-error 1.2.3",
 ]
 
 [[package]]
@@ -2904,16 +2929,6 @@ checksum = "8ee348cb74b87454fff4b551cbf727025810a004f88aeacae7f85b87f4e9a1c1"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
-]
-
-[[package]]
-name = "subprocess"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "334b801f9ca2529ba9605109f1d2835f15aff94cd6cfe5afe6ce8cf71e5fd3c4"
-dependencies = [
- "libc",
- "winapi 0.3.9",
 ]
 
 [[package]]

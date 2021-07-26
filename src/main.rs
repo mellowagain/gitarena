@@ -24,6 +24,7 @@ mod config;
 mod crypto;
 mod error;
 mod extensions;
+mod git;
 mod mail;
 mod repository;
 mod routes;
