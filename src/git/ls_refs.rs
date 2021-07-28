@@ -35,11 +35,11 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 
         for output_line in build_ref_prefix(prefix, repo, &options).await? {
             if output_line.is_empty() {
-                writer = writer.flush()?;
+                writer.flush()?;
                 continue;
             }
 
-            writer = writer.write_text(output_line)?;
+            writer.write_text(output_line)?;
         }
     }
 
