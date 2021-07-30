@@ -17,8 +17,8 @@ base64 = "0.13.0"
 bstr = "0.2.16"
 chrono = "0.4.19"
 fern = "0.6.0"
-futures = "0.3.15"
-git-packetline = "0.5.0"
+futures = "0.3.16"
+git-packetline = { version = "0.6.0", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["async-io"] }
 git2 = "0.13.20"
 gitarena-macros = { path = "gitarena-macros" }
 lazy_static = "1.4.0"

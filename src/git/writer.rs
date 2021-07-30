@@ -1,8 +1,7 @@
-use std::io::Write;
-
 use actix_web::web::{Bytes, BytesMut};
 use anyhow::Result;
-use git_packetline::Writer as PacketlineWriter;
+use futures::AsyncWriteExt;
+use git_packetline::{PacketLine, Writer as PacketlineWriter};
 
 pub(crate) struct GitWriter {
     inner: PacketlineWriter<Vec<u8>>
@@ -15,51 +14,57 @@ impl GitWriter {
         }
     }
 
-    pub(crate) fn write_text<S: AsRef<str>>(&mut self, text: S) -> Result<&mut GitWriter> {
+    pub(crate) async fn write_text<S: AsRef<str>>(&mut self, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
 
-        self.inner.write(str_ref.as_bytes())?;
+        self.inner.write(str_ref.as_bytes()).await?;
         Ok(self)
     }
 
-    pub(crate) fn write_text_raw(&mut self, text: &[u8]) -> Result<&mut GitWriter> {
-        self.inner.write(text)?;
+    pub(crate) async fn write_text_bytes(&mut self, text: &[u8]) -> Result<&mut GitWriter> {
+        self.inner.write(text).await?;
         Ok(self)
     }
 
-    pub(crate) fn write_binary(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
+    pub(crate) async fn write_binary(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
         self.inner.enable_binary_mode();
-        self.inner.write(binary)?;
+        self.inner.write(binary).await?;
 
         self.inner.enable_text_mode();
         Ok(self)
     }
 
-    pub(crate) fn flush(&mut self) -> Result<&mut GitWriter> {
-        self.inner.inner.write(b"0000")?;
+    pub(crate) async fn write_raw(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
+        self.inner.inner_mut().write(binary).await?;
         Ok(self)
     }
 
-    pub(crate) fn delimiter(&mut self) -> Result<&mut GitWriter> {
-        self.inner.inner.write(b"0001")?;
+    pub(crate) async fn flush(&mut self) -> Result<&mut GitWriter> {
+        PacketLine::Flush.write_to(self.inner.inner_mut()).await?;
         Ok(self)
     }
 
-    pub(crate) fn response_end(&mut self) -> Result<&mut GitWriter> {
-        self.inner.inner.write(b"0002")?;
+    pub(crate) async fn delimiter(&mut self) -> Result<&mut GitWriter> {
+        PacketLine::Delimiter.write_to(self.inner.inner_mut()).await?;
         Ok(self)
     }
 
-    pub(crate) fn append(&mut self, other: &mut GitWriter) -> &mut GitWriter {
-        self.inner.inner.append(&mut other.inner.inner);
-        self
+    pub(crate) async fn response_end(&mut self) -> Result<&mut GitWriter> {
+        PacketLine::ResponseEnd.write_to(self.inner.inner_mut()).await?;
+        Ok(self)
     }
 
-    pub(crate) fn to_actix(&self) -> Result<Bytes> {
+    pub(crate) async fn append(&mut self, other: GitWriter) -> Result<&mut GitWriter> {
+        let serialized = other.serialize().await?;
+        self.write_raw(serialized.to_vec().as_slice()).await?;
+
+        Ok(self)
+    }
+
+    pub(crate) async fn serialize(self) -> Result<Bytes> {
         let mut bytes = BytesMut::new();
-        bytes.extend(self.inner.inner.iter());
+        bytes.extend(self.inner.into_inner().iter());
 
         Ok(bytes.freeze())
     }
-
 }

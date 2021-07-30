@@ -1,16 +1,18 @@
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
 use crate::git::basic_auth;
+use crate::git::fetch::fetch;
 use crate::git::ls_refs::ls_refs;
+use crate::git::reader::read_until_command;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use bstr::io::BufReadExt;
 use futures::StreamExt;
-use git_packetline::{PacketLine, Provider};
+use git_packetline::{PacketLine, StreamingPeekableIter};
 use gitarena_macros::route;
+use log::warn;
 use sqlx::PgPool;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method="POST")]
@@ -63,51 +65,97 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
     let frozen_bytes = bytes.freeze();
     let vec = frozen_bytes.to_vec();
 
-    let mut provider = Provider::new(vec.as_slice(), &[PacketLine::Flush]);
+    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLine::Flush]);
+    readable_iter.fail_on_err_lines(true);
+
     let mut git_body = Vec::<Vec<u8>>::new();
 
-    /*let mut callback = |is_err: bool, data: &[u8]| {
-        git_body.push(data);
-    };
+    /*
+    let mut reader = readable_iter.as_read();
+    let mut raw_bytes = Vec::<u8>::new();
+    reader.read_to_end(&mut raw_bytes).await?;
+     */
 
-    provider.as_read_with_sidebands(&mut callback);*/
-    let reader = provider.as_read();
+    while let Some(a) = readable_iter.read_line().await {
+        match a {
+            Ok(b) => {
+                match b {
+                    Ok(c) => {
+                        match c {
+                            PacketLine::Data(d) => {
+                                let mut trailing_nl = false;
 
-    for line_result in reader.byte_lines() {
+                                if let Some(last) = d.last() {
+                                    if last == &10_u8 { // \n
+                                        trailing_nl = true;
+                                    }
+                                }
+
+                                let length = if trailing_nl {
+                                    d.len() - 1
+                                } else {
+                                    d.len()
+                                };
+
+                                git_body.push(d[..length].to_vec());
+                            }
+                            PacketLine::Flush => {
+                                //warn!("flush");
+                            }
+                            PacketLine::Delimiter => {
+                                //warn!("delim");
+                            }
+                            PacketLine::ResponseEnd => {
+                                //warn!("response end");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to parse Git body: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Failed to parse Git body: {}", e);
+            }
+        }
+    }
+
+    /*for line_result in raw_bytes.byte_lines() {
         match line_result {
             Ok(line) => {
                 git_body.push(line);
             }
-            Err(_) => { /* ignore */}
-        }
-    }
-
-    if let Some(first) = git_body.first() {
-        match String::from_utf8(first.to_vec()) {
-            Ok(first_line) => {
-                if first_line.starts_with("command") {
-                    let mut splitted = first_line.splitn(2, "=");
-                    let _ = splitted.next().unwrap_or_default();
-                    let command = splitted.next().unwrap_or_default();
-
-                    if !command.is_empty() {
-                        if command == "ls-refs" {
-                            git_body.remove(0);
-                            let output = ls_refs(git_body, &git2repo).await?;
-
-                            return Ok(HttpResponse::Ok()
-                                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
-                                .header("Content-Type", accept_header)
-                                .body(output));
-                        }
-                    }
-                }
+            Err(e) => {
+                warn!("Failed to parse Git body: {}", e);
             }
-            Err(_) => { /* ignore */}
         }
-    }
+    }*/
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::InternalServerError().finish())
+    let (command, body) = read_until_command(git_body).await?;
+
+    Ok(match command.as_str() {
+        "ls-refs" => {
+            let output = ls_refs(body, &git2repo).await?;
+
+            HttpResponse::Ok()
+                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+                .header("Content-Type", accept_header)
+                .body(output)
+        }
+        "fetch" => {
+            let output = fetch(body, &git2repo).await?;
+
+            HttpResponse::Ok()
+                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+                .header("Content-Type", accept_header)
+                .body(output)
+        }
+        _ => HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
+                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+                .header("Content-Type", accept_header)
+                .finish()
+    })
 }

@@ -1,3 +1,4 @@
+use crate::error::GAErrors::ParseError;
 use crate::user::User;
 
 use std::fs;
@@ -7,6 +8,15 @@ use actix_web::HttpRequest;
 use anyhow::{Context, Result};
 use log::warn;
 use sqlx::{Transaction, Postgres};
+
+/// Parses "key=value" into a key value tuple
+pub(crate) fn parse_key_value(input: &str) -> Result<(&str, &str)> {
+    let mut split = input.splitn(2, "=");
+    let key = split.next().ok_or(ParseError("key values", input.to_owned()))?;
+    let value = split.next().ok_or(ParseError("key values", input.to_owned()))?;
+
+    Ok((key, value))
+}
 
 pub(crate) fn get_header<'a>(request: &'a HttpRequest, header: &'a str) -> Option<&'a str> {
     request.headers().get(header)?.to_str().ok()

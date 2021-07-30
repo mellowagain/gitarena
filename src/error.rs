@@ -17,7 +17,10 @@ pub(crate) enum GAErrors {
     HttpError(u16, String),
 
     #[error("(null)")]
-    GitError(u16, Option<String>)
+    GitError(u16, Option<String>),
+
+    #[error("Unable to parse {0} from `{1}`")]
+    ParseError(&'static str, String)
 }
 
 pub(crate) struct GitArenaError {
@@ -60,11 +63,13 @@ impl ResponseError for GitArenaError {
         if let Some(e) = self.error.downcast_ref::<GAErrors>() {
             match e {
                 GAErrors::HttpError(status_code, _) => StatusCode::from_u16(*status_code),
-                GAErrors::GitError(status_code, _) => StatusCode::from_u16(*status_code)
+                GAErrors::GitError(status_code, _) => StatusCode::from_u16(*status_code),
+
+                _ => Ok(StatusCode::INTERNAL_SERVER_ERROR)
             }.unwrap_or_else(|error| {
                 warn!("Invalid status code passed to GitArena error: {}", error);
                 StatusCode::IM_A_TEAPOT
-            }) // A programmer passed a invalid status code
+            })
         } else {
             StatusCode::INTERNAL_SERVER_ERROR
         }
@@ -91,7 +96,9 @@ impl ResponseError for GitArenaError {
                     }
 
                     response.finish()
-                }
+                },
+
+                _ => HttpResponse::InternalServerError().finish()
             }
         }
 

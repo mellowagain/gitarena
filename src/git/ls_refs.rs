@@ -2,7 +2,9 @@ use crate::git::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::Result;
-use git2::Repository as Git2Repository;
+use core::result::Result as CoreResult;
+use git2::{Error as Git2Error, ErrorCode, Reference, Repository as Git2Repository};
+use log::error;
 
 pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
     let mut options = LsRefs::default();
@@ -33,62 +35,84 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
             continue;
         }
 
-        for output_line in build_ref_prefix(prefix, repo, &options).await? {
+        // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
+        if prefix == "HEAD" {
+            if let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await {
+                writer.write_text(output_line).await?;
+            }
+        }
+
+        for output_line in build_ref_list(prefix.as_str(), repo, &options).await? {
             if output_line.is_empty() {
-                writer.flush()?;
+                writer.flush().await?;
                 continue;
             }
 
-            writer.write_text(output_line)?;
+            writer.write_text(output_line).await?;
         }
     }
 
-    Ok(writer.flush()?.to_actix()?)
+    writer.flush().await?;
+
+    Ok(writer.serialize().await?)
 }
 
-pub(crate) async fn build_ref_prefix(prefix: &String, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
+pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
     let mut output = Vec::<String>::new();
 
-    for result in repo.references()? {
-        match result {
-            Ok(reference) => {
-                let name = reference.name().unwrap_or_default();
-
-                if !name.starts_with(prefix) {
-                    continue;
-                }
-
-                let mut line;
-
-                if let Some(oid) = reference.target() {
-                    line = format!("{} {}", oid, name);
-                } else {
-                    if !options.unborn {
-                        continue
-                    }
-
-                    line = format!("unborn {}", name);
-                }
-
-                if options.symrefs {
-                    if let Some(sym_target) = reference.symbolic_target() {
-                        line.push_str(&format!(" symref-target:{}", sym_target));
-                    }
-                }
-
-                if options.peel {
-                    if let Some(peel) = reference.target_peel() {
-                        line.push_str(&format!(" peeled:{}", peel));
-                    }
-                }
-
-                output.push(line);
-            },
-            Err(_) => output.push("".to_owned())
+    for result in repo.references_glob(format!("{}*", prefix).as_str())? {
+        if let Some(ref_line) = build_ref_line(result, repo, options).await {
+            output.push(ref_line);
         }
     }
 
     Ok(output)
+}
+
+pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Error>, repo: &Git2Repository, options: &LsRefs) -> Option<String> {
+    return match ref_result {
+        Ok(reference) => {
+            let name = reference.name().unwrap_or_default();
+
+            let mut line;
+
+            if let Some(oid) = reference.target() {
+                line = format!("{} {}", oid, name);
+            } else if let Some(sym_target) = reference.symbolic_target() {
+                match repo.find_reference(sym_target).ok() {
+                    Some(sym_target_ref) => {
+                        if let Some(sym_target_oid) = sym_target_ref.target() {
+                            line = format!("{} {} symref-target:{}", sym_target_oid, name, sym_target_ref.name().unwrap_or_default());
+                        } else if options.unborn {
+                            line = format!("unborn {} symref-target:{}", name, sym_target_ref.name().unwrap_or_default());
+                        } else {
+                            return None;
+                        }
+                    }
+                    None => return None // Reference points to a symbolic target that doesn't exist?
+                }
+            } else if options.unborn {
+                line = format!("unborn {}", name);
+            } else {
+                return None;
+            }
+
+            if options.peel {
+                if let Some(peel) = reference.target_peel() {
+                    line.push_str(&format!(" peeled:{}", peel));
+                }
+            }
+
+            Some(line)
+        },
+        Err(e) => {
+            if e.code() != ErrorCode::NotFound {
+                error!("Failed to find reference asked for by Git client: {}", e);
+            }
+
+            None
+        }
+    }
 }
 
 pub(crate) struct LsRefs {
