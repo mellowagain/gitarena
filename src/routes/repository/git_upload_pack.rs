@@ -68,46 +68,26 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
     let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLine::Flush]);
     readable_iter.fail_on_err_lines(true);
 
-    let mut git_body = Vec::<Vec<u8>>::new();
+    let mut git_body = Vec::<Vec<u8>>::new(); // Only data lines
 
-    /*
-    let mut reader = readable_iter.as_read();
-    let mut raw_bytes = Vec::<u8>::new();
-    reader.read_to_end(&mut raw_bytes).await?;
-     */
-
-    while let Some(a) = readable_iter.read_line().await {
-        match a {
-            Ok(b) => {
-                match b {
-                    Ok(c) => {
-                        match c {
-                            PacketLine::Data(d) => {
-                                let mut trailing_nl = false;
-
-                                if let Some(last) = d.last() {
-                                    if last == &10_u8 { // \n
-                                        trailing_nl = true;
-                                    }
+    // TODO: This is really ugly, need to change this at some point
+    while let Some(line_result) = readable_iter.read_line().await {
+        match line_result {
+            Ok(packet_line_result) => {
+                match packet_line_result {
+                    Ok(packet_line) => {
+                        match packet_line {
+                            PacketLine::Data(data) => {
+                                if data.is_empty() {
+                                    continue;
                                 }
 
-                                let length = if trailing_nl {
-                                    d.len() - 1
-                                } else {
-                                    d.len()
-                                };
+                                // We can safely unwrap() as we checked above that the slice is not empty
+                                let length = data.len() - (data.last().unwrap() == &10_u8) as usize;
 
-                                git_body.push(d[..length].to_vec());
+                                git_body.push(data[..length].to_vec());
                             }
-                            PacketLine::Flush => {
-                                //warn!("flush");
-                            }
-                            PacketLine::Delimiter => {
-                                //warn!("delim");
-                            }
-                            PacketLine::ResponseEnd => {
-                                //warn!("response end");
-                            }
+                            _ => { /* ignored */ }
                         }
                     }
                     Err(e) => {
@@ -120,17 +100,6 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
             }
         }
     }
-
-    /*for line_result in raw_bytes.byte_lines() {
-        match line_result {
-            Ok(line) => {
-                git_body.push(line);
-            }
-            Err(e) => {
-                warn!("Failed to parse Git body: {}", e);
-            }
-        }
-    }*/
 
     transaction.commit().await?;
 
