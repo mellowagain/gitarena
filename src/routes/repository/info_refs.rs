@@ -2,6 +2,7 @@ use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
+use crate::git::ls_refs::ls_refs_all;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
@@ -9,26 +10,16 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use qstring::QString;
-use sqlx::PgPool;
+use sqlx::{PgPool, Transaction, Postgres};
 
 #[route("/{username}/{repository}.git/info/refs", method="GET")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let query_string = QString::from(request.query_string());
 
     let service = match query_string.get("service") {
-        Some(value) => value,
-        None => return Err(GitError(400, None).into())
+        Some(value) => value.trim(),
+        None => return Err(GitError(400, Some("Dumb clients are not supported".to_owned()).into()).into())
     };
-
-    if service != "git-upload-pack" {
-        return Err(GitError(400, None).into());
-    }
-
-    let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
-
-    if git_protocol != "version=2" {
-        return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
-    }
 
     let mut transaction = db_pool.begin().await?;
 
@@ -48,15 +39,61 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
         .fetch_optional(&mut transaction)
         .await?;
 
-    let (_, _) = match basic_auth::validate_repo_access(repo_option,"application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
+    match service {
+        "git-upload-pack" => {
+            let response = upload_pack_info_refs(repo_option, service, &request, &mut transaction).await?;
+            transaction.commit().await?;
+
+            Ok(response)
+        }
+        "git-receive-pack" => {
+            let response = receive_pack_info_refs(repo_option, uri.username.as_str(), &request, &mut transaction).await?;
+            transaction.commit().await?;
+
+            Ok(response)
+        }
+        _ => {
+            Err(GitError(403, Some("Requested service not found".to_owned()).into()).into())
+        }
+    }
+}
+
+async fn upload_pack_info_refs(repo_option: Option<Repository>, service: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<HttpResponse> {
+    let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
+
+    if git_protocol != "version=2" {
+        return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
+    }
+
+    let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, transaction).await? {
         Either::A(tuple) => tuple,
         Either::B(response) => return Ok(response)
     };
-
-    transaction.commit().await?;
 
     Ok(HttpResponse::Ok()
         .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
         .header("Content-Type", "application/x-git-upload-pack-advertisement")
         .body(capabilities(service).await?))
+}
+
+async fn receive_pack_info_refs(repo_option: Option<Repository>, username: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<HttpResponse> {
+    let _user = match basic_auth::login_flow(request, transaction, "application/x-git-receive-pack-advertisement").await? {
+        Either::A(user) => user,
+        Either::B(response) => return Ok(response)
+    };
+
+    // TODO: Check if the user has actually `write` access to the repository
+
+    let repo = match repo_option {
+        Some(repo) => repo,
+        None => return Err(GitError(404, None).into())
+    };
+
+    let git2repo = repo.libgit2(username).await?;
+    let output = ls_refs_all(&git2repo).await?;
+
+    Ok(HttpResponse::Ok()
+        .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+        .header("Content-Type", "application/x-git-receive-pack-advertisement")
+        .body(output))
 }
