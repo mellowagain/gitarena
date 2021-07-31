@@ -1,7 +1,8 @@
 use crate::error::GAErrors::ParseError;
-use crate::extensions::parse_key_value;
+use crate::extensions::{flatten_io_result, parse_key_value};
 
 use anyhow::Result;
+use git_packetline::{StreamingPeekableIter, PacketLine};
 use log::warn;
 
 pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String, Vec<Vec<u8>>)> {
@@ -33,5 +34,30 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
         }
     }
 
-    Err(ParseError("Git request body", "(null)".to_owned()).into())
+    Err(ParseError("Git request body", String::new()).into())
+}
+
+pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> Result<Vec<Vec<u8>>> {
+    let mut body = Vec::<Vec<u8>>::new();
+
+    while let Some(line_result) = iter.read_line().await {
+        match flatten_io_result(line_result) {
+            Ok(line) => match line {
+                PacketLine::Data(data) => {
+                    if data.is_empty() {
+                        continue;
+                    }
+
+                    // We can safely unwrap() as we checked above that the slice is not empty
+                    let length = data.len() - (data.last().unwrap() == &10_u8) as usize;
+
+                    body.push(data[..length].to_vec());
+                }
+                _ => { /* ignored */ }
+            }
+            Err(e) => warn!("Failed to read Git data line: {}", e)
+        }
+    }
+
+    Ok(body)
 }

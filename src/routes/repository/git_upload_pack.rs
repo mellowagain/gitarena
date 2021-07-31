@@ -3,7 +3,7 @@ use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::fetch::fetch;
 use crate::git::ls_refs::ls_refs;
-use crate::git::reader::read_until_command;
+use crate::git::reader::{read_data_lines, read_until_command};
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
@@ -12,7 +12,6 @@ use anyhow::Result;
 use futures::StreamExt;
 use git_packetline::{PacketLine, StreamingPeekableIter};
 use gitarena_macros::route;
-use log::warn;
 use sqlx::PgPool;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method="POST")]
@@ -68,44 +67,10 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
     let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLine::Flush]);
     readable_iter.fail_on_err_lines(true);
 
-    let mut git_body = Vec::<Vec<u8>>::new(); // Only data lines
-
-    // TODO: This is really ugly, need to change this at some point
-    while let Some(line_result) = readable_iter.read_line().await {
-        match line_result {
-            Ok(packet_line_result) => {
-                match packet_line_result {
-                    Ok(packet_line) => {
-                        match packet_line {
-                            PacketLine::Data(data) => {
-                                if data.is_empty() {
-                                    continue;
-                                }
-
-                                // We can safely unwrap() as we checked above that the slice is not empty
-                                let length = data.len() - (data.last().unwrap() == &10_u8) as usize;
-
-                                git_body.push(data[..length].to_vec());
-                            }
-                            _ => { /* ignored */ }
-                        }
-                    }
-                    Err(e) => {
-                        warn!("Failed to parse Git body: {}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("Failed to parse Git body: {}", e);
-            }
-        }
-    }
-
-    transaction.commit().await?;
-
+    let git_body = read_data_lines(&mut readable_iter).await?;
     let (command, body) = read_until_command(git_body).await?;
 
-    Ok(match command.as_str() {
+    let response = match command.as_str() {
         "ls-refs" => {
             let output = ls_refs(body, &git2repo).await?;
 
@@ -126,5 +91,9 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
                 .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
                 .header("Content-Type", accept_header)
                 .finish()
-    })
+    };
+
+    transaction.commit().await?;
+
+    Ok(response)
 }

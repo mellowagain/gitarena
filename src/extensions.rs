@@ -1,11 +1,13 @@
 use crate::error::GAErrors::ParseError;
 use crate::user::User;
 
+use core::result::Result as CoreResult;
 use std::fs;
+use std::io::Result as IoResult;
 use std::path::Path;
 
 use actix_web::HttpRequest;
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use log::warn;
 use sqlx::{Transaction, Postgres};
 
@@ -73,14 +75,32 @@ pub(crate) async fn is_fs_legal(input: &String) -> bool {
     legal
 }
 
+/// Flattens `std::io::Result<std::result::Result<O, E>>` into `anyhow::Result<O>`
+pub(crate) fn flatten_io_result<O, E: Into<Error>>(result: IoResult<CoreResult<O, E>>) -> Result<O> {
+    match result {
+        Ok(Ok(ok)) => Ok(ok),
+        Ok(Err(err)) => Err(err.into()),
+        Err(err) => Err(err.into())
+    }
+}
+
+/// Flattens `std::result::Result<std::result::Result<O, E>, E>` into `anyhow::Result<O>`
+pub(crate) fn flatten_result<O, E: Into<Error>>(result: CoreResult<CoreResult<O, E>, E>) -> Result<O> {
+    match result {
+        Ok(Ok(ok)) => Ok(ok),
+        Ok(Err(err)) => Err(err.into()),
+        Err(err) => Err(err.into())
+    }
+}
+
 pub(crate) fn create_dir_if_not_exists(path: &Path) -> Result<()> {
     if !path.is_dir() {
         // Check if path is a file and not a directory
         if path.exists() {
-            return fs::remove_file(path).context("Unable to delete file")
+            fs::remove_file(path).context("Unable to delete file")?;
         }
 
-        return fs::create_dir_all(path).context("Unable to create directory")
+        return fs::create_dir_all(path).context("Unable to create directory");
     }
 
     Ok(())
