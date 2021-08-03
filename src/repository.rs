@@ -4,7 +4,7 @@ use crate::config::CONFIG;
 use std::borrow::Borrow;
 
 use anyhow::Result;
-use git2::Repository as Git2Repository;
+use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use sqlx::{FromRow, Postgres, Transaction};
 
 #[derive(FromRow)]
@@ -18,7 +18,11 @@ pub(crate) struct Repository {
 
 impl Repository {
     pub(crate) async fn create_fs(&self, owner_username: &str) -> Result<()> {
-        Git2Repository::init(self.get_fs_path(owner_username).await)?;
+        let mut init_ops = RepositoryInitOptions::new();
+        init_ops.initial_head("main");
+        init_ops.no_reinit(true);
+
+        Git2Repository::init_opts(self.get_fs_path(owner_username).await, &init_ops)?;
 
         Ok(())
     }
