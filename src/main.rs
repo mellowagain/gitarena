@@ -9,6 +9,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::dev::Service;
+use actix_web::http::header::CACHE_CONTROL;
+use actix_web::http::HeaderValue;
 use actix_web::{App, HttpServer};
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -68,6 +71,22 @@ async fn main() -> Result<()> {
         App::new()
             .data(db_pool.clone())
             .wrap(identity_service)
+            .wrap_fn(|req, srv| {
+                let fut = srv.call(req);
+                async {
+                    let mut res = fut.await?;
+
+                    if res.request().path().contains(".git") {
+                        // https://git-scm.com/docs/http-protocol/en#_smart_server_response
+                        // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
+                        res.headers_mut().insert(
+                            CACHE_CONTROL, HeaderValue::from_static("no-cache, max-age=0, must-revalidate"),
+                        );
+                    }
+
+                    Ok(res)
+                }
+            })
             .configure(routes::repository::init)
             .configure(routes::user::init)
     }).bind(bind_address).context("Unable to bind HTTP server.")?;

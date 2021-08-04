@@ -75,7 +75,6 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
             let output = ls_refs(body, &git2repo).await?;
 
             HttpResponse::Ok()
-                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
                 .header("Content-Type", accept_header)
                 .body(output)
         }
@@ -83,12 +82,10 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
             let output = fetch(body, &git2repo).await?;
 
             HttpResponse::Ok()
-                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
                 .header("Content-Type", accept_header)
                 .body(output)
         }
         _ => HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
-                .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
                 .header("Content-Type", accept_header)
                 .finish()
     };

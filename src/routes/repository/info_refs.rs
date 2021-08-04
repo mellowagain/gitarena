@@ -71,7 +71,6 @@ async fn upload_pack_info_refs(repo_option: Option<Repository>, service: &str, r
     };
 
     Ok(HttpResponse::Ok()
-        .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
         .header("Content-Type", "application/x-git-upload-pack-advertisement")
         .body(capabilities(service).await?))
 }
@@ -93,7 +92,6 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, username: &str,
     let output = ls_refs_all(&git2repo).await?;
 
     Ok(HttpResponse::Ok()
-        .header("Cache-Control", "no-cache, max-age=0, must-revalidate")
         .header("Content-Type", "application/x-git-receive-pack-advertisement")
         .body(output))
 }
