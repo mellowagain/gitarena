@@ -1,8 +1,10 @@
 use crate::git::writer::GitWriter;
 
+use core::result::Result as CoreResult;
+use std::sync::Once;
+
 use actix_web::web::Bytes;
 use anyhow::Result;
-use core::result::Result as CoreResult;
 use git2::{Error as Git2Error, ErrorCode, Reference, Repository as Git2Repository};
 use log::{error, warn};
 
@@ -125,6 +127,8 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
     writer.write_text("# service=git-receive-pack").await?;
     writer.flush().await?;
 
+    let once = Once::new();
+
     for result in repo.references()? {
         match result {
             Ok(reference) => {
@@ -132,8 +136,11 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
                     if let Some(oid) = reference.target() {
                         let mut line = format!("{} {}", oid, name);
 
-                        line.push_str("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 ");
-                        line.push_str(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")));
+                        // Git ignores capabilities written after the first line
+                        once.call_once(|| {
+                            line.push_str("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 ");
+                            line.push_str(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")));
+                        });
 
                         writer.write_text(line).await?;
                     }
