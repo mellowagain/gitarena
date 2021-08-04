@@ -129,32 +129,14 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
         match result {
             Ok(reference) => {
                 if let Some(name) = reference.name() {
-                    let mut line;
-
                     if let Some(oid) = reference.target() {
-                        line = format!("{} {}", oid, name);
-                    } else if let Some(_sym_target) = reference.symbolic_target() {
-                        // Don't know if git-receive-pack wants symlink objects
-                        /*match repo.find_reference(sym_target).ok() {
-                            Some(sym_target_ref) => {
-                                if let Some(sym_target_oid) = sym_target_ref.target() {
-                                    line = format!("{} {} symref-target:{}", sym_target_oid, name, sym_target_ref.name().unwrap_or_default());
-                                } else {
-                                    // Don't know if git-receive-pack wants unborn objects
-                                    continue;
-                                }
-                            }
-                            None => continue // Reference points to a symbolic target that doesn't exist?
-                        }*/
-                        continue;
-                    } else {
-                        // Don't know if git-receive-pack wants unborn objects
-                        continue;
+                        let mut line = format!("{} {}", oid, name);
+
+                        line.push_str("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 ");
+                        line.push_str(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")));
+
+                        writer.write_text(line).await?;
                     }
-
-                    line.push_str(concat!(" report-status report-status-v2 delete-refs push-options object-format=sha1 agent=git/gitarena-", env!("CARGO_PKG_VERSION")));
-
-                    writer.write_text(line).await?;
                 }
             }
             Err(e) => {
