@@ -1,4 +1,4 @@
-use crate::error::GAErrors::ParseError;
+use crate::error::GAErrors::{GitError, ParseError};
 use crate::user::User;
 
 use core::result::Result as CoreResult;
@@ -8,6 +8,8 @@ use std::path::Path;
 
 use actix_web::HttpRequest;
 use anyhow::{Context, Error, Result};
+use git2::ObjectType;
+use git_pack::data::entry::Header;
 use log::warn;
 use sqlx::{Transaction, Postgres};
 
@@ -104,4 +106,22 @@ pub(crate) fn create_dir_if_not_exists(path: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+pub(crate) fn normalize_oid_str(oid_str: Option<String>) -> Option<String> {
+    match oid_str.as_deref() {
+        Some("0000000000000000000000000000000000000000") => None,
+        Some(_) => oid_str,
+        None => None,
+    }
+}
+
+pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
+    Ok(match header {
+        Header::Commit => ObjectType::Commit,
+        Header::Tree => ObjectType::Tree,
+        Header::Blob => ObjectType::Blob,
+        Header::Tag => ObjectType::Tag,
+        Header::RefDelta { .. } | Header::OfsDelta { .. } => return Err(GitError(501, Some("Delta objects are not yet implemented".to_owned())).into()),
+    })
 }

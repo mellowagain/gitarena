@@ -20,7 +20,10 @@ pub(crate) enum GAErrors {
     GitError(u16, Option<String>),
 
     #[error("Unable to parse {0} from `{1}`")]
-    ParseError(&'static str, String)
+    ParseError(&'static str, String),
+
+    #[error("Unable to unpack {0} for pack")]
+    PackUnpackError(&'static str)
 }
 
 pub(crate) struct GitArenaError {
@@ -86,10 +89,6 @@ impl ResponseError for GitArenaError {
                 }
                 GAErrors::GitError(_, message_option) => {
                     let mut response = HttpResponseBuilder::new(self.status_code());
-
-                    // https://git-scm.com/docs/http-protocol/en#_smart_server_response
-                    // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
-                    response.header("Cache-Control", "no-cache, max-age=0, must-revalidate");
 
                     if let Some(message) = message_option {
                         return response.body(message);
