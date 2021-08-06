@@ -42,7 +42,7 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 
         // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
         if prefix == "HEAD" {
-            if let Some(output_line) = build_ref_line(repo.head(), repo, &options).await {
+            if let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await {
                 writer.write_text(output_line).await?;
             }
         }
