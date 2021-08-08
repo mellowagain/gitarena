@@ -11,6 +11,7 @@ use crate::routes::repository::GitRequest;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
+use git_pack::cache::lru::MemoryCappedHashmap;
 use git_packetline::{PacketLine, StreamingPeekableIter};
 use gitarena_macros::route;
 use log::warn;
@@ -84,24 +85,30 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             .finish());
     }
 
-    let git2_repo = repo.libgit2(&uri.username).await?;
+    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+
     let mut output_writer = GitWriter::new();
 
     let searcher = TwoWaySearcher::new(b"PACK");
-    let transaction = git2_repo.transaction()?;
 
     match searcher.search_in(vec) {
         Some(pos) => {
-            let (index_file, data_file, _) = pack::read(&vec[pos..]).await?;
+            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..]).await?;
 
             output_writer.write_text("\x01000eunpack ok").await?;
 
             for update in updates {
-                match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create => process_create(&update, &git2_repo, &mut output_writer, &index_file, &data_file).await?,
-                    RefUpdateType::Delete => process_delete(&update, &git2_repo, &mut output_writer).await?,
-                    RefUpdateType::Update => process_update(&update, &git2_repo, &mut output_writer, &index_file, &data_file).await?,
-                }
+                cache = match RefUpdateType::determinate(&update.old, &update.new).await? {
+                    RefUpdateType::Create => {
+                        //TODO: process_create(&update, &git2_repo, &mut output_writer, &index_file, &data_file, cache).await?
+                        cache
+                    },
+                    RefUpdateType::Delete => {
+                        //TODO: process_delete(&update, &git2_repo, &mut output_writer, cache).await?
+                        cache
+                    },
+                    RefUpdateType::Update => process_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, &index_path, &pack_path, &vec[pos..], cache).await?
+                };
             }
         }
         None => {
@@ -114,12 +121,10 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             output_writer.write_text("\x01000eunpack ok").await?;
 
             for update in updates {
-                process_delete(&update, &git2_repo, &mut output_writer).await?;
+                //TODO: cache = process_delete(&update, &git2_repo, &mut output_writer, cache).await?;
             }
         }
     }
-
-    transaction.commit()?;
 
     output_writer.write_binary(b"\x010000").await?;
     output_writer.flush().await?;

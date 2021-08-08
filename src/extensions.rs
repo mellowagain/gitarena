@@ -9,6 +9,7 @@ use std::path::Path;
 use actix_web::HttpRequest;
 use anyhow::{Context, Error, Result};
 use git2::ObjectType;
+use git_hash::ObjectId;
 use git_pack::data::entry::Header;
 use log::warn;
 use sqlx::{Transaction, Postgres};
@@ -116,6 +117,15 @@ pub(crate) fn normalize_oid_str(oid_str: Option<String>) -> Option<String> {
     }
 }
 
+pub(crate) async fn str_to_oid(oid_option: &Option<String>) -> Result<ObjectId> {
+    Ok(match oid_option {
+        Some(oid_str) => {
+            ObjectId::from_hex(oid_str.as_bytes())?
+        }
+        None => ObjectId::null_sha1()
+    })
+}
+
 pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
     Ok(match header {
         Header::Commit => ObjectType::Commit,
@@ -124,4 +134,24 @@ pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
         Header::Tag => ObjectType::Tag,
         Header::RefDelta { .. } | Header::OfsDelta { .. } => return Err(GitError(501, Some("Delta objects are not yet implemented".to_owned())).into()),
     })
+}
+
+pub(crate) mod traits {
+    use git_repository::actor::Signature as MutableSignature;
+    use git_repository::actor::immutable::Signature as ImmutableSignature;
+    use bstr::BString;
+
+    pub(crate) trait GitoxideSignatureExtension {
+        fn to_mut(&self) -> MutableSignature;
+    }
+
+    impl GitoxideSignatureExtension for ImmutableSignature<'_> {
+        fn to_mut(&self) -> MutableSignature {
+            MutableSignature {
+                name: BString::from(*&self.name),
+                email: BString::from(*&self.email),
+                time: *&self.time
+            }
+        }
+    }
 }

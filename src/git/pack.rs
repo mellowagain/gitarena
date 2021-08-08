@@ -8,25 +8,19 @@ use anyhow::Result;
 use git_features::progress;
 use git_pack::bundle::write::Options as GitPackWriteOptions;
 use git_pack::Bundle;
-use git_pack::data::File as DataFile;
 use git_pack::data::input::Mode as PackIterationMode;
-use git_pack::index::{File as IndexFile, Version as PackVersion};
-use log::warn;
+use git_pack::index::Version as PackVersion;
 use tempfile::{Builder, TempDir};
 
-pub(crate) async fn read(data: &[u8]) -> Result<(IndexFile, DataFile, TempDir)> {
+/// Returns path to index file, pack file and temporary dir.
+/// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
+/// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
+pub(crate) async fn read(data: &[u8]) -> Result<(PathBuf, PathBuf, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
-    let (index_path, data_path) = write_to_fs(data, &temp_dir).await?;
+    let (index_path, pack_path) = write_to_fs(data, &temp_dir).await?;
 
-    let index = IndexFile::at(index_path)?;
-    let pack = DataFile::at(data_path)?;
-
-    if index.num_objects() != pack.num_objects() {
-        warn!("Index file and data file have mismatched object amount");
-    }
-
-    Ok((index, pack, temp_dir))
+    Ok((index_path, pack_path, temp_dir))
 }
 
 pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir) -> Result<(PathBuf, PathBuf)> {

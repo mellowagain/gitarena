@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 
 use anyhow::Result;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
+use git_repository::Repository as GitoxideRepository;
 use sqlx::{FromRow, Postgres, Transaction};
 
 #[derive(FromRow)]
@@ -21,6 +22,7 @@ impl Repository {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head("main");
         init_ops.no_reinit(true);
+        //init_ops.bare(true); TODO: Make GitArena use bare repositories
 
         Git2Repository::init_opts(self.get_fs_path(owner_username).await, &init_ops)?;
 
@@ -29,6 +31,10 @@ impl Repository {
 
     pub(crate) async fn libgit2(&self, owner_username: &str) -> Result<Git2Repository> {
         Ok(Git2Repository::open(self.get_fs_path(owner_username).await)?)
+    }
+
+    pub(crate) async fn gitoxide(&self, owner_username: &str) -> Result<GitoxideRepository> {
+        Ok(GitoxideRepository::discover(self.get_fs_path(owner_username).await)?)
     }
 
     pub(crate) async fn get_owner(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<User> {
