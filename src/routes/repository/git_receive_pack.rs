@@ -104,7 +104,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
                         cache
                     },
                     RefUpdateType::Delete => {
-                        //TODO: process_delete(&update, &git2_repo, &mut output_writer, cache).await?
+                        process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?;
                         cache
                     },
                     RefUpdateType::Update => process_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, &index_path, &pack_path, &vec[pos..], cache).await?
@@ -121,7 +121,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             output_writer.write_text("\x01000eunpack ok").await?;
 
             for update in updates {
-                //TODO: cache = process_delete(&update, &git2_repo, &mut output_writer, cache).await?;
+                process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?;
             }
         }
     }

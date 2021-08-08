@@ -1,16 +1,21 @@
+use crate::config::CONFIG;
 use crate::error::GAErrors::{GitError, ParseError};
 use crate::user::User;
 
 use core::result::Result as CoreResult;
+use std::borrow::Borrow;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::Path;
 
 use actix_web::HttpRequest;
 use anyhow::{Context, Error, Result};
+use bstr::BString;
+use chrono::Utc;
 use git2::ObjectType;
 use git_hash::ObjectId;
 use git_pack::data::entry::Header;
+use git_repository::actor::{Signature, Time, Sign};
 use log::warn;
 use sqlx::{Transaction, Postgres};
 
@@ -134,6 +139,25 @@ pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
         Header::Tag => ObjectType::Tag,
         Header::RefDelta { .. } | Header::OfsDelta { .. } => return Err(GitError(501, Some("Delta objects are not yet implemented".to_owned())).into()),
     })
+}
+
+// TODO: Maybe make this configurable using the config file at some point?
+pub(crate) fn default_signature() -> Signature {
+    let domain: &str = CONFIG.domain.borrow();
+    let stripped = domain.replace("https://", "").replace("http://", "");
+
+    let now = Utc::now();
+    let naive = now.naive_utc();
+
+    Signature {
+        name: BString::from("GitArena"),
+        email: BString::from(format!("git@{}", stripped)),
+        time: Time {
+            time: naive.timestamp() as u32,
+            offset: 0,
+            sign: Sign::Plus
+        }
+    }
 }
 
 pub(crate) mod traits {

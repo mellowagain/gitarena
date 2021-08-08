@@ -1,5 +1,5 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
-use crate::extensions::{gitoxide_to_libgit2_type, str_to_oid};
+use crate::extensions::{default_signature, gitoxide_to_libgit2_type, str_to_oid};
 use crate::git::ref_update::RefUpdate;
 use crate::git::writer::GitWriter;
 use crate::extensions::traits::GitoxideSignatureExtension;
@@ -80,23 +80,30 @@ pub(crate) async fn process_create(ref_update: &RefUpdate, repo: &Git2Repository
     Ok(cache)
 }
 
-pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Git2Repository, writer: &mut GitWriter, cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
-    // TODO: Change this to also use transactions
-
+pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());
 
-    let mut reference = repo.find_reference(ref_update.target_ref.as_str())
+    let gitoxide_repo = repo.gitoxide(repo_owner).await?;
+
+    let object_id = str_to_oid(&ref_update.old).await
         .map_err(|_| GitError(404, Some("Ref does not exist".to_owned())))?;
 
-    /*if let Some(target) = reference.target() {
-        if ref_update.old.unwrap() != format!("{}", target) {
-            return Err(GitError(401, Some("Tried to delete ref pointing to a wrong commit, `git pull` first".to_owned())).into());
+    let edits = vec![
+        RefEdit {
+            change: Change::Delete {
+                previous: Some(Target::Peeled(object_id)),
+                log: RefLog::AndReference
+            },
+            name: ref_update.target_ref.as_str().try_into()?,
+            deref: true
         }
-    }*/
+    ];
 
-    // This should never error as the repository is currently locked by a transaction
-    reference.delete()?;
+    gitoxide_repo.refs.transaction()
+        .prepare(edits, Fail::Immediately)
+        .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
+        .commit(&default_signature())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
         // Hacky way to write the text to band 1 as GitWriter does not yet support sidebands
@@ -109,7 +116,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Git2Repository
         }).await?;
     }
 
-    Ok(cache)
+    Ok(())
 }
 
 pub(crate) async fn process_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: &PathBuf, pack_path: &PathBuf, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
