@@ -122,7 +122,7 @@ pub(crate) fn normalize_oid_str(oid_str: Option<String>) -> Option<String> {
     }
 }
 
-pub(crate) async fn str_to_oid(oid_option: &Option<String>) -> Result<ObjectId> {
+pub(crate) fn str_to_oid(oid_option: &Option<String>) -> Result<ObjectId> {
     Ok(match oid_option {
         Some(oid_str) => {
             ObjectId::from_hex(oid_str.as_bytes())?

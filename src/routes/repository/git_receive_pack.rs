@@ -1,7 +1,7 @@
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
 use crate::git::reader::read_data_lines;
-use crate::git::receive_pack::{process_create, process_delete, process_update};
+use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
 use crate::git::writer::GitWriter;
 use crate::git::{basic_auth, pack, ref_update};
@@ -98,16 +98,9 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             output_writer.write_text("\x01000eunpack ok").await?;
 
             for update in updates {
-                cache = match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create => {
-                        //TODO: process_create(&update, &git2_repo, &mut output_writer, &index_file, &data_file, cache).await?
-                        cache
-                    },
-                    RefUpdateType::Delete => {
-                        process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?;
-                        cache
-                    },
-                    RefUpdateType::Update => process_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, &index_path, &pack_path, &vec[pos..], cache).await?
+                match RefUpdateType::determinate(&update.old, &update.new).await? {
+                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, &index_path, &pack_path, &vec[pos..], cache).await?,
+                    RefUpdateType::Delete => process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?
                 };
             }
         }
