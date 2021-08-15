@@ -2,8 +2,9 @@ use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::writer::GitWriter;
 
 use actix_web::web::Bytes;
+use async_recursion::async_recursion;
 use anyhow::Result;
-use git2::{Buf, ObjectType, Oid, Repository as Git2Repository};
+use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use log::warn;
 
 pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
@@ -127,7 +128,12 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
                 Ok(object) => {
                     if let Some(kind) = object.kind() {
                         match kind {
-                            ObjectType::Commit => pack_builder.insert_commit(object.id())?, // TODO: Send all parent commits as well
+                            ObjectType::Commit => {
+                                // Can be simplified with if let guards: https://github.com/rust-lang/rust/issues/51114
+                                if let Some(commit) = object.as_commit() {
+                                    insert_commit_with_parents(&commit, &mut pack_builder).await?;
+                                }
+                            },
                             ObjectType::Tree => pack_builder.insert_tree(object.id())?,
                             _ => pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?
                         }
@@ -168,6 +174,17 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     writer.write_text(format!("\x02Total {} (delta {}), reused {} (delta {}), pack-reused {}", total, total_delta, reused, reused_delta, pack_reused)).await?;
 
     Ok(Some(writer))
+}
+
+#[async_recursion(?Send)]
+async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut PackBuilder<'_>) -> Result<()> {
+    pack_builder.insert_commit(commit.id())?;
+
+    for parent in commit.parents() {
+        insert_commit_with_parents(&parent, pack_builder).await?;
+    }
+
+    Ok(())
 }
 
 /*pub(crate) async fn process_shallows(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
