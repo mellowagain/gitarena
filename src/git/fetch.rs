@@ -1,3 +1,4 @@
+use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::writer::GitWriter;
 
 use actix_web::web::Bytes;
@@ -111,66 +112,60 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
-    let mut pack_builder = repo.packbuilder()?;
-    pack_builder.set_threads(num_cpus::get() as u32);
-
-    /*pack_builder.set_progress_callback(|stage, current, total| {
-        match stage {
-            PackBuilderStage::AddingObjects => {
-                let last_object = current == total;
-
-                let ending = if last_object { ", done.\n" } else { "\r" };
-
-                let percentage = current * 100 / total;
-                let mut percentage_str = format!("{}", percentage);
-
-                if percentage != 100 {
-                    percentage_str = " ".to_owned() + &percentage_str;
-                }
-
-                futures::executor::block_on(writer.write_binary_ignore_err(format!("\x02Compressing objects: {}% ({}/{}){}", percentage_str, current, total, ending).as_bytes()));
-
-            }
-            PackBuilderStage::Deltafication => { /* ignored */ }
-        }
-
-        true
-    })?;*/
-
     writer.write_text(format!("\x02Enumerating objects: {}, done.", options.want.len())).await?;
 
-    for wanted_obj in &options.want {
-        match repo.find_object(Oid::from_str(wanted_obj.as_str())?, None) {
-            Ok(object) => {
-                if let Some(kind) = object.kind() {
-                    match kind {
-                        ObjectType::Commit => {
-                            pack_builder.insert_commit(object.id())?;
+    let mut progress_writer = ProgressWriter::new();
+
+    let (buffer, object_count, _written) = {
+        let mut pack_builder = repo.packbuilder()?;
+
+        pack_builder.set_threads(num_cpus::get() as u32);
+        pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
+
+        for wanted_obj in &options.want {
+            match repo.find_object(Oid::from_str(wanted_obj.as_str())?, None) {
+                Ok(object) => {
+                    if let Some(kind) = object.kind() {
+                        match kind {
+                            ObjectType::Commit => pack_builder.insert_commit(object.id())?, // TODO: Send all parent commits as well
+                            ObjectType::Tree => pack_builder.insert_tree(object.id())?,
+                            _ => pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?
                         }
-                        ObjectType::Tree => {
-                            pack_builder.insert_tree(object.id())?;
-                        }
-                        _ => {
-                            pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
-                        }
+                    } else {
+                        pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
                     }
-                } else {
-                    pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
+                }
+                Err(e) => {
+                    warn!("Unable to find wanted object: {} error: {}", &wanted_obj, e);
                 }
             }
-            Err(e) => {
-                warn!("Unable to find wanted object: {} error: {}", &wanted_obj, e);
-            }
         }
-    }
 
-    let mut buf = Buf::new();
-    pack_builder.write_buf(&mut buf)?;
+        let mut buf = Buf::new();
+        pack_builder.write_buf(&mut buf)?;
 
-    let buf_ref: &[u8] = buf.as_ref();
-    let pack_line = [b"\x01", buf_ref].concat(); // Data gets only sent on band 1
+        (buf, pack_builder.object_count(), pack_builder.written())
+    };
+
+    let buffer_ref: &[u8] = buffer.as_ref();
+    let pack_line = [b"\x01", buffer_ref].concat(); // Data gets only sent on band 1
+
+    writer.append(progress_writer.to_writer().await?).await?;
 
     writer.write_binary(pack_line.as_slice()).await?;
+
+    let total = object_count;
+    let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
+
+    // TODO: Fix calculation
+    let reused = 0 /*total - written*/;
+    let reused_delta =  0 /*total_delta - reused*/;
+
+    let _obj_pack_total = 0 /*total_delta - total*/;
+    let _obj_pack_reused = 0 /*reused_delta - reused*/;
+    let pack_reused = 0 /*obj_pack_total + obj_pack_reused*/;
+
+    writer.write_text(format!("\x02Total {} (delta {}), reused {} (delta {}), pack-reused {}", total, total_delta, reused, reused_delta, pack_reused)).await?;
 
     Ok(Some(writer))
 }
