@@ -1,4 +1,4 @@
-use crate::git::writer::GitWriter;
+use crate::git::io::writer::GitWriter;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -62,5 +62,4 @@ impl ProgressWriter {
 
         Ok(writer)
     }
-
 }

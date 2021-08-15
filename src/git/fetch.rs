@@ -1,5 +1,5 @@
 use crate::git::io::progress_writer::ProgressWriter;
-use crate::git::writer::GitWriter;
+use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use async_recursion::async_recursion;

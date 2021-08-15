@@ -1,4 +1,4 @@
-use crate::git::writer::GitWriter;
+use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::Result;

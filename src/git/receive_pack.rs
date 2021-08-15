@@ -1,8 +1,8 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
-use crate::extensions::{default_signature, str_to_oid};
-use crate::git::ref_update::RefUpdate;
-use crate::git::writer::GitWriter;
 use crate::extensions::traits::GitoxideSignatureExtension;
+use crate::extensions::{default_signature, str_to_oid};
+use crate::git::io::writer::GitWriter;
+use crate::git::ref_update::RefUpdate;
 use crate::repository::Repository;
 
 use std::convert::TryInto;

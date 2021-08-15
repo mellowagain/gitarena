@@ -1,9 +1,9 @@
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
-use crate::git::reader::read_data_lines;
+use crate::git::io::reader::read_data_lines;
+use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::writer::GitWriter;
 use crate::git::{basic_auth, pack, ref_update};
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;

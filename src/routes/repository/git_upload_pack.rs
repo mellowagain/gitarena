@@ -2,8 +2,8 @@ use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::fetch::fetch;
+use crate::git::io::reader::{read_data_lines, read_until_command};
 use crate::git::ls_refs::ls_refs;
-use crate::git::reader::{read_data_lines, read_until_command};
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 

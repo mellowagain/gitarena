@@ -1,4 +1,4 @@
-use crate::git::writer::GitWriter;
+use crate::git::io::writer::GitWriter;
 
 use core::result::Result as CoreResult;
 use std::sync::Once;
