@@ -93,7 +93,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     match searcher.search_in(vec) {
         Some(pos) => {
-            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..]).await?;
+            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &uri.username.as_ref()).await?;
 
             output_writer.write_text("\x01000eunpack ok").await?;
 
