@@ -1,5 +1,6 @@
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
+use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
@@ -95,7 +96,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         Some(pos) => {
             let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &uri.username.as_ref()).await?;
 
-            output_writer.write_text("\x01000eunpack ok").await?;
+            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
@@ -111,7 +112,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             }
 
             // There wasn't actually something to unpack
-            output_writer.write_text("\x01000eunpack ok").await?;
+            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?;
@@ -119,7 +120,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         }
     }
 
-    output_writer.write_binary(b"\x010000").await?;
+    output_writer.flush_sideband(Band::Data).await?;
     output_writer.flush().await?;
 
     Ok(HttpResponse::Ok()

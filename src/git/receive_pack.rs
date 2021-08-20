@@ -1,6 +1,7 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
 use crate::extensions::traits::GitoxideSignatureExtension;
 use crate::extensions::{default_signature, str_to_oid};
+use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 use crate::git::ref_update::RefUpdate;
 use crate::repository::Repository;
@@ -115,14 +116,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
     // TODO: Run `git gc --auto --quiet` to optimize repo size
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        // Hacky way to write the text to band 1 as GitWriter does not yet support sidebands
-        // TODO: Replace this ugly code with sideband support in GitWriter
-        writer.write_binary(&{
-            let mut temp_writer = GitWriter::new();
-            temp_writer.write_text(format!("ok {}", ref_update.target_ref)).await?;
-            let bytes = temp_writer.serialize().await?;
-            [b"\x01", &bytes[..]].concat()
-        }).await?;
+        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(mut_cache)
@@ -153,14 +147,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, re
         .commit(&default_signature())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        // Hacky way to write the text to band 1 as GitWriter does not yet support sidebands
-        // TODO: Replace this ugly code with sideband support in GitWriter
-        writer.write_binary(&{
-            let mut temp_writer = GitWriter::new();
-            temp_writer.write_text(format!("ok {}", ref_update.target_ref)).await?;
-            let bytes = temp_writer.serialize().await?;
-            [b"\x01", &bytes[..]].concat()
-        }).await?;
+        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(())

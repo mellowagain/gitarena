@@ -1,3 +1,4 @@
+use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 
 use std::cell::RefCell;
@@ -57,7 +58,7 @@ impl ProgressWriter {
         let mut writer = GitWriter::new();
 
         for line in &self.lines {
-            writer.write_binary(format!("\x02{}", line).as_bytes()).await?;
+            writer.write_binary_sideband(Band::Progress, line.as_bytes()).await?;
         }
 
         Ok(writer)

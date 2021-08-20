@@ -1,3 +1,4 @@
+use crate::git::io::band::Band;
 use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::io::writer::GitWriter;
 
@@ -113,7 +114,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
-    writer.write_text(format!("\x02Enumerating objects: {}, done.", options.want.len())).await?;
+    writer.write_text_sideband(Band::Progress, format!("Enumerating objects: {}, done.", options.want.len())).await?;
 
     let mut progress_writer = ProgressWriter::new();
 
@@ -153,12 +154,9 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
         (buf, pack_builder.object_count(), pack_builder.written())
     };
 
-    let buffer_ref: &[u8] = buffer.as_ref();
-    let pack_line = [b"\x01", buffer_ref].concat(); // Data gets only sent on band 1
-
     writer.append(progress_writer.to_writer().await?).await?;
 
-    writer.write_binary(pack_line.as_slice()).await?;
+    writer.write_binary_sideband(Band::Data, buffer.as_ref()).await?;
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
@@ -171,7 +169,10 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let _obj_pack_reused = 0 /*reused_delta - reused*/;
     let pack_reused = 0 /*obj_pack_total + obj_pack_reused*/;
 
-    writer.write_text(format!("\x02Total {} (delta {}), reused {} (delta {}), pack-reused {}", total, total_delta, reused, reused_delta, pack_reused)).await?;
+    writer.write_text_sideband(Band::Progress, format!(
+        "Total {} (delta {}), reused {} (delta {}), pack-reused {}",
+        total, total_delta, reused, reused_delta, pack_reused
+    )).await?;
 
     Ok(Some(writer))
 }
