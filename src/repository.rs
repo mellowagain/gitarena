@@ -22,7 +22,7 @@ impl Repository {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head("main");
         init_ops.no_reinit(true);
-        //init_ops.bare(true); TODO: Make GitArena use bare repositories
+        init_ops.bare(true);
 
         Git2Repository::init_opts(self.get_fs_path(owner_username).await, &init_ops)?;
 
