@@ -6,9 +6,10 @@ use std::borrow::Borrow;
 use anyhow::Result;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::Repository as GitoxideRepository;
+use serde::Serialize;
 use sqlx::{FromRow, Postgres, Transaction};
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize)]
 pub(crate) struct Repository {
     pub(crate) id: i32,
     pub(crate) owner: i32,
