@@ -23,7 +23,10 @@ pub(crate) enum GAErrors {
     ParseError(&'static str, String),
 
     #[error("Unable to unpack {0} for pack")]
-    PackUnpackError(&'static str)
+    PackUnpackError(&'static str),
+
+    #[error("Error occurred when trying to run hook: {0}")]
+    HookError(&'static str)
 }
 
 pub(crate) struct GitArenaError {

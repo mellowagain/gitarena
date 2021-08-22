@@ -41,5 +41,6 @@ create table if not exists repositories
             on delete cascade,
     name        varchar(32)           not null,
     description varchar(256)          not null,
-    private     boolean default false not null
+    private     boolean default false not null,
+    license     varchar(256) default NULL::character varying
 );

@@ -1,5 +1,6 @@
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
+use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
@@ -10,7 +11,7 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures::StreamExt;
 use git_pack::cache::lru::MemoryCappedHashmap;
 use git_packetline::{PacketLine, StreamingPeekableIter};
@@ -53,7 +54,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     // TODO: Check if _user has actually `write` access to the repository
 
-    let repo = match repo_option {
+    let mut repo = match repo_option {
         Some(repo) => repo,
         None => return Err(GitError(404, None).into())
     };
@@ -122,6 +123,18 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     output_writer.flush_sideband(Band::Data).await?;
     output_writer.flush().await?;
+
+    // Run hooks
+    cache = post_update::run(&mut repo, &uri.username, cache).await
+        .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
+
+    sqlx::query("update repositories set license = $1 where id = $2")
+        .bind(&repo.license)
+        .bind(&repo.id)
+        .execute(&mut transaction)
+        .await?;
+
+    transaction.commit().await?;
 
     Ok(HttpResponse::Ok()
         .header("Content-Type", accept_header)

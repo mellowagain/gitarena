@@ -15,7 +15,10 @@ pub(crate) struct Repository {
     pub(crate) owner: i32,
     pub(crate) name: String,
     pub(crate) description: String,
-    pub(crate) private: bool
+    pub(crate) private: bool,
+
+    //pub(crate) size: Option<String>, // Human friendly size string (1 TB, 8 GB, 10 MB, 2 KB, 0 B)
+    pub(crate) license: Option<String>,
 }
 
 impl Repository {
@@ -49,5 +52,18 @@ impl Repository {
         let repo_base_dir: &str = CONFIG.repositories.base_dir.borrow();
 
         format!("{}/{}/{}", repo_base_dir, owner_username, &self.name)
+    }
+}
+
+impl Default for Repository {
+    fn default() -> Repository {
+        Repository {
+            id: 0,
+            owner: 0,
+            name: "".to_owned(),
+            description: "".to_owned(),
+            private: false,
+            license: None
+        }
     }
 }

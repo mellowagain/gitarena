@@ -6,14 +6,16 @@ use std::borrow::{Borrow, Cow};
 use std::env;
 use std::io::stdout;
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::dev::Service;
-use actix_web::http::header::CACHE_CONTROL;
+use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL};
 use actix_web::http::HeaderValue;
 use actix_web::{App, HttpServer};
 use anyhow::{Context, Result};
+use askalono::Store;
 use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
@@ -28,6 +30,7 @@ mod crypto;
 mod error;
 mod extensions;
 mod git;
+mod licenses;
 mod mail;
 mod repository;
 mod routes;
@@ -37,6 +40,7 @@ mod verification;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
+    static ref LICENSE_STORE: Mutex<Store> = Mutex::new(Store::new());
 }
 
 #[actix_rt::main]
@@ -52,6 +56,10 @@ async fn main() -> Result<()> {
     sqlx::query("select 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
 
     info!("Successfully connected to database.");
+
+    licenses::init()?;
+
+    info!("Successfully loaded SPDX license data.");
 
     let bind_address: &str = CONFIG.bind.borrow();
 
@@ -81,6 +89,12 @@ async fn main() -> Result<()> {
                         // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
                         res.headers_mut().insert(
                             CACHE_CONTROL, HeaderValue::from_static("no-cache, max-age=0, must-revalidate"),
+                        );
+                    }
+
+                    if res.request().path().starts_with("/api") {
+                        res.headers_mut().insert(
+                            ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"),
                         );
                     }
 
@@ -148,6 +162,7 @@ fn init_logger() -> Result<()> {
         .level(level)
         .level_for("sqlx", LevelFilter::Warn)
         .level_for("reqwest", LevelFilter::Info)
+        .level_for("askalono", LevelFilter::Warn)
         .chain(stdout())
         .chain(log_file(format!("logs/{}.log", Local::now().timestamp_millis()))?)
         .apply()
