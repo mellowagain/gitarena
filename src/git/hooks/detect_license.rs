@@ -1,76 +1,52 @@
 use crate::error::GAErrors::HookError;
+use crate::git::utils::repo_files_at_head;
 use crate::LICENSE_STORE;
 use crate::licenses::license_file_names;
 use crate::repository::Repository;
 
 use anyhow::{Context, Result};
 use askalono::TextData;
-use async_recursion::async_recursion;
 use bstr::ByteSlice;
+use git_object::tree::EntryMode;
 use git_odb::FindExt;
-use git_odb::pack::cache::lru::MemoryCappedHashmap;
-use git_ref::file::loose::Reference;
-use git_ref::mutable::Target;
+use git_pack::cache::DecodeEntry;
 
-#[async_recursion]
-pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_repository::Repository, reference: Reference, cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
-    match reference.target {
-        Target::Peeled(object_id) => {
-            let mut mut_cache = cache;
-            let mut buffer = Vec::<u8>::new();
+pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_repository::Repository, cache: &mut impl DecodeEntry) -> Result<()> {
+    let mut buffer = Vec::<u8>::new();
 
-            let head_tree_oid = {
-                let mut buffer = Vec::<u8>::new();
+    let tree = repo_files_at_head(gitoxide_repo, &mut buffer, cache).await?;
 
-                let commit = gitoxide_repo.odb.find_existing_commit(object_id.as_ref(), &mut buffer, &mut mut_cache)
-                    .context("Unable to find commit pointed to by HEAD")?;
+    for entry in tree.entries {
+        let lowered_file_name = entry.filename.to_lowercase();
 
-                commit.tree()
-            };
-
-            let tree = gitoxide_repo.odb.find_existing_tree(head_tree_oid.as_ref(), &mut buffer, &mut mut_cache)
-                .context("Unable to find tree associated with commit pointed to by HEAD")?;
-
-            let mut found_file = false;
-
-            'outer: for entry in tree.entries {
-                let lowered = entry.filename.to_lowercase();
-
-                for file_name in license_file_names() {
-                    if lowered.starts_with(file_name) {
-                        found_file = true;
-
-                        let mut buffer = Vec::<u8>::new();
-
-                        let blob = gitoxide_repo.odb.find_existing_blob(entry.oid, &mut buffer, &mut mut_cache)
-                            .context("Unable to find blob of license file")?;
-
-                        let content_vec: Vec<u8> = blob.data.iter()
-                            .map(|i| *i)
-                            .skip(2)
-                            .filter(|b| *b != 0)
-                            .collect();
-
-                        let content = &content_vec[..content_vec.len() - 2];
-
-                        detect_license_from_file(repo, content).await?;
-                        break 'outer;
-                    }
-                }
-            }
-
-            // The repo license file was not found (most likely deleted), set license to None
-            if !found_file {
-                repo.license = None;
-            }
-
-            Ok(mut_cache)
+        if !license_file_names().contains(&lowered_file_name.as_slice()) {
+            continue
         }
-        Target::Symbolic(target) => match gitoxide_repo.refs.loose_find(target.to_partial())? {
-            Some(reference) => detect_license(repo, gitoxide_repo, reference, cache).await,
-            None => Err(HookError("Repo symlink points to invalid target").into())
+
+        match entry.mode {
+            EntryMode::Blob => {
+                let mut blob_buffer = Vec::<u8>::new();
+                let blob = gitoxide_repo.odb.find_existing_blob(entry.oid, &mut blob_buffer, cache)?;
+
+                // Honestly no idea how but this works out to yield valid file content
+                // TODO: Maybe Git odb has some header and padding attached to the blob? Need to investigate
+                let content_vec: Vec<u8> = blob.data.iter()
+                    .map(|i| *i)
+                    .skip(2)
+                    .filter(|b| *b != 0)
+                    .collect();
+
+                let content = &content_vec[..content_vec.len() - 2];
+
+                detect_license_from_file(repo, content).await?;
+                break;
+            }
+            EntryMode::Link => { /* todo: follow symlinks in case the target is a license */ }
+            _ => { /* ignore directories, symlinks and submodules */ }
         }
     }
+
+    Ok(())
 }
 
 async fn detect_license_from_file(repo: &mut Repository, data: &[u8]) -> Result<()> {
