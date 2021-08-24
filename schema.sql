@@ -42,5 +42,6 @@ create table if not exists repositories
     name        varchar(32)           not null,
     description varchar(256)          not null,
     private     boolean default false not null,
-    license     varchar(256) default NULL::character varying
+    license     varchar(256) default NULL::character varying,
+    size        bigint       default 0
 );

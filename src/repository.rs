@@ -17,7 +17,7 @@ pub(crate) struct Repository {
     pub(crate) description: String,
     pub(crate) private: bool,
 
-    //pub(crate) size: Option<String>, // Human friendly size string (1 TB, 8 GB, 10 MB, 2 KB, 0 B)
+    pub(crate) size: i64,
     pub(crate) license: Option<String>,
 }
 
@@ -63,6 +63,7 @@ impl Default for Repository {
             name: "".to_owned(),
             description: "".to_owned(),
             private: false,
+            size: 0,
             license: None
         }
     }

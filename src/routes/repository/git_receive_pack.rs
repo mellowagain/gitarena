@@ -128,8 +128,9 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     cache = post_update::run(&mut repo, &uri.username, cache).await
         .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 
-    sqlx::query("update repositories set license = $1 where id = $2")
+    sqlx::query("update repositories set license = $1, size = $2 where id = $2")
         .bind(&repo.license)
+        .bind(&repo.size)
         .bind(&repo.id)
         .execute(&mut transaction)
         .await?;
