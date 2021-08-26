@@ -138,8 +138,7 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
 
                         // Git ignores capabilities written after the first line
                         once.call_once(|| {
-                            line.push_str("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 ");
-                            line.push_str(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")));
+                            line.push_str(receive_pack_capabilities());
                         });
 
                         writer.write_text(line).await?;
@@ -152,9 +151,18 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
         }
     }
 
+    // If we didn't tell the client our capabilities in the previous ref list, send a null ref with them
+    if !once.is_completed() {
+        writer.write_text(format!("0000000000000000000000000000000000000000 capabilities^{{}}{}", receive_pack_capabilities())).await?;
+    }
+
     writer.flush().await?;
 
     Ok(writer.serialize().await?)
+}
+
+const fn receive_pack_capabilities() -> &'static str {
+    concat!("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-", env!("CARGO_PKG_VERSION"))
 }
 
 pub(crate) struct LsRefs {
