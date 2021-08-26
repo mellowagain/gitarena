@@ -21,8 +21,10 @@ use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
 use git_repository::actor::Signature;
 use git_repository::prelude::*;
+use log::warn;
+use git_odb::compound::find::Error;
 
-pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: &PathBuf, pack_path: &PathBuf, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
+pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
     assert!(ref_update.new.is_some());
 
     let mut mut_cache = cache;
@@ -32,44 +34,55 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
     // This block decodes the entry from the pack file, creates a Gitoxide Commit and then writes it to the reflog using a transaction
     {
         let gitoxide_repo = repo.gitoxide(repo_owner).await?;
-        let index_file = IndexFile::at(index_path)?;
+        let mut buffer = Vec::<u8>::new();
 
-        let index = index_file.lookup(new_oid.as_ref()).ok_or(PackUnpackError("oid index"))?;
-        let offset = index_file.pack_offset_at_index(index);
+        let commit = match (index_path, pack_path) {
+            (Some(index_path), Some(pack_path)) => {
+                let index_file = IndexFile::at(index_path)?;
 
-        let data_file = DataFile::at(pack_path)?;
+                let index = index_file.lookup(new_oid.as_ref()).ok_or(PackUnpackError("oid index"))?;
+                let offset = index_file.pack_offset_at_index(index);
 
-        let entry = data_file.entry(offset);
-        let mut out = Vec::<u8>::with_capacity(entry.decompressed_size as usize);
+                let data_file = DataFile::at(pack_path)?;
 
-        let outcome = data_file.decode_entry(
-            entry,
-            &mut out,
-            |oid, vec| {
-                if let Some(index) = index_file.lookup(oid) {
-                    let offset = index_file.pack_offset_at_index(index);
-                    let entry = data_file.entry(offset);
+                let entry = data_file.entry(offset);
 
-                    Some(ResolvedBase::InPack(entry))
-                } else {
-                    match gitoxide_repo.odb.find(oid, vec, &mut cache::Never) {
-                        Ok(Some(object)) => {
-                            Some(ResolvedBase::OutOfPack {
-                                kind: object.kind,
-                                end: vec.len()
-                            })
+                buffer.reserve(entry.decompressed_size as usize);
+
+                let outcome = data_file.decode_entry(
+                    entry,
+                    &mut buffer,
+                    |oid, vec| {
+                        if let Some(index) = index_file.lookup(oid) {
+                            let offset = index_file.pack_offset_at_index(index);
+                            let entry = data_file.entry(offset);
+
+                            Some(ResolvedBase::InPack(entry))
+                        } else {
+                            match gitoxide_repo.odb.find(oid, vec, &mut cache::Never) {
+                                Ok(Some(object)) => {
+                                    Some(ResolvedBase::OutOfPack {
+                                        kind: object.kind,
+                                        end: vec.len()
+                                    })
+                                }
+                                Ok(None) => None,
+                                Err(_) => None,
+                            }
                         }
-                        Ok(None) => None,
-                        Err(_) => None,
-                    }
+                    },
+                    &mut mut_cache
+                )?;
+
+                match outcome.kind {
+                    Kind::Commit => CommitRef::from_bytes(buffer.as_slice())?,
+                    _ => return Err(GitError(400, Some("Unexpected payload data type".to_owned())).into())
                 }
             },
-            &mut mut_cache
-        )?;
-
-        let commit = match outcome.kind {
-            Kind::Commit => CommitRef::from_bytes(out.as_slice())?,
-            _ => return Err(GitError(400, Some("Unexpected payload data type".to_owned())).into())
+            _ => {
+                // This is a force push to an existing repository. TODO: Handle non existing refs as client errors instead of server errors
+                gitoxide_repo.odb.find_existing_commit(new_oid.as_ref(), &mut buffer, &mut mut_cache)?
+            }
         };
 
         let previous = ref_update.old.as_ref().map(|target| Target::Peeled(str_to_oid(&Some(target.to_owned())).unwrap()));

@@ -16,12 +16,16 @@ use tempfile::{Builder, TempDir};
 /// Returns path to index file, pack file and temporary dir.
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
-pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Result<(PathBuf, PathBuf, TempDir)> {
+pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
-    let (index_path, pack_path) = write_to_fs(data, &temp_dir, repo, repo_owner).await?;
-
-    Ok((index_path, pack_path, temp_dir))
+    match write_to_fs(data, &temp_dir, repo, repo_owner).await {
+        Ok((index_path, pack_path)) => Ok((Some(index_path), Some(pack_path), temp_dir)),
+        Err(err) => match err.to_string().as_str() { // Gitoxide does not export the error enum so this is a whacky workaround
+            "Did not encounter a single base" => Ok((None, None, temp_dir)),
+            _ => Err(err)
+        }
+    }
 }
 
 pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir, repo: &Repository, repo_owner: &str) -> Result<(PathBuf, PathBuf)> {

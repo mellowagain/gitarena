@@ -101,7 +101,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, &index_path, &pack_path, &vec[pos..], cache).await?,
+                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, index_path.as_ref(), pack_path.as_ref(), &vec[pos..], cache).await?,
                     RefUpdateType::Delete => process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?
                 };
             }
