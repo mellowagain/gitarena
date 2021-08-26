@@ -159,23 +159,3 @@ pub(crate) fn default_signature() -> Signature {
         }
     }
 }
-
-pub(crate) mod traits {
-    use git_repository::actor::Signature as MutableSignature;
-    use git_repository::actor::immutable::Signature as ImmutableSignature;
-    use bstr::BString;
-
-    pub(crate) trait GitoxideSignatureExtension {
-        fn to_mut(&self) -> MutableSignature;
-    }
-
-    impl GitoxideSignatureExtension for ImmutableSignature<'_> {
-        fn to_mut(&self) -> MutableSignature {
-            MutableSignature {
-                name: BString::from(*&self.name),
-                email: BString::from(*&self.email),
-                time: *&self.time
-            }
-        }
-    }
-}

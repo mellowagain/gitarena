@@ -1,5 +1,4 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
-use crate::extensions::traits::GitoxideSignatureExtension;
 use crate::extensions::{default_signature, str_to_oid};
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
@@ -13,14 +12,14 @@ use std::path::PathBuf;
 use anyhow::Result;
 use bstr::BString;
 use git_lock::acquire::Fail;
-use git_object::immutable::Commit as ImmutableCommit;
-use git_object::Kind;
+use git_object::{CommitRef, Kind};
 use git_odb::pack::cache;
 use git_pack::cache::lru::MemoryCappedHashmap;
 use git_pack::data::{File as DataFile, ResolvedBase};
 use git_pack::index::File as IndexFile;
-use git_ref::mutable::Target;
+use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
+use git_repository::actor::Signature;
 use git_repository::prelude::*;
 
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: &PathBuf, pack_path: &PathBuf, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
@@ -69,9 +68,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
         )?;
 
         let commit = match outcome.kind {
-            Kind::Commit => {
-                ImmutableCommit::from_bytes(out.as_slice())?
-            }
+            Kind::Commit => CommitRef::from_bytes(out.as_slice())?,
             _ => return Err(GitError(400, Some("Unexpected payload data type".to_owned())).into())
         };
 
@@ -98,7 +95,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
         gitoxide_repo.refs.transaction()
             .prepare(edits, Fail::Immediately)
             .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
-            .commit(&commit.committer.to_mut())?;
+            .commit(&Signature::from(commit.committer))?;
     }
 
     // # libgit2 zone
