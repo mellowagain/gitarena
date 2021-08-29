@@ -32,16 +32,17 @@ create unique index if not exists user_verifications_user_id_uindex
 
 create table if not exists repositories
 (
-    id          serial                not null
+    id             serial                                         not null
         constraint repositories_pk
             primary key,
-    owner       integer               not null
+    owner          integer                                        not null
         constraint repositories_users_id_fk
             references users (id)
             on delete cascade,
-    name        varchar(32)           not null,
-    description varchar(256)          not null,
-    private     boolean default false not null,
-    license     varchar(256) default NULL::character varying,
-    size        bigint       default 0
+    name           varchar(32)                                    not null,
+    description    varchar(256)                                   not null,
+    private        boolean default false                          not null,
+    default_branch varchar(256) default 'main'::character varying not null,
+    license        varchar(256) default NULL::character varying,
+    size           bigint       default 0
 );

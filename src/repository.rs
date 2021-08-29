@@ -16,6 +16,7 @@ pub(crate) struct Repository {
     pub(crate) name: String,
     pub(crate) description: String,
     pub(crate) private: bool,
+    pub(crate) default_branch: String,
 
     pub(crate) size: i64,
     pub(crate) license: Option<String>,
@@ -24,7 +25,7 @@ pub(crate) struct Repository {
 impl Repository {
     pub(crate) async fn create_fs(&self, owner_username: &str) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();
-        init_ops.initial_head("main");
+        init_ops.initial_head(self.default_branch.as_str());
         init_ops.no_reinit(true);
         init_ops.bare(true);
 
@@ -63,6 +64,7 @@ impl Default for Repository {
             name: "".to_owned(),
             description: "".to_owned(),
             private: false,
+            default_branch: "main".to_owned(),
             size: 0,
             license: None
         }
