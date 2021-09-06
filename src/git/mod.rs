@@ -1,6 +1,7 @@
 pub(crate) mod basic_auth;
 pub(crate) mod capabilities;
 pub(crate) mod fetch;
+pub(crate) mod history;
 pub(crate) mod hooks;
 pub(crate) mod io;
 pub(crate) mod ls_refs;
