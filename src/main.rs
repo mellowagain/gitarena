@@ -9,6 +9,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::dev::Service;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL};
@@ -61,6 +62,10 @@ async fn main() -> Result<()> {
 
     info!("Successfully loaded SPDX license data.");
 
+    let _watcher = templates::init().await?;
+
+    info!("Successfully loaded templates.");
+
     let bind_address: &str = CONFIG.bind.borrow();
 
     let server = HttpServer::new(move || {
@@ -76,7 +81,7 @@ async fn main() -> Result<()> {
                 .secure(secure)
         );
 
-        App::new()
+        let mut app = App::new()
             .data(db_pool.clone())
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
@@ -102,7 +107,18 @@ async fn main() -> Result<()> {
                 }
             })
             .configure(routes::repository::init)
-            .configure(routes::user::init)
+            .configure(routes::user::init);
+
+        if cfg!(debug_assertions) {
+            app = app.service(
+                Files::new("/static", "./static")
+                    .show_files_listing()
+                    .use_etag(true)
+                    .use_last_modified(true)
+            );
+        }
+
+        app
     }).bind(bind_address).context("Unable to bind HTTP server.")?;
 
     server.run().await.context("Unable to start HTTP server.")?;
@@ -162,6 +178,7 @@ fn init_logger() -> Result<()> {
         .level(level)
         .level_for("sqlx", LevelFilter::Warn)
         .level_for("reqwest", LevelFilter::Info)
+        .level_for("globset", LevelFilter::Info)
         .level_for("askalono", LevelFilter::Warn)
         .chain(stdout())
         .chain(log_file(format!("logs/{}.log", Local::now().timestamp_millis()))?)
