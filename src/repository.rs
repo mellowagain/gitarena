@@ -18,7 +18,6 @@ pub(crate) struct Repository {
     pub(crate) private: bool,
     pub(crate) default_branch: String,
 
-    pub(crate) size: i64,
     pub(crate) license: Option<String>,
 }
 
@@ -65,7 +64,6 @@ impl Default for Repository {
             description: "".to_owned(),
             private: false,
             default_branch: "main".to_owned(),
-            size: 0,
             license: None
         }
     }
