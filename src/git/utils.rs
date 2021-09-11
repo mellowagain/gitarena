@@ -34,8 +34,17 @@ pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut
 pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
     let mut buffer = Vec::<u8>::new();
 
-    repo.odb.find_existing_blob(oid, &mut buffer, cache).map(|blob_ref| {
-        let cow = String::from_utf8_lossy(blob_ref.data);
+    repo.odb.find_existing_blob(oid, &mut buffer, cache).map(|blob| {
+        // Honestly no idea how but this works out to yield valid file content
+        // TODO: Maybe Git odb has some header and padding attached to the blob? Need to investigate
+        let content_vec: Vec<u8> = blob.data.iter()
+            .map(|i| *i)
+            .skip(2)
+            .filter(|b| *b != 0)
+            .collect();
+
+        let content = &content_vec[..content_vec.len() - 2];
+        let cow = String::from_utf8_lossy(content);
         let file_content: &str = cow.borrow();
 
         Ok(file_content.to_owned())
