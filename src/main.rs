@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 
-use crate::extensions::create_dir_if_not_exists;
-
 use std::borrow::{Borrow, Cow};
 use std::env;
 use std::io::stdout;
@@ -20,6 +18,7 @@ use askalono::Store;
 use chrono::Local;
 use config::Config;
 use fern::{Dispatch, log_file};
+use fs_extra::dir;
 use lazy_static::lazy_static;
 use log::{info, LevelFilter};
 use sqlx::postgres::PgPoolOptions;
@@ -44,6 +43,9 @@ lazy_static! {
     static ref LICENSE_STORE: Mutex<Store> = Mutex::new(Store::new());
 }
 
+// TODO: big executables are not pushable
+// todo: big commits are just not pushable
+
 #[actix_rt::main]
 async fn main() -> Result<()> {
     init_logger()?;
@@ -63,8 +65,6 @@ async fn main() -> Result<()> {
     info!("Successfully loaded SPDX license data.");
 
     let _watcher = templates::init().await?;
-
-    info!("Successfully loaded templates.");
 
     let bind_address: &str = CONFIG.bind.borrow();
 
@@ -157,7 +157,11 @@ fn load_config() -> Cow<'static, Config> {
 }
 
 fn init_logger() -> Result<()> {
-    create_dir_if_not_exists(Path::new("logs"))?;
+    let logs_dir = Path::new("logs");
+
+    if !logs_dir.exists() {
+        dir::create_all(logs_dir, false)?;
+    }
 
     let level = if cfg!(debug_assertions) {
         LevelFilter::Debug

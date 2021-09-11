@@ -10,7 +10,10 @@ use notify::{Error as NotifyError, Event, ReadDirectoryChangesWatcher, Recommend
 use tera::Tera;
 
 mod filters;
+mod tests;
+
 pub(crate) mod plain;
+pub(crate) mod web;
 
 lazy_static! {
     pub(crate) static ref VERIFY_EMAIL: Template = parse_template("email/user/verify_email.txt".to_owned());
@@ -18,6 +21,15 @@ lazy_static! {
 }
 
 pub(crate) async fn init() -> Result<ReadDirectoryChangesWatcher> {
+    info!("Loading templates...");
+
+    #[allow(unused_must_use)]
+    {
+        TERA.read().unwrap();
+    }
+
+    info!("Successfully loaded templates.");
+
     let mut watcher = RecommendedWatcher::new(|result: std::result::Result<Event, NotifyError>| {
         let event = match result {
             Ok(event) => event,
@@ -60,10 +72,7 @@ pub(crate) async fn init() -> Result<ReadDirectoryChangesWatcher> {
 
     watcher.watch(Path::new("templates/html"), RecursiveMode::Recursive)?;
 
-    info!("Watching ./templates/html for changes...");
-
-    #[allow(unused_must_use)]
-    TERA.read().unwrap();
+    info!("Started watching ./templates/html for changes...");
 
     Ok(watcher)
 }
@@ -82,6 +91,11 @@ fn init_tera() -> Tera {
     };
 
     tera.register_filter("human_prefix", filters::human_prefix);
+    tera.register_filter("human_time", filters::human_time);
+
+    tera.register_tester("empty", tests::empty);
+    tera.register_tester("none", tests::none);
+    tera.register_tester("some", tests::some);
 
     tera
 }
@@ -91,4 +105,31 @@ macro_rules! template_context {
     ($input:expr) => {
         Some($input.iter().cloned().collect())
     }
+}
+
+#[macro_export]
+macro_rules! render_template {
+    ($template_name:literal, $context:expr) => {{
+        render_template!(actix_web::http::StatusCode::OK, $template_name, $context)
+    }};
+    ($template_name:literal, $context:expr, $transaction:expr) => {{
+        render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction)
+    }};
+    ($status:expr, $template_name:literal, $context:expr) => {{
+        let domain: &str = $crate::CONFIG.domain.borrow();
+        $context.try_insert("domain", &domain)?;
+
+        let template = $crate::templates::TERA.read().unwrap().render($template_name, &$context)?;
+        Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
+    }};
+    ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
+        let domain: &str = $crate::CONFIG.domain.borrow();
+        $context.try_insert("domain", &domain)?;
+
+        let template = $crate::templates::TERA.read().unwrap().render($template_name, &$context)?;
+
+        $transaction.commit().await?;
+
+        Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
+    }};
 }
