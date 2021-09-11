@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="/static/css/third_party/roboto.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="/static/css/app.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="/static/css/third_party/semantic.min.css">
+
+    <title>{% block title %}{% endblock %} - GitArena</title>
+
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+
+<noscript>
+    <p style="background-color: red; color: white; text-align: center; padding-top: 5px; padding-bottom: 5px;">
+        <b>JavaScript is currently disabled in your browser.</b>
+        Some functionality may not be available
+    </p>
+</noscript>
+
+{% block content %}{% endblock %}
+
+<script src="/static/js/third_party/jquery-3.6.0.min.js"></script>
+<script src="/static/js/third_party/semantic.min.js"></script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+
+</html>
