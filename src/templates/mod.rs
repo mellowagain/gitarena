@@ -6,7 +6,7 @@ use std::sync::RwLock;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use log::{error, info};
-use notify::{Error as NotifyError, Event, ReadDirectoryChangesWatcher, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tera::Tera;
 
 mod filters;
@@ -20,7 +20,7 @@ lazy_static! {
     pub(crate) static ref TERA: RwLock<Tera> = RwLock::new(init_tera());
 }
 
-pub(crate) async fn init() -> Result<ReadDirectoryChangesWatcher> {
+pub(crate) async fn init() -> Result<RecommendedWatcher> {
     info!("Loading templates...");
 
     #[allow(unused_must_use)]
