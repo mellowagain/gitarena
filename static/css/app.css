@@ -1,0 +1,256 @@
+body {
+    background: #fafafa;
+    font-family: "Roboto", sans-serif !important;
+    overflow-y: scroll;
+}
+
+.hidden {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* navigation */
+
+header nav.navigation {
+    width: 100%;
+    padding: 24px 16px;
+    color: #eeeeee;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+header.background {
+    background-size: cover;
+    background-position: center center;
+}
+
+nav.navigation {
+    width: calc(100% - 32px);
+    padding: 24px 16px;
+    color: #0d0d0d;
+    background: transparent;
+}
+
+nav.navigation div.content {
+    width: 100%;
+    max-width: 1000px;
+    margin: 18px auto;
+}
+
+header nav.navigation div.content a.link {
+    color: #eeeeee;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+nav.navigation div.content a.link {
+    color: #0d0d0d;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+header nav.navigation div.content a.link:hover {
+    color: #fafafa;
+}
+
+nav.navigation div.content a.link:hover {
+    color: #0d0d0d;
+}
+
+nav.navigation div.content span.brand {
+    text-transform: uppercase;
+    font-weight: 400;
+    font-size: 20px;
+    letter-spacing: 4px;
+}
+
+nav.navigation div.content span.links {
+    float: right;
+    padding-top: 4px;
+
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+nav.navigation div.content span.links a {
+    margin-left: 12px;
+}
+
+nav.navigation div.content div.repo-info {
+    margin: 18px 0 -8px 0;
+    padding: 18px 0;
+}
+
+nav.navigation div.content div.repo-info h1 {
+    font-weight: 300;
+}
+
+nav.navigation div.content div.repo-info h3 {
+    font-weight: 400;
+    font-size: 15px;
+    color: #dfdfdf;
+    margin-top: -12px;
+}
+
+nav.navigation div.content div.repo-info h5 {
+    font-weight: 400;
+    font-size: 12px;
+    color: #bdbbbb;
+    margin-top: -5px;
+}
+
+nav.navigation div.content div.repo-info h5 a, nav.navigation div.content div.repo-info h5 a:hover {
+    color: #dfdfdf;
+    text-decoration: none;
+}
+
+/* content and other stuff */
+
+main.container {
+    width: calc(100% - 32px);
+    max-width: 980px;
+    margin: auto;
+    padding: 35px 16px;
+    text-align: justify;
+    font-size: 13px;
+}
+
+main.container div.blog-post {
+    width: calc(100% - 32px);
+    max-width: 650px;
+    padding: 24px 16px;
+    margin: auto;
+}
+
+main.container div.blog-post:not(:nth-last-child(1)) {
+    border-bottom: 1px solid #e2e2e2;
+    border-radius: 3px;
+}
+
+main.container div.blog-post h1 {
+    font-size: 18px;
+    text-align: center;
+    color: #0d0d0d;
+    font-weight: 500;
+}
+
+main.container div.blog-post h1 a {
+    text-decoration: none;
+    color: #0d0d0d;
+}
+
+main.container div.blog-post h3 {
+    font-size: 14px;
+    text-align: center;
+    margin-top: -4px;
+    color: #888888;
+    font-weight: 300;
+}
+
+main.container div.blog-post h3 a {
+    color: #444444;
+    text-decoration: none;
+}
+
+main.container div.blog-post a.read-more {
+    color: #919191;
+    text-decoration: none;
+    display: inline-block;
+    font-style: italic;
+}
+
+main.container div.blog-post a.read-more:hover {
+    text-decoration: underline;
+}
+
+main.container div.blog-post div.preview {
+    font-size: 13px;
+}
+
+.non-bold {
+    font-weight: inherit !important;
+}
+
+.no-left-border {
+    border-left: 0 !important;
+}
+
+/* error pages */
+
+main.container.error {
+    text-align: center !important;
+}
+
+main.container.error h1 {
+    font-size: 50px;
+}
+
+main.container.error h3 {
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: 5px;
+    margin-top: -24px;
+}
+
+pre, blockquote {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+}
+
+span.pill {
+    background-color: rgba(139,148,158,0.2);
+    color: #8b949e;
+    margin-left: 2px;
+    border: 1px solid transparent;
+    border-radius: 2em;
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    min-width: 15px;
+    padding: 0 6px;
+    text-align: center;
+}
+
+/*code {
+    font-family: "Fira Code", monospace !important;
+    font-variant-ligatures: contextual !important;
+    font-feature-settings: "calt" 1 !important;
+}*/
+
+pre {
+    border: 1px solid #e0e0e0;
+    padding: 12px !important;
+}
+
+table {
+    width: 100%;
+    white-space: nowrap;
+}
+
+/* mobile improvements */
+
+@media only screen and (max-width: 420px) {
+    nav.navigation div.content span.brand {
+        display: block;
+        text-align: center !important;
+    }
+
+    nav.navigation div.content span.links {
+        display: block !important;
+        float: none;
+        text-align: center !important;
+        margin-top: 8px;
+    }
+
+    nav.navigation div.content span.links a {
+        margin-left: 6px;
+        margin-right: 6px;
+    }
+}
