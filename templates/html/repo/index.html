@@ -120,10 +120,10 @@
                     <i class="dropdown icon"></i>
 
                     <div class="menu">
-                        <div class="https clone item active">https</div>
-                        <div class="ssh clone item">ssh</div>
-                        <div class="zip download item">.zip</div>
-                        <div class="targz download item">.tar.gz</div>
+                        <div class="https clone item active" data-url="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git" data-icon="copy">https</div>
+                        <div class="ssh clone item" data-url="git@{{ domain | split(pat="://") | nth(n=1) | split(pat=":") | first | safe }}:{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git" data-icon="copy">ssh</div>
+                        <div class="zip download item" data-url="{{ domain | safe}}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/zip" data-icon="download">.zip</div>
+                        <div class="targz download item" data-url="{{ domain | safe}}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/targz" data-icon="download">.tar.gz</div>
                     </div>
                 </div>
                 <input class="code url" type="text" value="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git">
@@ -243,12 +243,6 @@
 
 <script>
     window.addEventListener("DOMContentLoaded", () => {
-        loadReadme("{{ repo_owner_name }}", "{{ repo.name }}", "{{ tree }}");
-    });
-</script>
-
-<script defer>
-    window.addEventListener("DOMContentLoaded", () => {
         $(".ui.dropdown").dropdown();
         $(".downloads.browse.item").popup({
             popup: ".downloads.popup",
@@ -257,63 +251,31 @@
         })
         $(".secondary > a").tab();
 
-        $(".code.url").click(() => {
-            $(".code.url").select();
-        });
-        $(".code.url").keydown(() => {
-            return false;
+        const codeUrl = $(".code.url");
+
+        codeUrl.click(() => codeUrl.select());
+        codeUrl.keydown(() => false);
+
+        $(".right.icon.button").click(() => {
+            if ($(".right.icon.button").children().first().hasClass("download")) {
+                window.location.href = $(".code.url").val();
+            } else {
+                writeClipboard($(".code.url").val());
+            }
         });
 
-        $(".right.icon.button").off("click").click(function() {
-            navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                sendNotification("success", "Copied to clipboard");
-            }, () => {
-                sendNotification("error", "Failed to copy to clipboard");
-            });
+        $(".menu .item[data-url]").click(function () {
+            const currentElement = $(this);
+
+            $(".code.url").val(currentElement.attr("data-url"));
+
+            const button = $(".right.icon.button");
+
+            button.children().first().removeClass();
+            button.children().first().addClass(`${currentElement.attr("data-icon")} icon`);
         });
 
-        $(".https.clone").click(() => {
-            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
-            $(".right.icon.button").children().first().removeClass();
-            $(".right.icon.button").children().first().addClass("copy icon");
-            $(".right.icon.button").off("click").click(function() {
-                navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                    sendNotification("success", "Copied to clipboard");
-                }, () => {
-                    sendNotification("error", "Failed to copy to clipboard");
-                });
-            });
-        });
-        $(".ssh.clone").click(() => {
-            $(".code.url").val(`git@${window.location.hostname}:{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
-            $(".right.icon.button").children().first().removeClass();
-            $(".right.icon.button").children().first().addClass("copy icon");
-            $(".right.icon.button").off("click").click(function() {
-                navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                    sendNotification("success", "Copied to clipboard");
-                }, () => {
-                    sendNotification("error", "Failed to copy to clipboard");
-                });
-            });
-        });
-        $(".zip.download").click(() => {
-            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/zip`);
-            $(".right.icon.button").children().first().removeClass();
-            $(".right.icon.button").children().first().addClass("download icon");
-            $(".right.icon.button").off("click").click(function (event) {
-                event.preventDefault();
-                window.location.href = $(".code.url").val();
-            });
-        });
-        $(".targz.download").click(() => {
-            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/targz`);
-            $(".right.icon.button").children().first().removeClass();
-            $(".right.icon.button").children().first().addClass("download icon");
-            $(".right.icon.button").off("click").click(function(event) {
-                event.preventDefault();
-                window.location.href = $(".code.url").val();
-            });
-        });
+        loadReadme("{{ repo_owner_name }}", "{{ repo.name }}", "{{ tree }}");
     });
 </script>
 {% endblock %}

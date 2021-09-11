@@ -16,7 +16,21 @@ function sendNotification(type, message) {
 }
 
 /**
+ * Writes `content` to clipboard
+ *
+ * @param content Content to be written to clipboard
+ */
+function writeClipboard(content) {
+    navigator.clipboard.writeText(content).then(() => {
+        sendNotification("success", "Copied to clipboard");
+    }, () => {
+        sendNotification("error", "Failed to copy to clipboard");
+    });
+}
+
+/**
  * Inserts a `<script>` into current documents `<head>`
+ *
  * @param url URL of the script to be inserted
  */
 function insertScript(url) {
@@ -28,6 +42,7 @@ function insertScript(url) {
 
 /**
  * Inserts a CSS stylesheet into current documents `<head>`
+ *
  * @param url URL of the style sheet to be inserted
  */
 function insertStyleSheet(url) {
