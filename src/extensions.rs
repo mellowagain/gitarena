@@ -1,23 +1,22 @@
 use crate::config::CONFIG;
-use crate::error::GAErrors::{GitError, ParseError};
+use crate::error::GAErrors::{GitError, HttpError, ParseError};
+use crate::repository::Repository;
 use crate::user::User;
 
 use core::result::Result as CoreResult;
 use std::borrow::Borrow;
-use std::fs;
 use std::io::Result as IoResult;
-use std::path::Path;
 
 use actix_web::HttpRequest;
-use anyhow::{Context, Error, Result};
-use bstr::BString;
+use anyhow::{Error, Result};
+use bstr::{BStr, BString, ByteSlice};
 use chrono::Utc;
 use git2::ObjectType;
 use git_hash::ObjectId;
 use git_pack::data::entry::Header;
-use git_repository::actor::{Signature, Time, Sign};
+use git_repository::actor::{Sign, Signature, Time};
 use log::warn;
-use sqlx::{Transaction, Postgres};
+use sqlx::{Postgres, Transaction};
 
 /// Parses "key=value" into a key value tuple
 pub(crate) fn parse_key_value(input: &str) -> Result<(&str, &str)> {
@@ -30,6 +29,10 @@ pub(crate) fn parse_key_value(input: &str) -> Result<(&str, &str)> {
 
 pub(crate) fn get_header<'a>(request: &'a HttpRequest, header: &'a str) -> Option<&'a str> {
     request.headers().get(header)?.to_str().ok()
+}
+
+pub(crate) fn bstr_to_str(input: &BStr) -> Result<&str> {
+    Ok(input.to_str()?)
 }
 
 pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: &mut Transaction<'_, Postgres>) -> Option<User> {
@@ -56,6 +59,26 @@ pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: 
         }
         None => None
     }
+}
+
+pub(crate) async fn repo_from_str<S: AsRef<str>>(username: S, repository: S, mut transaction: Transaction<'_, Postgres>) -> Result<(Repository, Transaction<'_, Postgres>)> {
+    let username_str = username.as_ref();
+    let repo_str = repository.as_ref();
+
+    let (user_id,): (i32,) = sqlx::query_as("select id from users where lower(username) = lower($1)")
+        .bind(username_str)
+        .fetch_optional(&mut transaction)
+        .await?
+        .ok_or(HttpError(404, "Not found".to_owned()))?;
+
+    let repo: Repository = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2)")
+        .bind(&user_id)
+        .bind(repo_str)
+        .fetch_optional(&mut transaction)
+        .await?
+        .ok_or(HttpError(404, "Not found".to_owned()))?;
+
+    Ok((repo, transaction))
 }
 
 /// Checks if the character is alphanumeric (`a-z, 0-9`), a dash (`-`) or a underscore (`_`)
@@ -99,19 +122,6 @@ pub(crate) fn flatten_result<O, E: Into<Error>>(result: CoreResult<CoreResult<O,
         Ok(Err(err)) => Err(err.into()),
         Err(err) => Err(err.into())
     }
-}
-
-pub(crate) fn create_dir_if_not_exists(path: &Path) -> Result<()> {
-    if !path.is_dir() {
-        // Check if path is a file and not a directory
-        if path.exists() {
-            fs::remove_file(path).context("Unable to delete file")?;
-        }
-
-        return fs::create_dir_all(path).context("Unable to create directory");
-    }
-
-    Ok(())
 }
 
 pub(crate) fn normalize_oid_str(oid_str: Option<String>) -> Option<String> {

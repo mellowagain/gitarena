@@ -18,8 +18,10 @@ askalono = "0.4.3"
 async-recursion = "0.3.2"
 base64 = "0.13.0"
 bstr = "0.2.16"
-chrono = "0.4.19"
+chrono = { version = "0.4.19", features = ["serde"] }
+chrono-humanize = "0.2.1"
 fern = "0.6.0"
+fs_extra = "1.2.0"
 futures = "0.3.16"
 git-features = { version = "0.16.3", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["crc32", "rustsha1", "progress", "zlib"] }
 git-hash = { version = "0.5.1", git = "https://github.com/Byron/gitoxide", branch = "main" }

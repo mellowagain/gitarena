@@ -1,5 +1,8 @@
+use std::borrow::Borrow;
+
 use anyhow::Result;
 use async_recursion::async_recursion;
+use git_hash::oid;
 use git_object::TreeRef;
 use git_odb::FindExt;
 use git_pack::cache::DecodeEntry;
@@ -26,4 +29,15 @@ pub(crate) async fn repo_files_at_ref<'a>(repo: &'a Repository, reference: &Refe
 
 pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<TreeRef<'a>> {
     repo_files_at_ref(repo, &repo.refs.find_loose("HEAD")?, buffer, cache).await
+}
+
+pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
+    let mut buffer = Vec::<u8>::new();
+
+    repo.odb.find_existing_blob(oid, &mut buffer, cache).map(|blob_ref| {
+        let cow = String::from_utf8_lossy(blob_ref.data);
+        let file_content: &str = cow.borrow();
+
+        Ok(file_content.to_owned())
+    })?
 }

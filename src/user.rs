@@ -3,9 +3,10 @@ use crate::crypto;
 use anyhow::Result;
 use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate};
 use lazy_static::lazy_static;
+use serde::Serialize;
 use sqlx::FromRow;
 
-#[derive(FromRow)]
+#[derive(FromRow, Serialize)]
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,

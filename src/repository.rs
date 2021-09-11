@@ -4,6 +4,7 @@ use crate::config::CONFIG;
 use std::borrow::Borrow;
 
 use anyhow::Result;
+use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::Repository as GitoxideRepository;
 use serde::Serialize;
@@ -41,17 +42,14 @@ impl Repository {
         Ok(GitoxideRepository::discover(self.get_fs_path(owner_username).await)?)
     }
 
-    pub(crate) async fn get_owner(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<User> {
-        Ok(sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-            .bind(self.owner)
-            .fetch_one(transaction)
-            .await?)
-    }
-
     pub(crate) async fn get_fs_path(&self, owner_username: &str) -> String {
         let repo_base_dir: &str = CONFIG.repositories.base_dir.borrow();
 
         format!("{}/{}/{}", repo_base_dir, owner_username, &self.name)
+    }
+
+    pub(crate) async fn repo_size(&self, owner_username: &str) -> Result<u64> {
+        Ok(dir::get_size(self.get_fs_path(owner_username).await)?)
     }
 }
 
