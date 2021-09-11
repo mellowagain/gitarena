@@ -24,10 +24,40 @@
     </p>
 </noscript>
 
-{% block content %}{% endblock %}
+{% block header %}{% endblock %}
 
-<script src="/static/js/third_party/jquery-3.6.0.min.js"></script>
-<script src="/static/js/third_party/semantic.min.js"></script>
+<main class="ui container">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="ui vertical footer segment">
+    <div class="ui container">
+        <div class="ui centered grid">
+            <div class="center aligned column">
+                <a class="link" href="/about/imprint">Imprint</a>
+            </div>
+            <div class="center aligned column">
+                <a class="link" href="/about/terms">Terms</a>
+            </div>
+            <div class="center aligned column">
+                <a class="link" href="/mellowagain/gitarena">
+                    <b>GitArena</b>
+                </a>
+            </div>
+            <div class="center aligned column">
+                <a class="link" href="/about/privacy">Privacy</a>
+            </div>
+            <div class="center aligned column">
+                <a class="link" href="/about/contact">Contact</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="/static/js/third_party/jquery-3.6.0.min.js" defer></script>
+<script src="/static/js/third_party/semantic.min.js" defer></script>
+
+<script src="/static/js/app.js" defer></script>
 
 {% block scripts %}{% endblock %}
 

@@ -4,10 +4,10 @@
 {{ repo_owner_name }}/{{ repo.name }}: {{ repo.description }}
 {% endblock %}
 
-{% block content %}
-<header class="background" style="background-image: url('/static/img/88555424_p0.jpg');">
-    <nav class="navigation">
-        <div class="content">
+{% block header %}
+<header class="background ui fluid container" style="background-image: url('/static/img/88555424_p0.jpg');">
+    <nav class="navigation inverted">
+        <div class="ui content container">
             <span class="brand">
                 <a href="/" class="link">GitArena</a>
                 /
@@ -58,8 +58,10 @@
         </div>
     </nav>
 </header>
+{% endblock %}
 
-<main class="container">
+{% block content %}
+<main class="repo container">
     {% if files | length >= 1000 %}
         <div class="ui icon warning message">
             <i class="exclamation triangle icon"></i>
@@ -96,16 +98,22 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        {#
+        <!-- Currently disabled until breadcrumbs are implemented -->
+        <div class="five wide computer only column">
             <div class="ui breadcrumb">
                 <a class="active section" href="/{{ repo_owner_name }}">{{ repo_owner_name }}</a>
                 <div class="divider"> / </div>
                 <a class="active section" href="/{{ repo_owner_name }}/{{ repo.name }}">{{ repo.name }}</a>
             </div>
         </div>
+        #}
 
         <div class="two wide column"></div>
 
-        <div class="right aligned seven wide column">
+        <div class="right aligned seven wide computer only column">
             <div class="ui labeled action input">
                 <div class="ui dropdown label">
                     <div class="text">https</div>
@@ -117,7 +125,6 @@
                         <div class="zip download item">.zip</div>
                         <div class="targz download item">.tar.gz</div>
                     </div>
-
                 </div>
                 <input class="code url" type="text" value="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git">
                 <button class="ui right icon button">
@@ -149,10 +156,10 @@
                     </div>
                     <div class="right aligned six wide column">
                         <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
-                            <code>{{ last_commit.oid | truncate(length=7, end="") }}</code>
+                            <code class="element computer only">{{ last_commit.oid | truncate(length=7, end="") }}</code>
                             {{ last_commit.time | human_time }}
                         </a>
-                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/commits">
+                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/commits" class="element computer only">
                             <i class="history icon"></i>
                             <b>{{ commits_count }}</b> commits
                         </a>
@@ -165,32 +172,38 @@
         {% for file in files %}
         <tr>
             <td>
-                {% if file.file_type == 16384 %} <!-- Directory -->
+                {% if file.file_type == 16384 %}
+                    {# Directory #}
                     <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/directory/{{ file.file_name | urlencode }}">
                         <i class="folder icon"></i>
                         {{ file.file_name }}
                     </a>
-                {% elif file.file_type == 33188 %} <!-- Regular file -->
+                {% elif file.file_type == 33188 %}
+                    {# Regular file #}
                     <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
                         <i class="file icon"></i>
                         {{ file.file_name }}
                     </a>
-                {% elif file.file_type == 33261 %} <!-- Executable -->
+                {% elif file.file_type == 33261 %}
+                    {# Executable #}
                     <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
                         <i class="file icon"></i>
                         {{ file.file_name }}
                     </a>
-                {% elif file.file_type == 40960 %} <!-- Symlink -->
+                {% elif file.file_type == 40960 %}
+                    {# Symlink #}
                     <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/symlink/{{ file.file_name | urlencode }}">
                         <i class="linkify icon"></i>
                         {{ file.file_name }}
                     </a>
-                {% elif file.file_type == 57344 %} <!-- Submodule -->
+                {% elif file.file_type == 57344 %}
+                    {# Submodule #}
                     <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/submodule/{{ file.file_name | urlencode }}">
                         <i class="folder outline icon"></i>
                         {{ file.file_name }} @ <code>{{ file.submodule_target_oid | truncate(length=7, end="") }}</code>
                     </a>
-                {% else %} <!-- Unknown -->
+                {% else %}
+                    {# Unknown #}
                     <i class="file icon"></i>
                     {{ file.file_name }}
                 {% endif %}
@@ -206,159 +219,101 @@
         </tbody>
     </table>
 
-    {% if readme is defined %}
-        <div class="ui segments">
-            <div class="ui segment">
-                <b>{{ readme.file_name }}</b>
-            </div>
-
-            <div class="ui segment">
-                <div id="readme" class="ui fluid placeholder">
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                </div>
-
-                <div id="readme-raw-content" class="hidden">
-                    {{ readme.content }}
-                </div>
-            </div>
+    <div id="readme-parent" class="ui segments">
+        <div class="ui segment">
+            <b id="readme-file-name">readme</b>
         </div>
 
-        {% set readme_ext = readme.file_name | lower | split(pat=".") | last %}
-        {% set readme_is_markdown = readme_ext == "md" or readme_ext == "markdown" %}
+        <div class="ui segment">
+            <div id="readme" class="ui fluid placeholder">
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
 
-        {% if readme_is_markdown %}
-            <script src="/static/js/third_party/marked.min.js"></script>
-        {% endif %}
-            <!--<script src="https://cdn.jsdelivr.net/gh/cure53/DOMPurify@2.3.1/dist/purify.min.js" async></script>-->
-            <script defer>
-                const rawContentNode = document.getElementById("readme-raw-content");
+{% block scripts %}
+<script src="/static/js/readme.js" defer></script>
 
-                document.getElementById("readme").innerHTML = /*DOMPurify.sanitize(*/
-                    {% if readme_is_markdown %}
-                        marked(
-                    {% endif %}
-                        rawContentNode.textContent.trim()
-                    {% if readme_is_markdown %}
-                        )
-                    {% endif %}
-                /*)*/;
-                document.getElementById("readme").classList.remove("ui", "fluid", "placeholder")
+<script>
+    window.addEventListener("DOMContentLoaded", () => {
+        loadReadme("{{ repo_owner_name }}", "{{ repo.name }}", "{{ tree }}");
+    });
+</script>
 
-                rawContentNode.parentNode.removeChild(rawContentNode);
-            </script>
-    {% endif %}
+<script defer>
+    window.addEventListener("DOMContentLoaded", () => {
+        $(".ui.dropdown").dropdown();
+        $(".downloads.browse.item").popup({
+            popup: ".downloads.popup",
+            hoverable: true,
+            position: "bottom left"
+        })
+        $(".secondary > a").tab();
 
-    {% block scripts %}
-        <script>
-            window.addEventListener("DOMContentLoaded", () => {
-                $(".ui.dropdown").dropdown();
-                $(".downloads.browse.item").popup({
-                    popup: ".downloads.popup",
-                    hoverable: true,
-                    position: "bottom left"
-                })
-                $(".secondary > a").tab();
+        $(".code.url").click(() => {
+            $(".code.url").select();
+        });
+        $(".code.url").keydown(() => {
+            return false;
+        });
 
-                $(".code.url").click(() => {
-                    $(".code.url").select();
-                });
-                $(".code.url").keydown(() => {
-                    return false;
-                });
+        $(".right.icon.button").off("click").click(function() {
+            navigator.clipboard.writeText($(".code.url").val()).then(() => {
+                sendNotification("success", "Copied to clipboard");
+            }, () => {
+                sendNotification("error", "Failed to copy to clipboard");
+            });
+        });
 
-                $(".right.icon.button").off("click").click(function() {
-                    navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                        $("body").toast({
-                            message: "Copied to clipboard",
-                            class: "green",
-                            className: {
-                                toast: "ui message"
-                            }
-                        });
-                    }, () => {
-                        $("body").toast({
-                            message: "Failed to copy to clipboard",
-                            class: "red",
-                            className: {
-                                toast: "ui message"
-                            }
-                        });
-                    });
-                });
-
-                $(".https.clone").click(() => {
-                    $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
-                    $(".right.icon.button").children().first().removeClass();
-                    $(".right.icon.button").children().first().addClass("copy icon");
-                    $(".right.icon.button").off("click").click(function() {
-                        navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                            $("body").toast({
-                                message: "Copied to clipboard",
-                                class: "green",
-                                className: {
-                                    toast: "ui message"
-                                }
-                            });
-                        }, () => {
-                            $("body").toast({
-                                message: "Failed to copy to clipboard",
-                                class: "red",
-                                className: {
-                                    toast: "ui message"
-                                }
-                            });
-                        });
-                    });
-                });
-                $(".ssh.clone").click(() => {
-                    $(".code.url").val(`git@${window.location.hostname}:{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
-                    $(".right.icon.button").children().first().removeClass();
-                    $(".right.icon.button").children().first().addClass("copy icon");
-                    $(".right.icon.button").off("click").click(function() {
-                        navigator.clipboard.writeText($(".code.url").val()).then(() => {
-                            $("body").toast({
-                                message: "Copied to clipboard",
-                                class: "green",
-                                className: {
-                                    toast: "ui message"
-                                }
-                            });
-                        }, () => {
-                            $("body").toast({
-                                message: "Failed to copy to clipboard",
-                                class: "red",
-                                className: {
-                                    toast: "ui message"
-                                }
-                            });
-                        });
-                    });
-                });
-                $(".zip.download").click(() => {
-                    $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/zip`);
-                    $(".right.icon.button").children().first().removeClass();
-                    $(".right.icon.button").children().first().addClass("download icon");
-                    $(".right.icon.button").off("click").click(function (event) {
-                        event.preventDefault();
-                        window.location.href = $(".code.url").val();
-                    });
-                });
-                $(".targz.download").click(() => {
-                    $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/targz`);
-                    $(".right.icon.button").children().first().removeClass();
-                    $(".right.icon.button").children().first().addClass("download icon");
-                    $(".right.icon.button").off("click").click(function(event) {
-                        event.preventDefault();
-                        window.location.href = $(".code.url").val();
-                    });
+        $(".https.clone").click(() => {
+            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
+            $(".right.icon.button").children().first().removeClass();
+            $(".right.icon.button").children().first().addClass("copy icon");
+            $(".right.icon.button").off("click").click(function() {
+                navigator.clipboard.writeText($(".code.url").val()).then(() => {
+                    sendNotification("success", "Copied to clipboard");
+                }, () => {
+                    sendNotification("error", "Failed to copy to clipboard");
                 });
             });
-        </script>
-    {% endblock %}
-</main>
+        });
+        $(".ssh.clone").click(() => {
+            $(".code.url").val(`git@${window.location.hostname}:{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git`);
+            $(".right.icon.button").children().first().removeClass();
+            $(".right.icon.button").children().first().addClass("copy icon");
+            $(".right.icon.button").off("click").click(function() {
+                navigator.clipboard.writeText($(".code.url").val()).then(() => {
+                    sendNotification("success", "Copied to clipboard");
+                }, () => {
+                    sendNotification("error", "Failed to copy to clipboard");
+                });
+            });
+        });
+        $(".zip.download").click(() => {
+            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/zip`);
+            $(".right.icon.button").children().first().removeClass();
+            $(".right.icon.button").children().first().addClass("download icon");
+            $(".right.icon.button").off("click").click(function (event) {
+                event.preventDefault();
+                window.location.href = $(".code.url").val();
+            });
+        });
+        $(".targz.download").click(() => {
+            $(".code.url").val(`${window.location.origin}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/targz`);
+            $(".right.icon.button").children().first().removeClass();
+            $(".right.icon.button").children().first().addClass("download icon");
+            $(".right.icon.button").off("click").click(function(event) {
+                event.preventDefault();
+                window.location.href = $(".code.url").val();
+            });
+        });
+    });
+</script>
 {% endblock %}

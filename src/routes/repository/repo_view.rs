@@ -4,8 +4,8 @@ use crate::git::history::{all_commits, last_commit_for_blob, last_commit_for_ref
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::render_template;
 use crate::repository::Repository;
-use crate::routes::repository::GitRequest;
-use crate::templates::web::{GitCommit, RepoFile, RepoReadme};
+use crate::routes::repository::{GitRequest, GitTreeRequest};
+use crate::templates::web::{GitCommit, RepoFile};
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -21,7 +21,6 @@ use git_pack::cache::lru::MemoryCappedHashmap;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use log::warn;
-use serde::Deserialize;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
 
@@ -85,16 +84,6 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
                 author_uid: None // Unused for file listing
             }
         });
-
-        if name.to_lowercase().starts_with("readme") {
-            match read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await {
-                Ok(file_content) => context.try_insert("readme", &RepoReadme {
-                    file_name: name,
-                    content: file_content.as_str()
-                })?,
-                Err(_) => warn!("Couldn't read {} file content", name)
-            }
-        }
     }
 
     files.sort_by(|lhs, rhs| {
@@ -163,7 +152,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
 }
 
 #[route("/{username}/{repository}/tree/{tree}", method="GET")]
-pub(crate) async fn view_repo_tree(uri: web::Path<RepoViewRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 
     render(Some(uri.tree.as_str()), repo, &uri.username, id, transaction).await
@@ -174,11 +163,4 @@ pub(crate) async fn view_repo(uri: web::Path<GitRequest>, id: Identity, db_pool:
     let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 
     render(None, repo, &uri.username, id, transaction).await
-}
-
-#[derive(Deserialize)]
-pub(crate) struct RepoViewRequest {
-    pub(crate) username: String,
-    pub(crate) repository: String,
-    pub(crate) tree: String
 }

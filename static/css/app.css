@@ -1,7 +1,5 @@
-body {
-    background: #fafafa;
-    font-family: "Roboto", sans-serif !important;
-    overflow-y: scroll;
+.no-left-border {
+    border-left: 0 !important;
 }
 
 .hidden {
@@ -9,30 +7,41 @@ body {
     visibility: hidden !important;
 }
 
-/* navigation */
-
-header nav.navigation {
-    width: 100%;
-    padding: 24px 16px;
-    color: #eeeeee;
-    background: rgba(0, 0, 0, 0.4);
+.non-bold {
+    font-weight: inherit !important;
 }
+
+footer.footer {
+    padding: 40px 40px !important;
+}
+
+@media only screen and (max-width: 992px) {
+    .element.computer.only {
+        display: none !important;
+    }
+}
+
+/* repo */
+
+.repo.container {
+    margin-top: 18px;
+}
+
+/* repo navigation */
 
 header.background {
     background-size: cover;
     background-position: center center;
 }
 
-nav.navigation {
-    width: calc(100% - 32px);
+header nav.navigation {
     padding: 24px 16px;
-    color: #0d0d0d;
-    background: transparent;
+    color: #eeeeee;
+    background: rgba(0, 0, 0, 0.4);
 }
 
 nav.navigation div.content {
     width: 100%;
-    max-width: 1000px;
     margin: 18px auto;
 }
 
@@ -42,18 +51,23 @@ header nav.navigation div.content a.link {
     transition: color 0.3s;
 }
 
-nav.navigation div.content a.link {
-    color: #0d0d0d;
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
 header nav.navigation div.content a.link:hover {
     color: #fafafa;
 }
 
-nav.navigation div.content a.link:hover {
-    color: #0d0d0d;
+header nav.navigation div.content span.pill {
+    background-color: rgba(139,148,158,0.2);
+    color: #8b949e;
+    margin-left: 2px;
+    border: 1px solid transparent;
+    border-radius: 2em;
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    min-width: 20px;
+    padding: 0 6px;
+    text-align: center;
 }
 
 nav.navigation div.content span.brand {
@@ -65,7 +79,7 @@ nav.navigation div.content span.brand {
 
 nav.navigation div.content span.links {
     float: right;
-    padding-top: 4px;
+    /*padding-top: 4px;*/
 
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -102,14 +116,13 @@ nav.navigation div.content div.repo-info h5 {
     margin-top: -5px;
 }
 
-nav.navigation div.content div.repo-info h5 a, nav.navigation div.content div.repo-info h5 a:hover {
-    color: #dfdfdf;
-    text-decoration: none;
-}
+
+/*
+*/
 
 /* content and other stuff */
 
-main.container {
+/*main.container {
     width: calc(100% - 32px);
     max-width: 980px;
     margin: auto;
@@ -170,15 +183,10 @@ main.container div.blog-post div.preview {
     font-size: 13px;
 }
 
-.non-bold {
-    font-weight: inherit !important;
-}
 
-.no-left-border {
-    border-left: 0 !important;
-}
+*/
 
-/* error pages */
+/* error pages
 
 main.container.error {
     text-align: center !important;
@@ -203,26 +211,13 @@ pre, blockquote {
     word-wrap: break-word;
 }
 
-span.pill {
-    background-color: rgba(139,148,158,0.2);
-    color: #8b949e;
-    margin-left: 2px;
-    border: 1px solid transparent;
-    border-radius: 2em;
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 18px;
-    min-width: 15px;
-    padding: 0 6px;
-    text-align: center;
-}
+
 
 /*code {
     font-family: "Fira Code", monospace !important;
     font-variant-ligatures: contextual !important;
     font-feature-settings: "calt" 1 !important;
-}*/
+}*
 
 pre {
     border: 1px solid #e0e0e0;
@@ -232,7 +227,7 @@ pre {
 table {
     width: 100%;
     white-space: nowrap;
-}
+}*/
 
 /* mobile improvements */
 
