@@ -1,0 +1,7 @@
+[package]
+name = "gitarena-ssh"
+version = "0.0.1"
+authors = ["Mari <me@cutegirl.tech>"]
+edition = "2018"
+
+[dependencies]

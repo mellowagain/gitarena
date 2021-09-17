@@ -8,6 +8,9 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 
+[workspace]
+members = [".", "gitarena-macros", "gitarena-ssh"]
+
 [dependencies]
 actix-files = "0.5.0"
 actix-identity = "0.3.1"

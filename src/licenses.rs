@@ -12,7 +12,7 @@ pub(crate) fn init() -> Result<()> {
     let mut path = env::current_dir()?;
     path.push(Path::new("license-list-data/json/details"));
 
-    LICENSE_STORE.lock().unwrap().load_spdx(path.as_path(), true).unwrap();
+    //LICENSE_STORE.lock().unwrap().load_spdx(path.as_path(), true).unwrap();
 
     Ok(())
 }
