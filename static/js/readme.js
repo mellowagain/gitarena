@@ -3,7 +3,7 @@ function loadReadme(username, repo, tree) {
         .done((json) => {
             insertScript("/static/js/third_party/purify.min.js");
 
-            const fileName = json.file_name;
+            let fileName = json.file_name;
             const loweredFileName = fileName.toLowerCase();
 
             let content = json.content;
@@ -15,6 +15,11 @@ function loadReadme(username, repo, tree) {
                 insertScript("/static/js/third_party/marked.min.js");
                 content = marked(content);
             }
+
+            fileName = DOMPurify.sanitize(fileName, {
+                ALLOWED_TAGS: [],
+                KEEP_CONTENT: true
+            });
 
             content = DOMPurify.sanitize(content, {
                 ALLOWED_TAGS: allowedTags,
