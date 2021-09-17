@@ -1,6 +1,6 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{bstr_to_str, get_user_by_identity, repo_from_str};
-use crate::git::history::{all_commits, last_commit_for_blob, last_commit_for_ref};
+use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::render_template;
 use crate::repository::Repository;
@@ -116,6 +116,9 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
     context.try_insert("merge_requests_count", &0)?;
     context.try_insert("releases_count", &0)?;
     context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name).await?.len())?;
+
+    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
+    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
 
     if let Some(user) = user.as_ref() {
         context.try_insert("user", user)?;

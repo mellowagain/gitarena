@@ -12,14 +12,14 @@ mod repo_view;
 pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(create_repo::create);
     config.service(repo_meta::meta);
+    config.service(repo_readme::readme);
+    config.service(repo_view::view_repo);
+    config.service(repo_view::view_repo_tree);
 
     // Git smart protocol v2 routes
     config.service(git_receive_pack::git_receive_pack); // git push
     config.service(git_upload_pack::git_upload_pack); // git pull
     config.service(info_refs::info_refs);
-    config.service(repo_readme::readme);
-    config.service(repo_view::view_repo);
-    config.service(repo_view::view_repo_tree);
 }
 
 #[derive(Deserialize)]

@@ -87,15 +87,29 @@
                         <i class="code branch icon"></i>
                         Branches
                     </div>
-                    <div class="item active selected">
-                        <div class="check icon"></div>
-                        <code>{{ tree }}</code>
-                    </div>
+                    {% for branch in branches %}
+                        <div class="item {% if branch == tree %} active selected {% endif %}">
+                            <code>{{ branch }}</code>
+
+                            {% if branch == repo.default_branch %}
+                                <span class="pill">Default</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                     <div class="divider"></div>
                     <div class="header">
                         <i class="tags icon"></i>
                         Tags
                     </div>
+                    {% for tag in tags %}
+                        <div class="item {% if tag == tree %} active selected {% endif %}">
+                            <code>{{ tag }}</code>
+
+                            {% if loop.last %}
+                                <span class="pill">Latest</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>

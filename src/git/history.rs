@@ -80,3 +80,26 @@ pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str) -> Resul
 
     Ok(results)
 }
+
+pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
+    let mut results = Vec::<String>::new();
+
+    for reference in repo.references()? {
+        let reference = reference?;
+
+        if let Some(name) = reference.name() {
+            results.push(name.replacen("refs/heads/", "", 1));
+        }
+
+    }
+
+    Ok(results)
+}
+
+pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Result<Vec<String>> {
+    let tags = repo.tag_names(prefix)?;
+
+    Ok(tags.iter()
+        .filter_map(|o| o.map(|o| o.to_owned()))
+        .collect())
+}

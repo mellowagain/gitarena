@@ -55,21 +55,6 @@ header nav.navigation div.content a.link:hover {
     color: #fafafa;
 }
 
-header nav.navigation div.content span.pill {
-    background-color: rgba(139,148,158,0.2);
-    color: #8b949e;
-    margin-left: 2px;
-    border: 1px solid transparent;
-    border-radius: 2em;
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 18px;
-    min-width: 20px;
-    padding: 0 6px;
-    text-align: center;
-}
-
 nav.navigation div.content span.brand {
     text-transform: uppercase;
     font-weight: 400;
@@ -116,6 +101,21 @@ nav.navigation div.content div.repo-info h5 {
     margin-top: -5px;
 }
 
+/* elements */
+span.pill {
+    background-color: rgba(139,148,158,0.2);
+    color: #8b949e;
+    margin-left: 2px;
+    border: 1px solid transparent;
+    border-radius: 2em;
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    min-width: 20px;
+    padding: 0 6px;
+    text-align: center;
+}
 
 /*
 */
