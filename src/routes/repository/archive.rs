@@ -159,7 +159,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, id: Identity, db_po
 }
 
 #[async_recursion(?Send)]
-async fn write_directory_zip<T: Write + std::io::Seek>(repo: &Repository, tree: Tree, path: &Path, writer: &mut ZipWriter<T>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
+async fn write_directory_zip(repo: &Repository, tree: Tree, path: &Path, writer: &mut ZipWriter<Cursor<Vec<u8>>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path_buffer = path.join(filename);
