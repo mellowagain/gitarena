@@ -136,8 +136,8 @@
                     <div class="menu">
                         <div class="https clone item active" data-url="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git" data-icon="copy">https</div>
                         <div class="ssh clone item" data-url="git@{{ domain | split(pat="://") | nth(n=1) | split(pat=":") | first | safe }}:{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git" data-icon="copy">ssh</div>
-                        <div class="zip download item" data-url="{{ domain | safe}}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/zip" data-icon="download">.zip</div>
-                        <div class="targz download item" data-url="{{ domain | safe}}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/archive/targz" data-icon="download">.tar.gz</div>
+                        <div class="zip download item" data-url="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/tree/{{ tree | urlencode }}/archive/zip" data-icon="download">.zip</div>
+                        <div class="targz download item" data-url="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/tree/{{ tree | urlencode }}/archive/targz" data-icon="download">.tar.gz</div>
                     </div>
                 </div>
                 <input class="code url" type="text" value="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git">
@@ -262,8 +262,7 @@
             popup: ".downloads.popup",
             hoverable: true,
             position: "bottom left"
-        })
-        $(".secondary > a").tab();
+        });
 
         const codeUrl = $(".code.url");
 

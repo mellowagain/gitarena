@@ -1,6 +1,7 @@
 use actix_web::web::ServiceConfig;
 use serde::Deserialize;
 
+mod archive;
 mod create_repo;
 mod git_receive_pack;
 mod git_upload_pack;
@@ -10,6 +11,8 @@ mod repo_readme;
 mod repo_view;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
+    config.service(archive::tar_gz_file);
+    config.service(archive::zip_file);
     config.service(create_repo::create);
     config.service(repo_meta::meta);
     config.service(repo_readme::readme);

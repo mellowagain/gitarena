@@ -31,12 +31,12 @@ pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut
     repo_files_at_ref(repo, &repo.refs.find_loose("HEAD")?, buffer, cache).await
 }
 
-pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
+pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
 
     repo.odb.find_existing_blob(oid, &mut buffer, cache).map(|blob| {
-        // Honestly no idea how but this works out to yield valid file content
-        // TODO: Maybe Git odb has some header and padding attached to the blob? Need to investigate
+        // Honestly no idea how but this seems to yield out the correct file content
+        // TODO: This is *most likely* bugged and needs to be fixed at some point
         let content_vec: Vec<u8> = blob.data.iter()
             .map(|i| *i)
             .skip(2)
@@ -44,9 +44,15 @@ pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut 
             .collect();
 
         let content = &content_vec[..content_vec.len() - 2];
-        let cow = String::from_utf8_lossy(content);
-        let file_content: &str = cow.borrow();
 
-        Ok(file_content.to_owned())
+        Ok(content.to_vec()) // TODO: We allocate a vec twice here, need to change this
     })?
+}
+
+pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
+    let content = read_raw_blob_content(&repo, &oid, cache).await?;
+    let cow = String::from_utf8_lossy(&content[..]);
+    let file_content: &str = cow.borrow();
+
+    Ok(file_content.to_owned())
 }

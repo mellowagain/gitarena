@@ -15,6 +15,7 @@ actix-rt = "1.1.1"
 actix-web = "3.2.0"
 anyhow = "1.0.41"
 askalono = "0.4.3"
+async-compression = { version = "0.3.8", features = ["gzip", "tokio-02"] }
 async-recursion = "0.3.2"
 base64 = "0.13.0"
 bstr = "0.2.16"
@@ -56,7 +57,9 @@ tera = { version = "1.12.1", features = ["builtins"] }
 thiserror = "1.0.26"
 time = "0.2.27"
 tinytemplate = "1.2.1"
+tokio-tar = "0.1.0"
 toml = "0.5.8"
+zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
 
 [build-dependencies]
 config_struct = { version = "0.5.0", features = ["toml-parsing"] }
