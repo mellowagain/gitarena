@@ -1,6 +1,7 @@
 use crate::config::CONFIG;
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{get_user_by_identity, is_fs_legal, is_identifier};
+use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 
 use std::borrow::Borrow;
@@ -48,11 +49,11 @@ pub(crate) async fn create(id: Identity, body: web::Json<CreateJsonRequest>, db_
         return Err(HttpError(409, "Repository name already in use for your account".to_owned()).into());
     }
 
-    let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, private) values ($1, $2, $3, $4) returning *")
+    let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
         .bind(&user.id)
         .bind(name)
         .bind(description)
-        .bind(&body.private)
+        .bind(&body.visibility)
         .fetch_one(&mut transaction)
         .await?;
 
@@ -75,7 +76,7 @@ pub(crate) async fn create(id: Identity, body: web::Json<CreateJsonRequest>, db_
 pub(crate) struct CreateJsonRequest {
     name: String,
     description: String,
-    private: bool
+    visibility: RepoVisibility
 }
 
 #[derive(Serialize)]
