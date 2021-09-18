@@ -30,6 +30,8 @@ create unique index if not exists user_verifications_hash_uindex
 create unique index if not exists user_verifications_user_id_uindex
     on user_verifications (user_id);
 
+create type repo_visibility as enum ('public', 'internal', 'private');
+
 create table if not exists repositories
 (
     id             serial                                         not null
@@ -41,7 +43,7 @@ create table if not exists repositories
             on delete cascade,
     name           varchar(32)                                    not null,
     description    varchar(256)                                   not null,
-    private        boolean default false                          not null,
+    visibility     repo_visibility default 'public'               not null,
     default_branch varchar(256) default 'main'::character varying not null,
     license        varchar(256) default NULL::character varying
 );

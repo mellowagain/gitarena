@@ -1,5 +1,6 @@
-use crate::user::User;
 use crate::config::CONFIG;
+use crate::privileges::repo_visibility::RepoVisibility;
+use crate::user::User;
 
 use std::borrow::Borrow;
 
@@ -16,7 +17,7 @@ pub(crate) struct Repository {
     pub(crate) owner: i32,
     pub(crate) name: String,
     pub(crate) description: String,
-    pub(crate) private: bool,
+    pub(crate) visibility: RepoVisibility,
     pub(crate) default_branch: String,
 
     pub(crate) license: Option<String>,
@@ -50,19 +51,5 @@ impl Repository {
 
     pub(crate) async fn repo_size(&self, owner_username: &str) -> Result<u64> {
         Ok(dir::get_size(self.get_fs_path(owner_username).await)?)
-    }
-}
-
-impl Default for Repository {
-    fn default() -> Repository {
-        Repository {
-            id: 0,
-            owner: 0,
-            name: "".to_owned(),
-            description: "".to_owned(),
-            private: false,
-            default_branch: "main".to_owned(),
-            license: None
-        }
     }
 }

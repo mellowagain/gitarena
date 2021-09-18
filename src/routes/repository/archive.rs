@@ -1,6 +1,7 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{get_user_by_identity, repo_from_str};
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
+use crate::privileges::repo_visibility::RepoVisibility;
 use crate::routes::repository::GitTreeRequest;
 
 use std::borrow::Borrow;
@@ -33,7 +34,7 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, id: Identity, db
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
     // TODO: Check for repo access for other people than owner
-    if repo.private {
+    if repo.visibility != RepoVisibility::Public {
         if !user.as_ref().is_some() || user.as_ref().unwrap().id != repo.owner {
             return Err(HttpError(404, "Not found".to_owned()).into());
         }
@@ -127,7 +128,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, id: Identity, db_po
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
     // TODO: Check for repo access for other people than owner
-    if repo.private {
+    if repo.visibility != RepoVisibility::Public {
         if !user.as_ref().is_some() || user.as_ref().unwrap().id != repo.owner {
             return Err(HttpError(404, "Not found".to_owned()).into());
         }

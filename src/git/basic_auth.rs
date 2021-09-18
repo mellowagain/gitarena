@@ -2,6 +2,7 @@ use crate::crypto;
 use crate::error::GAErrors::GitError;
 use crate::extensions::get_header;
 use crate::git::basic_auth;
+use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::User;
 
@@ -12,7 +13,7 @@ use sqlx::{Postgres, Transaction};
 pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
     match repo {
         Some(repo) => {
-            if repo.private {
+            if repo.visibility != RepoVisibility::Public {
                 return match login_flow(request, transaction, content_type).await? {
                     Either::A(user) => Ok(Either::A((Some(user), repo))),
                     Either::B(response) => Ok(Either::B(response))
