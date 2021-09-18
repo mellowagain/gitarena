@@ -1,6 +1,8 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 
-#[derive(Debug)]
+use enum_display_derive::Display;
+
+#[derive(Display, Debug)]
 pub(crate) enum Band {
     Data,
     Progress,
@@ -13,16 +15,6 @@ impl Band {
             Band::Data => b"\x01",
             Band::Progress => b"\x02",
             Band::Error => b"\x03"
-        }
-    }
-}
-
-impl Display for Band {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Band::Data => f.write_str("Data (1)"),
-            Band::Progress => f.write_str("Progress (2)"),
-            Band::Error => f.write_str("Error (3)")
         }
     }
 }
