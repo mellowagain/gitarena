@@ -165,7 +165,7 @@
                         {% endif %}
 
                         <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
-                            {{ last_commit.message }}
+                            {{ last_commit.message | split(pat="\n") | first }}
                         </a>
                     </div>
                     <div class="right aligned six wide column">
@@ -224,7 +224,7 @@
             </td>
             <td class="no-left-border">
                 <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ file.commit.oid }}">
-                    {{ file.commit.message }}
+                    {{ file.commit.message | split(pat="\n") | first }}
                 </a>
             </td>
             <td class="ui right aligned no-left-border">{{ file.commit.time | human_time }}</td>
