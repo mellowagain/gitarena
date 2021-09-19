@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 
 use enum_display_derive::Display;
 use serde::{Deserialize, Serialize};
