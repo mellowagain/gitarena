@@ -20,10 +20,14 @@ macro_rules! generate_check {
             Ok(match repo.visibility {
                 RepoVisibility::Private => {
                     if let Some(user) = user {
-                        get_repo_privilege(repo, user, executor)
-                            .await
-                            .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
-                            .map_or_else(|| false, |privilege| privilege.access_level.$target())
+                        if &user.id != &repo.owner {
+                            get_repo_privilege(repo, user, executor)
+                                .await
+                                .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
+                                .map_or_else(|| false, |privilege| privilege.access_level.$target())
+                        } else {
+                            true
+                        }
                     } else {
                         false
                     }
