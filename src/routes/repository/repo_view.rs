@@ -8,7 +8,6 @@ use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
 use crate::templates::web::{GitCommit, RepoFile};
 
-use std::borrow::Borrow;
 use std::cmp::Ordering;
 
 use actix_identity::Identity;
