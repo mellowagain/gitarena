@@ -2,7 +2,7 @@ use crate::error::GAErrors::HttpError;
 use crate::extensions::{bstr_to_str, get_user_by_identity, repo_from_str};
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::privileges::repo_visibility::RepoVisibility;
+use crate::privileges::privilege;
 use crate::render_template;
 use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
@@ -21,7 +21,6 @@ use git_object::Tree;
 use git_pack::cache::lru::MemoryCappedHashmap;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
-use log::warn;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
 
@@ -30,10 +29,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
     // TODO: Check for repo access for other people than owner
-    if repo.visibility != RepoVisibility::Public {
-        if !user.as_ref().is_some() || user.as_ref().unwrap().id != repo.owner {
-            return Err(HttpError(404, "Not found".to_owned()).into());
-        }
+    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+        return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
     let mut context = Context::new();

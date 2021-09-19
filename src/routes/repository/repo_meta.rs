@@ -1,6 +1,6 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::get_user_by_identity;
-use crate::privileges::repo_visibility::RepoVisibility;
+use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
@@ -29,11 +29,8 @@ pub(crate) async fn meta(uri: web::Path<GitRequest>, id: Identity, db_pool: web:
 
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    // TODO: Check for repo access for other people than owner
-    if repo.visibility != RepoVisibility::Public {
-        if !user.is_some() || user.unwrap().id != repo.owner {
-            return Err(HttpError(404, "Not found".to_owned()).into());
-        }
+    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+        return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
     transaction.commit().await?;

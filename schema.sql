@@ -34,16 +34,34 @@ create type repo_visibility as enum ('public', 'internal', 'private');
 
 create table if not exists repositories
 (
-    id             serial                                         not null
+    id             serial                                               not null
         constraint repositories_pk
             primary key,
-    owner          integer                                        not null
+    owner          integer                                              not null
         constraint repositories_users_id_fk
             references users (id)
             on delete cascade,
-    name           varchar(32)                                    not null,
-    description    varchar(256)                                   not null,
-    visibility     repo_visibility default 'public'               not null,
-    default_branch varchar(256) default 'main'::character varying not null,
+    name           varchar(32)                                          not null,
+    description    varchar(256)                                         not null,
+    visibility     repo_visibility default 'public'::repo_visibility    not null,
+    default_branch varchar(256) default 'main'::character varying       not null,
     license        varchar(256) default NULL::character varying
+);
+
+create type access_level as enum ('viewer', 'supporter', 'coder', 'manager', 'admin');
+
+create table if not exists privileges
+(
+    id           serial
+        constraint privileges_pk
+            primary key,
+    user_id      integer                                     not null
+        constraint privileges_users_id_fk
+            references users
+            on delete cascade,
+    repo_id      integer                                     not null
+        constraint privileges_repositories_id_fk
+            references repositories
+            on delete cascade,
+    access_level access_level default 'viewer'::access_level not null
 );

@@ -1,7 +1,7 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{get_user_by_identity, repo_from_str};
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
-use crate::privileges::repo_visibility::RepoVisibility;
+use crate::privileges::privilege;
 use crate::routes::repository::GitTreeRequest;
 
 use std::borrow::Borrow;
@@ -33,11 +33,8 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, id: Identity, db
     let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    // TODO: Check for repo access for other people than owner
-    if repo.visibility != RepoVisibility::Public {
-        if !user.as_ref().is_some() || user.as_ref().unwrap().id != repo.owner {
-            return Err(HttpError(404, "Not found".to_owned()).into());
-        }
+    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+        return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
     let gitoxide_repo = repo.gitoxide(&uri.username).await?;
@@ -61,8 +58,6 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, id: Identity, db
 
     let encoder = GzipEncoder::new(tar_data);
     let gzip_data = encoder.into_inner();
-
-
 
     Ok(HttpResponse::Ok()
         .header(CONTENT_DISPOSITION, format!("attachment; filename=\"{}.tar.gz\"", &repo.name))
@@ -128,10 +123,8 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, id: Identity, db_po
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
     // TODO: Check for repo access for other people than owner
-    if repo.visibility != RepoVisibility::Public {
-        if !user.as_ref().is_some() || user.as_ref().unwrap().id != repo.owner {
-            return Err(HttpError(404, "Not found".to_owned()).into());
-        }
+    if privilege::check_access(&repo, &user, &mut transaction).await? {
+        return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
     let gitoxide_repo = repo.gitoxide(&uri.username).await?;
