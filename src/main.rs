@@ -114,8 +114,9 @@ async fn main() -> Result<()> {
             app = app.service(
                 Files::new("/static", "./static")
                     .show_files_listing()
-                    .use_etag(true)
-                    .use_last_modified(true)
+                    .use_etag(false)
+                    .use_last_modified(false)
+                    .use_hidden_files()
             );
         }
 
