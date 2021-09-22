@@ -20,8 +20,7 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, id: Identity, db_pool
     let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    // TODO: Check for repo access for other people than owner
-    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 

@@ -16,30 +16,44 @@ pub(crate) struct Privilege {
 
 macro_rules! generate_check {
     ($name:ident, $target:ident) => {
-        pub(crate) async fn $name<'e, E: Executor<'e, Database = Postgres>>(repo: &Repository, user: &Option<User>, executor: E) -> Result<bool> {
-            Ok(match repo.visibility {
-                RepoVisibility::Private => {
-                    if let Some(user) = user {
-                        if &user.id != &repo.owner {
-                            get_repo_privilege(repo, user, executor)
-                                .await
-                                .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
-                                .map_or_else(|| false, |privilege| privilege.access_level.$target())
-                        } else {
-                            true
-                        }
-                    } else {
-                        false
-                    }
+        pub(crate) async fn $name<'e, E: Executor<'e, Database = Postgres>>(repo: &Repository, user: Option<&User>, executor: E) -> Result<bool> {
+            Ok(if let Some(user) = user {
+                if &user.id != &repo.owner {
+                    get_repo_privilege(repo, user, executor)
+                        .await
+                        .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
+                        .map_or_else(|| false, |privilege| privilege.access_level.$target())
+                } else {
+                    true
                 }
-                RepoVisibility::Internal => user.is_some(),
-                RepoVisibility::Public => true
+            } else {
+                false
             })
         }
     }
 }
 
-generate_check!(check_access, can_view);
+pub(crate) async fn check_access<'e, E: Executor<'e, Database=Postgres>>(repo: &Repository, user: Option<&User>, executor: E) -> Result<bool> {
+    Ok(match repo.visibility {
+        RepoVisibility::Private => {
+            if let Some(user) = user {
+                if &user.id != &repo.owner {
+                    get_repo_privilege(repo, user, executor)
+                        .await
+                        .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
+                        .map_or_else(|| false, |privilege| privilege.access_level.can_view())
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
+        }
+        RepoVisibility::Internal => user.is_some(),
+        RepoVisibility::Public => false
+    })
+}
+
 generate_check!(check_manage_issues, can_manage_issues);
 generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);

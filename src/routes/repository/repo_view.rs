@@ -27,8 +27,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    // TODO: Check for repo access for other people than owner
-    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 

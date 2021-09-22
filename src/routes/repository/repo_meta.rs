@@ -29,7 +29,7 @@ pub(crate) async fn meta(uri: web::Path<GitRequest>, id: Identity, db_pool: web:
 
     let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    if !privilege::check_access(&repo, &user, &mut transaction).await? {
+    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 

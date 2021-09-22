@@ -7,6 +7,7 @@ use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
 use crate::git::{basic_auth, pack, ref_update};
+use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
@@ -50,17 +51,24 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         .fetch_optional(&mut transaction)
         .await?;
 
-    let _user = match basic_auth::login_flow(&request, &mut transaction, "application/x-git-receive-pack-result").await? {
+    let user = match basic_auth::login_flow(&request, &mut transaction, "application/x-git-receive-pack-result").await? {
         Either::A(user) => user,
         Either::B(response) => return Ok(response)
     };
-
-    // TODO: Check if _user has actually `write` access to the repository
 
     let mut repo = match repo_option {
         Some(repo) => repo,
         None => return Err(GitError(404, None).into())
     };
+
+    // If the user doesn't have access return 404 Not found to not leak existence of internal/private repositories
+    if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
+        return Err(GitError(404, None).into());
+    }
+
+    if !privilege::check_push(&repo, Some(&user), &mut transaction).await? {
+        return Err(GitError(401, Some("No permission to push into this repo".to_owned())).into());
+    }
 
     let mut bytes = web::BytesMut::new();
 
