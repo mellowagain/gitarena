@@ -1,6 +1,5 @@
 use crate::config::CONFIG;
 use crate::privileges::repo_visibility::RepoVisibility;
-use crate::user::User;
 
 use std::borrow::Borrow;
 
@@ -9,7 +8,7 @@ use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::Repository as GitoxideRepository;
 use serde::Serialize;
-use sqlx::{FromRow, Postgres, Transaction};
+use sqlx::FromRow;
 
 #[derive(FromRow, Serialize)]
 pub(crate) struct Repository {
