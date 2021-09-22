@@ -10,8 +10,11 @@ use crate::git::{basic_auth, pack, ref_update};
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
+use std::path::Path;
+
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
+use async_process::{Command, Stdio};
 use futures::StreamExt;
 use git_pack::cache::lru::MemoryCappedHashmap;
 use git_packetline::{PacketLine, StreamingPeekableIter};
@@ -121,11 +124,23 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         }
     }
 
+    let repo_dir_str = repo.get_fs_path(&uri.username.as_ref()).await;
+    let repo_dir = Path::new(&repo_dir_str);
+
+    // Let Git collect garbage to optimize repo size
+    match Command::new("git").args(&["gc", "--auto", "--quiet"]).current_dir(repo_dir).stdout(Stdio::null()).stderr(Stdio::null()).status().await {
+        Ok(status) => if !status.success() {
+            warn!("Git garbage collector exited with non-zero status: {}", status);
+        }
+        Err(err) => warn!("Failed to execute Git garbage collector: {}", err)
+    }
+
     output_writer.flush_sideband(Band::Data).await?;
     output_writer.flush().await?;
 
-    // Run hooks
-    cache = post_update::run(&mut repo, &uri.username, cache).await
+    // Run post update hooks
+    post_update::run(&mut repo, &uri.username, cache)
+        .await
         .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 
     sqlx::query("update repositories set license = $1 where id = $2")

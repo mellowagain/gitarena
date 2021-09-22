@@ -19,6 +19,7 @@ actix-web = "3.2.0"
 anyhow = "1.0.41"
 askalono = "0.4.3"
 async-compression = { version = "0.3.8", features = ["gzip", "tokio-02"] }
+async-process = "1.2.0"
 async-recursion = "0.3.2"
 base64 = "0.13.0"
 bstr = "0.2.16"

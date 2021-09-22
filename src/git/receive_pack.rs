@@ -21,8 +21,6 @@ use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
 use git_repository::actor::Signature;
 use git_repository::prelude::*;
-use log::warn;
-use git_odb::compound::find::Error;
 
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
     assert!(ref_update.new.is_some());
@@ -122,8 +120,6 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
         pack_writer.write(raw_pack)?;
         pack_writer.commit()?;
     }
-
-    // TODO: Run `git gc --auto --quiet` to optimize repo size
 
     if ref_update.report_status || ref_update.report_status_v2 {
         writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
