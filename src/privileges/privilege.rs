@@ -50,7 +50,7 @@ pub(crate) async fn check_access<'e, E: Executor<'e, Database=Postgres>>(repo: &
             }
         }
         RepoVisibility::Internal => user.is_some(),
-        RepoVisibility::Public => false
+        RepoVisibility::Public => true
     })
 }
 
