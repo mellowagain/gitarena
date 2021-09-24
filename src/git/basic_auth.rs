@@ -9,8 +9,10 @@ use crate::user::User;
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
 use sqlx::{Postgres, Transaction};
+use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
+#[instrument(err)]
 pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
     match repo {
         Some(repo) => {
@@ -32,6 +34,7 @@ pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type:
     }
 }
 
+#[instrument(err)]
 pub(crate) async fn login_flow(request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>, content_type: &str) -> Result<Either<User, HttpResponse>> {
     if !basic_auth::is_present(&request).await {
         return Ok(Either::B(prompt(content_type).await));
@@ -40,6 +43,7 @@ pub(crate) async fn login_flow(request: &HttpRequest, transaction: &mut Transact
     Ok(Either::A(basic_auth::authenticate(&request, transaction).await?))
 }
 
+#[instrument]
 pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
     HttpResponse::Unauthorized()
         .header("Content-Type", content_type)
@@ -47,6 +51,7 @@ pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
         .finish()
 }
 
+#[instrument(err)]
 pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<User> {
     match get_header(&request, "Authorization") {
         Some(auth_header) => {
@@ -83,6 +88,7 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
     }
 }
 
+#[instrument(err)]
 pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, String)> {
     let mut split = auth_header.splitn(2, " ");
     let auth_type = split.next().unwrap_or_default();

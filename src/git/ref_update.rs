@@ -3,7 +3,9 @@ use crate::error::GAErrors;
 use crate::extensions::normalize_oid_str;
 
 use anyhow::Result;
+use tracing::instrument;
 
+#[instrument(err)]
 pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
     let line = String::from_utf8(raw_line)?;
     let mut ref_update = RefUpdate::default();

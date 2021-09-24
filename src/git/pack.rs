@@ -12,10 +12,12 @@ use git_pack::data::input::{Mode as PackIterationMode};
 use git_pack::index::Version as PackVersion;
 use git_pack::{Bundle, cache, FindExt};
 use tempfile::{Builder, TempDir};
+use tracing::instrument;
 
 /// Returns path to index file, pack file and temporary dir.
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
+#[instrument(err)]
 pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
@@ -28,6 +30,7 @@ pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Re
     }
 }
 
+#[instrument(err)]
 pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir, repo: &Repository, repo_owner: &str) -> Result<(PathBuf, PathBuf)> {
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),

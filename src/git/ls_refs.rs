@@ -7,10 +7,12 @@ use actix_web::web::Bytes;
 use anyhow::Result;
 use git2::{Error as Git2Error, ErrorCode, Reference, Repository as Git2Repository};
 use log::{error, warn};
+use tracing::instrument;
 
 // TODO: Combine ls_refs and ls_refs_all to be shared (currently some code is duplicated)
 
 // Used by git-upload-pack ref discovery
+#[instrument(err, skip(repo))]
 pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
     let mut options = LsRefs::default();
     let mut writer = GitWriter::new();
@@ -74,6 +76,7 @@ pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options:
     Ok(output)
 }
 
+#[instrument(skip(ref_result, repo))]
 pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Error>, repo: &Git2Repository, options: &LsRefs) -> Option<String> {
     return match ref_result {
         Ok(reference) => {
@@ -121,6 +124,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
 }
 
 // Used by git-receive-pack ref discovery
+#[instrument(err, skip(repo))]
 pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 
@@ -165,6 +169,7 @@ const fn receive_pack_capabilities() -> &'static str {
     concat!("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-", env!("CARGO_PKG_VERSION"))
 }
 
+#[derive(Debug)]
 pub(crate) struct LsRefs {
     pub(crate) peel: bool,
     pub(crate) symrefs: bool,

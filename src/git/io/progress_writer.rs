@@ -6,8 +6,9 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use git2::PackBuilderStage;
+use tracing::instrument;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct ProgressWriter {
     lines: Vec<String>,
     pub(crate) delta_total: Option<u32>
@@ -25,6 +26,7 @@ impl ProgressWriter {
         self.lines.push(text);
     }
 
+    #[instrument]
     pub(crate) fn pack_builder_callback(&mut self) -> impl FnMut(PackBuilderStage, u32, u32) -> bool + '_ {
         let rc = Rc::new(RefCell::new(self));
 

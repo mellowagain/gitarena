@@ -10,7 +10,7 @@ use git_repository::Repository as GitoxideRepository;
 use serde::Serialize;
 use sqlx::FromRow;
 
-#[derive(FromRow, Serialize)]
+#[derive(FromRow, Serialize, Debug)]
 pub(crate) struct Repository {
     pub(crate) id: i32,
     pub(crate) owner: i32,

@@ -3,11 +3,13 @@ use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
-use async_recursion::async_recursion;
 use anyhow::Result;
+use async_recursion::async_recursion;
 use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use log::warn;
+use tracing::instrument;
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
     let mut options = Fetch::default();
     let mut writer = GitWriter::new();
@@ -80,6 +82,7 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
     Ok(writer.serialize().await?)
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
     if options.have.is_empty() {
         return Ok(None);
@@ -110,6 +113,7 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
     Ok(Some(writer))
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
@@ -177,6 +181,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     Ok(Some(writer))
 }
 
+#[instrument(err, skip(pack_builder))]
 #[async_recursion(?Send)]
 async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut PackBuilder<'_>) -> Result<()> {
     pack_builder.insert_commit(commit.id())?;
@@ -201,6 +206,7 @@ async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut Pack
     Ok(Some(writer))
 }*/
 
+#[derive(Debug)]
 pub(crate) struct Fetch {
     pub(crate) thin_pack: bool,
     pub(crate) no_progress: bool,

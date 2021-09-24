@@ -9,7 +9,9 @@ use git_pack::cache::DecodeEntry;
 use git_ref::file::loose::Reference;
 use git_repository::refs::Target;
 use git_repository::Repository;
+use tracing::instrument;
 
+#[instrument(err, skip(repo, cache))]
 #[async_recursion(?Send)]
 pub(crate) async fn repo_files_at_ref<'a>(repo: &'a Repository, reference: &Reference, buffer: &'a mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<TreeRef<'a>> {
     match &reference.target {
@@ -31,6 +33,7 @@ pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut
     repo_files_at_ref(repo, &repo.refs.find_loose("HEAD")?, buffer, cache).await
 }
 
+#[instrument(err, skip(repo, cache))]
 pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
 

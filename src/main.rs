@@ -194,12 +194,14 @@ fn init_logger() -> Result<WorkerGuard> {
     if cfg!(debug_assertions) {
         FmtSubscriber::builder()
             .with_env_filter(env_filter)
+            .with_thread_ids(true)
             .try_init()
             .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
     } else {
         FmtSubscriber::builder()
             .with_writer(writer) // TODO: Write additionally also to stdout in production
             .with_env_filter(env_filter)
+            .with_thread_ids(true)
             .try_init()
             .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
     }

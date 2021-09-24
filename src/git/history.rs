@@ -1,13 +1,16 @@
 use anyhow::Result;
 use async_recursion::async_recursion;
 use git2::{DiffOptions, Oid, Repository as Git2Repository};
+use tracing::instrument;
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn last_commit_for_blob(repo: &Git2Repository, reference_name: &str, file_name: &str) -> Result<Option<Oid>> {
     let commits = commits_for_blob(repo, reference_name, file_name, Some(1)).await?;
 
     Ok(commits.iter().next().map(|c| *c))
 }
 
+#[instrument(err, skip(repo))]
 #[async_recursion(?Send)]
 pub(crate) async fn last_commit_for_ref(repo: &Git2Repository, reference_name: &str) -> Result<Option<Oid>> {
     let reference = repo.find_reference(reference_name)?;
@@ -19,6 +22,7 @@ pub(crate) async fn last_commit_for_ref(repo: &Git2Repository, reference_name: &
     Ok(reference.target())
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, file_name: &str, max_results: Option<usize>) -> Result<Vec<Oid>> {
     let mut results = Vec::<Oid>::new();
 
@@ -65,6 +69,7 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
     Ok(results)
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str) -> Result<Vec<Oid>> {
     let mut results = Vec::<Oid>::new();
 
@@ -81,6 +86,7 @@ pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str) -> Resul
     Ok(results)
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
     let mut results = Vec::<String>::new();
 
@@ -96,6 +102,7 @@ pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
     Ok(results)
 }
 
+#[instrument(err, skip(repo))]
 pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Result<Vec<String>> {
     let tags = repo.tag_names(prefix)?;
 

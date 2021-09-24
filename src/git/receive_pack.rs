@@ -21,8 +21,10 @@ use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
 use git_repository::actor::Signature;
 use git_repository::prelude::{Find, FindExt};
+use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
+#[instrument(err, skip(writer, cache))]
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
     assert!(ref_update.new.is_some());
 
@@ -129,6 +131,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
     Ok(mut_cache)
 }
 
+#[instrument(err, skip(writer))]
 pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());

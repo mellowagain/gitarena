@@ -10,7 +10,9 @@ use bstr::ByteSlice;
 use git_object::tree::EntryMode;
 use git_odb::FindExt;
 use git_pack::cache::DecodeEntry;
+use tracing::instrument;
 
+#[instrument(err, skip(gitoxide_repo, cache))]
 pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_repository::Repository, cache: &mut impl DecodeEntry) -> Result<()> {
     let mut buffer = Vec::<u8>::new();
 
@@ -38,6 +40,7 @@ pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_re
     Ok(())
 }
 
+#[instrument(err)]
 async fn detect_license_from_file(repo: &mut Repository, data: &str) -> Result<()> {
     let text_data = TextData::from(data);
 

@@ -2,8 +2,10 @@ use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::Result;
+use tracing::instrument;
 
 // https://git-scm.com/docs/protocol-v2#_capabilities
+#[instrument(err)]
 pub(crate) async fn capabilities(service: &str) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 

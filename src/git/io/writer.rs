@@ -4,6 +4,7 @@ use actix_web::web::{Bytes, BytesMut};
 use anyhow::{Context, Result};
 use futures::AsyncWriteExt;
 use git_packetline::{PacketLine, Writer as PacketlineWriter};
+use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitWriter {
@@ -112,6 +113,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip(self))]
     pub(crate) async fn serialize(self) -> Result<Bytes> {
         let mut bytes = BytesMut::new();
         bytes.extend(self.inner.into_inner().iter());
