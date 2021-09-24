@@ -1,3 +1,5 @@
+use crate::extensions::time_function;
+
 use std::env;
 use std::path::Path;
 
@@ -18,7 +20,11 @@ pub(crate) async fn init() -> Result<()> {
     let mut path = env::current_dir()?;
     path.push(Path::new("license-list-data/json/details"));
 
-    LICENSE_STORE.lock().await.load_spdx(path.as_path(), true).unwrap_or_log();
+    let elapsed = time_function(|| async {
+        LICENSE_STORE.lock().await.load_spdx(path.as_path(), true).unwrap_or_log();
+    }).await;
+
+    info!("Successfully loaded SPDX license data. Took {} seconds.", elapsed);
 
     Ok(())
 }

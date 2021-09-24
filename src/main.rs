@@ -62,8 +62,6 @@ async fn main() -> Result<()> {
 
     licenses::init().await?;
 
-    info!("Successfully loaded SPDX license data.");
-
     let _watcher = templates::init().await?;
 
     let bind_address: &str = CONFIG.bind.borrow();

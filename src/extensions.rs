@@ -6,11 +6,13 @@ use crate::user::User;
 use core::result::Result as CoreResult;
 use std::borrow::Borrow;
 use std::io::Result as IoResult;
+use std::time::Instant;
 
 use actix_web::HttpRequest;
 use anyhow::{Error, Result};
 use bstr::{BStr, BString, ByteSlice};
 use chrono::Utc;
+use futures::Future;
 use git2::ObjectType;
 use git_hash::ObjectId;
 use git_pack::data::entry::Header;
@@ -168,4 +170,13 @@ pub(crate) fn default_signature() -> Signature {
             sign: Sign::Plus
         }
     }
+}
+
+// Returns the time the function took to execute in seconds
+pub(crate) async fn time_function<T: Future, F: FnOnce() -> T>(func: F) -> u64 {
+    let start = Instant::now();
+
+    func().await;
+
+    start.elapsed().as_secs()
 }

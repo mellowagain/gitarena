@@ -1,3 +1,4 @@
+use crate::extensions::time_function;
 use crate::templates::plain::Template;
 
 use std::path::Path;
@@ -23,15 +24,14 @@ lazy_static! {
 }
 
 pub(crate) async fn init() -> Result<RecommendedWatcher> {
-    info!("Loading templates...");
+    info!("Loading templates. This may take a while.");
 
-    #[allow(unused_must_use)]
-    {
+    let elapsed = time_function(|| async {
         // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
         TERA.read().await;
-    }
+    }).await;
 
-    info!("Successfully loaded templates.");
+    info!("Successfully loaded templates. Took {} seconds.", elapsed);
 
     let mut watcher = RecommendedWatcher::new(|result: std::result::Result<Event, NotifyError>| {
         let event = match result {
