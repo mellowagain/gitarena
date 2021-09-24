@@ -18,7 +18,7 @@ macro_rules! generate_check {
     ($name:ident, $target:ident) => {
         pub(crate) async fn $name<'e, E: Executor<'e, Database = Postgres>>(repo: &Repository, user: Option<&User>, executor: E) -> Result<bool> {
             Ok(if let Some(user) = user {
-                if &user.id != &repo.owner {
+                if &user.id != &repo.owner && !user.admin {
                     get_repo_privilege(repo, user, executor)
                         .await
                         .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
@@ -37,7 +37,7 @@ pub(crate) async fn check_access<'e, E: Executor<'e, Database=Postgres>>(repo: &
     Ok(match repo.visibility {
         RepoVisibility::Private => {
             if let Some(user) = user {
-                if &user.id != &repo.owner {
+                if &user.id != &repo.owner && !user.admin {
                     get_repo_privilege(repo, user, executor)
                         .await
                         .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?

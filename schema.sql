@@ -7,6 +7,7 @@ create table if not exists users
     email      varchar(128)                                                         not null,
     password   char(96)                                                             not null,
     disabled   boolean                  default false                               not null,
+    admin      boolean                  default false                               not null,
     created_at timestamp with time zone default CURRENT_TIMESTAMP                   not null,
     session    char(7)                  default substr(md5((random())::text), 0, 8) not null
 );

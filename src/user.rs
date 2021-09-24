@@ -9,6 +9,7 @@ pub(crate) struct User {
     pub(crate) email: String,
     pub(crate) password: String,
     pub(crate) disabled: bool,
+    pub(crate) admin: bool,
     pub(crate) session: String,
     pub(crate) created_at: DateTime<Utc>
 }
