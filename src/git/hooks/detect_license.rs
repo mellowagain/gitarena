@@ -1,14 +1,11 @@
-use crate::error::GAErrors::HookError;
 use crate::git::utils::{read_blob_content, repo_files_at_head};
-use crate::LICENSE_STORE;
-use crate::licenses::license_file_names;
+use crate::licenses::{license_file_names, LICENSE_STORE};
 use crate::repository::Repository;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use askalono::TextData;
 use bstr::ByteSlice;
 use git_object::tree::EntryMode;
-use git_odb::FindExt;
 use git_pack::cache::DecodeEntry;
 use tracing::instrument;
 
@@ -29,7 +26,7 @@ pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_re
             EntryMode::Blob => {
                 let content = read_blob_content(gitoxide_repo, entry.oid, cache).await?;
 
-                detect_license_from_file(repo, content.as_str()).await?;
+                detect_license_from_file(repo, content.as_str()).await;
                 break;
             }
             EntryMode::Link => { /* todo: follow symlinks in case the target is a license */ }
@@ -40,11 +37,11 @@ pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_re
     Ok(())
 }
 
-#[instrument(err)]
-async fn detect_license_from_file(repo: &mut Repository, data: &str) -> Result<()> {
+#[instrument]
+async fn detect_license_from_file(repo: &mut Repository, data: &str) {
     let text_data = TextData::from(data);
 
-    let license_store = LICENSE_STORE.lock().map_err(|_| HookError("Failed to acquire lock for license store"))?;
+    let license_store = LICENSE_STORE.lock().await;
     let license_match = license_store.analyze(&text_data);
 
     // Only apply license if we're confident
@@ -53,6 +50,4 @@ async fn detect_license_from_file(repo: &mut Repository, data: &str) -> Result<(
     } else {
         None
     };
-
-    Ok(())
 }

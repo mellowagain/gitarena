@@ -18,6 +18,7 @@ actix-rt = "1.1.1"
 actix-web = "3.2.0"
 anyhow = "1.0.41"
 askalono = "0.4.3"
+async-compat = "0.2.1"
 async-compression = { version = "0.3.8", features = ["gzip", "tokio-02"] }
 async-process = "1.2.0"
 async-recursion = "0.3.2"
@@ -28,6 +29,7 @@ chrono-humanize = "0.2.1"
 enum-display-derive = "0.1.1"
 fs_extra = "1.2.0"
 futures = "0.3.16"
+futures-locks = "0.6.0"
 git-features = { version = "0.16.3", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["crc32", "rustsha1", "progress", "zlib"] }
 git-hash = { version = "0.5.1", git = "https://github.com/Byron/gitoxide", branch = "main" }
 git-lock = { version = "1.0.0", git = "https://github.com/Byron/gitoxide", branch = "main" }

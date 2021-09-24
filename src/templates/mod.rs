@@ -1,14 +1,15 @@
 use crate::templates::plain::Template;
 
 use std::path::Path;
-use std::sync::RwLock;
 
 use anyhow::Result;
+use async_compat::Compat;
+use futures::executor;
+use futures_locks::RwLock;
 use lazy_static::lazy_static;
 use log::{error, info};
 use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tera::Tera;
-use tracing_unwrap::ResultExt;
 
 mod filters;
 mod tests;
@@ -27,7 +28,7 @@ pub(crate) async fn init() -> Result<RecommendedWatcher> {
     #[allow(unused_must_use)]
     {
         // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
-        TERA.read().unwrap_or_log();
+        TERA.read().await;
     }
 
     info!("Successfully loaded templates.");
@@ -63,13 +64,12 @@ pub(crate) async fn init() -> Result<RecommendedWatcher> {
 
         info!("Detected modification in templates directory, reloading...");
 
-        match TERA.write() {
-            Ok(mut lock) => match lock.full_reload() {
+        executor::block_on(Compat::new(async {
+            match TERA.write().await.full_reload() {
                 Ok(_) => info!("Successfully reloaded templates."),
                 Err(err) => error!("Failed to reload templates: {}", err)
             }
-            Err(err) => error!("Lock is poisoned: {}", err)
-        }
+        }));
     })?;
 
     watcher.watch(Path::new("templates/html"), RecursiveMode::Recursive)?;
@@ -124,7 +124,7 @@ macro_rules! render_template {
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
 
-        let template = $crate::templates::TERA.read().unwrap_or_log().render($template_name, &$context)?;
+        let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
         Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
@@ -134,7 +134,7 @@ macro_rules! render_template {
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
 
-        let template = $crate::templates::TERA.read().unwrap_or_log().render($template_name, &$context)?;
+        let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
 
         $transaction.commit().await?;
 

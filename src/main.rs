@@ -3,7 +3,6 @@
 use std::borrow::{Borrow, Cow};
 use std::env;
 use std::path::Path;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use actix_files::Files;
@@ -13,7 +12,6 @@ use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL};
 use actix_web::http::HeaderValue;
 use actix_web::{App, HttpServer};
 use anyhow::{anyhow, Context, Result};
-use askalono::Store;
 use config::Config;
 use fs_extra::dir;
 use lazy_static::lazy_static;
@@ -43,7 +41,6 @@ mod privileges;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
-    static ref LICENSE_STORE: Mutex<Store> = Mutex::new(Store::new());
 }
 
 // TODO: big executables are not pushable
@@ -63,7 +60,7 @@ async fn main() -> Result<()> {
 
     info!("Successfully connected to database.");
 
-    licenses::init()?;
+    licenses::init().await?;
 
     info!("Successfully loaded SPDX license data.");
 

@@ -495,6 +495,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-compat"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b48b4ff0c2026db683dea961cd8ea874737f56cffca86fa84415eaddc51c00d"
+dependencies = [
+ "futures-core",
+ "futures-io",
+ "once_cell",
+ "pin-project-lite 0.2.7",
+ "tokio 1.11.0",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,6 +1602,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-locks"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50c4e684ddb2d8a4db5ca8a02b35156da129674ba4412b6f528698d58c594954"
+dependencies = [
+ "futures 0.3.16",
+ "tokio 0.2.24",
+]
+
+[[package]]
 name = "futures-macro"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1960,6 +1983,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "askalono",
+ "async-compat",
  "async-compression",
  "async-process",
  "async-recursion",
@@ -1971,6 +1995,7 @@ dependencies = [
  "enum-display-derive",
  "fs_extra",
  "futures 0.3.16",
+ "futures-locks",
  "git-features",
  "git-hash",
  "git-lock",
