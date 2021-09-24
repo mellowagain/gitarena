@@ -4,6 +4,7 @@ use actix_web::web::{Bytes, BytesMut};
 use anyhow::{Context, Result};
 use futures::AsyncWriteExt;
 use git_packetline::{PacketLine, Writer as PacketlineWriter};
+use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitWriter {
     inner: PacketlineWriter<Vec<u8>>
@@ -121,6 +122,6 @@ impl GitWriter {
 
 fn u16_to_hex(value: u16) -> [u8; 4] {
     let mut buffer = [0u8; 4];
-    hex::encode_to_slice((value as u16).to_be_bytes(), &mut buffer).unwrap();
+    hex::encode_to_slice((value as u16).to_be_bytes(), &mut buffer).unwrap_or_log();
     buffer
 }

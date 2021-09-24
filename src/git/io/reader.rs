@@ -4,6 +4,7 @@ use crate::extensions::{flatten_io_result, parse_key_value};
 use anyhow::Result;
 use git_packetline::{StreamingPeekableIter, PacketLine};
 use log::warn;
+use tracing_unwrap::OptionExt;
 
 pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String, Vec<Vec<u8>>)> {
     for (index, raw_line) in body.iter().enumerate() {
@@ -49,7 +50,7 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
                     }
 
                     // We can safely unwrap() as we checked above that the slice is not empty
-                    let length = data.len() - (data.last().unwrap() == &10_u8) as usize;
+                    let length = data.len() - (data.last().unwrap_or_log() == &10_u8) as usize;
 
                     body.push(data[..length].to_vec());
                 }

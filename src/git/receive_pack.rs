@@ -20,7 +20,8 @@ use git_pack::index::File as IndexFile;
 use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
 use git_repository::actor::Signature;
-use git_repository::prelude::*;
+use git_repository::prelude::{Find, FindExt};
+use tracing_unwrap::ResultExt;
 
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
     assert!(ref_update.new.is_some());
@@ -83,7 +84,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
             }
         };
 
-        let previous = ref_update.old.as_ref().map(|target| Target::Peeled(str_to_oid(&Some(target.to_owned())).unwrap()));
+        let previous = ref_update.old.as_ref().map(|target| Target::Peeled(str_to_oid(&Some(target.to_owned())).unwrap_or_log()));
 
         let edits = vec![
             RefEdit {
@@ -117,7 +118,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
         let odb = git2_repo.odb()?;
         let mut pack_writer = odb.packwriter()?;
 
-        pack_writer.write(raw_pack)?;
+        pack_writer.write_all(raw_pack)?;
         pack_writer.commit()?;
     }
 

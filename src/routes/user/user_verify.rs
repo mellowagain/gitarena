@@ -7,6 +7,7 @@ use log::info;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
+use tracing_unwrap::OptionExt;
 
 #[route("/api/verify/{token}", method="GET")]
 pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -27,7 +28,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
         return Err(HttpError(403, "Token does not exist or has expired".to_owned()).into());
     }
 
-    let (row_id, user_id) = option.unwrap();
+    let (row_id, user_id) = option.unwrap_or_log();
 
     sqlx::query("delete from user_verifications where id = $1")
         .bind(&row_id)

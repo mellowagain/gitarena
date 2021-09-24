@@ -9,6 +9,7 @@ use crate::user::User;
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
 use sqlx::{Postgres, Transaction};
+use tracing_unwrap::OptionExt;
 
 pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
     match repo {
@@ -64,7 +65,7 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
                 return Err(GitError(401, Some("Incorrect username or password".to_owned())).into());
             }
 
-            let user = option.unwrap();
+            let user = option.unwrap_or_log();
 
             if !crypto::check_password(&user, &password)? {
                 return Err(GitError(401, Some("Incorrect username or password".to_owned())).into());

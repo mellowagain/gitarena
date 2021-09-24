@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 use log::{error, info};
 use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tera::Tera;
+use tracing_unwrap::ResultExt;
 
 mod filters;
 mod tests;
@@ -25,7 +26,8 @@ pub(crate) async fn init() -> Result<RecommendedWatcher> {
 
     #[allow(unused_must_use)]
     {
-        TERA.read().unwrap();
+        // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
+        TERA.read().unwrap_or_log();
     }
 
     info!("Successfully loaded templates.");
@@ -117,20 +119,22 @@ macro_rules! render_template {
     }};
     ($status:expr, $template_name:literal, $context:expr) => {{
         use std::borrow::Borrow;
+        use tracing_unwrap::ResultExt;
 
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
 
-        let template = $crate::templates::TERA.read().unwrap().render($template_name, &$context)?;
+        let template = $crate::templates::TERA.read().unwrap_or_log().render($template_name, &$context)?;
         Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
         use std::borrow::Borrow;
+        use tracing_unwrap::ResultExt;
 
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
 
-        let template = $crate::templates::TERA.read().unwrap().render($template_name, &$context)?;
+        let template = $crate::templates::TERA.read().unwrap_or_log().render($template_name, &$context)?;
 
         $transaction.commit().await?;
 

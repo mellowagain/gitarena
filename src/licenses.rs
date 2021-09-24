@@ -5,6 +5,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use log::info;
+use tracing_unwrap::ResultExt;
 
 pub(crate) fn init() -> Result<()> {
     info!("Loading SPDX license data. This may take a while.");
@@ -12,7 +13,7 @@ pub(crate) fn init() -> Result<()> {
     let mut path = env::current_dir()?;
     path.push(Path::new("license-list-data/json/details"));
 
-    //LICENSE_STORE.lock().unwrap().load_spdx(path.as_path(), true).unwrap();
+    LICENSE_STORE.lock().unwrap_or_log().load_spdx(path.as_path(), true).unwrap_or_log();
 
     Ok(())
 }

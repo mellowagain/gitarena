@@ -22,6 +22,7 @@ use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
+use tracing_unwrap::OptionExt;
 
 async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id: Identity, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
@@ -59,7 +60,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
             Err(_) => "Invalid file name"
         };
 
-        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap();
+        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap_or_log();
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {

@@ -11,6 +11,7 @@ use gitarena_macros::route;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use sqlx::PgPool;
+use tracing_unwrap::OptionExt;
 
 lazy_static! {
     static ref ROOT_PATH: String = "/".to_owned();
@@ -41,7 +42,7 @@ pub(crate) async fn login(body: web::Form<LoginRequest>, id: Identity, db_pool: 
         return Err(HttpError(401, "Incorrect username or password".to_owned()).into());
     }
 
-    let user = option.unwrap();
+    let user = option.unwrap_or_log();
 
     if !crypto::check_password(&user, &password)? {
         return Err(HttpError(401, "Incorrect username or password".to_owned()).into());
