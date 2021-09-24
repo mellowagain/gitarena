@@ -19,8 +19,8 @@ use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat};
 ///
 /// # Differences
 ///
-/// The only difference between this function and `actix_web::route` is the that this function
-/// requires `anyhow::Result` as a return type while the actix function takes `actix_web::Result`
+/// 1. This macro requires `anyhow::Result` as a return type while the actix macro requires `actix_web::Result`
+/// 2. This macro attaches `#[instrument(skip_all)]` from the tracing library to the function with the correct method name
 ///
 #[proc_macro_attribute]
 pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -61,7 +61,7 @@ pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                     _ => unimplemented!()
                 }
             },
-            _ => unimplemented!("b")
+            _ => unimplemented!()
         };
         idents_vec.push(ident_ts);
     }
@@ -80,6 +80,7 @@ pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #(#attrs)*
         #[actix_web::route(#(#args),*)]
+        #[tracing::instrument(name=#ident, skip_all)]
         #vis #sig {
             #generated_sig {
                 #body

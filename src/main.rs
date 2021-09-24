@@ -2,7 +2,6 @@
 
 use std::borrow::{Borrow, Cow};
 use std::env;
-use std::io::stdout;
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -13,16 +12,19 @@ use actix_web::dev::Service;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL};
 use actix_web::http::HeaderValue;
 use actix_web::{App, HttpServer};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use askalono::Store;
-use chrono::Local;
 use config::Config;
-use fern::{Dispatch, log_file};
 use fs_extra::dir;
 use lazy_static::lazy_static;
-use log::{info, LevelFilter};
+use log::info;
 use sqlx::postgres::PgPoolOptions;
 use time::Duration as TimeDuration;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_appender::rolling;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::{FmtSubscriber, EnvFilter};
+use tracing_unwrap::ResultExt;
 
 mod captcha;
 mod config;
@@ -49,7 +51,7 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    init_logger()?;
+    let _log = init_logger()?;
 
     let db_pool = PgPoolOptions::new()
         .max_connections(num_cpus::get() as u32)
@@ -158,7 +160,7 @@ fn load_config() -> Cow<'static, Config> {
     config
 }
 
-fn init_logger() -> Result<()> {
+fn init_logger() -> Result<WorkerGuard> {
     let logs_dir = Path::new("logs");
 
     if !logs_dir.exists() {
@@ -166,28 +168,41 @@ fn init_logger() -> Result<()> {
     }
 
     let level = if cfg!(debug_assertions) {
-        LevelFilter::Debug
+        LevelFilter::DEBUG
     } else {
-        LevelFilter::Info
+        LevelFilter::INFO
     };
 
-    Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{}] {} {} - {}",
-                record.target().split("::").next().unwrap_or("null"),
-                record.level(),
-                record.module_path().unwrap_or("null"),
-                message
-            ))
-        })
-        .level(level)
-        .level_for("sqlx", LevelFilter::Warn)
-        .level_for("reqwest", LevelFilter::Info)
-        .level_for("globset", LevelFilter::Info)
-        .level_for("askalono", LevelFilter::Warn)
-        .chain(stdout())
-        .chain(log_file(format!("logs/{}.log", Local::now().timestamp_millis()))?)
-        .apply()
-        .context("Failed to initialize logger.")
+    let appender = rolling::daily("logs", "gitarena");
+    let (writer, guard) = tracing_appender::non_blocking(appender);
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
+        // err (type FromEnvError) does not expose its `kind` field so we have to display it and compare it to the output
+        if format!("{}", err).as_str() != "environment variable not found" {
+            eprintln!("Warning: Unable to parse `RUST_LOG` environment variable, using default values: {}", err);
+        }
+
+        EnvFilter::default()
+            .add_directive(level.into())
+            .add_directive("sqlx=warn".parse().unwrap_or_log())
+            .add_directive("reqwest=info".parse().unwrap_or_log())
+            .add_directive("globset=info".parse().unwrap_or_log())
+            .add_directive("askalono=warn".parse().unwrap_or_log())
+    });
+
+    // In debug mode we only write to stdout, in production only to a file
+    if cfg!(debug_assertions) {
+        FmtSubscriber::builder()
+            .with_env_filter(env_filter)
+            .try_init()
+            .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
+    } else {
+        FmtSubscriber::builder()
+            .with_writer(writer) // TODO: Write additionally also to stdout in production
+            .with_env_filter(env_filter)
+            .try_init()
+            .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
+    }
+
+    Ok(guard)
 }

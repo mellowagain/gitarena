@@ -26,7 +26,6 @@ bstr = "0.2.16"
 chrono = { version = "0.4.19", features = ["serde"] }
 chrono-humanize = "0.2.1"
 enum-display-derive = "0.1.1"
-fern = "0.6.0"
 fs_extra = "1.2.0"
 futures = "0.3.16"
 git-features = { version = "0.16.3", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["crc32", "rustsha1", "progress", "zlib"] }
@@ -64,6 +63,11 @@ time = "0.2.27"
 tinytemplate = "1.2.1"
 tokio-tar = "0.1.0"
 toml = "0.5.8"
+tracing = "0.1.28"
+tracing-appender = "0.1.2"
+tracing-futures = { version = "0.2.5", features = ["futures-03", "tokio"] }
+tracing-subscriber = { version = "0.2.24", features = ["json"] }
+tracing-unwrap = "0.9.2"
 zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
 
 [build-dependencies]
