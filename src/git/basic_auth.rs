@@ -8,16 +8,18 @@ use crate::user::User;
 
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Executor, Postgres};
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
 #[instrument(err)]
-pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
+pub(crate) async fn validate_repo_access<'e, E>(repo: Option<Repository>, content_type: &str, request: &HttpRequest, executor: E) -> Result<Either<(Option<User>, Repository), HttpResponse>>
+    where E: Executor<'e, Database = Postgres>
+{
     match repo {
         Some(repo) => {
             if repo.visibility != RepoVisibility::Public {
-                return match login_flow(request, transaction, content_type).await? {
+                return match login_flow(request, executor, content_type).await? {
                     Either::A(user) => Ok(Either::A((Some(user), repo))),
                     Either::B(response) => Ok(Either::B(response))
                 }
@@ -27,7 +29,7 @@ pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type:
         },
         None => {
             // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
-            let _ = login_flow(request, transaction, content_type).await?;
+            let _ = login_flow(request, executor, content_type).await?;
 
             Err(GitError(404, None).into())
         }
@@ -35,12 +37,14 @@ pub(crate) async fn validate_repo_access(repo: Option<Repository>, content_type:
 }
 
 #[instrument(err)]
-pub(crate) async fn login_flow(request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>, content_type: &str) -> Result<Either<User, HttpResponse>> {
+pub(crate) async fn login_flow<'e, E>(request: &HttpRequest, executor: E, content_type: &str) -> Result<Either<User, HttpResponse>>
+    where E: Executor<'e, Database = Postgres>
+{
     if !basic_auth::is_present(&request).await {
         return Ok(Either::B(prompt(content_type).await));
     }
 
-    Ok(Either::A(basic_auth::authenticate(&request, transaction).await?))
+    Ok(Either::A(basic_auth::authenticate(&request, executor).await?))
 }
 
 #[instrument]
@@ -52,7 +56,9 @@ pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
 }
 
 #[instrument(err)]
-pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<User> {
+pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -> Result<User>
+    where E: Executor<'e, Database = Postgres>
+{
     match get_header(&request, "Authorization") {
         Some(auth_header) => {
             let (username, password) = parse_basic_auth(auth_header).await?;
@@ -76,6 +82,7 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
                 return Err(GitError(401, Some("Incorrect username or password".to_owned())).into());
             }
 
+            // TODO: what is this
             /*if user.disabled || verification::is_pending(&user, transaction).await? {
                 return Err(GitError(401, Some("Account has been disabled".to_owned())).into());
             }*/

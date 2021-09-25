@@ -10,7 +10,7 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use qstring::QString;
-use sqlx::{PgPool, Transaction, Postgres};
+use sqlx::{Executor, PgPool, Postgres};
 
 #[route("/{username}/{repository}.git/info/refs", method="GET")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -58,14 +58,16 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
     }
 }
 
-async fn upload_pack_info_refs(repo_option: Option<Repository>, service: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<HttpResponse> {
+async fn upload_pack_info_refs<'e, E>(repo_option: Option<Repository>, service: &str, request: &HttpRequest, executor: E) -> Result<HttpResponse>
+    where E: Executor<'e, Database = Postgres>
+{
     let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
         return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
     }
 
-    let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, transaction).await? {
+    let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, executor).await? {
         Either::A(tuple) => tuple,
         Either::B(response) => return Ok(response)
     };
@@ -75,8 +77,10 @@ async fn upload_pack_info_refs(repo_option: Option<Repository>, service: &str, r
         .body(capabilities(service).await?))
 }
 
-async fn receive_pack_info_refs(repo_option: Option<Repository>, username: &str, request: &HttpRequest, transaction: &mut Transaction<'_, Postgres>) -> Result<HttpResponse> {
-    let _user = match basic_auth::login_flow(request, transaction, "application/x-git-receive-pack-advertisement").await? {
+async fn receive_pack_info_refs<'e, E>(repo_option: Option<Repository>, username: &str, request: &HttpRequest, executor: E) -> Result<HttpResponse>
+    where E: Executor<'e, Database = Postgres>
+{
+    let _user = match basic_auth::login_flow(request, executor, "application/x-git-receive-pack-advertisement").await? {
         Either::A(user) => user,
         Either::B(response) => return Ok(response)
     };

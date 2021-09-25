@@ -4,21 +4,19 @@ use crate::{CONFIG, crypto, mail, template_context, templates};
 
 use std::borrow::Borrow;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use chrono::Utc;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Executor, Postgres};
 
-pub(crate) async fn send_verification_mail(user: &User, transaction: &mut Transaction<'_, Postgres>) -> Result<()> {
-    if !user.is_saved() {
-        bail!("Unsaved user passed");
-    }
+pub(crate) async fn send_verification_mail<'e, E: Executor<'e, Database = Postgres>>(user: &User, executor: E) -> Result<()> {
+    assert!(user.id >= 0);
 
     let hash = crypto::random_hex_string(32);
 
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
         .bind(&user.id)
         .bind(&hash)
-        .execute(transaction)
+        .execute(executor)
         .await?;
 
     let domain: &str = CONFIG.domain.borrow();
@@ -50,14 +48,14 @@ pub(crate) async fn is_grace_period(user: &User) -> bool {
 }
 
 /// Checks if the user has failed to verify their email address within 24 hours
-pub(crate) async fn is_pending(user: &User, transaction: &mut Transaction<'_, Postgres>) -> Result<bool> {
+pub(crate) async fn is_pending<'e, E: Executor<'e, Database = Postgres>>(user: &User, executor: E) -> Result<bool> {
     if is_grace_period(&user).await {
         return Ok(false);
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from user_verifications where user_id = $1)")
         .bind(&user.id)
-        .fetch_one(transaction)
+        .fetch_one(executor)
         .await?;
 
     Ok(exists)

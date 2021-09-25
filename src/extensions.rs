@@ -18,7 +18,7 @@ use git_hash::ObjectId;
 use git_pack::data::entry::Header;
 use git_repository::actor::{Sign, Signature, Time};
 use log::warn;
-use sqlx::{Postgres, Transaction};
+use sqlx::{Executor, Postgres, Transaction};
 
 /// Parses "key=value" into a key value tuple
 pub(crate) fn parse_key_value(input: &str) -> Result<(&str, &str)> {
@@ -37,7 +37,7 @@ pub(crate) fn bstr_to_str(input: &BStr) -> Result<&str> {
     Ok(input.to_str()?)
 }
 
-pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: &mut Transaction<'_, Postgres>) -> Option<User> {
+pub(crate) async fn get_user_by_identity<'e, E: Executor<'e, Database = Postgres>>(identity: Option<String>, executor: E) -> Option<User> {
     match identity {
         Some(id_str) => {
             let mut split = id_str.splitn(2, '$');
@@ -55,7 +55,7 @@ pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: 
             sqlx::query_as::<_, User>("select * from users where id = $1 and session = $2 limit 1")
                 .bind(&id)
                 .bind(session)
-                .fetch_one(transaction)
+                .fetch_one(executor)
                 .await
                 .ok()
         }
@@ -63,6 +63,7 @@ pub(crate) async fn get_user_by_identity(identity: Option<String>, transaction: 
     }
 }
 
+// TODO: Make this method take `E: Executor<'e, Database = Postgres>` instead of `Transaction`
 pub(crate) async fn repo_from_str<S: AsRef<str>>(username: S, repository: S, mut transaction: Transaction<'_, Postgres>) -> Result<(Repository, Transaction<'_, Postgres>)> {
     let username_str = username.as_ref();
     let repo_str = repository.as_ref();

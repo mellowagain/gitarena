@@ -33,7 +33,7 @@ macro_rules! generate_check {
     }
 }
 
-pub(crate) async fn check_access<'e, E: Executor<'e, Database=Postgres>>(repo: &Repository, user: Option<&User>, executor: E) -> Result<bool> {
+pub(crate) async fn check_access<'e, E: Executor<'e, Database = Postgres>>(repo: &Repository, user: Option<&User>, executor: E) -> Result<bool> {
     Ok(match repo.visibility {
         RepoVisibility::Private => {
             if let Some(user) = user {
