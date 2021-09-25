@@ -155,7 +155,7 @@ fn load_config() -> Cow<'static, Config> {
     config
 }
 
-fn init_logger() -> Result<WorkerGuard> {
+fn init_logger() -> Result<Option<WorkerGuard>> {
     let logs_dir = Path::new("logs");
 
     if !logs_dir.exists() {
@@ -167,9 +167,6 @@ fn init_logger() -> Result<WorkerGuard> {
     } else {
         LevelFilter::INFO
     };
-
-    let appender = rolling::daily("logs", "gitarena");
-    let (writer, guard) = tracing_appender::non_blocking(appender);
 
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
         // err (type FromEnvError) does not expose its `kind` field so we have to display it and compare it to the output
@@ -192,14 +189,19 @@ fn init_logger() -> Result<WorkerGuard> {
             .with_thread_ids(true)
             .try_init()
             .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
+
+        Ok(None)
     } else {
+        let appender = rolling::daily("logs", "gitarena");
+        let (writer, guard) = tracing_appender::non_blocking(appender);
+
         FmtSubscriber::builder()
             .with_writer(writer) // TODO: Write additionally also to stdout in production
             .with_env_filter(env_filter)
             .with_thread_ids(true)
             .try_init()
             .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
-    }
 
-    Ok(guard)
+        Ok(Some(guard))
+    }
 }
