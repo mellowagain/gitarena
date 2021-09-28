@@ -11,7 +11,8 @@
     font-weight: inherit !important;
 }
 
-footer.footer {
+.ui.footer {
+    border-bottom: none !important;
     padding: 40px 40px !important;
 }
 
