@@ -1,16 +1,17 @@
 #![forbid(unsafe_code)]
 
 use std::borrow::{Borrow, Cow};
-use std::env;
+use std::{env, io};
 use std::path::Path;
 use std::time::Duration;
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::dev::Service;
-use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL};
+use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, LOCATION};
 use actix_web::http::HeaderValue;
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer};
+use actix_web::web::to;
 use anyhow::{anyhow, Context, Result};
 use config::Config;
 use fs_extra::dir;
@@ -43,12 +44,9 @@ lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
 }
 
-// TODO: big executables are not pushable
-// todo: big commits are just not pushable
-
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let _log = init_logger()?;
+    let _log_guards = init_logger()?;
 
     let db_pool = PgPoolOptions::new()
         .max_connections(num_cpus::get() as u32)
@@ -105,7 +103,8 @@ async fn main() -> Result<()> {
                 }
             })
             .configure(routes::repository::init)
-            .configure(routes::user::init);
+            .configure(routes::user::init)
+            .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
 
         if cfg!(debug_assertions) {
             app = app.service(
@@ -155,24 +154,18 @@ fn load_config() -> Cow<'static, Config> {
     config
 }
 
-fn init_logger() -> Result<Option<WorkerGuard>> {
-    let logs_dir = Path::new("logs");
-
-    if !logs_dir.exists() {
-        dir::create_all(logs_dir, false)?;
-    }
-
-    let level = if cfg!(debug_assertions) {
-        LevelFilter::DEBUG
-    } else {
-        LevelFilter::INFO
-    };
-
+fn init_logger() -> Result<Vec<WorkerGuard>> {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
         // err (type FromEnvError) does not expose its `kind` field so we have to display it and compare it to the output
         if format!("{}", err).as_str() != "environment variable not found" {
-            eprintln!("Warning: Unable to parse `RUST_LOG` environment variable, using default values: {}", err);
+            eprintln!("Warning: Unable to parse `{}` environment variable, using default values: {}", EnvFilter::DEFAULT_ENV, err);
         }
+
+        let level = if cfg!(debug_assertions) {
+            LevelFilter::DEBUG
+        } else {
+            LevelFilter::INFO
+        };
 
         EnvFilter::default()
             .add_directive(level.into())
@@ -182,26 +175,44 @@ fn init_logger() -> Result<Option<WorkerGuard>> {
             .add_directive("askalono=warn".parse().unwrap_or_log())
     });
 
-    // In debug mode we only write to stdout, in production only to a file
+    let mut results = Vec::<WorkerGuard>::with_capacity(2);
+
+    // In debug mode we only write to stdout (pretty), in production to stdout and to a file (json)
     if cfg!(debug_assertions) {
+        let (writer, guard) = tracing_appender::non_blocking(io::stdout());
+        results.push(guard);
+
         FmtSubscriber::builder()
+            .with_writer(writer)
             .with_env_filter(env_filter)
             .with_thread_ids(true)
             .try_init()
-            .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
-
-        Ok(None)
+            .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
     } else {
+        let logs_dir = Path::new("logs");
+
+        if !logs_dir.exists() {
+            dir::create_all(logs_dir, false)?;
+        }
+
         let appender = rolling::daily("logs", "gitarena");
-        let (writer, guard) = tracing_appender::non_blocking(appender);
+        let (file_writer, file_guard) = tracing_appender::non_blocking(appender);
+
+        let (stdout_writer, stdout_guard) = tracing_appender::non_blocking(io::stdout());
+
+        results.push(file_guard);
+        results.push(stdout_guard);
 
         FmtSubscriber::builder()
-            .with_writer(writer) // TODO: Write additionally also to stdout in production
+            .with_writer(stdout_writer)
+            .with_writer(file_writer)
             .with_env_filter(env_filter)
             .with_thread_ids(true)
+            .json()
             .try_init()
-            .map_err(|err| anyhow!("Unable to create logger: {}", err))?;
-
-        Ok(Some(guard))
+            .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
     }
+
+    results.shrink_to_fit();
+    Ok(results)
 }
