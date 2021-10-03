@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}
+Not Found
+{% endblock %}
+
+{% block content %}
+<div class="ui center aligned icon header">
+    <i class="question icon"></i>
+    <div class="content">
+        Page Not Found
+
+        <div class="sub header">
+            {% if user is undefined or not user.admin %}
+                Please contact your GitArena administrator if you believe this is a mistake.
+            {% else %}
+                Please open an issue if you believe this is a mistake.
+            {% endif %}
+        </div>
+
+        <div id="secret" class="ui accordion" style="display: none;">
+            <div class="title" id="video-accordion">
+                <i class="dropdown icon"></i>
+                The Grim Reaper is a live streamer
+            </div>
+            <div class="content">
+                <div class="ui embed" data-source="youtube" data-id="BXB26PzV31k"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // A secret
+    window.addEventListener("DOMContentLoaded", () => {
+        $(".ui.accordion").accordion();
+
+        let initializedVideo = false;
+        let counter = 0;
+
+        $("#video-accordion").click(() => {
+            if (!initializedVideo) {
+                const doNotTrack = navigator.doNotTrack;
+                const doNotTrackEnabled = doNotTrack === "1";
+                let loadConsent = true;
+
+                if (doNotTrackEnabled) {
+                    loadConsent = confirm("This will load a video from youtube.com. Is this ok?");
+                }
+
+                if (loadConsent) {
+                    $(".ui.embed").embed();
+                    initializedVideo = true;
+                }
+            }
+        });
+
+        $(document).keypress((event) => {
+            if (event.key === "c" && counter === 0) {
+                counter += 1;
+            } else if (event.key === "a" && counter === 1) {
+                counter += 1;
+            } else if (event.key === "l" && (counter === 2 || counter === 3)) {
+                counter += 1;
+            } else if (event.key === "i" && counter === 4) {
+                $("#secret").show();
+                console.log("[Secret unlocked] Grim Reaper's apprentice has arrived");
+            }
+        });
+    });
+</script>
+{% endblock %}

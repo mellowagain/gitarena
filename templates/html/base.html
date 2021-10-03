@@ -28,7 +28,37 @@
     </p>
 </noscript>
 
-{% block header %}{% endblock %}
+{% block header %}
+<header class="background ui fluid container">
+    <nav class="navigation">
+        <div class="ui content container">
+            <span class="brand">
+                <a href="/" class="link">GitArena</a>
+                <span class="pill" style="letter-spacing: normal;">Preview</span>
+            </span>
+            <span class="links">
+                <a href="/explore" class="link">
+                    explore
+                </a>
+                <a href="/" class="link">
+                    merge requests
+                </a>
+                <a href="/" class="link">
+                    releases
+                </a>
+
+                {% if user is undefined %}
+                    <a id="login-link" href="/login" class="link">login</a>
+                {% else %}
+                    <a href="#" class="link">
+                        <img class="ui avatar image" src="/static/user_content/avatars/{{ user.id }}.jpg" alt="{{ user.username }}">
+                    </a>
+                {% endif %}
+            </span>
+        </div>
+    </nav>
+</header>
+{% endblock %}
 
 <main class="ui container">
     {% block content %}{% endblock %}
