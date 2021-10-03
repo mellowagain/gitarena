@@ -102,6 +102,7 @@ async fn main() -> Result<()> {
                     Ok(res)
                 }
             })
+            .default_service(to(routes::not_found::default_handler))
             .configure(routes::repository::init)
             .configure(routes::user::init)
             .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
