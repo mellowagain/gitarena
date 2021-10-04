@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}
-{{ repo_owner_name }}/{{ repo.name }}: {{ repo.description }}
+{{ repo_owner_name }}/{{ repo.name }}{% if repo.description is not empty %}: {{ repo.description }}{% else %}{% endif %}
 {% endblock %}
 
 {% block header %}
 <header class="background ui fluid container" style="background-image: url('/static/img/88555424_p0.jpg');">
-    <nav class="navigation inverted">
+    <nav class="repo navigation inverted">
         <div class="ui content container">
             <span class="brand">
                 <a href="/" class="link">GitArena</a>
