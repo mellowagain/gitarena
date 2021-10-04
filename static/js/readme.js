@@ -1,7 +1,22 @@
+function proxyAttribute(url) {
+    if (/^data:image\//.test(url)) {
+        return url;
+    } else {
+        let hexUrl = url.split("").map(c => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+        return `/api/proxy/${hexUrl}`;
+    }
+}
+
 function loadReadme(username, repo, tree) {
     $.getJSON(`/api/repo/${username}/${repo}/tree/${tree}/readme`)
         .done((json) => {
             insertScript("/static/js/third_party/purify.min.js");
+
+            DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+                if (node.tagName === "IMG" && node.hasAttribute("src")) {
+                    node.setAttribute("src", proxyAttribute(node.getAttribute("src")));
+                }
+            });
 
             let fileName = json.file_name;
             const loweredFileName = fileName.toLowerCase();

@@ -33,12 +33,13 @@ mod extensions;
 mod git;
 mod licenses;
 mod mail;
+mod privileges;
 mod repository;
 mod routes;
 mod templates;
 mod user;
+mod utils;
 mod verification;
-mod privileges;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();
@@ -103,6 +104,7 @@ async fn main() -> Result<()> {
                 }
             })
             .default_service(to(routes::not_found::default_handler))
+            .configure(routes::proxy::init)
             .configure(routes::repository::init)
             .configure(routes::user::init)
             .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
@@ -170,10 +172,11 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
 
         EnvFilter::default()
             .add_directive(level.into())
-            .add_directive("sqlx=warn".parse().unwrap_or_log())
-            .add_directive("reqwest=info".parse().unwrap_or_log())
-            .add_directive("globset=info".parse().unwrap_or_log())
             .add_directive("askalono=warn".parse().unwrap_or_log())
+            .add_directive("globset=info".parse().unwrap_or_log())
+            .add_directive("hyper=info".parse().unwrap_or_log())
+            .add_directive("reqwest=info".parse().unwrap_or_log())
+            .add_directive("sqlx=warn".parse().unwrap_or_log())
     });
 
     let mut results = Vec::<WorkerGuard>::with_capacity(2);
