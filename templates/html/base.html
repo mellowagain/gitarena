@@ -99,6 +99,12 @@
 
 {% block scripts %}{% endblock %}
 
+{% if debug is defined and debug %}
+<script id="gitarena-debug" type="application/json" data-type="tera-context">
+    {{ __tera_context }}
+</script>
+{% endif %}
+
 </body>
 
 </html>

@@ -124,6 +124,10 @@ macro_rules! render_template {
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
 
+        if cfg!(debug_assertions) {
+            $context.try_insert("debug", &true)?;
+        }
+
         let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
         Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
     }};
@@ -133,6 +137,10 @@ macro_rules! render_template {
 
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
+
+        if cfg!(debug_assertions) {
+            $context.try_insert("debug", &true)?;
+        }
 
         let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
 
