@@ -140,7 +140,7 @@
                         <div class="targz download item" data-url="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/tree/{{ tree | urlencode }}/archive/targz" data-icon="download">.tar.gz</div>
                     </div>
                 </div>
-                <input class="code url" type="text" value="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git">
+                <input class="code url" type="text" value="{{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git" readonly>
                 <button class="ui right icon button">
                     <i class="copy icon"></i>
                 </button>
@@ -267,7 +267,6 @@
         const codeUrl = $(".code.url");
 
         codeUrl.click(() => codeUrl.select());
-        codeUrl.keydown(() => false);
 
         $(".right.icon.button").click(() => {
             if ($(".right.icon.button").children().first().hasClass("download")) {
