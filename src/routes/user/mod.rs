@@ -7,7 +7,10 @@ mod user_verify;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(user_create::register);
-    config.service(user_login::login);
+
+    config.service(user_login::get_login);
+    config.service(user_login::post_login);
+
     config.service(user_logout::logout);
     config.service(user_verify::verify);
 }

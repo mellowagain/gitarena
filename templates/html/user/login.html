@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+Login
+{% endblock %}
+
+{% block content %}
+<div class="ui two column centered grid">
+    <div class="center aligned column">
+        <form class="ui form {% if error is defined and error %} error {% endif %}" method="post">
+            {% if general_error is defined %}
+                <div class="ui error message">
+                    <p>{{ general_error }}</p>
+                </div>
+            {% endif %}
+
+            <div class="field {% if username_error is defined %} error {% endif %}">
+                <label>Username</label>
+                <input name="username" type="text" value="{{ username | default(value="") }}">
+
+                {% if username_error is defined %}
+                    <div class="ui basic red pointing prompt label transition visible" style="display: inline-block !important;">
+                        {{ username_error }} <br>
+                        <a href="/login/reset">Forgot your username?</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="field {% if password_error is defined %} error {% endif %}">
+                <label>Password</label>
+                <input name="password" type="password" value="{{ password | default(value="") }}">
+
+                {% if password_error is defined %}
+                    <div class="ui basic red pointing prompt label transition visible" style="display: inline-block !important;">
+                        {{ password_error }} <br>
+                        <a href="/login/reset">Forgot your password?</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <input id="redirect-url" type="hidden" name="redirect" value="/">
+
+            <button class="ui button" type="submit">Login</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    {# https://stackoverflow.com/a/11582513 #}
+    function getUrlParameter(name) {
+        return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        $(".ui.form").form({
+            fields: {
+                username: {
+                    rules: [
+                        {
+                            type: "empty"
+                        },
+                        {
+                            type: "doesntContain[@]",
+                            prompt: "Please input your username, not your email address."
+                        }
+                    ]
+                },
+                password: "empty"
+            }
+        });
+
+        const redirectUrl = getUrlParameter("redirect");
+
+        if (redirectUrl != null) {
+            $("#redirect-url").val(`/${redirectUrl}`);
+        } else {
+            $("#redirect-url").remove();
+        }
+    });
+</script>
+{% endblock %}

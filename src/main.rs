@@ -7,11 +7,12 @@ use std::time::Duration;
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::cookie::SameSite;
 use actix_web::dev::Service;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, LOCATION};
 use actix_web::http::HeaderValue;
-use actix_web::{App, HttpResponse, HttpServer};
 use actix_web::web::to;
+use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use config::Config;
 use fs_extra::dir;
@@ -75,6 +76,7 @@ async fn main() -> Result<()> {
                 .name("gitarena-auth")
                 .max_age(TimeDuration::days(10).whole_seconds())
                 .http_only(true)
+                .same_site(SameSite::Lax)
                 .secure(secure)
         );
 
@@ -130,7 +132,7 @@ async fn main() -> Result<()> {
 }
 
 fn load_config() -> Cow<'static, Config> {
-    let cfg_str = env::var("GITARENA_CONFIG").unwrap_or("config.toml".to_owned());
+    let cfg_str = env::var("GITARENA_CONFIG").unwrap_or_else(|_| "config.toml".to_owned());
     let cfg_path = Path::new(cfg_str.as_str());
 
     if !cfg_path.is_file() {
