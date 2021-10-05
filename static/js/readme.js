@@ -15,6 +15,7 @@ function loadReadme(username, repo, tree) {
             DOMPurify.addHook("afterSanitizeAttributes", (node) => {
                 if (node.tagName === "IMG" && node.hasAttribute("src")) {
                     node.setAttribute("src", proxyAttribute(node.getAttribute("src")));
+                    node.setAttribute("loading", "lazy");
                 }
             });
 
