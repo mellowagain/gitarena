@@ -118,8 +118,9 @@ macro_rules! render_template {
         render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction)
     }};
     ($status:expr, $template_name:literal, $context:expr) => {{
-        use std::borrow::Borrow;
+        #[allow(unused_imports)]
         use tracing_unwrap::ResultExt;
+        use std::borrow::Borrow;
 
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;
@@ -132,8 +133,9 @@ macro_rules! render_template {
         Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
-        use std::borrow::Borrow;
+        #[allow(unused_imports)]
         use tracing_unwrap::ResultExt;
+        use std::borrow::Borrow;
 
         let domain: &str = $crate::CONFIG.domain.borrow();
         $context.try_insert("domain", &domain)?;

@@ -1,3 +1,5 @@
+create extension pgcrypto;
+
 create table if not exists users
 (
     id         serial                                                               not null
@@ -66,3 +68,29 @@ create table if not exists privileges
             on delete cascade,
     access_level access_level default 'viewer'::access_level not null
 );
+
+create table if not exists gpg_keys
+(
+    id      serial
+        constraint gpg_keys_pk
+            primary key,
+    user_id integer      not null
+        constraint gpg_keys_users_id_fk
+            references users
+            on delete cascade,
+    email   varchar(128) not null,
+    key_id  char(16)     not null,
+    raw_key bytea        not null
+);
+
+create unique index if not exists gpg_keys_email_uindex
+    on gpg_keys (email);
+
+create unique index if not exists gpg_keys_key_id_uindex
+    on gpg_keys (key_id);
+
+create unique index if not exists gpg_keys_raw_key_uindex
+    on gpg_keys (raw_key);
+
+create index if not exists gpg_keys_id_index
+    on gpg_keys (id);

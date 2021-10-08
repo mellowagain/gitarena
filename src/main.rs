@@ -41,6 +41,7 @@ mod templates;
 mod user;
 mod utils;
 mod verification;
+mod gpg;
 
 lazy_static! {
     static ref CONFIG: Cow<'static, Config> = load_config();

@@ -26,7 +26,10 @@ pub(crate) enum GAErrors {
     PackUnpackError(&'static str),
 
     #[error("Error occurred when trying to run hook: {0}")]
-    HookError(&'static str)
+    HookError(&'static str),
+
+    #[error("Content is not UTF-8")]
+    Utf8DecodeError,
 }
 
 pub(crate) struct GitArenaError {

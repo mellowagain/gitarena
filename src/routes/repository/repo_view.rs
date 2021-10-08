@@ -14,11 +14,13 @@ use actix_identity::Identity;
 use actix_web::{Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
+use git2::{Buf, Error, ErrorClass};
 use git_hash::ObjectId;
 use git_object::tree::EntryMode;
 use git_object::Tree;
 use git_pack::cache::lru::MemoryCappedHashmap;
 use git_ref::file::find::existing::Error as GitoxideFindError;
+use git_repository::actor::{Signature, SignatureRef};
 use gitarena_macros::route;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
@@ -138,6 +140,55 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
     } else {
         author_uid = None;
         author_name = last_commit.author().name().unwrap_or("Ghost").to_owned();
+    }
+
+    if let Some((signature_buffer, content_buffer)) = libgit2_repo.extract_signature(&last_commit_oid, None).ok() {
+        use log::warn;
+
+        let mut valid_signature = true;
+        let signature = signature_buffer.as_str().unwrap_or_default();
+        let content = content_buffer.as_str().unwrap_or_default();
+
+        for content_line in content.lines() {
+            if content_line.starts_with("tree ") {
+                let signed_tree = &content_line[5..];
+                valid_signature &= signed_tree == last_commit.tree_id().to_string().as_str();
+            }
+
+            if content_line.starts_with("parent ") {
+                let signed_parent = &content_line[7..];
+                let mut found_parent = false;
+
+                for id in last_commit.parent_ids() {
+                    if signed_parent == id.to_string().as_str() {
+                        found_parent = true;
+                        break;
+                    }
+                }
+
+                valid_signature &= found_parent;
+            }
+
+            if content_line.starts_with("author ") {
+                let signed_author = &content_line[7..];
+                //let signature_ref = SignatureRef::from_bytes(signed_author.as_bytes())?;
+
+                /*
+
+current tree oid: 7a87f16ee302ffb42e13a561bf5abd70beed2826
+sig: Some("-----BEGIN PGP SIGNATURE-----\n\niQIzBAABCAAdFiEER3ix/BExA06l2YsN9OUVN2kCW8IFAmE8+fwACgkQ9OUVN2kC\nW8KbHQ//c6sSWBStMw5A7SEnUDgx2C9lZ6BZUc7GM0MdzZZqn+hvPcUcTNRNnYKP\nW9oMslCUia872SpS0QSrP6kMX3PidtMgGKRqYhhEs6Jby3cZw9aQg8GDINt5p1/q\nxdkg7gofKYinzu9X6TJbBmbX7enQEp1Ofcir3LjNrIieSb5EPN7VaxYj7jnBABhk\nhOomTBcm2IeOeg9oviaJ62vfkflXK3Mr0tq2M2i+sNLT058PUgsxapKqze6ziD1U\ngr3f2lQM+dXxjvnVLI2lZQJc5ZPZ4KfjnAuj0Q6Qi3z/C2fBbQxkyumlwIwOo4kt\nrMy00c4jnGbnJad/Y+32ntEDzkn69o9mNJUeoUHk6KhPIia3Mzd/d5+MMxdpOt2t\ne2uT536swR5NqxRNV+OwK0bwW2S4hF5jsExzkpOUvBz57GwAMCawT/1FzaxGd+4G\nu/VJ7puYMrZKXLVuzE8tRXL0qPrRK340pUu05vAR09L7CdGaorK+55jgYDMAjpop\nQvL08W90BB+2y6a4XO+2jfbiFAFISBY5TkqCpLqqGWyRM5jCh3DpByg8RRsCMfG9\nLAIpUOHZE6LBmmPMHUDCsUWKY8zq/2XMFVMbrbEtKR9oEEu8W1Zs+SiqK6GVoAYj\n+9YgrvFrcxRTIzqEqpbfQwHHVJuGVyvCGqoB0CInAGZrhcix9T0=\n=nd7B\n-----END PGP SIGNATURE-----")
+content: Some("tree 7a87f16ee302ffb42e13a561bf5abd70beed2826\nparent 5bab4bbd9867ee22c182d39d47cfab3b8bb5ce9e\nauthor Mari <git@cutegirl.tech> 1631385704 +0200\ncommitter Mari <git@cutegirl.tech> 1631386106 +0200\n\nadd image\n")
+
+
+                 */
+
+            }
+        }
+
+
+        warn!("current tree oid: {}", last_commit.tree_id());
+
+        warn!("sig: {:?} content: {:?}", signature_buffer.as_str(), content_buffer.as_str());
     }
 
     context.try_insert("last_commit", &GitCommit {

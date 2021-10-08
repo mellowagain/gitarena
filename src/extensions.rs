@@ -16,7 +16,8 @@ use futures::Future;
 use git2::ObjectType;
 use git_hash::ObjectId;
 use git_pack::data::entry::Header;
-use git_repository::actor::{Sign, Signature, Time};
+use git_actor::{Sign, Signature as GitoxideSignature, Time};
+use git2::Signature as Git2Signature;
 use log::warn;
 use sqlx::{Executor, Postgres, Transaction};
 
@@ -155,20 +156,38 @@ pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
 }
 
 // TODO: Maybe make this configurable using the config file at some point?
-pub(crate) fn default_signature() -> Signature {
+pub(crate) fn default_signature() -> GitoxideSignature {
     let domain: &str = CONFIG.domain.borrow();
     let stripped = domain.replace("https://", "").replace("http://", "");
 
     let now = Utc::now();
     let naive = now.naive_utc();
 
-    Signature {
+   GitoxideSignature {
         name: BString::from("GitArena"),
         email: BString::from(format!("git@{}", stripped)),
         time: Time {
             time: naive.timestamp() as u32,
             offset: 0,
             sign: Sign::Plus
+        }
+    }
+}
+
+pub(crate) fn libgit2_to_gitoxide_signature(libgit2_signature: &Git2Signature) -> GitoxideSignature {
+    let time = libgit2_signature.when();
+
+    GitoxideSignature {
+        name: BString::from(libgit2_signature.name_bytes()),
+        email: BString::from(libgit2_signature.email_bytes()),
+        time: Time {
+            time: time.seconds() as u32,
+            offset: time.offset_minutes() * 60,
+            sign: if time.sign() == '-' {
+                Sign::Minus
+            } else {
+                Sign::Plus
+            }
         }
     }
 }
