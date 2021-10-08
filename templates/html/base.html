@@ -50,7 +50,7 @@
                 {% if user is undefined %}
                     <a id="login-link" href="/login" class="link">login</a>
                 {% else %}
-                    <a href="#" class="link">
+                    <a class="link pointer" data-hx-post="/logout">
                         <img class="ui avatar image" src="/static/user_content/avatars/{{ user.id }}.jpg" alt="{{ user.username }}">
                     </a>
                 {% endif %}
@@ -94,6 +94,7 @@
 
 <script src="/static/js/third_party/jquery-3.6.0.min.js" defer></script>
 <script src="/static/js/third_party/semantic.min.js" defer></script>
+<script src="/static/js/third_party/htmx.min.js" async defer></script>
 
 <script src="/static/js/app.js" defer></script>
 

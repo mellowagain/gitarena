@@ -30,7 +30,7 @@
                 {% if user is undefined %}
                     <a id="login-link" href="/login" class="link">login</a>
                 {% else %}
-                    <a href="#" class="link">
+                    <a class="link pointer" data-hx-post="/logout">
                         <img class="ui avatar image" src="/static/user_content/avatars/{{ user.id }}.jpg" alt="{{ user.username }}">
                     </a>
                 {% endif %}
@@ -233,7 +233,7 @@
         </tbody>
     </table>
 
-    <div id="readme-parent" class="ui segments">
+    <div id="readme-parent" class="ui segments" data-hx-disable>
         <div class="ui segment">
             <b id="readme-file-name">readme</b>
         </div>

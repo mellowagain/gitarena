@@ -1,13 +1,14 @@
 use crate::error::GAErrors::HttpError;
+use crate::extensions::get_header;
 
 use actix_identity::Identity;
-use actix_web::http::header;
-use actix_web::{HttpResponse, Responder};
+use actix_web::http::header::LOCATION;
+use actix_web::{HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use gitarena_macros::route;
 
 #[route("/logout", method="POST")]
-pub(crate) async fn logout(id: Identity) -> Result<impl Responder> {
+pub(crate) async fn logout(id: Identity, request: HttpRequest) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?
         return Err(HttpError(401, "Already logged out".to_owned()).into());
@@ -15,7 +16,9 @@ pub(crate) async fn logout(id: Identity) -> Result<impl Responder> {
 
     id.forget();
 
-    Ok(HttpResponse::Found()
-        .header(header::LOCATION, "/")
-        .finish())
+    Ok(if get_header(&request, "hx-request").is_some() {
+        HttpResponse::Ok().header("hx-redirect", "/").header("hx-refresh", "true").finish()
+    } else {
+        HttpResponse::Found().header(LOCATION, "/").finish()
+    })
 }
