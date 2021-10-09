@@ -8,10 +8,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 pub(crate) async fn verify_captcha(token: &String) -> Result<bool> {
-    if cfg!(debug_assertions) {
-        return Ok(true);
-    }
-
     let api_key: &str = CONFIG.hcaptcha.secret.borrow();
 
     let response: HCaptchaResponse = Client::new()

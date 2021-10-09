@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+Register
+{% endblock %}
+
+{% block content %}
+<div class="ui two column centered grid">
+    <div class="center aligned column">
+        <form class="ui form" method="post" data-hx-post="/api/user" data-hx-ext="json-enc">
+            <div id="error-message" class="ui error message">
+            </div>
+
+            <div class="field">
+                <label>Username</label>
+                <input name="username" type="text" autocomplete="username" required>
+            </div>
+
+            <div class="field">
+                <label>E-Mail</label>
+                <input name="email" type="email" autocomplete="email" required>
+            </div>
+
+            <div class="field">
+                <label>Password</label>
+                <input name="password" type="password" autocomplete="new-password" required>
+            </div>
+
+            <div class="h-captcha" data-sitekey="{{ hcaptcha_site_key }}"></div>
+
+            <button class="ui button" type="submit">Register</button>
+        </form>
+
+        <div class="ui vertical segment">
+            <a href="/login">Already have an account?</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+
+<script>
+    document.addEventListener("htmx:responseError", (error) => {
+        let json = JSON.parse(error.detail.xhr.responseText);
+
+        $("#error-message").text(json.error);
+        $(".ui.form").addClass("error");
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        $(".ui.form").form({
+            fields: {
+                username: {
+                    rules: [
+                        {
+                            type: "empty"
+                        },
+                        {
+                            type: "doesntContain[@]",
+                            prompt: "Please input a username, not your email address."
+                        }
+                    ]
+                },
+                email: ["empty", "email"],
+                password: ["empty", "minLength[8]"]
+            }
+        });
+    });
+</script>
+{% endblock %}

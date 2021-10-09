@@ -1,19 +1,37 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{is_identifier, is_fs_legal};
+use crate::extensions::{is_identifier, is_fs_legal, get_header};
 use crate::user::User;
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto};
+use crate::{CONFIG, render_template};
+
+use std::borrow::Borrow;
 
 use actix_identity::Identity;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tera::Context;
 
-#[route("/api/user", method="POST")]
-pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route("/register", method = "GET")]
+pub(crate) async fn get_register(id: Identity) -> Result<impl Responder> {
+    if id.identity().is_some() {
+        return Err(HttpError(401, "Already logged in".to_owned()).into());
+    }
+
+    let site_key: &str = CONFIG.hcaptcha.site_key.borrow();
+
+    let mut context = Context::new();
+    context.try_insert("hcaptcha_site_key", site_key)?;
+
+    render_template!("user/register.html", context)
+}
+
+#[route("/api/user", method = "POST")]
+pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         // Maybe just redirect to home page?
         return Err(HttpError(401, "Already logged in".to_owned()).into());
@@ -78,10 +96,14 @@ pub(crate) async fn register(body: web::Json<RegisterJsonRequest>, id: Identity,
 
     info!("New user registered: {} (id {})", &user.username, &user.id);
 
-    Ok(HttpResponse::Ok().json(RegisterJsonResponse {
-        success: true,
-        id: user.id
-    }).await)
+    Ok(if get_header(&request, "hx-request").is_some() {
+        HttpResponse::Ok().header("hx-redirect", "/").header("hx-refresh", "true").finish()
+    } else {
+        HttpResponse::Ok().json(RegisterJsonResponse {
+            success: true,
+            id: user.id
+        })
+    })
 }
 
 #[derive(Deserialize)]
@@ -89,6 +111,7 @@ pub(crate) struct RegisterJsonRequest {
     username: String,
     email: String,
     password: String,
+    #[serde(rename = "h-captcha-response")]
     h_captcha_response: String
 }
 

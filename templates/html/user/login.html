@@ -16,7 +16,7 @@ Login
 
             <div class="field {% if username_error is defined %} error {% endif %}">
                 <label>Username</label>
-                <input name="username" type="text" value="{{ username | default(value="") }}">
+                <input name="username" type="text" value="{{ username | default(value="") }}" autocomplete="username" required>
 
                 {% if username_error is defined %}
                     <div class="ui basic red pointing prompt label transition visible" style="display: inline-block !important;">
@@ -28,7 +28,7 @@ Login
 
             <div class="field {% if password_error is defined %} error {% endif %}">
                 <label>Password</label>
-                <input name="password" type="password" value="{{ password | default(value="") }}">
+                <input name="password" type="password" value="{{ password | default(value="") }}" autocomplete="current-password" required>
 
                 {% if password_error is defined %}
                     <div class="ui basic red pointing prompt label transition visible" style="display: inline-block !important;">
@@ -42,6 +42,10 @@ Login
 
             <button class="ui button" type="submit">Login</button>
         </form>
+
+        <div class="ui vertical segment">
+            <a href="/register">Sign up</a>
+        </div>
     </div>
 </div>
 {% endblock %}
