@@ -4,13 +4,12 @@ use crate::error::GAErrors;
 use core::result::Result as CoreResult;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
-use std::path::Path;
+use std::future::Future;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use sqlx::error::Error as SqlxError;
-use sqlx::migrate::Migrator;
+use sqlx::encode::Encode;
 use sqlx::{Executor, FromRow, Postgres, Type};
 use tracing_unwrap::OptionExt;
 
@@ -62,21 +61,25 @@ pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Res
     Ok(result)
 }
 
-pub(crate) async fn set_setting<'e, T, E>(key: &'static str, value: &T, executor: E) -> Result<()>
-    where T: TryFrom<Setting> + Send,
-          E: Executor<'e, Database = Postgres>
+// This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
+// Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
+pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E) -> impl Future<Output = Result<()>> + 'q
+    where T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Send + 'q,
+          E: Executor<'e, Database = Postgres> + 'q
 {
-    sqlx::query("update settings set $1 = $2")
-        .bind(key)
-        .bind(value)
-        .execute(executor)
-        .await?;
+    async move {
+        sqlx::query("update settings set $1 = $2")
+            .bind(key)
+            .bind(value)
+            .execute(executor)
+            .await?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 pub(crate) async fn init<'e, E: Executor<'e, Database = Postgres>>(executor: E) -> Result<()> {
-    match sqlx::query_as("select exists(select 1 from settings)").fetch_one(executor).await {
+    match sqlx::query("select exists(select 1 from settings)").execute(executor).await {
         Ok(_) => { /* Database was valid */ },
         Err(err) => bail!(err)
     }
