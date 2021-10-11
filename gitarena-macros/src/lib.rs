@@ -1,9 +1,12 @@
-use std::str::FromStr;
+use crate::config_mapper::OptionalConfigMappings;
 
+use config_mapper::ConfigMappings;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat, Type};
+use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat};
+
+mod config_mapper;
 
 /// Creates resource handler, allowing multiple HTTP method guards.
 /// This method is similar to the actix_web method `actix_web::route`
@@ -95,43 +98,35 @@ pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn from_config(input: TokenStream) -> TokenStream {
-    let mut idents = Vec::<TokenStream2>::new();
-    let mut pairs = Vec::<TokenStream2>::new();
+    let mappings = parse_macro_input!(input as ConfigMappings);
+    let settings = mappings.settings;
+    let idents = settings.iter().map(|s| &s.identifier).collect::<Vec<&Ident>>();
 
-    let ts = input.to_string();
-    let splits = ts.split(',');
+    TokenStream::from(quote! {{
+        let mut transaction = db_pool.begin().await?;
 
-    for split in splits {
-        let mut split = split.split(" => ");
+        #(#settings)*
 
-        let ident = split.next().unwrap();
-        let (ident_str, key) = if ident.contains(".") {
-            (ident.replace(".", "_"), ident)
-        } else {
-            (ident.to_owned(), ident)
-        };
-        let ident: TokenStream = ident_str.parse().unwrap();
-        let ident = parse_macro_input!(ident as Ident);
+        transaction.commit().await?;
 
-        let type_str = split.next().unwrap();
-        let ty: TokenStream = type_str.parse().unwrap();
-        let ty = parse_macro_input!(ty as Type);
+        (#(#idents),*)
+    }})
+}
 
-        idents.push(TokenStream2::from_str(ident_str.as_str()).unwrap());
-        pairs.push(TokenStream2::from(quote! {
-            let #ident = config::get_optional_setting::<#ty, _>(#key, &mut transaction).await?;
-        }));
-    }
+#[proc_macro]
+pub fn from_optional_config(input: TokenStream) -> TokenStream {
+    let mappings = parse_macro_input!(input as ConfigMappings);
+    let mappings: OptionalConfigMappings = mappings.into();
+    let settings = mappings.settings;
+    let idents = settings.iter().map(|s| &s.identifier).collect::<Vec<&Ident>>();
 
-    TokenStream::from(quote! {
-        {
-            let mut transaction = db_pool.begin().await?;
+    TokenStream::from(quote! {{
+        let mut transaction = db_pool.begin().await?;
 
-            #(#pairs)*
+        #(#settings)*
 
-            transaction.commit().await?;
+        transaction.commit().await?;
 
-            (#(#idents),*)
-        }
-    })
+        (#(#idents),*)
+    }})
 }
