@@ -26,7 +26,10 @@ pub(crate) enum GAErrors {
     PackUnpackError(&'static str),
 
     #[error("Error occurred when trying to run hook: {0}")]
-    HookError(&'static str)
+    HookError(&'static str),
+
+    #[error("Type constraint was violated on {0}")]
+    TypeConstraintViolated(&'static str)
 }
 
 pub(crate) struct GitArenaError {
