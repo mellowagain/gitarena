@@ -32,5 +32,3 @@
 logs/
 repositories/
 static/user_content/
-src/config.rs
-debug_config.toml

@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 
-use std::borrow::{Borrow, Cow};
 use std::{env, io};
 use std::path::Path;
 use std::time::Duration;
@@ -14,9 +13,8 @@ use actix_web::http::HeaderValue;
 use actix_web::web::to;
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
-use config::Config;
 use fs_extra::dir;
-use lazy_static::lazy_static;
+use gitarena_macros::from_config;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
 use time::Duration as TimeDuration;
@@ -42,37 +40,39 @@ mod user;
 mod utils;
 mod verification;
 
-lazy_static! {
-    static ref CONFIG: Cow<'static, Config> = load_config();
-}
-
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let _log_guards = init_logger()?;
 
+    let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
+    env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
+
     let db_pool = PgPoolOptions::new()
         .max_connections(num_cpus::get() as u32)
         .connect_timeout(Duration::from_secs(10))
-        .connect(&CONFIG.database)
+        .connect(db_url.as_str())
         .await?;
 
-    sqlx::query("select 1;").execute(&db_pool).await.context("Unable to connect to database.")?;
-
-    info!("Successfully connected to database.");
+    // This is in a separate block so transaction gets dropped at the end
+    {
+        let mut transaction = db_pool.begin().await?;
+        config::init(&mut transaction).await.context("Unable to initialize config in database")?;
+        transaction.commit().await?;
+    }
 
     licenses::init().await?;
 
     let _watcher = templates::init().await?;
 
-    let bind_address: &str = CONFIG.bind.borrow();
+    let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
+
+    let (secret, domain): (Option<String>, Option<String>) = from_config!(secret => String, domain => String);
+    let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
+    let secure = domain.map_or_else(|| false, |d| d.starts_with("https"));
 
     let server = HttpServer::new(move || {
-        let secret = (CONFIG.secret.borrow() as &str).as_bytes();
-        let domain: &str = CONFIG.domain.borrow();
-        let secure = domain.starts_with("https");
-
         let identity_service = IdentityService::new(
-            CookieIdentityPolicy::new(secret)
+            CookieIdentityPolicy::new(secret.as_bytes())
                 .name("gitarena-auth")
                 .max_age(TimeDuration::days(10).whole_seconds())
                 .http_only(true)
@@ -122,41 +122,13 @@ async fn main() -> Result<()> {
         }
 
         app
-    }).bind(bind_address).context("Unable to bind HTTP server.")?;
+    }).bind(bind_address.as_str()).context("Unable to bind HTTP server.")?;
 
     server.run().await.context("Unable to start HTTP server.")?;
 
     info!("Thank you and goodbye.");
 
     Ok(())
-}
-
-fn load_config() -> Cow<'static, Config> {
-    let cfg_str = env::var("GITARENA_CONFIG").unwrap_or_else(|_| "config.toml".to_owned());
-    let cfg_path = Path::new(cfg_str.as_str());
-
-    if !cfg_path.is_file() {
-        panic!("Config file does not exist: {}", cfg_path.display());
-    }
-
-    let config = match Config::load_from(cfg_path) {
-        Ok(config) => config,
-        Err(err) => panic!("Unable to load config file: {}", err),
-    };
-
-    let secret: &str = config.secret.borrow();
-
-    if secret.is_empty() {
-        panic!("Found empty secret in config");
-    }
-
-    let secret_bytes = secret.as_bytes();
-
-    if secret_bytes.len() < 32 {
-        panic!("Secret in config needs to be at least 32 bytes long");
-    }
-
-    config
 }
 
 fn init_logger() -> Result<Vec<WorkerGuard>> {

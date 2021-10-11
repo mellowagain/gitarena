@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat};
+use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat, Type};
 
 /// Creates resource handler, allowing multiple HTTP method guards.
 /// This method is similar to the actix_web method `actix_web::route`
@@ -87,6 +89,49 @@ pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
             }
 
             Ok(#generated_ident_ts(#(#idents_vec),*).await.map_err(|e| -> crate::error::GitArenaError { e.into() }))
+        }
+    })
+}
+
+#[proc_macro]
+pub fn from_config(input: TokenStream) -> TokenStream {
+    let mut idents = Vec::<TokenStream2>::new();
+    let mut pairs = Vec::<TokenStream2>::new();
+
+    let ts = input.to_string();
+    let splits = ts.split(',');
+
+    for split in splits {
+        let mut split = split.split(" => ");
+
+        let ident = split.next().unwrap();
+        let (ident_str, key) = if ident.contains(".") {
+            (ident.replace(".", "_"), ident)
+        } else {
+            (ident.to_owned(), ident)
+        };
+        let ident: TokenStream = ident_str.parse().unwrap();
+        let ident = parse_macro_input!(ident as Ident);
+
+        let type_str = split.next().unwrap();
+        let ty: TokenStream = type_str.parse().unwrap();
+        let ty = parse_macro_input!(ty as Type);
+
+        idents.push(TokenStream2::from_str(ident_str.as_str()).unwrap());
+        pairs.push(TokenStream2::from(quote! {
+            let #ident = config::get_optional_setting::<#ty, _>(#key, &mut transaction).await?;
+        }));
+    }
+
+    TokenStream::from(quote! {
+        {
+            let mut transaction = db_pool.begin().await?;
+
+            #(#pairs)*
+
+            transaction.commit().await?;
+
+            (#(#idents),*)
         }
     })
 }
