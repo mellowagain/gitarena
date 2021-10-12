@@ -4,10 +4,12 @@ use crate::error::GAErrors;
 use core::result::Result as CoreResult;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
+use std::fmt::Display;
 use std::future::Future;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
+use enum_display_derive::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::{Executor, FromRow, Postgres, Type};
@@ -181,8 +183,8 @@ generate_try_from!(Char, char);
 generate_try_from!(Int, i32);
 generate_try_from!(Int, i64);
 
-#[derive(Type, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
-#[sqlx(rename_all = "lowercase")]
+#[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
+#[sqlx(rename = "type_constraint", rename_all = "lowercase")]
 #[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
 pub(crate) enum TypeConstraint {
     Boolean,    // bool, bool
@@ -190,5 +192,5 @@ pub(crate) enum TypeConstraint {
     Int,        // i32/i64, int/bigint
     String,     // &str, varchar, char, text
     // TODO: Implement Bytes when needed
-    //Bytes     // &[u8], bytea
+    Bytes     // &[u8], bytea
 }
