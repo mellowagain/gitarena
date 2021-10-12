@@ -25,7 +25,7 @@ pub(crate) async fn get_optional_setting<'e, T, E>(key: &'static str, executor: 
           E: Executor<'e, Database = Postgres>,
           <T as TryFrom<Setting>>::Error: StdError + Send + Sync + 'static
 {
-    let setting = sqlx::query_as::<_, Setting>("select * from users where key = $1 limit 1")
+    let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
         .fetch_one(executor)
         .await
@@ -51,7 +51,7 @@ pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Res
           E: Executor<'e, Database = Postgres>,
           <T as TryFrom<Setting>>::Error: StdError + Send + Sync + 'static
 {
-    let setting = sqlx::query_as::<_, Setting>("select * from users where key = $1 limit 1")
+    let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
         .fetch_one(executor)
         .await
