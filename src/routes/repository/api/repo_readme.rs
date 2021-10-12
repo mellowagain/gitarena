@@ -24,7 +24,7 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, id: Identity, db_pool
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
-    let gitoxide_repo = repo.gitoxide(uri.username.as_str()).await?;
+    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
     let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
         Ok(loose_ref) => Ok(loose_ref),

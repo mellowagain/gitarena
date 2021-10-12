@@ -1,18 +1,20 @@
-use crate::CONFIG;
-
-use std::borrow::Borrow;
+use crate::config::get_optional_setting;
 
 use anyhow::{Context, Result};
 use log::{error, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::{Executor, Postgres};
 
-pub(crate) async fn verify_captcha(token: &String) -> Result<bool> {
-    let api_key: &str = CONFIG.hcaptcha.secret.borrow();
+pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(token: &String, executor: E) -> Result<bool> {
+    let api_key = match get_optional_setting::<String, _>("hcaptcha.site_key", executor).await? {
+        Some(api_key) => api_key,
+        None => return Ok(true)
+    };
 
     let response: HCaptchaResponse = Client::new()
         .post("https://hcaptcha.com/siteverify")
-        .form(&[("response", token), ("secret", &api_key.to_owned())])
+        .form(&[("response", token), ("secret", &api_key)])
         .send()
         .await
         .context("Unable to verify hCaptcha captcha token.")?

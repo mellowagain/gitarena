@@ -52,7 +52,7 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
         Either::B(response) => return Ok(response)
     };
 
-    let git2repo = repo.libgit2(&uri.username).await?;
+    let git2repo = repo.libgit2(&mut transaction).await?;
 
     let mut bytes = web::BytesMut::new();
 

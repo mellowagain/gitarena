@@ -11,6 +11,7 @@ use git_pack::bundle::write::Options as GitPackWriteOptions;
 use git_pack::data::input::{Mode as PackIterationMode};
 use git_pack::index::Version as PackVersion;
 use git_pack::{Bundle, cache, FindExt};
+use sqlx::{Executor, Postgres};
 use tempfile::{Builder, TempDir};
 use tracing::instrument;
 
@@ -18,10 +19,10 @@ use tracing::instrument;
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
 #[instrument(err)]
-pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
+pub(crate) async fn read<'e, E: Executor<'e, Database = Postgres>>(data: &[u8], repo: &Repository, executor: E) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
-    match write_to_fs(data, &temp_dir, repo, repo_owner).await {
+    match write_to_fs(data, &temp_dir, repo, executor).await {
         Ok((index_path, pack_path)) => Ok((Some(index_path), Some(pack_path), temp_dir)),
         Err(err) => match err.to_string().as_str() { // Gitoxide does not export the error enum so this is a whacky workaround
             "Did not encounter a single base" => Ok((None, None, temp_dir)),
@@ -31,14 +32,14 @@ pub(crate) async fn read(data: &[u8], repo: &Repository, repo_owner: &str) -> Re
 }
 
 #[instrument(err)]
-pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir, repo: &Repository, repo_owner: &str) -> Result<(PathBuf, PathBuf)> {
+pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: &[u8], temp_dir: &TempDir, repo: &Repository, executor: E) -> Result<(PathBuf, PathBuf)> {
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),
         iteration_mode: PackIterationMode::Verify,
         index_kind: PackVersion::V2
     };
 
-    let repo = repo.gitoxide(repo_owner).await?;
+    let repo = repo.gitoxide(executor).await?;
     let buf_reader = BufReader::new(data);
 
     let bundle = Bundle::write_to_directory(

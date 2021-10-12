@@ -14,7 +14,7 @@ use actix_web::web::to;
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use fs_extra::dir;
-use gitarena_macros::from_config;
+use gitarena_macros::from_optional_config;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
 use time::Duration as TimeDuration;
@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
-    let (secret, domain): (Option<String>, Option<String>) = from_config!(secret => String, domain => String);
+    let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain" => String);
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.map_or_else(|| false, |d| d.starts_with("https"));
 
