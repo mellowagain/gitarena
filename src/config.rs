@@ -119,7 +119,7 @@ impl Setting {
     }
 
     pub(crate) fn as_bytes(&self) -> Option<&[u8]> {
-        self.value.map(|v| v.as_bytes())
+        self.value.as_ref().map(String::as_bytes)
     }
 
     /// Panics if value is none. For safe option, see [as_bytes](as_bytes)
