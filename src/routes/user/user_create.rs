@@ -1,11 +1,9 @@
+use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{is_identifier, is_fs_legal, get_header};
 use crate::user::User;
 use crate::verification::send_verification_mail;
-use crate::{captcha, crypto};
-use crate::{CONFIG, render_template};
-
-use std::borrow::Borrow;
+use crate::{captcha, crypto, render_template};
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
@@ -17,17 +15,20 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/register", method = "GET")]
-pub(crate) async fn get_register(id: Identity) -> Result<impl Responder> {
+pub(crate) async fn get_register(id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let mut transaction = db_pool.begin().await?;
+
     if id.identity().is_some() {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 
-    let site_key: &str = CONFIG.hcaptcha.site_key.borrow();
-
     let mut context = Context::new();
-    context.try_insert("hcaptcha_site_key", site_key)?;
 
-    render_template!("user/register.html", context)
+    if let Some(site_key) = get_optional_setting::<String, _>("hcaptcha.site_key", &mut transaction).await? {
+        context.try_insert("hcaptcha_site_key", &site_key)?;
+    }
+
+    render_template!("user/register.html", context, transaction)
 }
 
 #[route("/api/user", method = "POST")]
@@ -75,7 +76,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     let password = crypto::hash_password(raw_password)?;
 
-    let captcha_success = captcha::verify_captcha(&body.h_captcha_response.to_owned()).await?;
+    let captcha_success = captcha::verify_captcha(&body.h_captcha_response.to_owned(), &mut transaction).await?;
 
     if !captcha_success {
         return Err(HttpError(422, "Captcha verification failed".to_owned()).into());
@@ -88,7 +89,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
         .fetch_one(&mut transaction)
         .await?;
 
-    send_verification_mail(&user, &mut transaction).await?;
+    send_verification_mail(&user, &db_pool).await?;
 
     id.remember(user.identity_str());
 

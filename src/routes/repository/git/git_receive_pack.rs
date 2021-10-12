@@ -106,14 +106,14 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     match searcher.search_in(vec) {
         Some(pos) => {
-            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &uri.username.as_ref()).await?;
+            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &mut transaction).await?;
 
             output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &uri.username.as_ref(), &mut output_writer, index_path.as_ref(), pack_path.as_ref(), &vec[pos..], cache).await?,
-                    RefUpdateType::Delete => process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?
+                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &db_pool, &mut output_writer, index_path.as_ref(), pack_path.as_ref(), &vec[pos..], cache).await?,
+                    RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?
                 };
             }
         }
@@ -127,12 +127,12 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
-                process_delete(&update, &repo, &uri.username.as_ref(), &mut output_writer).await?;
+                process_delete(&update, &repo, &mut transaction, &mut output_writer).await?;
             }
         }
     }
 
-    let repo_dir_str = repo.get_fs_path(&uri.username.as_ref()).await;
+    let repo_dir_str = repo.get_fs_path(&mut transaction).await?;
     let repo_dir = Path::new(&repo_dir_str);
 
     // Let Git collect garbage to optimize repo size
@@ -147,7 +147,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     output_writer.flush().await?;
 
     // Run post update hooks
-    post_update::run(&mut repo, &uri.username, cache)
+    post_update::run(&mut repo, &mut transaction, cache)
         .await
         .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 

@@ -34,8 +34,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
 
     let mut context = Context::new();
 
-    let libgit2_repo = repo.libgit2(username).await?;
-    let gitoxide_repo = repo.gitoxide(username).await?;
+    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
     let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
         Ok(loose_ref) => Ok(loose_ref),
@@ -105,7 +105,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
 
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", &username)?;
-    context.try_insert("repo_size", &repo.repo_size(username).await?)?;
+    context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;
     context.try_insert("files", &files)?;
     context.try_insert("tree", tree_name)?;
     context.try_insert("full_tree", full_tree_name)?;

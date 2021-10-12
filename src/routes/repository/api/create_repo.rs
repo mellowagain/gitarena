@@ -1,10 +1,8 @@
-use crate::config::CONFIG;
+use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{get_user_by_identity, is_fs_legal, is_identifier};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
-
-use std::borrow::Borrow;
 
 use actix_web::{HttpResponse, Responder, web};
 use sqlx::PgPool;
@@ -57,9 +55,9 @@ pub(crate) async fn create(id: Identity, body: web::Json<CreateJsonRequest>, db_
         .fetch_one(&mut transaction)
         .await?;
 
-    repo.create_fs(&user.username).await?;
+    repo.create_fs(&mut transaction).await?;
 
-    let domain: &str = CONFIG.domain.borrow();
+    let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
     let url = format!("{}/{}/{}", domain, &user.username, &repo.name);
 
     transaction.commit().await?;

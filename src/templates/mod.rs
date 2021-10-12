@@ -109,6 +109,10 @@ macro_rules! template_context {
     }
 }
 
+/// Renders a template and returns `Ok(HttpResponse)`. If an error occurs, returns `Err`.
+///
+/// - If `$transaction` is passed, both `debug` (if in debug mode) and `domain` gets inserted into the context additionally.
+/// - If `$transaction` is not passed, only `debug` (if in debug mode) gets inserted into the context additionally.
 #[macro_export]
 macro_rules! render_template {
     ($template_name:literal, $context:expr) => {{
@@ -118,12 +122,6 @@ macro_rules! render_template {
         render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction)
     }};
     ($status:expr, $template_name:literal, $context:expr) => {{
-        use std::borrow::Borrow;
-        use tracing_unwrap::ResultExt;
-
-        let domain: &str = $crate::CONFIG.domain.borrow();
-        $context.try_insert("domain", &domain)?;
-
         if cfg!(debug_assertions) {
             $context.try_insert("debug", &true)?;
         }
@@ -132,10 +130,7 @@ macro_rules! render_template {
         Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
-        use std::borrow::Borrow;
-        use tracing_unwrap::ResultExt;
-
-        let domain: &str = $crate::CONFIG.domain.borrow();
+        let domain = $crate::config::get_optional_setting::<String, _>("domain", &mut $transaction).await?.unwrap_or_default();
         $context.try_insert("domain", &domain)?;
 
         if cfg!(debug_assertions) {

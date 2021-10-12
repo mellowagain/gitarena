@@ -1,10 +1,8 @@
-use crate::config::CONFIG;
 use crate::error::GAErrors::{GitError, HttpError, ParseError};
 use crate::repository::Repository;
 use crate::user::User;
 
 use core::result::Result as CoreResult;
-use std::borrow::Borrow;
 use std::io::Result as IoResult;
 use std::time::Instant;
 
@@ -154,17 +152,14 @@ pub(crate) fn gitoxide_to_libgit2_type(header: &Header) -> Result<ObjectType> {
     })
 }
 
-// TODO: Maybe make this configurable using the config file at some point?
+// TODO: Make this configurable
 pub(crate) fn default_signature() -> Signature {
-    let domain: &str = CONFIG.domain.borrow();
-    let stripped = domain.replace("https://", "").replace("http://", "");
-
     let now = Utc::now();
     let naive = now.naive_utc();
 
     Signature {
         name: BString::from("GitArena"),
-        email: BString::from(format!("git@{}", stripped)),
+        email: BString::from("git@gitarena.com"),
         time: Time {
             time: naive.timestamp() as u32,
             offset: 0,

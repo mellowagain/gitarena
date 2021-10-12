@@ -21,20 +21,22 @@ use git_ref::Target;
 use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
 use git_repository::actor::Signature;
 use git_repository::prelude::{Find, FindExt};
+use sqlx::{Executor, Pool, Postgres};
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 #[instrument(err, skip(writer, cache))]
-pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
+pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, db_pool: &Pool<Postgres>, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
     assert!(ref_update.new.is_some());
 
+    let mut transaction = db_pool.begin().await?;
     let mut mut_cache = cache;
     let new_oid = str_to_oid(&ref_update.new)?;
 
     // # Gitoxide zone
     // This block decodes the entry from the pack file, creates a Gitoxide Commit and then writes it to the reflog using a transaction
     {
-        let gitoxide_repo = repo.gitoxide(repo_owner).await?;
+        let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
         let mut buffer = Vec::<u8>::new();
 
         let commit = match (index_path, pack_path) {
@@ -115,7 +117,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
     // # libgit2 zone
     // This block writes the payload into the repo odb
     {
-        let git2_repo = repo.libgit2(repo_owner).await?;
+        let git2_repo = repo.libgit2(&mut transaction).await?;
 
         let odb = git2_repo.odb()?;
         let mut pack_writer = odb.packwriter()?;
@@ -123,6 +125,8 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
         pack_writer.write_all(raw_pack)?;
         pack_writer.commit()?;
     }
+
+    transaction.commit().await?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
         writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
@@ -132,11 +136,11 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
 }
 
 #[instrument(err, skip(writer))]
-pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, repo_owner: &str, writer: &mut GitWriter) -> Result<()> {
+pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref_update: &RefUpdate, repo: &Repository, executor: E, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());
 
-    let gitoxide_repo = repo.gitoxide(repo_owner).await?;
+    let gitoxide_repo = repo.gitoxide(executor).await?;
 
     let object_id = str_to_oid(&ref_update.old).map_err(|_| GitError(404, Some("Ref does not exist".to_owned())))?;
 

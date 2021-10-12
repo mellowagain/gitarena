@@ -10,7 +10,7 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use qstring::QString;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{Executor, PgPool, Pool, Postgres};
 
 #[route("/{username}/{repository}.git/info/refs", method="GET")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -47,7 +47,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
             Ok(response)
         }
         "git-receive-pack" => {
-            let response = receive_pack_info_refs(repo_option, uri.username.as_str(), &request, &mut transaction).await?;
+            let response = receive_pack_info_refs(repo_option, &request, &db_pool).await?;
             transaction.commit().await?;
 
             Ok(response)
@@ -77,10 +77,10 @@ async fn upload_pack_info_refs<'e, E>(repo_option: Option<Repository>, service: 
         .body(capabilities(service).await?))
 }
 
-async fn receive_pack_info_refs<'e, E>(repo_option: Option<Repository>, username: &str, request: &HttpRequest, executor: E) -> Result<HttpResponse>
-    where E: Executor<'e, Database = Postgres>
-{
-    let _user = match basic_auth::login_flow(request, executor, "application/x-git-receive-pack-advertisement").await? {
+async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpRequest, db_pool: &Pool<Postgres>) -> Result<HttpResponse> {
+    let mut transaction = db_pool.begin().await?;
+
+    let _user = match basic_auth::login_flow(request, &mut transaction, "application/x-git-receive-pack-advertisement").await? {
         Either::A(user) => user,
         Either::B(response) => return Ok(response)
     };
@@ -92,8 +92,10 @@ async fn receive_pack_info_refs<'e, E>(repo_option: Option<Repository>, username
         None => return Err(GitError(404, None).into())
     };
 
-    let git2repo = repo.libgit2(username).await?;
+    let git2repo = repo.libgit2(&mut transaction).await?;
     let output = ls_refs_all(&git2repo).await?;
+
+    transaction.commit().await?;
 
     Ok(HttpResponse::Ok()
         .header("Content-Type", "application/x-git-receive-pack-advertisement")
