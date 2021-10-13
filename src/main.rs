@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
-use std::{env, io};
+use std::env::VarError;
+use std::error::Error;
 use std::path::Path;
 use std::time::Duration;
+use std::{env, io};
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
@@ -133,8 +135,11 @@ async fn main() -> Result<()> {
 
 fn init_logger() -> Result<Vec<WorkerGuard>> {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
-        // err (type FromEnvError) does not expose its `kind` field so we have to display it and compare it to the output
-        if format!("{}", err).as_str() != "environment variable not found" {
+        let not_found = err.source()
+            .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
+            .unwrap_or(false);
+
+        if !not_found {
             eprintln!("Warning: Unable to parse `{}` environment variable, using default values: {}", EnvFilter::DEFAULT_ENV, err);
         }
 
