@@ -12,7 +12,8 @@ use anyhow::{bail, Context, Result};
 use enum_display_derive::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
-use sqlx::{Executor, FromRow, Postgres, Type};
+use sqlx::postgres::PgDatabaseError;
+use sqlx::{Executor, FromRow, Pool, Postgres, Type};
 use tracing_unwrap::OptionExt;
 
 /// Gets the value of a setting from the database.
@@ -80,13 +81,26 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
     }
 }
 
-pub(crate) async fn init<'e, E: Executor<'e, Database = Postgres>>(executor: E) -> Result<()> {
-    match sqlx::query("select exists(select 1 from settings)").execute(executor).await {
-        Ok(_) => { /* Database was valid */ },
-        Err(err) => bail!(err)
-    }
+pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
+    let mut transaction = db_pool.begin().await?;
 
-    // On error run create_tables
+    if let Some(err) = sqlx::query("select exists(select 1 from settings)").execute(&mut transaction).await.err() {
+        if let Some(db_err) = err.as_database_error() {
+            let pg_err = db_err.downcast_ref::<PgDatabaseError>();
+
+            // 42P01: relation settings does not exist
+            // If we receive this error code we know the tables have not yet been generated
+            // so we insert our schema and if that succeeds we're ready to go
+            if pg_err.code() == "42P01" {
+                create_tables(&mut transaction).await?;
+
+                transaction.commit().await?;
+                return Ok(());
+            }
+        }
+
+        bail!(err);
+    }
 
     Ok(())
 }

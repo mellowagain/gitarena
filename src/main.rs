@@ -55,12 +55,7 @@ async fn main() -> Result<()> {
         .connect(db_url.as_str())
         .await?;
 
-    // This is in a separate block so transaction gets dropped at the end
-    {
-        let mut transaction = db_pool.begin().await?;
-        config::init(&mut transaction).await.context("Unable to initialize config in database")?;
-        transaction.commit().await?;
-    }
+    config::init(&db_pool).await.context("Unable to initialize config in database")?;
 
     licenses::init().await?;
 
