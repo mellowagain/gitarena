@@ -55,6 +55,17 @@ pub(crate) enum WebUser {
 }
 
 impl WebUser {
+    pub(crate) fn ok(self) -> Option<User> {
+        self.into_user().ok()
+    }
+
+    pub(crate) fn as_ref(&self) -> Option<&User> {
+        match self {
+            WebUser::Authenticated(user) => Some(user),
+            WebUser::Anonymous => None
+        }
+    }
+
     pub(crate) fn into_user(self) -> AnyhowResult<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
