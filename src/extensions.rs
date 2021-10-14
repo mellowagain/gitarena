@@ -88,10 +88,36 @@ pub(crate) fn is_identifier(c: &char) -> bool {
     c.is_ascii_alphanumeric() || c == &'-' || c == &'_'
 }
 
+/// Checks if input is a reserved username
+pub(crate) async fn is_reserved_username(input: &str) -> bool {
+    const ILLEGAL_USERNAMES: [&str; 6] = [
+        "admin",
+        "api",
+        "login",
+        "logout",
+        "register",
+        "static"
+    ];
+
+    let lower_case = input.to_lowercase();
+    ILLEGAL_USERNAMES.contains(&lower_case.as_str())
+}
+
+/// Checks if input is a reserved repository name
+pub(crate) async fn is_reserved_repo_name(input: &str) -> bool {
+    const ILLEGAL_REPO_NAMES: [&str; 1] = [
+        "settings"
+    ];
+
+    let lower_case = input.to_lowercase();
+    ILLEGAL_REPO_NAMES.contains(&lower_case.as_str())
+}
+
 /// Checks for illegal file and directory names on Windows.
 /// This function assumes that the input has already been checked with [`is_identifier`][0].
 ///
 /// [0]: crate::extensions::is_identifier
+#[cfg(windows)]
 pub(crate) async fn is_fs_legal(input: &String) -> bool {
     let mut legal = input != "CON";
     legal &= input != "PRN";
@@ -105,6 +131,12 @@ pub(crate) async fn is_fs_legal(input: &String) -> bool {
     }
 
     legal
+}
+
+/// Returns true
+#[cfg(not(windows))]
+pub(crate) async fn is_fs_legal(input: &String) -> bool {
+    true
 }
 
 /// Flattens `std::io::Result<std::result::Result<O, E>>` into `anyhow::Result<O>`

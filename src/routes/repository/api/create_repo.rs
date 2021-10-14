@@ -1,6 +1,6 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{is_fs_legal, is_identifier};
+use crate::extensions::{is_fs_legal, is_identifier, is_reserved_repo_name};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::WebUser;
@@ -22,6 +22,10 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     if name.is_empty() || name.len() > 32 || !name.chars().all(|c| is_identifier(&c)) {
         return Err(HttpError(400, "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+    }
+
+    if is_reserved_repo_name(name.as_str()).await {
+        return Err(HttpError(400, "Repository name is a reserved identifier".to_owned()).into());
     }
 
     if !is_fs_legal(name).await {

@@ -1,6 +1,6 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{is_identifier, is_fs_legal, get_header};
+use crate::extensions::{is_identifier, is_fs_legal, get_header, is_reserved_username};
 use crate::user::{User, WebUser};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, render_template};
@@ -44,6 +44,10 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_identifier(&c)) {
         return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+    }
+
+    if is_reserved_username(username.as_str()).await {
+        return Err(HttpError(400, "Username is a reserved identifier".to_owned()).into());
     }
 
     if !is_fs_legal(username).await {
