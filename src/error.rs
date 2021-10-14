@@ -29,7 +29,18 @@ pub(crate) enum GAErrors {
     HookError(&'static str),
 
     #[error("Type constraint was violated on {0}")]
-    TypeConstraintViolated(&'static str)
+    TypeConstraintViolated(&'static str),
+
+    #[error("Not authenticated. Try logging in")]
+    NotAuthenticated
+}
+
+impl From<GAErrors> for GitArenaError {
+    fn from(ga_error: GAErrors) -> Self {
+        GitArenaError {
+            error: ga_error.into()
+        }
+    }
 }
 
 pub(crate) struct GitArenaError {
