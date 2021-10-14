@@ -84,11 +84,11 @@ impl ResponseError for GitArenaError {
             match e {
                 GAErrors::HttpError(status_code, _) => StatusCode::from_u16(*status_code),
                 GAErrors::GitError(status_code, _) => StatusCode::from_u16(*status_code),
+                GAErrors::NotAuthenticated => Ok(StatusCode::UNAUTHORIZED),
 
                 _ => Ok(StatusCode::INTERNAL_SERVER_ERROR)
             }.unwrap_or_else(|error| {
-                warn!("Invalid status code passed to GitArena error: {}", error);
-                StatusCode::IM_A_TEAPOT
+                panic!("Invalid status code passed to GitArena error: {}", error);
             })
         } else {
             StatusCode::INTERNAL_SERVER_ERROR
@@ -112,6 +112,12 @@ impl ResponseError for GitArenaError {
                     }
 
                     response.finish()
+                },
+                GAErrors::NotAuthenticated => {
+                    HttpResponse::Unauthorized()
+                        .json(json!({
+                            "error": "Not logged in"
+                        }))
                 },
 
                 _ => HttpResponse::InternalServerError().finish()
