@@ -55,7 +55,7 @@ pub(crate) enum WebUser {
 }
 
 impl WebUser {
-    fn into_user(self) -> AnyhowResult<User> {
+    pub(crate) fn into_user(self) -> AnyhowResult<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
             WebUser::Anonymous => Err(GAErrors::NotAuthenticated.into())
