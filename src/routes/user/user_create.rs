@@ -1,7 +1,7 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{is_identifier, is_fs_legal, get_header};
-use crate::user::User;
+use crate::user::{User, WebUser};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, render_template};
 
@@ -15,10 +15,10 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/register", method = "GET")]
-pub(crate) async fn get_register(id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    if id.identity().is_some() {
+    if matches!(web_user, WebUser::Authenticated(_)) {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 

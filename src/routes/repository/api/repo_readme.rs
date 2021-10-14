@@ -1,10 +1,10 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{get_user_by_identity, repo_from_str};
+use crate::extensions::repo_from_str;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
 use crate::routes::repository::GitTreeRequest;
+use crate::user::WebUser;
 
-use actix_identity::Identity;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
@@ -16,11 +16,10 @@ use serde_json::json;
 use sqlx::PgPool;
 
 #[route("/api/repo/{username}/{repository}/tree/{tree}/readme", method="GET")]
-pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
-    let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
+    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 

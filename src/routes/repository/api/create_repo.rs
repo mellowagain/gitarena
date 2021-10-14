@@ -1,25 +1,22 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{get_user_by_identity, is_fs_legal, is_identifier};
+use crate::extensions::{is_fs_legal, is_identifier};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
+use crate::user::WebUser;
 
 use actix_web::{HttpResponse, Responder, web};
 use sqlx::PgPool;
-use actix_identity::Identity;
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use log::info;
 
 #[route("/api/repo", method="POST")]
-pub(crate) async fn create(id: Identity, body: web::Json<CreateJsonRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let user = match get_user_by_identity(id.identity(), &mut transaction).await {
-        Some(user) => user,
-        None => return Err(HttpError(401, "Not logged in".to_owned()).into())
-    };
+    let user = web_user.into_user()?;
 
     let name = &body.name;
 

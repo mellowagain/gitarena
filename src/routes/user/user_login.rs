@@ -1,7 +1,7 @@
 use crate::crypto;
 use crate::error::GAErrors::HttpError;
 use crate::render_template;
-use crate::user::User;
+use crate::user::{User, WebUser};
 use crate::verification;
 
 use actix_identity::Identity;
@@ -17,8 +17,8 @@ use tracing_unwrap::OptionExt;
 use log::debug;
 
 #[route("/login", method = "GET")]
-pub(crate) async fn get_login(id: Identity) -> Result<impl Responder> {
-    if id.identity().is_some() {
+pub(crate) async fn get_login(web_user: WebUser) -> Result<impl Responder> {
+    if matches!(web_user, WebUser::Authenticated(_)) {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 

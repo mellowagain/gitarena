@@ -1,5 +1,5 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{bstr_to_str, get_user_by_identity, repo_from_str};
+use crate::extensions::{bstr_to_str, repo_from_str};
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
@@ -7,10 +7,10 @@ use crate::render_template;
 use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
 use crate::templates::web::{GitCommit, RepoFile};
+use crate::user::WebUser;
 
 use std::cmp::Ordering;
 
-use actix_identity::Identity;
 use actix_web::{Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
@@ -24,11 +24,10 @@ use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
-async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id: Identity, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
+async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web_user: WebUser, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
-    let user = get_user_by_identity(id.identity(), &mut transaction).await;
 
-    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
+    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
     }
 
@@ -117,7 +116,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
     context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
     context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
 
-    if let Some(user) = user.as_ref() {
+    if let Some(user) = web_user.as_ref() {
         context.try_insert("user", user)?;
     }
 
@@ -152,15 +151,15 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, id:
 }
 
 #[route("/{username}/{repository}/tree/{tree}", method="GET")]
-pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 
-    render(Some(uri.tree.as_str()), repo, &uri.username, id, transaction).await
+    render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
 
 #[route("/{username}/{repository}", method="GET")]
-pub(crate) async fn view_repo(uri: web::Path<GitRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 
-    render(None, repo, &uri.username, id, transaction).await
+    render(None, repo, &uri.username, web_user, transaction).await
 }
