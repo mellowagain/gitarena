@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% import "admin/admin_macros.html" as macros %}
+
+{% block title %}
+Admin Dashboard
+{% endblock %}
+
+{% block content %}
+<div class="ui centered stackable grid">
+    <div class="five wide centered column">
+        <div class="ui center aligned top attached segment">
+            <div class="ui statistic">
+                <div class="value">
+                    <i class="user icon"></i> {{ users_count }}
+                </div>
+                <div class="label">
+                    user{{ users_count | pluralize }}
+                </div>
+            </div>
+        </div>
+        <div class="ui center aligned attached segment">
+            Latest user:
+
+            {% if latest_user is undefined %}
+                n/a
+            {% else %}
+                <a href="/admin/user/{{ latest_user.id }}">
+                    {{ latest_user.username }}
+                </a>
+            {% endif%}
+        </div>
+        <div class="ui center aligned bottom attached segment">
+            <a href="/admin/users">
+                View all users
+                <i class="angle right icon"></i>
+            </a>
+        </div>
+    </div>
+    <div class="five wide centered column">
+        <div class="ui center aligned top attached segment">
+            <div class="ui statistic">
+                <div class="value">
+                    <i class="users icon"></i>
+                    {{ groups_count }}
+                </div>
+                <div class="label">
+                    group{{ groups_count | pluralize }}
+                </div>
+            </div>
+        </div>
+        <div class="ui center aligned attached segment">
+            Latest group:
+
+            {% if latest_group is undefined %}
+                n/a
+            {% else %}
+                <a href="/admin/group/{{ latest_group.id }}">
+                    {{ latest_group.name }}
+                </a>
+            {% endif %}
+        </div>
+        <div class="ui center aligned bottom attached segment">
+            <a href="/admin/groups">
+                View all groups
+                <i class="angle right icon"></i>
+            </a>
+        </div>
+    </div>
+    <div class="five wide centered column">
+        <div class="ui center aligned top attached segment">
+            <div class="ui statistic">
+                <div class="value">
+                    <i class="code branch icon"></i>
+                    {{ repos_count }}
+                </div>
+                <div class="label">
+                    repositor{{ repos_count | pluralize(singular="y", plural="ies") }}
+                </div>
+            </div>
+        </div>
+        <div class="ui center aligned attached segment">
+            Latest repo:
+
+            {% if latest_repo is undefined %}
+                n/a
+            {% else %}
+                <a href="/admin/repos/{{ latest_repo.id }}">
+                    {{ latest_repo_username }}/{{ latest_repo.name }}
+                </a>
+            {% endif %}
+        </div>
+        <div class="ui center aligned bottom attached segment">
+            <a href="/admin/repos">
+                View all repositories
+                <i class="angle right icon"></i>
+            </a>
+        </div>
+    </div>
+    <div class="five wide centered column">
+        <div class="ui segment">
+            <h1 class="ui header">Components</h1>
+            <div class="ui grid">
+                {{ macros::component(key="GitArena", key_link="https://github.com/mellowagain/gitarena", value=gitarena_version, popup="") }}
+                {{ macros::component(key="rustc", value=rustc_version, popup="Rust compiler version used at compile time") }}
+                {{ macros::component(key="PostgreSQL", value=postgres_version, popup="") }}
+                {{ macros::component(key="libgit2", value=libgit2_version, popup="") }}
+                {{ macros::component(key="git2-rs", value=git2_rs_version, popup="Rust bindings library for libgit2") }}
+            </div>
+        </div>
+    </div>
+    <div class="five wide centered column">
+        <div class="ui segment">
+            <h1 class="ui header">System Info</h1>
+            <div class="ui grid">
+                {% set operating_system = os ~ " " ~ version %}
+                {{ macros::component(key="OS", value=operating_system, popup="") }}
+                {{ macros::component(key="Architecture", value=architecture, popup="") }}
+                {{ macros::component(key="Uptime", value=uptime, popup="") }}
+
+                {% set memory_available_file_size = memory_available | filesizeformat %}
+                {% set memory_total_file_size = memory_total | filesizeformat %}
+                {% set memory = memory_available_file_size ~ " / " ~ memory_total_file_size %}
+
+                {{ macros::component(key="Memory", value=memory, popup="") }}
+
+                {{ macros::component(key="GitArena PID", value=pid, popup="Process ID (PID) of this GitArena instance") }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

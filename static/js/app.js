@@ -48,3 +48,7 @@ function insertScript(url) {
 function insertStyleSheet(url) {
     $("head").append(`<link rel="stylesheet" type="text/css" href="${url}">`);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    $(".popup").popup();
+});

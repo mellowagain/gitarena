@@ -1,0 +1,22 @@
+{% macro component(key, key_link="", value, popup="") %}
+    <div class="row">
+        <div class="eight wide column">
+            {% if key_link is not empty %}
+                <a href="{{ key_link }}">
+            {% endif %}
+            {{ key }}
+            {% if key_link is not empty %}
+                </a>
+            {% endif %}
+
+            {% if popup is not empty %}
+                <a class="popup" data-content="{{ popup }}">
+                    <i class="question circle icon"></i>
+                </a>
+            {% endif %}
+        </div>
+        <div class="eight wide right aligned column">
+            {{ value }}
+        </div>
+    </div>
+{% endmacro component %}
