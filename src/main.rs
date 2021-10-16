@@ -11,8 +11,10 @@ use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::cookie::SameSite;
 use actix_web::dev::Service;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, LOCATION};
-use actix_web::http::HeaderValue;
-use actix_web::web::to;
+use actix_web::http::{HeaderValue, Method};
+use actix_web::middleware::normalize::TrailingSlash;
+use actix_web::middleware::NormalizePath;
+use actix_web::web::{route, to};
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use fs_extra::dir;
@@ -79,6 +81,7 @@ async fn main() -> Result<()> {
 
         let mut app = App::new()
             .data(db_pool.clone())
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
@@ -102,7 +105,7 @@ async fn main() -> Result<()> {
                     Ok(res)
                 }
             })
-            .default_service(to(routes::not_found::default_handler))
+            .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
             .configure(routes::proxy::init)
             .configure(routes::repository::init)

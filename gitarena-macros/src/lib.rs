@@ -4,7 +4,7 @@ use config_mapper::ConfigMappings;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, Error, FnArg, ItemFn, parse_macro_input, Pat};
+use syn::{AttributeArgs, Error, FnArg, ItemFn, Lit, LitStr, NestedMeta, parse_macro_input, Pat};
 
 mod config_mapper;
 
@@ -29,8 +29,42 @@ mod config_mapper;
 ///
 #[proc_macro_attribute]
 pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as AttributeArgs);
+    let mut args = parse_macro_input!(args as AttributeArgs);
     let mut input = parse_macro_input!(input as ItemFn);
+
+    // Transform routes which are only a "/" to an empty string. This allows scoped routes to have index
+    // pages without having to declare their route with a literal empty string (which is quite confusing).
+    // This cannot be done inline because of https://github.com/rust-lang/rust/issues/59159,
+    // so we return a tuple which allows us to mutually borrow later if needed.
+    let (sanitize_slash, span) = if let Some(first_arg) = args.first() {
+        match first_arg {
+            NestedMeta::Lit(literal) => match literal {
+                Lit::Str(str) => {
+                    let value = str.value();
+
+                    if value.is_empty() {
+                        return Error::new(
+                            str.span(),
+                            "Route cannot be empty. Hint: If you want to match on index, use /"
+                        ).to_compile_error().into();
+                    } else if value == "/" {
+                        (true, Some(str.span()))
+                    } else {
+                        (false, None)
+                    }
+                }
+                _ => (false, None)
+            }
+            NestedMeta::Meta(_) => (false, None)
+        }
+    } else {
+        (false, None)
+    };
+
+    if sanitize_slash {
+        args.insert(0, NestedMeta::Lit(Lit::Str(LitStr::new("", span.unwrap()))));
+        args.remove(1);
+    }
 
     let attrs = &mut input.attrs;
     let vis = &input.vis;
