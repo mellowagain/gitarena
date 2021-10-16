@@ -13,8 +13,8 @@ use heim::units::{Information, information, Time};
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/admin", method = "GET")]
-pub(crate) async fn admin_dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route("/", method = "GET")]
+pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -87,7 +87,6 @@ pub(crate) async fn admin_dashboard(web_user: WebUser, db_pool: web::Data<PgPool
     context.try_insert("libgit2_version", format!("{}.{}.{}", major, minor, patch).as_str())?;
     context.try_insert("git2_rs_version", libgit2_version.crate_version())?;
 
-
     // System Info
 
     if let Some(platform) = heim::host::platform().await.ok() {
@@ -116,7 +115,7 @@ fn format_heim_time(time: Time) -> String {
     let duration = Duration::seconds(time.get::<heim::units::time::second>() as i64);
     let human_time = HumanTime::from(duration);
 
-    format!("{}", human_time.to_text_en(Accuracy::Rough, Tense::Present))
+    human_time.to_text_en(Accuracy::Rough, Tense::Present)
 }
 
 fn heim_size_to_bytes(info: Information) -> usize {

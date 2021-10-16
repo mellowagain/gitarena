@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
                 }
             })
             .default_service(to(routes::not_found::default_handler))
-            .configure(routes::admin::init)
+            .service(routes::admin::all())
             .configure(routes::proxy::init)
             .configure(routes::repository::init)
             .configure(routes::user::init)
