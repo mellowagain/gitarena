@@ -47,6 +47,7 @@ pub(crate) async fn login_flow<'e, E>(request: &HttpRequest, executor: E, conten
     Ok(Either::A(basic_auth::authenticate(&request, executor).await?))
 }
 
+#[allow(clippy::async_yields_async)] // False positive on this method
 #[instrument]
 pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
     HttpResponse::Unauthorized()
