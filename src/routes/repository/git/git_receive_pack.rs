@@ -6,7 +6,7 @@ use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{basic_auth, pack, ref_update};
+use crate::git::{basic_auth, GitoxideCacheList, pack, ref_update};
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
@@ -17,8 +17,7 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use async_process::{Command, Stdio};
 use futures::StreamExt;
-use git_pack::cache::lru::MemoryCappedHashmap;
-use git_packetline::{PacketLine, StreamingPeekableIter};
+use git_packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
 use log::warn;
 use memmem::{Searcher, TwoWaySearcher};
@@ -80,7 +79,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     let frozen_bytes = bytes.freeze();
     let vec = &frozen_bytes[..];
 
-    let mut readable_iter = StreamingPeekableIter::new(vec, &[PacketLine::Flush]);
+    let mut readable_iter = StreamingPeekableIter::new(vec, &[PacketLineRef::Flush]);
     readable_iter.fail_on_err_lines(true);
 
     let git_body = read_data_lines(&mut readable_iter).await?;
@@ -98,7 +97,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             .finish());
     }
 
-    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+    let mut cache = GitoxideCacheList::default();
 
     let mut output_writer = GitWriter::new();
 

@@ -48,7 +48,7 @@ pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: 
         progress::Discard,
         &AtomicBool::new(false), // The Actix runtime (+ tokio) handles timeouts for us
         Some(Box::new(move |oid, buffer| {
-            repo.odb.find_existing(oid, buffer, &mut cache::Never).ok()
+            repo.odb.find(oid, buffer, &mut cache::Never).ok()
         })),
         options
     )?;

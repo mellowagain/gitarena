@@ -1,5 +1,6 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::{bstr_to_str, repo_from_str};
+use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
@@ -17,7 +18,6 @@ use bstr::ByteSlice;
 use git_hash::ObjectId;
 use git_object::tree::EntryMode;
 use git_object::Tree;
-use git_pack::cache::lru::MemoryCappedHashmap;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -45,7 +45,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let full_tree_name = bstr_to_str(loose_ref.name.as_bstr())?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+    let mut cache = GitoxideCacheList::default();
 
     let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
     let tree = Tree::from(tree);

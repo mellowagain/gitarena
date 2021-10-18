@@ -16,8 +16,8 @@ use tracing::instrument;
 pub(crate) async fn repo_files_at_ref<'a>(repo: &'a Repository, reference: &Reference, buffer: &'a mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<TreeRef<'a>> {
     match &reference.target {
         Target::Peeled(object_id) => {
-            let tree_oid = repo.odb.find_existing_commit(object_id.as_ref(), buffer, cache)?.tree();
-            let tree = repo.odb.find_existing_tree(tree_oid.as_ref(), buffer, cache)?;
+            let tree_oid = repo.odb.find_commit(object_id.as_ref(), buffer, cache)?.tree();
+            let tree = repo.odb.find_tree(tree_oid.as_ref(), buffer, cache)?;
 
             Ok(tree)
         }
@@ -37,7 +37,7 @@ pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut
 pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
 
-    repo.odb.find_existing_blob(oid, &mut buffer, cache).map(|blob| {
+    repo.odb.find_blob(oid, &mut buffer, cache).map(|blob| {
         // Honestly no idea how but this seems to yield out the correct file content
         // TODO: This is *most likely* bugged and needs to be fixed at some point
         let content_vec: Vec<u8> = blob.data.iter()

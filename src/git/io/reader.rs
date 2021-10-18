@@ -2,7 +2,7 @@ use crate::error::GAErrors::ParseError;
 use crate::extensions::{flatten_io_result, parse_key_value};
 
 use anyhow::Result;
-use git_packetline::{StreamingPeekableIter, PacketLine};
+use git_packetline::{PacketLineRef, StreamingPeekableIter};
 use log::warn;
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
@@ -47,7 +47,7 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
     while let Some(line_result) = iter.read_line().await {
         match flatten_io_result(line_result) {
             Ok(line) => match line {
-                PacketLine::Data(data) => {
+                PacketLineRef::Data(data) => {
                     if data.is_empty() {
                         continue;
                     }

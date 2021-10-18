@@ -3,7 +3,7 @@ use crate::git::io::band::Band;
 use actix_web::web::{Bytes, BytesMut};
 use anyhow::{Context, Result};
 use futures::AsyncWriteExt;
-use git_packetline::{PacketLine, Writer as PacketlineWriter};
+use git_packetline::{PacketLineRef, Writer as PacketlineWriter};
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
@@ -80,7 +80,7 @@ impl GitWriter {
     }
 
     pub(crate) async fn flush(&mut self) -> Result<&mut GitWriter> {
-        PacketLine::Flush.write_to(self.inner.inner_mut()).await.context("Unable to write flush to Git writer")?;
+        PacketLineRef::Flush.write_to(self.inner.inner_mut()).await.context("Unable to write flush to Git writer")?;
         Ok(self)
     }
 
@@ -97,12 +97,12 @@ impl GitWriter {
     }
 
     pub(crate) async fn delimiter(&mut self) -> Result<&mut GitWriter> {
-        PacketLine::Delimiter.write_to(self.inner.inner_mut()).await.context("Unable to write delimiter to Git writer")?;
+        PacketLineRef::Delimiter.write_to(self.inner.inner_mut()).await.context("Unable to write delimiter to Git writer")?;
         Ok(self)
     }
 
     pub(crate) async fn response_end(&mut self) -> Result<&mut GitWriter> {
-        PacketLine::ResponseEnd.write_to(self.inner.inner_mut()).await.context("Unable to write response end to Git writer")?;
+        PacketLineRef::ResponseEnd.write_to(self.inner.inner_mut()).await.context("Unable to write response end to Git writer")?;
         Ok(self)
     }
 

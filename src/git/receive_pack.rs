@@ -1,5 +1,6 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
 use crate::extensions::{default_signature, str_to_oid};
+use crate::git::GitoxideCacheList;
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 use crate::git::ref_update::RefUpdate;
@@ -14,19 +15,18 @@ use bstr::BString;
 use git_lock::acquire::Fail;
 use git_object::{CommitRef, Kind};
 use git_odb::pack::cache;
-use git_pack::cache::lru::MemoryCappedHashmap;
 use git_pack::data::{File as DataFile, ResolvedBase};
 use git_pack::index::File as IndexFile;
 use git_ref::Target;
-use git_ref::transaction::{Change, Create, LogChange, RefEdit, RefLog};
+use git_ref::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use git_repository::actor::Signature;
-use git_repository::prelude::{Find, FindExt};
+use git_repository::prelude::FindExt;
 use sqlx::{Executor, Pool, Postgres};
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 #[instrument(err, skip(writer, cache))]
-pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, db_pool: &Pool<Postgres>, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: MemoryCappedHashmap) -> Result<MemoryCappedHashmap> {
+pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, db_pool: &Pool<Postgres>, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: GitoxideCacheList) -> Result<GitoxideCacheList> {
     assert!(ref_update.new.is_some());
 
     let mut transaction = db_pool.begin().await?;
@@ -63,14 +63,11 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
                             Some(ResolvedBase::InPack(entry))
                         } else {
                             match gitoxide_repo.odb.find(oid, vec, &mut cache::Never) {
-                                Ok(Some(object)) => {
-                                    Some(ResolvedBase::OutOfPack {
-                                        kind: object.kind,
-                                        end: vec.len()
-                                    })
-                                }
-                                Ok(None) => None,
-                                Err(_) => None,
+                                Ok(object) => Some(ResolvedBase::OutOfPack {
+                                    kind: object.kind,
+                                    end: vec.len()
+                                }),
+                                Err(_) => None
                             }
                         }
                     },
@@ -83,12 +80,18 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
                 }
             },
             _ => {
-                // This is a force push to an existing repository. TODO: Handle non existing refs as client errors instead of server errors
-                gitoxide_repo.odb.find_existing_commit(new_oid.as_ref(), &mut buffer, &mut mut_cache)?
+                // This is a force push to an existing repository
+                // TODO: Handle non existing refs as client errors instead of server errors
+                gitoxide_repo.odb.find_commit(new_oid.as_ref(), &mut buffer, &mut mut_cache)?
             }
         };
 
         let previous = ref_update.old.as_ref().map(|target| Target::Peeled(str_to_oid(&Some(target.to_owned())).unwrap_or_log()));
+        let previous_value = if let Some(previous_target) = previous {
+            PreviousValue::ExistingMustMatch(previous_target)
+        } else {
+            PreviousValue::Any
+        };
 
         let edits = vec![
             RefEdit {
@@ -98,10 +101,8 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
                         force_create_reflog: true,
                         message: BString::from(commit.message)
                     },
-                    mode: Create::OrUpdate {
-                        previous
-                    },
-                    new: Target::Peeled(new_oid)
+                    expected: previous_value,
+                    new: Target::Peeled(new_oid),
                 },
                 name: ref_update.target_ref.as_str().try_into()?,
                 deref: true
@@ -147,7 +148,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
     let edits = vec![
         RefEdit {
             change: Change::Delete {
-                previous: Some(Target::Peeled(object_id)),
+                expected: PreviousValue::MustExistAndMatch(Target::Peeled(object_id)),
                 log: RefLog::AndReference
             },
             name: ref_update.target_ref.as_str().try_into()?,

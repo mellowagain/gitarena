@@ -10,7 +10,7 @@ use crate::routes::repository::GitRequest;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
-use git_packetline::{PacketLine, StreamingPeekableIter};
+use git_packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
 use sqlx::PgPool;
 
@@ -64,7 +64,7 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
     let frozen_bytes = bytes.freeze();
     let vec = frozen_bytes.to_vec();
 
-    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLine::Flush]);
+    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLineRef::Flush]);
     readable_iter.fail_on_err_lines(true);
 
     let git_body = read_data_lines(&mut readable_iter).await?;

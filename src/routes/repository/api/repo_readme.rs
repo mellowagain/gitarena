@@ -1,5 +1,6 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::repo_from_str;
+use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
 use crate::routes::repository::GitTreeRequest;
@@ -9,7 +10,6 @@ use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
 use git_object::Tree;
-use git_pack::cache::lru::MemoryCappedHashmap;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use serde_json::json;
@@ -32,7 +32,7 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db
     }?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+    let mut cache = GitoxideCacheList::default();
 
     let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
     let tree = Tree::from(tree);

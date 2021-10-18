@@ -1,5 +1,6 @@
 use crate::error::GAErrors::HttpError;
 use crate::extensions::repo_from_str;
+use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
 use crate::routes::repository::GitTreeRequest;
@@ -17,9 +18,8 @@ use async_recursion::async_recursion;
 use bstr::ByteSlice;
 use git_object::tree::EntryMode;
 use git_object::Tree;
-use git_odb::FindExt;
 use git_pack::cache::DecodeEntry;
-use git_pack::cache::lru::MemoryCappedHashmap;
+use git_pack::FindExt;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use git_repository::Repository;
 use gitarena_macros::route;
@@ -45,7 +45,8 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUse
     }?; // Handle 404
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+
+    let mut cache = GitoxideCacheList::default();
 
     let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
     let tree = Tree::from(tree);
@@ -71,7 +72,7 @@ async fn write_directory_tar(repo: &Repository, tree: Tree, path: &Path, builder
 
         match entry.mode {
             EntryMode::Tree => {
-                let tree = repo.odb.find_existing_tree(&entry.oid, buffer, cache)?;
+                let tree = repo.odb.find_tree(&entry.oid, buffer, cache)?;
                 let tree = Tree::from(tree);
 
                 write_directory_tar(&repo, tree, path.as_path(), builder, buffer, cache).await?;
@@ -133,7 +134,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, 
     }?; // Handle 404
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = MemoryCappedHashmap::new(10000 * 1024); // 10 MB
+    let mut cache = GitoxideCacheList::default();
 
     let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
     let tree = Tree::from(tree);
@@ -158,7 +159,7 @@ async fn write_directory_zip(repo: &Repository, tree: Tree, path: &Path, writer:
 
         match entry.mode {
             EntryMode::Tree => {
-                let tree = repo.odb.find_existing_tree(&entry.oid, buffer, cache)?;
+                let tree = repo.odb.find_tree(&entry.oid, buffer, cache)?;
                 let tree = Tree::from(tree);
 
                 writer.add_directory(format!("{}", path.display()), ZipFileOptions::default())?;
