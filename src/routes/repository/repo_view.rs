@@ -150,7 +150,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     render_template!("repo/index.html", context, transaction)
 }
 
-#[route("/{username}/{repository}/tree/{tree}", method="GET")]
+#[route("/{username}/{repository}/tree/{tree:.*}", method="GET")]
 pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 

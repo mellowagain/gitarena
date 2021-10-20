@@ -15,7 +15,7 @@ use gitarena_macros::route;
 use serde_json::json;
 use sqlx::PgPool;
 
-#[route("/api/repo/{username}/{repository}/tree/{tree}/readme", method="GET")]
+#[route("/api/repo/{username}/{repository}/tree/{tree:.*}/readme", method="GET")]
 pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
 
