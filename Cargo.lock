@@ -882,6 +882,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38"
 
 [[package]]
+name = "bytes"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
+
+[[package]]
 name = "bytesize"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4585,6 +4591,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4efe6fc2395938c8155973d7be49fe8d03a843726e285e100a8a383cc0154ce"
 dependencies = [
  "autocfg 1.0.0",
+ "bytes 1.1.0",
+ "memchr",
  "pin-project-lite 0.2.7",
 ]
 
@@ -4682,6 +4690,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-stream"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b2f3f698253f03119ac0102beaa64f67a67e08074d03a22d18784104543727f"
+dependencies = [
+ "futures-core",
+ "pin-project-lite 0.2.7",
+ "tokio 1.11.0",
+]
+
+[[package]]
 name = "tokio-sync"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4693,16 +4712,16 @@ dependencies = [
 
 [[package]]
 name = "tokio-tar"
-version = "0.1.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca0631524a9b9ce7c4c164c0c62d69a4d91d6b3400f536ba7da10ee7c9b8190"
+checksum = "a50188549787c32c1c3d9c8c71ad7e003ccf2f102489c5a96e385c84760477f4"
 dependencies = [
  "filetime",
  "futures-core",
  "libc",
- "pin-project 0.4.22",
- "redox_syscall 0.1.57",
- "tokio 0.2.24",
+ "redox_syscall 0.2.9",
+ "tokio 1.11.0",
+ "tokio-stream",
  "xattr",
 ]
 

@@ -65,7 +65,7 @@ tera = { version = "1.12.1", features = ["builtins"] }
 thiserror = "1.0.26"
 time = "0.2.27"
 tinytemplate = "1.2.1"
-tokio-tar = "0.1.0"
+tokio-tar = "0.3.0"
 toml = "0.5.8"
 tracing = "0.1.28"
 tracing-appender = "0.1.2"
