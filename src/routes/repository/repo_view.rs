@@ -25,7 +25,7 @@ use tera::Context;
 use tracing_unwrap::OptionExt;
 
 async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web_user: WebUser, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
-    let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
+    let tree_name = tree_option.unwrap_or_else(|| repo.default_branch.as_str());
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
@@ -54,16 +54,13 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     files.reserve(tree.entries.len().min(1000));
 
     for entry in tree.entries.iter().take(1000) {
-        let name = match entry.filename.to_str() {
-            Ok(name) => name,
-            Err(_) => "Invalid file name"
-        };
+        let name = entry.filename.to_str().unwrap_or("Invalid file name");
 
         let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap_or_log();
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
-            Some(read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await.unwrap_or(ObjectId::null_sha1().to_sha1_hex_string()))
+            Some(read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await.unwrap_or_else(|_| ObjectId::null_sha1().to_sha1_hex_string()))
         } else {
             None
         };
@@ -76,7 +73,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
                 oid: format!("{}", oid),
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
-                author_name: "", // Unused for file listing
+                date: None,
+                author_name: String::new(), // Unused for file listing
                 author_uid: None // Unused for file listing
             }
         });
@@ -92,13 +90,13 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
             Ordering::Greater
         } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
-            lhs.file_name.cmp(&rhs.file_name)
+            lhs.file_name.cmp(rhs.file_name)
         } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
             Ordering::Less
         } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
             Ordering::Greater
         } else {
-            lhs.file_name.cmp(&rhs.file_name)
+            lhs.file_name.cmp(rhs.file_name)
         }
     });
 
@@ -111,7 +109,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     context.try_insert("issues_count", &0)?;
     context.try_insert("merge_requests_count", &0)?;
     context.try_insert("releases_count", &0)?;
-    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name).await?.len())?;
+    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
 
     context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
     context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
@@ -120,7 +118,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         context.try_insert("user", user)?;
     }
 
-    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or(HttpError(200, "Repository is empty".to_owned()))?;
+    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| HttpError(200, "Repository is empty".to_owned()))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     let author_option: Option<(i32, String)> = sqlx::query_as("select id, username from users where lower(email) = lower($1)")
@@ -143,7 +141,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         oid: format!("{}", last_commit_oid),
         message: last_commit.message().unwrap_or_default().to_owned(),
         time: last_commit.time().seconds(),
-        author_name: author_name.as_str(),
+        date: None,
+        author_name,
         author_uid
     })?;
 

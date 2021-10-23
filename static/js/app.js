@@ -50,5 +50,11 @@ function insertStyleSheet(url) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    $(".popup").popup();
+    htmx.onLoad(() => {
+        $(".popup").popup();
+
+        $(".copy.button").off().click(function () {
+            writeClipboard($(this).attr("data-copy"));
+        });
+    });
 });

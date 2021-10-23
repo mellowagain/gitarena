@@ -1,0 +1,89 @@
+use crate::error::GAErrors::HttpError;
+use crate::extensions::{bstr_to_str, commit_time_to_chrono, get_header, repo_from_str, signature_to_web_author};
+use crate::git::history::{all_branches, all_commits, all_tags};
+use crate::privileges::privilege;
+use crate::render_template;
+use crate::routes::repository::GitTreeRequest;
+use crate::templates::web::GitCommit;
+use crate::user::WebUser;
+
+use actix_web::{HttpRequest, Responder, web};
+use anyhow::Result;
+use git_ref::file::find::existing::Error as GitoxideFindError;
+use gitarena_macros::route;
+use qstring::QString;
+use sqlx::PgPool;
+use tera::Context;
+
+#[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET")]
+pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+
+    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
+        return Err(HttpError(404, "Not found".to_owned()).into());
+    }
+
+    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+
+    let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
+        Ok(loose_ref) => Ok(loose_ref),
+        Err(GitoxideFindError::Find(err)) => Err(err),
+        Err(GitoxideFindError::NotFound(_)) => return Err(HttpError(404, "Not found".to_owned()).into())
+    }?; // Handle 404
+
+    let full_tree_name = bstr_to_str(loose_ref.name.as_bstr())?;
+
+    let query_string = QString::from(request.query_string());
+    let after_oid = query_string.get("after");
+
+    let mut context = Context::new();
+
+    context.try_insert("repo_owner_name", uri.username.as_str())?;
+    context.try_insert("repo", &repo)?;
+    context.try_insert("tree", uri.tree.as_str())?;
+
+    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+
+    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
+    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
+
+    let searching_ref = after_oid.unwrap_or(full_tree_name);
+
+    let commit_ids = all_commits(&libgit2_repo, searching_ref, 20).await?;
+    let mut commits = Vec::<GitCommit>::with_capacity(commit_ids.len());
+
+    for oid in commit_ids {
+        let commit = libgit2_repo.find_commit(oid)?;
+        let (name, uid) = signature_to_web_author(commit.author(), &mut transaction).await?;
+
+        let chrono_time = commit_time_to_chrono(&commit.time())?;
+        let chrono_date = chrono_time.date();
+        let chrono_time_only_date = chrono_date.and_hms(0, 0, 0);
+
+        commits.push(GitCommit {
+            oid: format!("{}", commit.id()),
+            message: commit.message().unwrap_or_default().to_owned(),
+            time: commit.time().seconds(),
+            date: Some(chrono_time_only_date),
+            author_name: name,
+            author_uid: uid
+        });
+    }
+
+    if after_oid.is_some() {
+        commits.remove(0); // Remove the first result as it contains the requested OID
+    }
+
+    if commits.is_empty() {
+        return Err(HttpError(404, "No commits in this repository".to_owned()).into());
+    }
+
+    context.try_insert("commits", &commits)?;
+
+    // Only send a partial result (only the components) if it's a request by htmx
+    if get_header(&request, "hx-request").is_some() {
+        return render_template!("repo/commit_list_component.html", context, transaction);
+    }
+
+    render_template!("repo/commits.html", context, transaction)
+}

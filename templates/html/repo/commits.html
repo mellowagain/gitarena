@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}
+Commits - {{ repo_owner_name }}/{{ repo.name }}
+{% endblock %}
+
+{% block content %}
+    <div class="ui grid">
+        <div class="seven wide column">
+            <div class="ui labeled icon top left pointing dropdown button">
+                <i class="code branch icon"></i>
+                <span class="text">{{ tree }}</span>
+                <div class="menu">
+                    <div class="ui search icon input">
+                        <i class="search icon"></i>
+                        <input type="text" name="search" placeholder="Search branch or tag">
+                    </div>
+                    <div class="divider"></div>
+                    <div class="header">
+                        <i class="code branch icon"></i>
+                        Branches
+                    </div>
+                    {% for branch in branches %}
+                        <div class="item {% if branch == tree %} active selected {% endif %}">
+                            <code>{{ branch }}</code>
+
+                            {% if branch == repo.default_branch %}
+                                <span class="pill">Default</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="divider"></div>
+                    <div class="header">
+                        <i class="tags icon"></i>
+                        Tags
+                    </div>
+                    {% for tag in tags %}
+                        <div class="item {% if tag == tree %} active selected {% endif %}">
+                            <code>{{ tag }}</code>
+
+                            {% if loop.last %}
+                                <span class="pill">Latest</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="two wide column"></div>
+        <div class="right aligned seven wide column"></div>
+    </div>
+
+    <div id="commit-list">
+        {% include "repo/commit_list_component.html" %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener("DOMContentLoaded", () => {
+        $(".ui.dropdown").dropdown();
+    });
+
+    window.addEventListener("htmx:beforeSwap", () => {
+        // Remove the old request indicators so we don't have double multiple ones when the next commits load
+        $("#segment-loading-indicator.htmx-request").remove();
+    });
+</script>
+{% endblock %}

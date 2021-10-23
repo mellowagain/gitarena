@@ -7,7 +7,7 @@ use tracing::instrument;
 pub(crate) async fn last_commit_for_blob(repo: &Git2Repository, reference_name: &str, file_name: &str) -> Result<Option<Oid>> {
     let commits = commits_for_blob(repo, reference_name, file_name, Some(1)).await?;
 
-    Ok(commits.iter().next().map(|c| *c))
+    Ok(commits.get(0).copied())
 }
 
 #[instrument(err, skip(repo))]
@@ -69,18 +69,28 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
     Ok(results)
 }
 
+/// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
+/// Returns at most `limit` commits or all commits if `limit == 0`
 #[instrument(err, skip(repo))]
-pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str) -> Result<Vec<Oid>> {
-    let mut results = Vec::<Oid>::new();
+pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str, limit: usize) -> Result<Vec<Oid>> {
+    let mut results = Vec::<Oid>::with_capacity(limit);
 
     let mut rev_walk = repo.revwalk()?;
     rev_walk.set_sorting(git2::Sort::TIME)?;
-    rev_walk.push_ref(reference)?;
+
+    match Oid::from_str(reference) {
+        Ok(oid) => rev_walk.push(oid)?,
+        Err(_) => rev_walk.push_ref(reference)?
+    }
 
     for result in rev_walk {
         let commit_oid = result?;
 
         results.push(commit_oid);
+
+        if limit > 0 && results.len() >= limit {
+            break;
+        }
     }
 
     Ok(results)

@@ -6,6 +6,10 @@
     cursor: pointer;
 }
 
+.no-left-padding {
+    padding-left: 0 !important;
+}
+
 .no-left-border {
     border-left: 0 !important;
 }
@@ -22,6 +26,15 @@
 .ui.footer {
     border-bottom: none !important;
     padding: 40px 40px !important;
+}
+
+#segment-loading-indicator.htmx-request {
+    display: block !important;
+    padding-top: 3em;
+}
+
+.htmx-indicator {
+    display: none;
 }
 
 @media only screen and (max-width: 992px) {

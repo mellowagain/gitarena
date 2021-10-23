@@ -1,0 +1,70 @@
+{% for date, commit_list in commits | group_by(attribute="date") %}
+    <h5 class="ui horizontal left aligned divider header">
+        {{ date | date(format="%d. %B %Y") }}
+    </h5>
+
+    {% if loop.last %}
+        {% set is_last_iter = true %}
+    {% endif %}
+
+    <div class="ui segments">
+        {% for commit in commit_list %}
+            <div class="ui segment"
+                 {% if loop.last and is_last_iter is some %}
+                 data-hx-get="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree | urlencode }}/commits?after={{ commit.oid }}&date={{ date | urlencode }}"
+                 data-hx-trigger="revealed"
+                 data-hx-target="#commit-list"
+                 data-hx-swap="beforeend"
+                 data-hx-indicator="#segment-loading-indicator"
+                 {% endif %}
+            >
+                <div class="ui two column grid">
+                    <div class="column">
+                        <div class="ui grid">
+                            <div class="two wide computer only column">
+                                {% if commit.author_uid is some %}
+                                    <a href="/{{ commit.author_name }}">
+                                        <img class="ui circular image" src="/static/user_content/avatars/{{ commit.author_uid }}.jpg" alt="{{ commit.author_name }}">
+                                    </a>
+                                {% else %}
+                                    <img class="ui circular image" src="/static/user_content/avatars/null.jpg" alt="{{ commit.author_name }}">
+                                {% endif %}
+                            </div>
+                            <div class="sixteen wide mobile fourteen wide computer column no-left-padding">
+                                <b>{{ commit.message | split(pat="\n") | first }}</b> <br>
+
+                                {% if commit.author_uid is some %}
+                                    <a href="/{{ commit.author_name }}">
+                                        {{ commit.author_name }}
+                                    </a>
+                                {% else %}
+                                    {{ commit.author_name }}
+                                {% endif %}
+
+                                authored <span class="popup" data-content="{{ commit.time | date(format="%A %d. %B %Y %H:%M") }}">{{ commit.time | human_time }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="right aligned column computer only">
+                        <button class="ui right labeled icon copy button" data-copy="{{ commit.oid }}">
+                            <i class="copy icon"></i>
+                            <code>{{ commit.oid | truncate(length=7, end="") }}</code>
+                        </button>
+
+                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ commit.oid }}">
+                            <button class="ui icon button">
+                                <i class="code icon"></i>
+                            </button>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if loop.last and is_last_iter is some %}
+                <div id="segment-loading-indicator" class="ui loading segment htmx-indicator">
+                    <p></p>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endfor %}
