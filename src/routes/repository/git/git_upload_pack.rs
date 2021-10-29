@@ -4,6 +4,7 @@ use crate::git::basic_auth;
 use crate::git::fetch::fetch;
 use crate::git::io::reader::{read_data_lines, read_until_command};
 use crate::git::ls_refs::ls_refs;
+use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
@@ -47,10 +48,14 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
         .fetch_optional(&mut transaction)
         .await?;
 
-    let (_, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
+    let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
         Either::A(tuple) => tuple,
         Either::B(response) => return Ok(response)
     };
+
+    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
+        return Err(GitError(404, None).into());
+    }
 
     let git2repo = repo.libgit2(&mut transaction).await?;
 
