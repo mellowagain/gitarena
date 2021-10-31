@@ -1,13 +1,14 @@
 use crate::crypto;
 use crate::error::GAErrors::HttpError;
 use crate::render_template;
+use crate::session::Session;
 use crate::user::{User, WebUser};
 use crate::verification;
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
@@ -28,7 +29,7 @@ pub(crate) async fn get_login(web_user: WebUser) -> Result<impl Responder> {
 }
 
 #[route("/login", method = "POST")]
-pub(crate) async fn post_login(body: web::Form<LoginRequest>, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let redirect = body.redirect.as_deref().unwrap_or("/");
 
     // User is already logged in
@@ -88,9 +89,10 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, id: Identity, db_p
         return render_template!(StatusCode::UNAUTHORIZED, "user/login.html", context, transaction);
     }
 
-    id.remember(user.identity_str());
+    let session = Session::new(&request, &user, &mut transaction).await?;
+    id.remember(session.to_string());
 
-    debug!("{} (id {}) logged in successfully", &user.username, &user.id);
+    debug!("{} (id {}) logged in successfully (session id {})", &user.username, &user.id, &session.id);
 
     transaction.commit().await?;
 

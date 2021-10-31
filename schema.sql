@@ -15,8 +15,7 @@ create table if not exists users
     password   char(96)                                                             not null,
     disabled   boolean                  default false                               not null,
     admin      boolean                  default false                               not null,
-    created_at timestamp with time zone default current_timestamp                   not null,
-    session    char(7)                  default substr(md5((random())::text), 0, 8) not null
+    created_at timestamp with time zone default current_timestamp                   not null
 );
 
 create unique index if not exists users_username_uindex
@@ -80,6 +79,33 @@ create table if not exists privileges
     access_level access_level default 'viewer'::access_level not null
 );
 
+-- Sessions
+
+create table sessions
+(
+    id                  serial                                              not null
+        constraint sessions_pk
+            primary key,
+    user_id             integer                                             not null
+        constraint sessions_users_id_fk
+            references users
+            on delete cascade,
+    hash                varchar(32) default md5((random())::text)           not null,
+    ip_address          inet                                                not null,
+    user_agent          varchar(256)                                        not null,
+    created_at          timestamp with time zone default current_timestamp  not null,
+    updated_at          timestamp with time zone default current_timestamp  not null
+);
+
+create unique index sessions_hash_uindex
+    on sessions (hash);
+
+create index sessions_user_id_index
+    on sessions (user_id);
+
+create index sessions_hash_index
+    on sessions (hash);
+
 -- Settings
 -- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 
@@ -114,3 +140,5 @@ insert into settings (key, value, type) values ('smtp.username', null, 'string')
 insert into settings (key, value, type) values ('smtp.password', null, 'string');
 insert into settings (key, value, type) values ('integrations.sentry.enabled', 'false', 'boolean');
 insert into settings (key, value, type) values ('integrations.sentry.dsn', null, 'string');
+insert into settings (key, value, type) values ('sessions.log_ip', true, 'boolean');
+insert into settings (key, value, type) values ('sessions.log_user_agent', true, 'boolean');

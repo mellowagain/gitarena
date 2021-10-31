@@ -39,6 +39,7 @@ mod mail;
 mod privileges;
 mod repository;
 mod routes;
+mod session;
 mod templates;
 mod user;
 mod utils;

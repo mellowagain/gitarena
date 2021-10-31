@@ -1,0 +1,148 @@
+use crate::error::GAErrors::HttpError;
+use crate::extensions::get_header;
+use crate::user::User;
+
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+
+use actix_web::HttpRequest;
+use anyhow::Result;
+use chrono::{DateTime, Local};
+use ipnetwork::IpNetwork;
+use serde::Serialize;
+use sqlx::{Executor, FromRow, Postgres};
+
+#[derive(FromRow, Debug, Serialize)]
+pub(crate) struct Session {
+    pub(crate) id: i32,
+    pub(crate) user_id: i32,
+    #[serde(skip_serializing)]
+    pub(crate) hash: String,
+    pub(crate) ip_address: IpNetwork,
+    pub(crate) user_agent: String, // TODO: Move this to a dedicated table to prevent duplicates
+    created_at: DateTime<Local>,
+    pub(crate) updated_at: DateTime<Local>
+}
+
+impl Display for Session {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}${}", self.user_id, self.hash)
+    }
+}
+
+impl Session {
+    pub(crate) async fn new<'e, E: Executor<'e, Database = Postgres>>(request: &HttpRequest, user: &User, executor: E) -> Result<Session> {
+        let (ip_address, user_agent) = extract_ip_and_ua(&request)?;
+
+        // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
+        let user_agent = user_agent.chars().take(256).collect::<String>();
+
+        let repo: Session = sqlx::query_as::<_, Session>("insert into sessions (user_id, ip_address, user_agent) values ($1, $2, $3) returning *")
+            .bind(&user.id)
+            .bind(&ip_address)
+            .bind(&user_agent)
+            .fetch_one(executor)
+            .await?;
+
+        Ok(repo)
+    }
+
+    /// Finds existing session from Identity (Display of Session)
+    pub(crate) async fn from_identity<'e, E: Executor<'e, Database = Postgres>>(identity: Option<String>, executor: E) -> Result<Option<Session>> {
+        match identity {
+            Some(identity) => {
+                let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| HttpError(500, "Unable to parse identity".to_owned()))?;
+                let user_id = user_id_str.parse::<i32>()?;
+
+                let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
+                    .bind(user_id)
+                    .bind(hash)
+                    .fetch_optional(executor)
+                    .await?;
+
+                Ok(option)
+            }
+            None => Ok(None)
+        }
+    }
+
+    pub(crate) async fn update_explicit<'e, E: Executor<'e, Database = Postgres>>(&self, ip_address: &IpNetwork, user_agent: &str, executor: E) -> Result<()> {
+        let now = Local::now();
+
+        // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
+        let user_agent = user_agent.chars().take(256).collect::<String>();
+
+        sqlx::query("update sessions set ip_address = $1, user_agent = $2, updated_at = $3 where id = $4")
+            .bind(&ip_address)
+            .bind(&user_agent)
+            .bind(&now)
+            .bind(&self.id)
+            .execute(executor)
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub(crate) async fn update_from_request<'e, E: Executor<'e, Database = Postgres>>(&self, request: &HttpRequest, executor: E) -> Result<()> {
+        let (ip_address, user_agent) = extract_ip_and_ua(&request)?;
+
+        // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
+        let user_agent = user_agent.chars().take(256).collect::<String>();
+
+        let now = Local::now();
+
+        sqlx::query("update sessions set ip_address = $1, user_agent = $2, updated_at = $3 where id = $4")
+            .bind(&ip_address)
+            .bind(user_agent)
+            .bind(&now)
+            .bind(&self.id)
+            .execute(executor)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Consumes the current session and destroys it
+    pub(crate) async fn destroy<'e, E: Executor<'e, Database = Postgres>>(self, executor: E) -> Result<()> {
+        sqlx::query("delete from sessions where id = $1")
+            .bind(&self.id)
+            .execute(executor)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[inline]
+pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> Result<(IpNetwork, &str)> {
+    let ip_address = extract_ip(&request)?;
+    let user_agent = get_header(&request, "user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
+
+    Ok((ip_address, user_agent))
+}
+
+#[inline]
+pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> Result<(IpNetwork, String)> {
+    let ip_address = extract_ip(&request)?;
+    let user_agent = get_header(&request, "user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
+
+    Ok((ip_address, user_agent.to_owned()))
+}
+
+fn extract_ip(request: &HttpRequest) -> Result<IpNetwork> {
+    let connection_info = request.connection_info();
+    let ip_str = connection_info.realip_remote_addr().ok_or_else(|| HttpError(500, "Unable to get ip address".to_owned()))?;
+
+    match IpNetwork::from_str(ip_str) {
+        Ok(ip_network) => Ok(ip_network),
+        Err(err) => {
+            // If we got the local address, it includes the port so try again but with port stripped
+            if let Some((ip, _)) = ip_str.split_once(':') {
+                Ok(IpNetwork::from_str(ip)?)
+            } else {
+                Err(err.into())
+            }
+        }
+    }
+}
