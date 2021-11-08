@@ -52,7 +52,8 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
 
                 body.push(data[..length].to_vec());
             },
-            Ok(Err(err)) | Err(err) => warn!("Failed to read Git data line: {}", err)
+            Ok(Err(err)) => warn!("Failed to read Git data line: {}", err),
+            Err(err) => warn!("Failed to read Git data line: {}", err)
         }
     }
 
