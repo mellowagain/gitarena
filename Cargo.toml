@@ -61,7 +61,7 @@ rust-argon2 = { version = "0.8.3", features = ["crossbeam-utils"] }
 rustc_version_runtime = "0.2.0"
 serde = { version = "1.0.126", features = ["derive"] }
 serde_json = "1.0.64"
-sqlx = { version = "0.4.2", features = ["runtime-actix-native-tls", "chrono", "json", "ipnetwork", "postgres", "tls"] }
+sqlx = { version = "0.5.9", features = ["runtime-actix-native-tls", "chrono", "json", "ipnetwork", "postgres", "tls"] }
 tempfile = "3.2.0"
 tera = { version = "1.12.1", features = ["builtins"] }
 thiserror = "1.0.26"
