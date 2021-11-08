@@ -56,7 +56,7 @@ num_cpus = "1.13.0"
 qstring = "0.7.2"
 rand = "0.7.3"
 regex = "1.5.4"
-reqwest = { version = "0.10.10", features = ["json", "stream"] }
+reqwest = { version = "0.11.4", features = ["json", "stream"] }
 rust-argon2 = { version = "0.8.3", features = ["crossbeam-utils"] }
 rustc_version_runtime = "0.2.0"
 serde = { version = "1.0.126", features = ["derive"] }
