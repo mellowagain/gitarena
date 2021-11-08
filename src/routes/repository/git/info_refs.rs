@@ -1,20 +1,19 @@
 use crate::error::GAErrors::GitError;
-use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::ls_refs_all;
+use crate::prelude::*;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
-use qstring::QString;
 use sqlx::{Executor, PgPool, Pool, Postgres};
 
 #[route("/{username}/{repository}.git/info/refs", method="GET")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let query_string = QString::from(request.query_string());
+    let query_string = request.q_string();
 
     let service = match query_string.get("service") {
         Some(value) => value.trim(),
@@ -61,7 +60,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 async fn upload_pack_info_refs<'e, E>(repo_option: Option<Repository>, service: &str, request: &HttpRequest, executor: E) -> Result<HttpResponse>
     where E: Executor<'e, Database = Postgres>
 {
-    let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
+    let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
         return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());

@@ -1,5 +1,4 @@
 use crate::error::GAErrors::GitError;
-use crate::extensions::get_header;
 use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
@@ -7,6 +6,7 @@ use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
 use crate::git::{basic_auth, GitoxideCacheList, pack, ref_update};
+use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
@@ -25,8 +25,8 @@ use sqlx::PgPool;
 
 #[route("/{username}/{repository}.git/git-receive-pack", method="POST")]
 pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let content_type = get_header(&request, "Content-Type").unwrap_or_default();
-    let accept_header = get_header(&request, "Accept").unwrap_or_default();
+    let content_type = request.get_header("content-type").unwrap_or_default();
+    let accept_header = request.get_header("accept").unwrap_or_default();
 
     if content_type != "application/x-git-receive-pack-request" || accept_header != "application/x-git-receive-pack-result" {
         return Err(GitError(400, None).into());

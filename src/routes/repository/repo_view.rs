@@ -1,5 +1,4 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{bstr_to_str, repo_from_str};
 use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
@@ -8,7 +7,7 @@ use crate::render_template;
 use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
 use crate::templates::web::{GitCommit, RepoFile};
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 
 use std::cmp::Ordering;
 
@@ -42,7 +41,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         Err(GitoxideFindError::NotFound(_)) => return Err(HttpError(404, "Not found".to_owned()).into())
     }?; // Handle 404
 
-    let full_tree_name = bstr_to_str(loose_ref.name.as_bstr())?;
+    let full_tree_name = loose_ref.name.as_bstr().to_str()?;
 
     let mut buffer = Vec::<u8>::new();
     let mut cache = GitoxideCacheList::default();
@@ -151,14 +150,20 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
 
 #[route("/{username}/{repository}/tree/{tree:.*}", method="GET")]
 pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
 
 #[route("/{username}/{repository}", method="GET")]
 pub(crate) async fn view_repo(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     render(None, repo, &uri.username, web_user, transaction).await
 }

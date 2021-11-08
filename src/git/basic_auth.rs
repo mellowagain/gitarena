@@ -1,7 +1,7 @@
 use crate::crypto;
 use crate::error::GAErrors::GitError;
-use crate::extensions::get_header;
 use crate::git::basic_auth;
+use crate::prelude::*;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::User;
@@ -60,7 +60,7 @@ pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
 pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -> Result<User>
     where E: Executor<'e, Database = Postgres>
 {
-    match get_header(&request, "Authorization") {
+    match request.get_header("authorization") {
         Some(auth_header) => {
             let (username, password) = parse_basic_auth(auth_header).await?;
 
@@ -120,5 +120,5 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
 }
 
 pub(crate) async fn is_present(request: &HttpRequest) -> bool {
-    get_header(&request, "Authorization").is_some()
+    request.get_header("authorization").is_some()
 }

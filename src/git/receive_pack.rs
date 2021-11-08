@@ -1,10 +1,11 @@
 use crate::error::GAErrors::{GitError, PackUnpackError};
-use crate::extensions::{default_signature, str_to_oid};
 use crate::git::GitoxideCacheList;
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 use crate::git::ref_update::RefUpdate;
+use crate::prelude::*;
 use crate::repository::Repository;
+use crate::utils::oid;
 
 use std::convert::TryInto;
 use std::io::Write;
@@ -23,7 +24,6 @@ use git_repository::actor::Signature;
 use git_repository::prelude::FindExt;
 use sqlx::{Executor, Pool, Postgres};
 use tracing::instrument;
-use tracing_unwrap::ResultExt;
 
 #[instrument(err, skip(writer, cache))]
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, db_pool: &Pool<Postgres>, writer: &mut GitWriter, index_path: Option<&PathBuf>, pack_path: Option<&PathBuf>, raw_pack: &[u8], cache: GitoxideCacheList) -> Result<GitoxideCacheList> {
@@ -31,7 +31,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
 
     let mut transaction = db_pool.begin().await?;
     let mut mut_cache = cache;
-    let new_oid = str_to_oid(&ref_update.new)?;
+    let new_oid = oid::from_hex_str(ref_update.new.as_deref())?;
 
     // # Gitoxide zone
     // This block decodes the entry from the pack file, creates a Gitoxide Commit and then writes it to the reflog using a transaction
@@ -86,8 +86,10 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
             }
         };
 
-        let previous = ref_update.old.as_ref().map(|target| Target::Peeled(str_to_oid(&Some(target.to_owned())).unwrap_or_log()));
-        let previous_value = if let Some(previous_target) = previous {
+        let previous_value = if let Some(previous_oid_str) = &ref_update.old {
+            let previous_oid = oid::from_hex_str(Some(previous_oid_str.as_str()))?;
+            let previous_target = Target::Peeled(previous_oid);
+
             PreviousValue::ExistingMustMatch(previous_target)
         } else {
             PreviousValue::Any
@@ -143,7 +145,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
 
     let gitoxide_repo = repo.gitoxide(executor).await?;
 
-    let object_id = str_to_oid(&ref_update.old).map_err(|_| GitError(404, Some("Ref does not exist".to_owned())))?;
+    let object_id = oid::from_hex_str(ref_update.old.as_deref()).map_err(|_| GitError(404, Some("Ref does not exist".to_owned())))?;
 
     let edits = vec![
         RefEdit {
@@ -159,7 +161,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
     gitoxide_repo.refs.transaction()
         .prepare(edits, Fail::Immediately)
         .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
-        .commit(&default_signature())?;
+        .commit(&Signature::gitarena_default())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
         writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;

@@ -1,5 +1,5 @@
-use crate::extensions::time_function;
 use crate::templates::plain::Template;
+use crate::utils::time_function;
 
 use std::path::Path;
 

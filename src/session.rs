@@ -1,5 +1,5 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::get_header;
+use crate::prelude::*;
 use crate::user::User;
 
 use std::fmt::{Display, Formatter};
@@ -117,7 +117,7 @@ impl Session {
 #[inline]
 pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> Result<(IpNetwork, &str)> {
     let ip_address = extract_ip(&request)?;
-    let user_agent = get_header(&request, "user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
+    let user_agent = request.get_header("user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
 
     Ok((ip_address, user_agent))
 }
@@ -125,7 +125,7 @@ pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> Result<(IpNetwork, &st
 #[inline]
 pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> Result<(IpNetwork, String)> {
     let ip_address = extract_ip(&request)?;
-    let user_agent = get_header(&request, "user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
+    let user_agent = request.get_header("user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
 
     Ok((ip_address, user_agent.to_owned()))
 }

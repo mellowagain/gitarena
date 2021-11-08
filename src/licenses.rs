@@ -1,4 +1,4 @@
-use crate::extensions::time_function;
+use crate::utils::time_function;
 
 use std::env;
 use std::path::Path;

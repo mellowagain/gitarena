@@ -1,8 +1,7 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::get_header;
+use crate::prelude::HttpRequestExtensions;
 use crate::utils::reqwest_actix_stream::ResponseStream;
 
-use actix_web::body::SizedStream;
 use actix_web::http::header::CONTENT_LENGTH;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
@@ -80,15 +79,15 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
     let mut client = Client::new().get(&url);
 
-    if let Some(header_value) = get_header(&request, "if-modified-since") {
+    if let Some(header_value) = request.get_header("if-modified-since") {
         client = client.header("if-modified-since", header_value);
     }
 
-    if let Some(header_value) = get_header(&request, "if-none-match") {
+    if let Some(header_value) = request.get_header("if-none-match") {
         client = client.header("if-none-match", header_value);
     }
 
-    if let Some(header_value) = get_header(&request, "cache-control") {
+    if let Some(header_value) = request.get_header("cache-control") {
         client = client.header("cache-control", header_value);
     }
 

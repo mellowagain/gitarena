@@ -1,5 +1,5 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::get_header;
+use crate::prelude::*;
 use crate::session::Session;
 
 use actix_identity::Identity;
@@ -29,7 +29,7 @@ pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Dat
 
     transaction.commit().await?;
 
-    Ok(if get_header(&request, "hx-request").is_some() {
+    Ok(if request.get_header("hx-request").is_some() {
         HttpResponse::Ok().header("hx-redirect", "/").header("hx-refresh", "true").finish()
     } else {
         HttpResponse::Found().header(LOCATION, "/").finish()

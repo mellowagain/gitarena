@@ -1,7 +1,8 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{is_identifier, is_fs_legal, get_header, is_reserved_username};
+use crate::prelude::*;
 use crate::user::{User, WebUser};
+use crate::utils::identifiers::{is_fs_legal, is_reserved_username, is_valid};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, render_template};
 
@@ -42,15 +43,15 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     let username = &body.username;
 
-    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_identifier(&c)) {
+    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_valid(&c)) {
         return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
     }
 
-    if is_reserved_username(username.as_str()).await {
+    if is_reserved_username(username.as_str()) {
         return Err(HttpError(400, "Username is a reserved identifier".to_owned()).into());
     }
 
-    if !is_fs_legal(username).await {
+    if !is_fs_legal(username) {
         return Err(HttpError(400, "Username is illegal".to_owned()).into());
     }
 
@@ -101,7 +102,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     info!("New user registered: {} (id {})", &user.username, &user.id);
 
-    Ok(if get_header(&request, "hx-request").is_some() {
+    Ok(if request.get_header("hx-request").is_some() {
         HttpResponse::Ok().header("hx-redirect", "/").header("hx-refresh", "true").finish()
     } else {
         HttpResponse::Ok().json(RegisterJsonResponse {

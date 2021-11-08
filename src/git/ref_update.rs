@@ -1,6 +1,6 @@
 use crate::error::GAErrors::ParseError;
 use crate::error::GAErrors;
-use crate::extensions::normalize_oid_str;
+use crate::utils::oid;
 
 use anyhow::Result;
 use tracing::instrument;
@@ -16,8 +16,8 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
     let old_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
     let new_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
 
-    ref_update.old = normalize_oid_str(Some(old_ref.to_owned()));
-    ref_update.new = normalize_oid_str(Some(new_ref.to_owned()));
+    ref_update.old = oid::normalize_str(Some(old_ref)).map(|o| o.to_owned());
+    ref_update.new = oid::normalize_str(Some(new_ref)).map(|o| o.to_owned());
 
     let target_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
 

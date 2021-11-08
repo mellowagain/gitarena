@@ -1,10 +1,10 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::repo_from_str;
 use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
+use crate::repository::Repository;
 use crate::routes::repository::GitTreeRequest;
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
@@ -17,7 +17,10 @@ use sqlx::PgPool;
 
 #[route("/api/repo/{username}/{repository}/tree/{tree:.*}/readme", method="GET")]
 pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());

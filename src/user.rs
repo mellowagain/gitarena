@@ -1,10 +1,9 @@
 use crate::error::{GAErrors, GitArenaError};
-use crate::extensions::get_user_by_identity;
 use crate::session::Session;
 use crate::session;
 
 use std::convert::TryFrom;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::pin::Pin;
 
 use actix_identity::Identity;
@@ -17,7 +16,7 @@ use enum_display_derive::Display;
 use futures::Future;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
-use sqlx::{FromRow, PgPool};
+use sqlx::{Executor, FromRow, PgPool, Postgres};
 use tracing_unwrap::ResultExt;
 
 #[derive(FromRow, Debug, Serialize)]
@@ -33,14 +32,36 @@ pub(crate) struct User {
 }
 
 impl User {
+    pub(crate) async fn find_using_name<'e, E, S>(name: S, executor: E) -> Option<User>
+        where E: Executor<'e, Database = Postgres>,
+              S: AsRef<str>
+    {
+        let username = name.as_ref();
+
+        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1)")
+            .bind(username)
+            .fetch_optional(executor)
+            .await
+            .ok()
+            .flatten();
+
+        user
+    }
+
     pub(crate) fn identity_str(&self) -> String {
         format!("{}${}", &self.id, &self.session)
     }
 }
 
 impl Display for User {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.write_str(&self.username)
+    }
+}
+
+impl From<User> for i32 {
+    fn from(user: User) -> i32 {
+        user.id
     }
 }
 

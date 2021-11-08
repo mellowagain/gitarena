@@ -1,10 +1,10 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::repo_from_str;
 use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
+use crate::repository::Repository;
 use crate::routes::repository::GitTreeRequest;
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 
 use std::borrow::Borrow;
 use std::io::{Cursor, Write};
@@ -21,7 +21,7 @@ use git_object::Tree;
 use git_pack::cache::DecodeEntry;
 use git_pack::FindExt;
 use git_ref::file::find::existing::Error as GitoxideFindError;
-use git_repository::Repository;
+use git_repository::Repository as GitoxideRepository;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
@@ -30,7 +30,10 @@ use zip::ZipWriter;
 
 #[route("/{username}/{repository}/tree/{tree:.*}/archive/targz", method="GET")]
 pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
@@ -65,7 +68,7 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUse
 }
 
 #[async_recursion(?Send)]
-async fn write_directory_tar(repo: &Repository, tree: Tree, path: &Path, builder: &mut TarBuilder<Vec<u8>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
+async fn write_directory_tar(repo: &GitoxideRepository, tree: Tree, path: &Path, builder: &mut TarBuilder<Vec<u8>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path = path.join(filename);
@@ -119,7 +122,10 @@ async fn write_directory_tar(repo: &Repository, tree: Tree, path: &Path, builder
 
 #[route("/{username}/{repository}/tree/{tree:.*}/archive/zip", method="GET")]
 pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
@@ -151,7 +157,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, 
 }
 
 #[async_recursion(?Send)]
-async fn write_directory_zip(repo: &Repository, tree: Tree, path: &Path, writer: &mut ZipWriter<Cursor<Vec<u8>>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
+async fn write_directory_zip(repo: &GitoxideRepository, tree: Tree, path: &Path, writer: &mut ZipWriter<Cursor<Vec<u8>>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path_buffer = path.join(filename);

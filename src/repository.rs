@@ -20,6 +20,25 @@ pub(crate) struct Repository {
 }
 
 impl Repository {
+    pub(crate) async fn open<'e, E, I, S>(user_id: I, repo_name: S, executor: E) -> Option<Repository>
+        where E: Executor<'e, Database = Postgres>,
+              I: Into<i32>,
+              S: AsRef<str>
+    {
+        let user_id = user_id.into();
+        let repo_name = repo_name.as_ref();
+
+        let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2)")
+            .bind(&user_id)
+            .bind(repo_name)
+            .fetch_optional(executor)
+            .await
+            .ok()
+            .flatten();
+
+        repo
+    }
+
     pub(crate) async fn create_fs<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head(self.default_branch.as_str());

@@ -1,23 +1,27 @@
 use crate::error::GAErrors::HttpError;
-use crate::extensions::{bstr_to_str, commit_time_to_chrono, get_header, repo_from_str, signature_to_web_author};
 use crate::git::history::{all_branches, all_commits, all_tags};
+use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::render_template;
+use crate::repository::Repository;
 use crate::routes::repository::GitTreeRequest;
 use crate::templates::web::GitCommit;
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 
 use actix_web::{HttpRequest, Responder, web};
 use anyhow::Result;
+use bstr::ByteSlice;
 use git_ref::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
-use qstring::QString;
 use sqlx::PgPool;
 use tera::Context;
 
 #[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET")]
 pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let (repo, mut transaction) = repo_from_str(&uri.username, &uri.repository, db_pool.begin().await?).await?;
+    let mut transaction = db_pool.begin().await?;
+
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
@@ -31,9 +35,9 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
         Err(GitoxideFindError::NotFound(_)) => return Err(HttpError(404, "Not found".to_owned()).into())
     }?; // Handle 404
 
-    let full_tree_name = bstr_to_str(loose_ref.name.as_bstr())?;
+    let full_tree_name = loose_ref.name.as_bstr().to_str()?;
 
-    let query_string = QString::from(request.query_string());
+    let query_string = request.q_string();
     let after_oid = query_string.get("after");
 
     let mut context = Context::new();
@@ -54,9 +58,9 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
 
     for oid in commit_ids {
         let commit = libgit2_repo.find_commit(oid)?;
-        let (name, uid) = signature_to_web_author(commit.author(), &mut transaction).await?;
+        let (name, uid) = commit.author().try_disassemble(&mut transaction).await?;
 
-        let chrono_time = commit_time_to_chrono(&commit.time())?;
+        let chrono_time = commit.time().try_as_chrono()?;
         let chrono_date = chrono_time.date();
         let chrono_time_only_date = chrono_date.and_hms(0, 0, 0);
 
@@ -81,7 +85,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
     context.try_insert("commits", &commits)?;
 
     // Only send a partial result (only the components) if it's a request by htmx
-    if get_header(&request, "hx-request").is_some() {
+    if request.get_header("hx-request").is_some() {
         return render_template!("repo/commit_list_component.html", context, transaction);
     }
 

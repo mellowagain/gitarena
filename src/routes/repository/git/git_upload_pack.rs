@@ -1,9 +1,9 @@
 use crate::error::GAErrors::GitError;
-use crate::extensions::get_header;
 use crate::git::basic_auth;
 use crate::git::fetch::fetch;
 use crate::git::io::reader::{read_data_lines, read_until_command};
 use crate::git::ls_refs::ls_refs;
+use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
@@ -17,14 +17,14 @@ use sqlx::PgPool;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method="POST")]
 pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let content_type = get_header(&request, "Content-Type").unwrap_or_default();
-    let accept_header = get_header(&request, "Accept").unwrap_or_default();
+    let content_type = request.get_header("content-type").unwrap_or_default();
+    let accept_header = request.get_header("accept").unwrap_or_default();
 
     if content_type != "application/x-git-upload-pack-request" || accept_header != "application/x-git-upload-pack-result" {
         return Err(GitError(400, None).into());
     }
 
-    let git_protocol = get_header(&request, "Git-Protocol").unwrap_or_default();
+    let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
         return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
