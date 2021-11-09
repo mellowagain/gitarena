@@ -1,6 +1,7 @@
 use crate::config::get_optional_setting;
 use crate::error::GAErrors::HttpError;
 use crate::prelude::*;
+use crate::session::Session;
 use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_username, is_valid};
 use crate::verification::send_verification_mail;
@@ -96,7 +97,8 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     send_verification_mail(&user, &db_pool).await?;
 
-    id.remember(user.identity_str());
+    let session = Session::new(&request, &user, &mut transaction).await?;
+    id.remember(session.to_string());
 
     transaction.commit().await?;
 
