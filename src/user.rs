@@ -15,9 +15,9 @@ use chrono::{DateTime, Utc};
 use enum_display_derive::Display;
 use futures::Future;
 use ipnetwork::IpNetwork;
+use log::warn;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, PgPool, Postgres};
-use tracing_unwrap::ResultExt;
 
 #[derive(FromRow, Debug, Serialize)]
 pub(crate) struct User {
@@ -102,8 +102,23 @@ impl FromRequest for WebUser {
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
         match req.app_data::<Data<PgPool>>() {
             Some(db_pool) => {
-                let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req.clone()).unwrap_or_log(); // TODO: Change this to no longer call unwrap_or_log
+                // HttpRequest is just a wrapper around `Rc<R>` so .clone() is cheap
+                let (ip_network, user_agent) = match session::extract_ip_and_ua_owned(req.clone()) {
+                    Ok(tuple) => tuple,
+                    Err(err) => return Box::pin(async {
+                        match err.downcast::<Self::Error>() {
+                            Ok(ga_error) => Err(ga_error),
+                            Err(err) => {
+                                warn!("Error occurred while trying to resolve user: {}", err);
+                                Err(GAErrors::HttpError(500, String::new()).into())
+                            }
+                        }
+                    })
+                };
+
                 let id_future = Identity::from_request(req, payload);
+
+                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
@@ -133,7 +148,7 @@ async fn extract_from_request<F: Future<Output = ActixResult<Identity>>>(db_pool
                         .fetch_optional(&mut transaction)
                         .await?;
 
-                    user.map_or_else(|| WebUser::Anonymous, |user| WebUser::Authenticated(user))
+                    user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
                 }
                 None => {
                     id.forget();

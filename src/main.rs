@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
         );
 
         let mut app = App::new()
-            .data(db_pool.clone())
+            .data(db_pool.clone()) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
