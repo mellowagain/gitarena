@@ -43,9 +43,11 @@ Login
             <button class="ui button" type="submit">Login</button>
         </form>
 
-        <div class="ui vertical segment">
-            <a href="/register">Sign up</a>
-        </div>
+        {% if allow_registrations is defined and allow_registrations %}
+            <div class="ui vertical segment">
+                <a href="/register">Sign up</a>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

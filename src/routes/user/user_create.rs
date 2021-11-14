@@ -1,4 +1,4 @@
-use crate::config::get_optional_setting;
+use crate::config::{get_optional_setting, get_setting};
 use crate::error::GAErrors::HttpError;
 use crate::prelude::*;
 use crate::session::Session;
@@ -26,6 +26,10 @@ pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) 
 
     let mut context = Context::new();
 
+    if !get_setting::<bool, _>("allow_registrations", &mut transaction).await? {
+        return Err(HttpError(403, "User registrations are disabled".to_owned()).into());
+    }
+
     if let Some(site_key) = get_optional_setting::<String, _>("hcaptcha.site_key", &mut transaction).await? {
         context.try_insert("hcaptcha_site_key", &site_key)?;
     }
@@ -41,6 +45,10 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
     }
 
     let mut transaction = db_pool.begin().await?;
+
+    if !get_setting::<bool, _>("allow_registrations", &mut transaction).await? {
+        return Err(HttpError(403, "User registrations are disabled".to_owned()).into());
+    }
 
     let username = &body.username;
 
@@ -69,7 +77,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     // This is not according to the spec of the IETF but trying to implement that is honestly out-of-bounds for this project
     // Thus a best effort naive implementation. Checks for the presence of "@" and a "." in the domain name (after the last @)
-    if !email.contains("@") || !email.rsplitn(2, "@").next().unwrap_or_default().contains(".") {
+    if !email.contains('@') || !email.rsplit_once("@").map(|(_, x)| x).unwrap_or_default().contains('.') {
         return Err(HttpError(400, "Invalid email address".to_owned()).into());
     }
 

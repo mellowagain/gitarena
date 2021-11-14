@@ -1,3 +1,4 @@
+use crate::config::get_setting;
 use crate::crypto;
 use crate::error::GAErrors::HttpError;
 use crate::render_template;
@@ -18,14 +19,17 @@ use tracing_unwrap::OptionExt;
 use log::debug;
 
 #[route("/login", method = "GET")]
-pub(crate) async fn get_login(web_user: WebUser) -> Result<impl Responder> {
+pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 
+    let mut transaction = db_pool.begin().await?;
     let mut context = Context::new();
 
-    render_template!("user/login.html", context)
+    context.try_insert("allow_registrations", &get_setting::<bool, _>("allow_registrations", &mut transaction).await?)?;
+
+    render_template!("user/login.html", context, transaction)
 }
 
 #[route("/login", method = "POST")]
@@ -43,7 +47,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
     let mut context = Context::new();
     context.try_insert("username", username.as_str())?;
     context.try_insert("password", password.as_str())?;
-    context.try_insert("error", &true)?; // The login template only gets rendered if a error occurs
+    context.try_insert("error", &true)?; // The login template only gets rendered if an error occurs
 
     if username.is_empty() {
         context.try_insert("username_error", "Username cannot be empty")?;
@@ -56,7 +60,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
     }
 
     // We specify whenever a username does not exist or if the password was incorrect
-    // This is by design as one can check anytime by just going to /<username> or checking the sign up form
+    // This is by design as one can check anytime by just going to /<username> or checking the sign-up form
     // Please see https://meta.stackoverflow.com/q/308782
 
     let mut transaction = db_pool.begin().await?;
