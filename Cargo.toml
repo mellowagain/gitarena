@@ -31,16 +31,16 @@ enum-display-derive = "0.1.1"
 fs_extra = "1.2.0"
 futures = "0.3.16"
 futures-locks = "0.6.0"
-git-features = { version = "0.17", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["crc32", "rustsha1", "progress", "zlib"] }
+git-features = { version = "0.17.0", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["crc32", "rustsha1", "progress", "zlib"] }
 git-hash = { version = "0.8.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
 git-lock = { version = "1.0.1", git = "https://github.com/Byron/gitoxide", branch = "main" }
-git-object = { version = "0.15.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
-git-odb = { version = "0.23.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
-git-pack = { version = "0.13.0", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["pack-cache-lru-static"] }
-git-packetline = { version = "0.12.0", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["async-io"] }
-git-ref = { version = "0.9.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
-git-repository = { version = "0.11.0", git = "https://github.com/Byron/gitoxide", branch = "main", default-features = false, features = ["one-stop-shop", "unstable"] }
-git-traverse = { version = "0.10.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
+git-object = { version = "0.15.1", git = "https://github.com/Byron/gitoxide", branch = "main" }
+git-odb = { version = "0.24.0", git = "https://github.com/Byron/gitoxide", branch = "main" }
+git-pack = { version = "0.14.0", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["pack-cache-lru-static"] }
+git-packetline = { version = "0.12.1", git = "https://github.com/Byron/gitoxide", branch = "main", features = ["async-io"] }
+git-ref = { version = "0.9.1", git = "https://github.com/Byron/gitoxide", branch = "main" }
+git-repository = { version = "0.12.0", git = "https://github.com/Byron/gitoxide", branch = "main", default-features = false, features = ["one-stop-shop", "unstable"] }
+git-traverse = { version = "0.10.1", git = "https://github.com/Byron/gitoxide", branch = "main" }
 git2 = "0.13.23"
 gitarena-macros = { path = "gitarena-macros" }
 heim = { version = "0.1.0-rc.2", git = "https://github.com/mellowagain/heim", features = ["host", "cpu", "memory", "process"] }
