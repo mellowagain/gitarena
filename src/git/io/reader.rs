@@ -1,7 +1,7 @@
 use crate::error::GAErrors::ParseError;
 
 use anyhow::Result;
-use git_packetline::{PacketLineRef, StreamingPeekableIter};
+use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use log::warn;
 use tracing::instrument;
 use tracing_unwrap::OptionExt;

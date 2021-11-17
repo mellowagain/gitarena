@@ -17,7 +17,7 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use async_process::{Command, Stdio};
 use futures::StreamExt;
-use git_packetline::{PacketLineRef, StreamingPeekableIter};
+use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
 use log::warn;
 use memmem::{Searcher, TwoWaySearcher};

@@ -11,7 +11,7 @@ use crate::user::{User, WebUser};
 use actix_web::{HttpRequest, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
-use git_ref::file::find::existing::Error as GitoxideFindError;
+use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;

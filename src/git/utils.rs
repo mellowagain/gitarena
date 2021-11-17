@@ -2,11 +2,11 @@ use std::borrow::Borrow;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
-use git_hash::oid;
-use git_object::TreeRef;
-use git_odb::FindExt;
-use git_pack::cache::DecodeEntry;
-use git_ref::file::loose::Reference;
+use git_repository::hash::oid;
+use git_repository::objs::TreeRef;
+use git_repository::odb::FindExt;
+use git_repository::odb::pack::cache::DecodeEntry;
+use git_repository::refs::file::loose::Reference;
 use git_repository::refs::Target;
 use git_repository::Repository;
 use tracing::instrument;
@@ -41,7 +41,7 @@ pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &
         // Honestly no idea how but this seems to yield out the correct file content
         // TODO: This is *most likely* bugged and needs to be fixed at some point
         let content_vec: Vec<u8> = blob.data.iter()
-            .map(|i| *i)
+            .copied()
             .skip(2)
             .filter(|b| *b != 0)
             .collect();
@@ -53,7 +53,7 @@ pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &
 }
 
 pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
-    let content = read_raw_blob_content(&repo, &oid, cache).await?;
+    let content = read_raw_blob_content(repo, oid, cache).await?;
     let cow = String::from_utf8_lossy(&content[..]);
     let file_content: &str = cow.borrow();
 

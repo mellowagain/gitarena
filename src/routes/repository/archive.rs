@@ -16,11 +16,11 @@ use anyhow::Result;
 use async_compression::tokio_02::write::GzipEncoder;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use git_object::tree::EntryMode;
-use git_object::Tree;
-use git_pack::cache::DecodeEntry;
-use git_pack::FindExt;
-use git_ref::file::find::existing::Error as GitoxideFindError;
+use git_repository::objs::tree::EntryMode;
+use git_repository::objs::Tree;
+use git_repository::odb::pack::cache::DecodeEntry;
+use git_repository::odb::pack::FindExt;
+use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::Repository as GitoxideRepository;
 use gitarena_macros::route;
 use sqlx::PgPool;
@@ -78,10 +78,10 @@ async fn write_directory_tar(repo: &GitoxideRepository, tree: Tree, path: &Path,
                 let tree = repo.odb.find_tree(&entry.oid, buffer, cache)?;
                 let tree = Tree::from(tree);
 
-                write_directory_tar(&repo, tree, path.as_path(), builder, buffer, cache).await?;
+                write_directory_tar(repo, tree, path.as_path(), builder, buffer, cache).await?;
             }
             EntryMode::Blob | EntryMode::BlobExecutable | EntryMode::Link => {
-                let content = read_raw_blob_content(&repo, entry.oid.as_ref(), cache).await?;
+                let content = read_raw_blob_content(repo, entry.oid.as_ref(), cache).await?;
 
                 let mut header = TarHeader::new_gnu();
                 header.set_size(content.len() as u64);
@@ -170,10 +170,10 @@ async fn write_directory_zip(repo: &GitoxideRepository, tree: Tree, path: &Path,
 
                 writer.add_directory(format!("{}", path.display()), ZipFileOptions::default())?;
 
-                write_directory_zip(&repo, tree, path, writer, buffer, cache).await?;
+                write_directory_zip(repo, tree, path, writer, buffer, cache).await?;
             }
             EntryMode::Blob | EntryMode::BlobExecutable => {
-                let content = read_raw_blob_content(&repo, entry.oid.as_ref(), cache).await?;
+                let content = read_raw_blob_content(repo, entry.oid.as_ref(), cache).await?;
 
                 let options = ZipFileOptions::default()
                     .unix_permissions(if matches!(entry.mode, EntryMode::BlobExecutable) {

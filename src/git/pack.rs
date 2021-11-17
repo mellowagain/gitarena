@@ -6,11 +6,11 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 
 use anyhow::Result;
-use git_features::progress;
-use git_pack::bundle::write::Options as GitPackWriteOptions;
-use git_pack::data::input::{Mode as PackIterationMode};
-use git_pack::index::Version as PackVersion;
-use git_pack::{Bundle, cache, FindExt};
+use git_repository::odb::pack::bundle::write::Options as GitPackWriteOptions;
+use git_repository::odb::pack::data::input::{Mode as PackIterationMode};
+use git_repository::odb::pack::index::Version as PackVersion;
+use git_repository::odb::pack::{Bundle, cache, FindExt};
+use git_repository::progress;
 use sqlx::{Executor, Postgres};
 use tempfile::{Builder, TempDir};
 use tracing::instrument;
@@ -18,7 +18,7 @@ use tracing::instrument;
 /// Returns path to index file, pack file and temporary dir.
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
-#[instrument(err)]
+#[instrument(err, skip(data, executor))]
 pub(crate) async fn read<'e, E: Executor<'e, Database = Postgres>>(data: &[u8], repo: &Repository, executor: E) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
@@ -31,7 +31,7 @@ pub(crate) async fn read<'e, E: Executor<'e, Database = Postgres>>(data: &[u8], 
     }
 }
 
-#[instrument(err)]
+#[instrument(err, skip(data, executor))]
 pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: &[u8], temp_dir: &TempDir, repo: &Repository, executor: E) -> Result<(PathBuf, PathBuf)> {
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),

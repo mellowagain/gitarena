@@ -3,7 +3,7 @@ use crate::git::io::band::Band;
 use actix_web::web::{Bytes, BytesMut};
 use anyhow::{Context, Result};
 use futures::AsyncWriteExt;
-use git_packetline::{PacketLineRef, Writer as PacketlineWriter};
+use git_repository::protocol::transport::packetline::{PacketLineRef, Writer as PacketlineWriter};
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
 

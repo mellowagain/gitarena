@@ -17,7 +17,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     let service = match query_string.get("service") {
         Some(value) => value.trim(),
-        None => return Err(GitError(400, Some("Dumb clients are not supported".to_owned()).into()).into())
+        None => return Err(GitError(400, Some("Dumb clients are not supported".to_owned())).into())
     };
 
     let mut transaction = db_pool.begin().await?;
@@ -52,7 +52,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
             Ok(response)
         }
         _ => {
-            Err(GitError(403, Some("Requested service not found".to_owned()).into()).into())
+            Err(GitError(403, Some("Requested service not found".to_owned())).into())
         }
     }
 }

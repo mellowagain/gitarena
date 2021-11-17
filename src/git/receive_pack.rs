@@ -13,15 +13,15 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use bstr::BString;
-use git_lock::acquire::Fail;
-use git_object::{CommitRef, Kind};
-use git_odb::pack::cache;
-use git_pack::data::{File as DataFile, ResolvedBase};
-use git_pack::index::File as IndexFile;
-use git_ref::Target;
-use git_ref::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use git_repository::actor::Signature;
+use git_repository::lock::acquire::Fail;
+use git_repository::objs::{CommitRef, Kind};
+use git_repository::odb::pack::cache;
+use git_repository::odb::pack::data::{File as DataFile, ResolvedBase};
+use git_repository::odb::pack::index::File as IndexFile;
 use git_repository::prelude::FindExt;
+use git_repository::refs::Target;
+use git_repository::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use sqlx::{Executor, Pool, Postgres};
 use tracing::instrument;
 

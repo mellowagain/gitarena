@@ -9,8 +9,8 @@ use crate::user::{User, WebUser};
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
-use git_object::Tree;
-use git_ref::file::find::existing::Error as GitoxideFindError;
+use git_repository::objs::Tree;
+use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use serde_json::json;
 use sqlx::PgPool;
@@ -42,14 +42,10 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db
 
     let entry = tree.entries
         .iter()
-        .filter(|e| e.filename.to_lowercase().starts_with(b"readme"))
-        .next()
-        .ok_or(HttpError(404, "No README found".to_owned()))?;
+        .find(|e| e.filename.to_lowercase().starts_with(b"readme"))
+        .ok_or_else(|| HttpError(404, "No README found".to_owned()))?;
 
-    let name = match entry.filename.to_str() {
-        Ok(name) => name,
-        Err(_) => "Invalid file name"
-    };
+    let name = entry.filename.to_str().unwrap_or("Invalid file name");
 
     let content = read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await?;
 

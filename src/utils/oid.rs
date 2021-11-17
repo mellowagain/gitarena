@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use git_hash::ObjectId;
+use git_repository::hash::ObjectId;
 
 /// Normalizes an Git object id string.
 ///

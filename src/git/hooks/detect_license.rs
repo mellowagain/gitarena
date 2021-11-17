@@ -5,8 +5,8 @@ use crate::repository::Repository;
 use anyhow::Result;
 use askalono::TextData;
 use bstr::ByteSlice;
-use git_object::tree::EntryMode;
-use git_pack::cache::DecodeEntry;
+use git_repository::objs::tree::EntryMode;
+use git_repository::odb::pack::cache::DecodeEntry;
 use tracing::instrument;
 
 #[instrument(err, skip(gitoxide_repo, cache))]

@@ -1,4 +1,4 @@
-use git_odb::pack::cache::lru::StaticLinkedList;
+use git_repository::odb::pack::cache::lru::StaticLinkedList;
 
 pub(crate) mod basic_auth;
 pub(crate) mod capabilities;
