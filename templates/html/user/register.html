@@ -26,7 +26,9 @@ Register
                 <input name="password" type="password" autocomplete="new-password" required>
             </div>
 
-            <div class="h-captcha" data-sitekey="{{ hcaptcha_site_key }}"></div>
+            {% if hcaptcha_site_key is defined %}
+                <div class="h-captcha" data-sitekey="{{ hcaptcha_site_key }}"></div>
+            {% endif %}
 
             <button class="ui button" type="submit">Register</button>
         </form>

@@ -90,10 +90,16 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     let password = crypto::hash_password(raw_password)?;
 
-    let captcha_success = captcha::verify_captcha(&body.h_captcha_response.to_owned(), &mut transaction).await?;
+    if get_optional_setting::<String, _>("hcaptcha.site_key", &mut transaction).await?.is_some() {
+        if let Some(h_captcha_response) = &body.h_captcha_response {
+            let captcha_success = captcha::verify_captcha(h_captcha_response, &mut transaction).await?;
 
-    if !captcha_success {
-        return Err(HttpError(422, "Captcha verification failed".to_owned()).into());
+            if !captcha_success {
+                return Err(HttpError(422, "Captcha verification failed".to_owned()).into());
+            }
+        } else {
+            return Err(HttpError(400, "HCaptcha response was not provided".to_owned()).into());
+        }
     }
 
     let user: User = sqlx::query_as::<_, User>("insert into users (username, email, password) values ($1, $2, $3) returning *")
@@ -128,7 +134,7 @@ pub(crate) struct RegisterJsonRequest {
     email: String,
     password: String,
     #[serde(rename = "h-captcha-response")]
-    h_captcha_response: String
+    h_captcha_response: Option<String>
 }
 
 #[derive(Serialize)]
