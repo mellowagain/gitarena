@@ -32,7 +32,7 @@ pub(crate) async fn get_optional_setting<'e, T, E>(key: &'static str, executor: 
         .bind(key)
         .fetch_one(executor)
         .await
-        .context("Unable to read setting from database")?;
+        .with_context(|| format!("Unable to read setting {} from database", key))?;
 
     if setting.is_set() {
         let result: T = setting.try_into()?;
@@ -58,7 +58,7 @@ pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Res
         .bind(key)
         .fetch_one(executor)
         .await
-        .context("Unable to read setting from database")?;
+        .with_context(|| format!("Unable to read setting {} from database", key))?;
 
     let result: T = setting.try_into()?;
     Ok(result)
