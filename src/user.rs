@@ -12,14 +12,15 @@ use actix_web::web::Data;
 use actix_web::{FromRequest, HttpRequest, Result as ActixResult};
 use anyhow::Result as AnyhowResult;
 use chrono::{DateTime, Utc};
-use enum_display_derive::Display;
+use derive_more::Display;
 use futures::Future;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, PgPool, Postgres};
 
-#[derive(FromRow, Debug, Serialize)]
+#[derive(FromRow, Display, Debug, Serialize)]
+#[display(fmt = "{}", username)]
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,
@@ -45,12 +46,6 @@ impl User {
             .flatten();
 
         user
-    }
-}
-
-impl Display for User {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.write_str(&self.username)
     }
 }
 

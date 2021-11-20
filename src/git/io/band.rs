@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use enum_display_derive::Display;
+use derive_more::Display;
 
 #[derive(Display, Debug)]
 pub(crate) enum Band {

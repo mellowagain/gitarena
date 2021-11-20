@@ -4,12 +4,11 @@ use crate::error::GAErrors;
 use core::result::Result as CoreResult;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
-use std::fmt::Display;
 use std::future::Future;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
-use enum_display_derive::Display;
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::postgres::PgDatabaseError;
@@ -205,6 +204,5 @@ pub(crate) enum TypeConstraint {
     Char,       // i8, char
     Int,        // i32/i64, int/bigint
     String,     // &str, varchar, char, text
-    // TODO: Implement Bytes when needed
-    Bytes     // &[u8], bytea
+    Bytes       // &[u8], bytea // TODO: Implement Bytes when needed
 }

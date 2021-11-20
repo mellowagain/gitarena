@@ -136,7 +136,7 @@ insert into settings (key, value, type) values ('smtp.enabled', null, 'boolean')
 insert into settings (key, value, type) values ('smtp.server', null, 'string');
 insert into settings (key, value, type) values ('smtp.port', null, 'int');
 insert into settings (key, value, type) values ('smtp.tls', null, 'boolean');
-insert into settings (key, value, type) values ('smtp.email_address', null, 'string');
+insert into settings (key, value, type) values ('smtp.address', null, 'string');
 insert into settings (key, value, type) values ('smtp.username', null, 'string');
 insert into settings (key, value, type) values ('smtp.password', null, 'string');
 insert into settings (key, value, type) values ('integrations.sentry.enabled', 'false', 'boolean');

@@ -27,7 +27,7 @@ base64 = "0.13.0"
 bstr = "0.2.16"
 chrono = { version = "0.4.19", features = ["serde"] }
 chrono-humanize = "0.2.1"
-enum-display-derive = "0.1.1"
+derive_more = "0.99.16"
 fs_extra = "1.2.0"
 futures = "0.3.16"
 futures-locks = "0.6.0"
