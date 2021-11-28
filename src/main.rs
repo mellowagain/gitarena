@@ -16,7 +16,7 @@ use actix_web::middleware::normalize::TrailingSlash;
 use actix_web::middleware::NormalizePath;
 use actix_web::web::{route, to};
 use actix_web::{App, HttpResponse, HttpServer};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fs_extra::dir;
 use gitarena_macros::from_optional_config;
 use log::info;
@@ -52,8 +52,14 @@ async fn main() -> Result<()> {
     let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
     env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
 
+    let max_pool_connections = match env::var("MAX_POOL_CONNECTIONS") {
+        Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
+        Err(VarError::NotPresent) => num_cpus::get() as u32,
+        Err(VarError::NotUnicode(_)) => bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
+    };
+
     let db_pool = PgPoolOptions::new()
-        .max_connections(num_cpus::get() as u32)
+        .max_connections(max_pool_connections)
         .connect_timeout(Duration::from_secs(10))
         .connect(db_url.as_str())
         .await?;
