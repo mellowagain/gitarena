@@ -70,9 +70,9 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
           E: Executor<'e, Database = Postgres> + 'q
 {
     async move {
-        sqlx::query("update settings set $1 = $2")
-            .bind(key)
+        sqlx::query("update settings set value = $1 where $2")
             .bind(value)
+            .bind(key)
             .execute(executor)
             .await?;
 
