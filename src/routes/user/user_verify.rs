@@ -30,6 +30,11 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     let (row_id, user_id) = option.unwrap_or_log();
 
+    sqlx::query("update emails set verified_at = current_timestamp where owner = $1")
+        .bind(&user_id)
+        .execute(&mut transaction)
+        .await?;
+
     sqlx::query("delete from user_verifications where id = $1")
         .bind(&row_id)
         .execute(&mut transaction)

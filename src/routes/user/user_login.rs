@@ -1,10 +1,10 @@
 use crate::config::get_setting;
 use crate::crypto;
 use crate::error::GAErrors::HttpError;
+use crate::mail::Email;
 use crate::render_template;
 use crate::session::Session;
 use crate::user::{User, WebUser};
-use crate::verification;
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
@@ -41,6 +41,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
         return Ok(HttpResponse::Found().header(LOCATION, redirect).finish());
     }
 
+    // TODO: Maybe allow login with email address?
     let username = &body.username;
     let password = &body.password;
 
@@ -86,7 +87,11 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
         return render_template!(StatusCode::UNAUTHORIZED, "user/login.html", context, transaction);
     }
 
-    if user.disabled || verification::is_pending(&user, &mut transaction).await? {
+    let primary_email = Email::find_primary_email(&user, &mut transaction)
+        .await?
+        .ok_or_else(|| HttpError(401, "No primary email".to_owned()))?;
+
+    if user.disabled || !primary_email.is_allowed_login() {
         debug!("Received login request for disabled user {} (id {})", &user.username, &user.id);
 
         context.try_insert("general_error", "Account has been disabled. Please contact support.")?;

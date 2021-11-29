@@ -21,6 +21,32 @@ create table if not exists users
 create unique index if not exists users_username_uindex
     on users (username);
 
+-- Emails
+
+create table emails
+(
+    id              serial                                              not null
+        constraint emails_pk
+            primary key,
+    owner           integer                                             not null
+        constraint emails_users_id_fk
+            references users
+            on delete cascade,
+    email           varchar(256)                                        not null,
+    "primary"       boolean default false                               not null,
+    commit          boolean default false                               not null,
+    notification    boolean default false                               not null,
+    public          boolean default false                               not null,
+    created_at      timestamp with time zone default current_timestamp  not null,
+    verified_at     timestamp with time zone
+);
+
+create unique index emails_email_uindex
+    on emails (email);
+
+create index emails_owner_index
+    on emails (owner);
+
 -- User Verifications
 
 create table if not exists user_verifications

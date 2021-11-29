@@ -1,3 +1,5 @@
+use crate::user::User;
+
 use actix_web::HttpRequest;
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
@@ -125,8 +127,6 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// If an entry is found, the registered `username` and `user id` from the database will be returned.
     /// If no entry is found, this [Signature][signature]s `name()` and `None` will be returned.
     ///
-    /// This method will return an [Error](anyhow::Error) if the lookup in the database fails for whatever reason.
-    ///
     /// If this [Signature][signature]'s name is not valid utf-8, `Ghost` will be returned instead for `username`.
     /// This behaviour is subject to change.
     ///
@@ -143,25 +143,18 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// ```
     ///
     /// [signature]: git2::Signature
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<(String, Option<i32>)>;
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>);
 }
 
 #[async_trait(?Send)]
 impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<(String, Option<i32>)> {
-        let option: Option<(String, i32)> = if let Some(email) = self.email() {
-            sqlx::query_as("select username, id from users where lower(email) = lower($1)")
-                .bind(email)
-                .fetch_optional(executor)
-                .await?
-        } else {
-            None
-        };
-
-        Ok(option.map_or_else(
-            || (self.name().unwrap_or("Ghost").to_owned(), None),
-            |(username, id)| (username, Some(id))
-        ))
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>) {
+        User::find_using_email(self.email().unwrap_or("Invalid email address"), executor)
+            .await
+            .map_or_else(
+                || (self.name().unwrap_or("Ghost").to_owned(), None),
+                |user| (user.username, Some(user.id))
+            )
     }
 }
 

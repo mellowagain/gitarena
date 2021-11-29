@@ -3,7 +3,6 @@ use crate::session::Session;
 use crate::session;
 
 use std::convert::TryFrom;
-use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::pin::Pin;
 
 use actix_identity::Identity;
@@ -24,7 +23,6 @@ use sqlx::{Executor, FromRow, PgPool, Postgres};
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,
-    pub(crate) email: String,
     pub(crate) password: String,
     pub(crate) disabled: bool,
     pub(crate) admin: bool,
@@ -38,8 +36,24 @@ impl User {
     {
         let username = name.as_ref();
 
-        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1)")
+        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1) limit 1")
             .bind(username)
+            .fetch_optional(executor)
+            .await
+            .ok()
+            .flatten();
+
+        user
+    }
+
+    pub(crate) async fn find_using_email<'e, E, S>(email: S, executor: E) -> Option<User>
+        where E: Executor<'e, Database = Postgres>,
+              S: AsRef<str>
+    {
+        let email = email.as_ref();
+
+        let user = sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
+            .bind(email)
             .fetch_optional(executor)
             .await
             .ok()
@@ -51,6 +65,12 @@ impl User {
 
 impl From<User> for i32 {
     fn from(user: User) -> i32 {
+        user.id
+    }
+}
+
+impl From<&User> for i32 {
+    fn from(user: &User) -> i32 {
         user.id
     }
 }

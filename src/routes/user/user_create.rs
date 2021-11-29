@@ -64,12 +64,12 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
         return Err(HttpError(400, "Username is illegal".to_owned()).into());
     }
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
+    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
         .bind(username)
         .fetch_one(&mut transaction)
         .await?;
 
-    if exists {
+    if username_exists {
         return Err(HttpError(409, "Username already in use".to_owned()).into());
     }
 
@@ -81,9 +81,19 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
         return Err(HttpError(400, "Invalid email address".to_owned()).into());
     }
 
+    let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1));")
+        .bind(email)
+        .fetch_one(&mut transaction)
+        .await?;
+
+    if email_exists {
+        return Err(HttpError(409, "Email already in use".to_owned()).into());
+    }
+
     let raw_password = &body.password;
 
     // We don't implement any strict password rules according to NIST 2017 Guidelines
+    // TODO: Allow configuration of password rules
     if raw_password.len() < 8 {
         return Err(HttpError(400, "Password must be at least 8 characters".to_owned()).into());
     }
@@ -108,6 +118,16 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
         .bind(&password)
         .fetch_one(&mut transaction)
         .await?;
+
+    sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true)")
+        .bind(&user.id)
+        .bind(email)
+        .execute(&mut transaction)
+        .await?;
+
+    // Close the transaction so the email gets committed (above) and then immediatly start a new one for `session` below
+    transaction.commit().await?;
+    let mut transaction = db_pool.begin().await?;
 
     send_verification_mail(&user, &db_pool).await?;
 

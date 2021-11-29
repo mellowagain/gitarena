@@ -58,7 +58,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
 
     for oid in commit_ids {
         let commit = libgit2_repo.find_commit(oid)?;
-        let (name, uid) = commit.author().try_disassemble(&mut transaction).await?;
+        let (name, uid) = commit.author().try_disassemble(&mut transaction).await;
 
         let chrono_time = commit.time().try_as_chrono()?;
         let chrono_date = chrono_time.date();

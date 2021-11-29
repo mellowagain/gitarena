@@ -2,6 +2,7 @@ use crate::error::GAErrors::HttpError;
 use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
+use crate::prelude::LibGit2SignatureExtensions;
 use crate::privileges::privilege;
 use crate::render_template;
 use crate::repository::Repository;
@@ -120,21 +121,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| HttpError(200, "Repository is empty".to_owned()))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
-    let author_option: Option<(i32, String)> = sqlx::query_as("select id, username from users where lower(email) = lower($1)")
-        .bind(last_commit.author().email().unwrap_or("Invalid e-mail address"))
-        .fetch_optional(&mut transaction)
-        .await?;
-
-    let author_name;
-    let author_uid;
-
-    if let Some((user_id, username)) = author_option {
-        author_uid = Some(user_id);
-        author_name = username;
-    } else {
-        author_uid = None;
-        author_name = last_commit.author().name().unwrap_or("Ghost").to_owned();
-    }
+    // TODO: Additionally show last_commit.committer and if doesn't match with author
+    let (author_name, author_uid) = last_commit.author().try_disassemble(&mut transaction).await;
 
     context.try_insert("last_commit", &GitCommit {
         oid: format!("{}", last_commit_oid),
