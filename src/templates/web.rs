@@ -25,5 +25,6 @@ pub(crate) struct GitCommit {
     pub(crate) date: Option<DateTime<FixedOffset>>,
 
     pub(crate) author_name: String,
-    pub(crate) author_uid: Option<i32>
+    pub(crate) author_uid: Option<i32>,
+    pub(crate) author_email: String
 }

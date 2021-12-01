@@ -119,7 +119,7 @@ impl LibGit2TimeExtensions for LibGit2Time {
 
 #[async_trait(?Send)]
 pub(crate) trait LibGit2SignatureExtensions {
-    /// Tries to disassemble this [Signature][signature] as `(Username, User ID)`.
+    /// Tries to disassemble this [Signature][signature] as `(Username, User ID, Email)`.
     ///
     /// This will search the database (hence it requires a [Executor](sqlx::Executor)) for the
     /// email provided by this [Signature][signature] `email()` method.
@@ -143,17 +143,19 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// ```
     ///
     /// [signature]: git2::Signature
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>);
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>, String);
 }
 
 #[async_trait(?Send)]
 impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>) {
-        User::find_using_email(self.email().unwrap_or("Invalid email address"), executor)
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>, String) {
+        let email = self.email().unwrap_or("Invalid email address");
+
+        User::find_using_email(email, executor)
             .await
             .map_or_else(
-                || (self.name().unwrap_or("Ghost").to_owned(), None),
-                |user| (user.username, Some(user.id))
+                || (self.name().unwrap_or("Ghost").to_owned(), None, email.to_owned()),
+                |user| (user.username, Some(user.id), email.to_owned())
             )
     }
 }

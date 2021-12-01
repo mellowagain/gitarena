@@ -1,5 +1,6 @@
 use actix_web::web::ServiceConfig;
 
+mod avatar;
 mod user_create;
 mod user_login;
 mod user_logout;
@@ -14,4 +15,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 
     config.service(user_logout::logout);
     config.service(user_verify::verify);
+
+    config.service(avatar::get_avatar);
+    config.service(avatar::put_avatar);
 }

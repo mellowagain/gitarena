@@ -51,7 +51,7 @@
                     <a id="login-link" href="/login" class="link">login</a>
                 {% else %}
                     <a class="link pointer" data-hx-post="/logout">
-                        <img class="ui avatar image" src="/static/user_content/avatars/{{ user.id }}.jpg" alt="{{ user.username }}">
+                        <img class="ui avatar image" src="/api/avatar/{{ user.id }}" alt="{{ user.username }}">
                     </a>
                 {% endif %}
             </span>

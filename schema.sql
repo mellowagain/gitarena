@@ -169,3 +169,5 @@ insert into settings (key, value, type) values ('integrations.sentry.enabled', '
 insert into settings (key, value, type) values ('integrations.sentry.dsn', null, 'string');
 insert into settings (key, value, type) values ('sessions.log_ip', true, 'boolean');
 insert into settings (key, value, type) values ('sessions.log_user_agent', true, 'boolean');
+insert into settings (key, value, type) values ('avatars.gravatar', true, 'boolean');
+insert into settings (key, value, type) values ('avatars.dir', 'avatars', 'string');

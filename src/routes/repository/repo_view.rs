@@ -75,7 +75,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
                 time: commit.time().seconds(),
                 date: None,
                 author_name: String::new(), // Unused for file listing
-                author_uid: None // Unused for file listing
+                author_uid: None, // Unused for file listing
+                author_email: String::new() // Unused for file listing
             }
         });
     }
@@ -122,7 +123,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     // TODO: Additionally show last_commit.committer and if doesn't match with author
-    let (author_name, author_uid) = last_commit.author().try_disassemble(&mut transaction).await;
+    let (author_name, author_uid, author_email) = last_commit.author().try_disassemble(&mut transaction).await;
 
     context.try_insert("last_commit", &GitCommit {
         oid: format!("{}", last_commit_oid),
@@ -130,7 +131,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         time: last_commit.time().seconds(),
         date: None,
         author_name,
-        author_uid
+        author_uid,
+        author_email
     })?;
 
     render_template!("repo/index.html", context, transaction)

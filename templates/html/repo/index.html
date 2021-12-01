@@ -31,7 +31,7 @@
                     <a id="login-link" href="/login" class="link">login</a>
                 {% else %}
                     <a class="link pointer" data-hx-post="/logout">
-                        <img class="ui avatar image" src="/static/user_content/avatars/{{ user.id }}.jpg" alt="{{ user.username }}">
+                        <img class="ui avatar image" src="/api/avatar/{{ user.id }}" alt="{{ user.username }}">
                     </a>
                 {% endif %}
             </span>
@@ -156,11 +156,11 @@
                     <div class="ten wide column">
                         {% if last_commit.author_uid is some %}
                             <a href="/{{ last_commit.author_name }}">
-                                <img class="ui avatar image" src="/static/user_content/avatars/{{ last_commit.author_uid }}.jpg" alt="{{ last_commit.author_name }}">
+                                <img class="ui avatar image" src="/api/avatar/{{ last_commit.author_uid }}" alt="{{ last_commit.author_name }}">
                                 <b>{{ last_commit.author_name }}</b>
                             </a>
                         {% else %}
-                            <img class="ui avatar image" src="/static/user_content/avatars/null.jpg" alt="{{ last_commit.author_name }}">
+                            <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.email | urlencode }}" alt="{{ last_commit.author_name }}">
                             <b>{{ last_commit.author_name }}</b>
                         {% endif %}
 

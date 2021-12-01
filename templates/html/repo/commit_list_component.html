@@ -24,10 +24,10 @@
                             <div class="two wide computer only column">
                                 {% if commit.author_uid is some %}
                                     <a href="/{{ commit.author_name }}">
-                                        <img class="ui circular image" src="/static/user_content/avatars/{{ commit.author_uid }}.jpg" alt="{{ commit.author_name }}">
+                                        <img class="ui circular image" src="/api/avatar/{{ commit.author_uid }}" alt="{{ commit.author_name }}">
                                     </a>
                                 {% else %}
-                                    <img class="ui circular image" src="/static/user_content/avatars/null.jpg" alt="{{ commit.author_name }}">
+                                    <img class="ui circular image" src="/api/avatar/-1?override={{ commit.author_email | urlencode }}" alt="{{ commit.author_name }}">
                                 {% endif %}
                             </div>
                             <div class="sixteen wide mobile fourteen wide computer column no-left-padding">
