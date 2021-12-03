@@ -4,16 +4,17 @@ use crate::user::User;
 
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::net::Ipv6Addr;
 use std::str::FromStr;
 
 use actix_web::HttpRequest;
 use anyhow::Result;
 use chrono::{DateTime, Local};
-use ipnetwork::IpNetwork;
+use ipnetwork::{IpNetwork, Ipv6Network};
+use log::warn;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, Postgres};
 use tracing_unwrap::ResultExt;
-use log::warn;
 
 #[derive(FromRow, Debug, Serialize)]
 pub(crate) struct Session {
@@ -141,5 +142,7 @@ fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
     }
 
     // 100::/64 is a valid, reserved black hole IPv6 address block: https://en.wikipedia.org/wiki/Reserved_IP_addresses#IPv6
-    IpNetwork::from_str("100::/64").unwrap_or_log()
+    const RESERVED_IP: Ipv6Addr = Ipv6Addr::new(0x100, 0, 0, 0, 0, 0, 0, 0);
+
+    Ipv6Network::new(RESERVED_IP, 64).unwrap_or_log().into()
 }
