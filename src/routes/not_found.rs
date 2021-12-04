@@ -14,7 +14,8 @@ use tracing::instrument;
 
 async fn api_not_found() -> Result<HttpResponse> {
     Ok(HttpResponse::NotFound().json(json!({
-        "error": "Not found"
+        "error": "Not found",
+        "documentation": "https://gitarena.com/docs/api"
     })))
 }
 
