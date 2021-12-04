@@ -41,7 +41,6 @@ image = "0.23.14"
 ipnetwork = { version = "0.17.0", features = ["serde"] }
 lazy_static = "1.4.0"
 lettre = { version = "0.10.0-alpha.2", features = ["smtp-transport", "tokio02", "tokio02-native-tls"] }
-lettre_email = "0.9.4"
 log = "0.4.14"
 md5 = "0.7.0"
 memmem = "0.1.1"
