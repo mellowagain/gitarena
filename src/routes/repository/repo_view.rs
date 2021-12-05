@@ -101,6 +101,22 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         }
     });
 
+    if let Some(fork_repo_id) = repo.forked_from {
+        const QUERY: &str = "select users.username, repositories.name from repositories \
+         inner join users on users.id = repositories.owner \
+         where repositories.id = $1";
+
+        let option: Option<(String, String)> = sqlx::query_as(QUERY)
+            .bind(fork_repo_id)
+            .fetch_optional(&mut transaction)
+            .await?;
+
+        if let Some((username, repo_name)) = option {
+            context.try_insert("repo_fork_owner", &username)?;
+            context.try_insert("repo_fork_name", &repo_name)?;
+        }
+    }
+
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", &username)?;
     context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;

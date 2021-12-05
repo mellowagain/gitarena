@@ -36,7 +36,32 @@
                 {% endif %}
             </span>
             <div class="repo-info">
-                <h1><b>{{ repo.name }}</b></h1>
+                <h5 class="repo-flag">
+                    {% if repo.archived %}
+                        <div class="ui orange horizontal label">
+                            <div class="popup" data-content="Files as well as other resources in this repository are read-only">
+                                Archived
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if repo.disabled %}
+                        <div class="ui red horizontal label">
+                            <div class="popup" data-content="Repository is disabled for public access. You can still see this repository because you're an admin">
+                                Disabled
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if repo.mirrored_from is some %}
+                        Mirrored from <a href="{{ repo.mirrored_from }}">{{ repo.mirrored_from }}</a>
+                    {% endif %}
+
+                    {% if repo.forked_from is some %}
+                        Forked from <a href="/{{ repo_fork_owner }}/{{ repo_fork_name }}">{{ repo_fork_owner }}/{{ repo_fork_name }}</a>
+                    {% endif %}
+                </h5>
+                <h1 class="condensed-repo-header"><b>{{ repo.name }}</b></h1>
                 <h3 style="overflow-wrap: break-word">
                     {% if repo.description is not empty %}
                         {{ repo.description }}

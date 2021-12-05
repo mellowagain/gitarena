@@ -1,22 +1,32 @@
 use crate::privileges::repo_visibility::RepoVisibility;
 
 use anyhow::Result;
+use derive_more::Display;
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::Repository as GitoxideRepository;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, Postgres};
 
-#[derive(FromRow, Serialize, Debug)]
+#[derive(FromRow, Display, Debug, Serialize)]
+#[display(fmt = "{}", name)]
 pub(crate) struct Repository {
     pub(crate) id: i32,
+
     pub(crate) owner: i32,
     pub(crate) name: String,
     pub(crate) description: String,
+
     pub(crate) visibility: RepoVisibility,
     pub(crate) default_branch: String,
 
     pub(crate) license: Option<String>,
+
+    pub(crate) forked_from: Option<i32>,
+    pub(crate) mirrored_from: Option<String>,
+
+    pub(crate) archived: bool,
+    pub(crate) disabled: bool
 }
 
 impl Repository {

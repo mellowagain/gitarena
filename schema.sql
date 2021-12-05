@@ -82,7 +82,11 @@ create table if not exists repositories
     description    varchar(256)                                         not null,
     visibility     repo_visibility default 'public'::repo_visibility    not null,
     default_branch varchar(256) default 'main'::character varying       not null,
-    license        varchar(256) default NULL::character varying
+    license        varchar(256) default NULL::character varying,
+    forked_from    integer,
+    mirrored_from  varchar(256) default NULL::character varying,
+    archived       boolean default false                                not null,
+    disabled       boolean default false                                not null
 );
 
 -- Privileges

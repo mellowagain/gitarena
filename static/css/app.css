@@ -28,6 +28,14 @@
     padding: 40px 40px !important;
 }
 
+.repo-flag {
+    margin-bottom: 5px;
+}
+
+.condensed-repo-header {
+    margin-top: 1px;
+}
+
 #segment-loading-indicator.htmx-request {
     display: block !important;
     padding-top: 3em;
