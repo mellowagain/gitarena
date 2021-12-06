@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}
+Explore Repositories
+{% endblock %}
+
+{% block content %}
+
+
+<div class="ui grid">
+    <div class="ui twelve column centered grid">
+        {% if general_error is defined %}
+        <div class="ui error message">
+            <p>{{ general_error }}</p>
+        </div>
+        {% endif %}
+
+        {% if repository_count == 0 %}
+        <div class="ui error message">
+            <p>There are no repositories on this GitArena instance currently, check back later.</p>
+        </div>
+        {% endif %}
+        <br />
+
+        <table class="ui fixed table">
+            <thead>
+                <tr>
+                    <th class="twelve wide">Repository </th>
+                    <th class="three wide">Stars </th>
+                    <th class="three wide">Forks </th>
+                    <th class="three wide">Issues </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if repository_count > 0 %}
+                {% for repository in repositories %}
+                <tr>
+
+                    <td><a href="/user/repo">{{ repository.owner }}/{{ repository.name }}</a>
+                        <!--<br>Last Updated: 12h needs added--> </td>
+                        <!-- TODO: ADD STARS, FORKS AND ISSUES -->
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <th colspan="5">
+                    <div class="simplepag">
+                        <div class="ui left floated pagination menu" >
+                            <a class="icon item {% if current_page < 1 %} disabled {% endif %}" href="/explore?page={{ current_page-1 }}">
+                                <i class="left chevron icon"></i>
+                            </a>
+                        </div>
+
+
+
+                        <div class="ui right floated pagination menu">
+                            <a class="icon item {% if repository_count < 10 %} disabled {% endif %}" href="/explore?page={{ current_page+1 }}">
+                                <i class="right chevron icon"></i>
+                            </a>
+                        </div>
+
+                    </div>
+                </th>
+            </tfoot>
+
+        </table>
+    </div>
+</div>
+
+{% endblock %}

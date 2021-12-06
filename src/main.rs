@@ -117,6 +117,7 @@ async fn main() -> Result<()> {
             .configure(routes::proxy::init)
             .configure(routes::repository::init)
             .configure(routes::user::init)
+            .configure(routes::explore::init)
             .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
 
         if cfg!(debug_assertions) {
