@@ -30,24 +30,12 @@ pub(crate) async fn explore(web_user: WebUser, db_pool: web::Data<PgPool>, reque
 
     context.try_insert("repository_count", &repos_count)?;
 
-    let offset = if let Some(page) = query_string.get("page") {
-        format!("offset {}", 10*page.parse::<i32>()?)
-    } else {
-        "".to_owned()
-    };
-
-    let latest_repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(format!("select * from repositories order by id desc {}", offset).as_str())
+    let latest_repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(format!("select * from repositories order by id desc"))
     .fetch_optional(&mut transaction)
     .await?;
 
-    
-    let mut currpage = 0;
-    if let Some(page) = query_string.get("page") {
-        currpage = page.parse::<i32>()?;
-    }
 
     context.try_insert("repositories", &latest_repo_option)?;
-    context.try_insert("current_page", &currpage)?;
 
     render_template!("explore/explore.html", context, transaction)
 }

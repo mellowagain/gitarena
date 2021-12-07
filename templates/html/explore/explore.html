@@ -36,7 +36,7 @@ Explore Repositories
                 {% for repository in repositories %}
                 <tr>
 
-                    <td><a href="/user/repo">{{ repository.owner }}/{{ repository.name }}</a>
+                    <td><a href="/{{ repository.owner }}/{{ repository.name }}">{{ repository.owner }}/{{ repository.name }}</a>
                         <!--<br>Last Updated: 12h needs added--> </td>
                         <!-- TODO: ADD STARS, FORKS AND ISSUES -->
                     <td>0</td>
@@ -46,27 +46,6 @@ Explore Repositories
                 {% endfor %}
                 {% endif %}
             </tbody>
-            <tfoot>
-                <th colspan="5">
-                    <div class="simplepag">
-                        <div class="ui left floated pagination menu" >
-                            <a class="icon item {% if current_page < 1 %} disabled {% endif %}" href="/explore?page={{ current_page-1 }}">
-                                <i class="left chevron icon"></i>
-                            </a>
-                        </div>
-
-
-
-                        <div class="ui right floated pagination menu">
-                            <a class="icon item {% if repository_count < 10 %} disabled {% endif %}" href="/explore?page={{ current_page+1 }}">
-                                <i class="right chevron icon"></i>
-                            </a>
-                        </div>
-
-                    </div>
-                </th>
-            </tfoot>
-
         </table>
     </div>
 </div>
