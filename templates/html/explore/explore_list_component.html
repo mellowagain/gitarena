@@ -1,0 +1,24 @@
+{% if repository_count > 0 %}
+{% for repository in repositories %}
+
+<tr {% if loop.last and is_last_iter is some %} data-hx-get="/explore?page={{ current_page+1 }}"
+    data-hx-trigger="revealed" data-hx-target="#commit-list" data-hx-swap="beforeend"
+    data-hx-indicator="#segment-loading-indicator" {% endif %}>
+
+    <td><a href="/{{ repository.owner }}/{{ repository.name }}">{{ repository.owner }}/{{ repository.name }}</a>
+        <!--<br>Last Updated: 12h needs added-->
+    </td>
+    <!-- TODO: ADD STARS, FORKS AND ISSUES -->
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+</tr>
+{% if loop.last and is_last_iter is some %}
+<tr>
+    <div id="segment-loading-indicator" class="ui loading segment htmx-indicator">
+        <p></p>
+    </div>
+</tr>
+{% endif %}
+{% endfor %}
+{% endif %}

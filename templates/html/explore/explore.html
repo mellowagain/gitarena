@@ -31,21 +31,7 @@ Explore Repositories
                     <th class="three wide">Issues </th>
                 </tr>
             </thead>
-            <tbody>
-                {% if repository_count > 0 %}
-                {% for repository in repositories %}
-                <tr>
-
-                    <td><a href="/{{ repository.owner }}/{{ repository.name }}">{{ repository.owner }}/{{ repository.name }}</a>
-                        <!--<br>Last Updated: 12h needs added--> </td>
-                        <!-- TODO: ADD STARS, FORKS AND ISSUES -->
-                    <td>0</td>
-                    <td>0</td>
-                    <td>0</td>
-                </tr>
-                {% endfor %}
-                {% endif %}
-            </tbody>
+            {% include "explore/explore_list_component.html" %}
         </table>
     </div>
 </div>

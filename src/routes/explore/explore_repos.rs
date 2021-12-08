@@ -29,13 +29,27 @@ pub(crate) async fn explore(web_user: WebUser, db_pool: web::Data<PgPool>, reque
     .await?;
 
     context.try_insert("repository_count", &repos_count)?;
-
-    let latest_repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(format!("select * from repositories order by id desc"))
+    let offset = if let Some(page) = query_string.get("page") {
+        format!("offset {}", 10*page.parse::<i32>()?)
+    } else {
+        "".to_owned()
+    };
+    let latest_repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(format!("select * from repositories order by id desc limit 10 {}", offset).as_str())
     .fetch_optional(&mut transaction)
     .await?;
 
 
     context.try_insert("repositories", &latest_repo_option)?;
+    let currpage = if let Some(page) = query_string.get("page") {
+        page.parse::<i32>()?
+    } else {
+        0_i32
+    };
+
+
+    if request.get_header("hx-request").is_some() {
+        return render_template!("explore/explore_list_component.html", context, transaction);
+    }
 
     render_template!("explore/explore.html", context, transaction)
 }
