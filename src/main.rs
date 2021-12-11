@@ -47,7 +47,7 @@ mod verification;
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let _log_guards = init_logger()?;
+    let _log_guard = init_logger()?;
 
     let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
     env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_logger() -> Result<Vec<WorkerGuard>> {
+fn init_logger() -> Result<WorkerGuard> {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
         let not_found = err.source()
             .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
@@ -164,12 +164,9 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
             .add_directive("sqlx=warn".parse().unwrap_or_log())
     });
 
-    let mut results = Vec::<WorkerGuard>::with_capacity(2);
-
-    // In debug mode we only write to stdout (pretty), in production to stdout and to a file (json)
-    if cfg!(debug_assertions) {
+    // In debug mode we only write to stdout (pretty), in production to a file (json)
+    Ok(if cfg!(debug_assertions) {
         let (writer, guard) = tracing_appender::non_blocking(io::stdout());
-        results.push(guard);
 
         FmtSubscriber::builder()
             .with_writer(writer)
@@ -177,6 +174,8 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
             .with_thread_ids(true)
             .try_init()
             .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
+
+        guard
     } else {
         let logs_dir = Path::new("logs");
 
@@ -185,23 +184,16 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
         }
 
         let appender = rolling::daily("logs", "gitarena");
-        let (file_writer, file_guard) = tracing_appender::non_blocking(appender);
-
-        let (stdout_writer, stdout_guard) = tracing_appender::non_blocking(io::stdout());
-
-        results.push(file_guard);
-        results.push(stdout_guard);
+        let (writer, guard) = tracing_appender::non_blocking(appender);
 
         FmtSubscriber::builder()
-            .with_writer(stdout_writer)
-            .with_writer(file_writer)
+            .with_writer(writer)
             .with_env_filter(env_filter)
             .with_thread_ids(true)
             .json()
             .try_init()
             .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
-    }
 
-    results.shrink_to_fit();
-    Ok(results)
+        guard
+    })
 }
