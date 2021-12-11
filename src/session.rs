@@ -18,7 +18,6 @@ use tracing_unwrap::ResultExt;
 
 #[derive(FromRow, Debug, Serialize)]
 pub(crate) struct Session {
-    pub(crate) id: i32,
     pub(crate) user_id: i32,
     #[serde(skip_serializing)]
     pub(crate) hash: String,
@@ -76,11 +75,12 @@ impl Session {
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
         let user_agent = user_agent.chars().take(256).collect::<String>();
 
-        sqlx::query("update sessions set ip_address = $1, user_agent = $2, updated_at = $3 where id = $4")
+        sqlx::query("update sessions set ip_address = $1, user_agent = $2, updated_at = $3 where user_id = $4 and hash = $5")
             .bind(&ip_address)
             .bind(&user_agent)
             .bind(&now)
-            .bind(&self.id)
+            .bind(&self.user_id)
+            .bind(self.hash.as_str())
             .execute(executor)
             .await?;
 
@@ -96,8 +96,9 @@ impl Session {
 
     /// Consumes the current session and destroys it
     pub(crate) async fn destroy<'e, E: Executor<'e, Database = Postgres>>(self, executor: E) -> Result<()> {
-        sqlx::query("delete from sessions where id = $1")
-            .bind(&self.id)
+        sqlx::query("delete from sessions where user_id = $1 and hash = $2")
+            .bind(&self.user_id)
+            .bind(self.hash.as_str())
             .execute(executor)
             .await?;
 

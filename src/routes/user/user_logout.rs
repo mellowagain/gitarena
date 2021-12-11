@@ -20,7 +20,7 @@ pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Dat
     let mut transaction = db_pool.begin().await?;
 
     if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await.ok().flatten() {
-        debug!("Destroying session id {}", session.id);
+        debug!("Destroying a session for user id {}", &session.user_id);
 
         session.destroy(&mut transaction).await?;
     }

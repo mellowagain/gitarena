@@ -113,9 +113,6 @@ create table if not exists privileges
 
 create table sessions
 (
-    id                  serial                                              not null
-        constraint sessions_pk
-            primary key,
     user_id             integer                                             not null
         constraint sessions_users_id_fk
             references users

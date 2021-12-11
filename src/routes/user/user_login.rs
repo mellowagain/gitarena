@@ -101,7 +101,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
 
-    debug!("{} (id {}) logged in successfully (session id {})", &user.username, &user.id, &session.id);
+    debug!("{} (id {}) logged in successfully", &user.username, &user.id);
 
     transaction.commit().await?;
 
