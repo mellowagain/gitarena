@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}
+Instance settings
+{% endblock %}
+
+{% block content %}
+<div class="ui segment">
+    {% for key, value in settings %}
+        <h5 class="ui horizontal left aligned divider header">
+            {{ key }}
+        </h5>
+
+        {% for setting in value %}
+            <div class="ui two column grid">
+                <div class="column">
+                    {{ setting.key }}
+                </div>
+                <div class="column">
+                    {% if setting.type_constraint == "boolean" %}
+                        {% set_global checked = setting.value == "true" or setting.value == "1" %}
+                        {% set_global type = "checkbox" %}
+
+                        {% if checked %}
+                            {% set_global additional = "checked" %}
+
+                            {# Broken atm: <div class="ui checked toggle checkbox" id="checkbox-{{ setting.key }}" tabindex="0"> #}
+                            <div>
+                        {% else %}
+                            {% set_global additional = "" %}
+
+                            {# Broken atm: <div class="ui toggle checkbox" id="checkbox-{{ setting.key }}" tabindex="0"> #}
+                            <div>
+                        {% endif %}
+
+                                <label></label> {# This is required so that the Fomantic checkbox is actually visible #}
+                    {% elif setting.type_constraint == "char" %}
+                        {% set_global type = "text" %}
+                        {% set_global additional = "maxlength='1'" %}
+
+                        <div class="ui fluid icon input" id="input-{{ setting.key }}">
+                            <i class="copy link icon copy button" data-copy="{{ setting.value }}"></i>
+                    {% elif setting.type_constraint == "int" %}
+                        {% set_global type = "number" %}
+                        {% set_global additional = "" %}
+
+                        <div class="ui fluid icon input" id="input-{{ setting.key }}">
+                            <i class="copy link icon copy button" data-copy="{{ setting.value }}"></i>
+                    {% elif setting.type_constraint == "string" %}
+                        {% set_global type = "text" %}
+                        {% set_global additional = "" %}
+
+                        <div class="ui fluid icon input" id="input-{{ setting.key }}">
+                            <i class="copy link icon copy button" data-copy="{{ setting.value }}"></i>
+                    {% else %}
+                        {# This includes Bytes, TODO: Maybe display bytes as hex view? #}
+
+                        {% set_global type = "text" %}
+                        {% set_global additional = "disabled" %}
+
+                        <div class="ui fluid input" id="input-{{ setting.key }}">
+                    {% endif %}
+
+                            <input name="{{ setting.key }}" type="{{ type }}" data-hx-patch="/admin/settings" data-hx-swap="none" value="{{ setting.value }}" {{ additional }}>
+                        </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endfor %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("htmx:beforeSend", function(detail) {
+        let target = $(detail.target);
+        target.prop("disabled", true);
+
+        let parent = target.parent();
+        parent.addClass("loading");
+    });
+
+    document.addEventListener("htmx:afterRequest", function(event) {
+        let target = $(event.target);
+        target.prop("disabled", false);
+
+        let parent = target.parent();
+        parent.removeClass("loading");
+
+        let icon = parent.children("i");
+        icon.removeClass();
+
+        if (event.detail.xhr.status === 204) {
+            icon.addClass("check icon");
+
+            setTimeout(function() {
+                icon.removeClass();
+                icon.addClass("copy link icon copy button");
+                icon.prop("data-copy", target.val());
+            }, 5000);
+
+            sendNotification("success", "Successfully updated setting");
+        } else {
+            let json = JSON.parse(event.detail.xhr.responseText);
+
+            parent.addClass("error");
+
+            let icon = parent.children("i");
+            icon.removeClass();
+            icon.addClass("exclamation triangle icon");
+
+            sendNotification("error", `${json.error}`);
+        }
+    });
+</script>
+{% endblock %}
