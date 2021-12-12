@@ -133,6 +133,29 @@ create index sessions_user_id_index
 create index sessions_hash_index
     on sessions (hash);
 
+-- Stars
+
+create table stars
+(
+    id          serial         not null
+        constraint stars_pk
+            primary key,
+    stargazer   integer         not null
+        constraint stars_users_id_fk
+            references users
+            on delete cascade,
+    repo        integer         not null
+        constraint stars_repositories_id_fk
+            references repositories
+            on delete cascade
+);
+
+create index stars_repo_index
+    on stars (repo);
+
+create index stars_stargazer_index
+    on stars (stargazer);
+
 -- Settings
 -- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 

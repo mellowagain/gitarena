@@ -90,12 +90,20 @@
                 <h5>
                     Project ID <b>{{ repo.id }}</b> &middot;
                     Repo Size <b>{{ repo_size | filesizeformat }}</b> &middot;
-                    Contributors <b>{{ 1 }}</b>
+                    Contributors <b>{{ 1 }}</b> &middot;
 
                     {% if repo.license is some %}
-                        &middot;
-                        License <b>{{ repo.license }}</b>
+                        License <b>{{ repo.license }}</b> &middot;
                     {% endif %}
+
+                    <a class="pointer" data-hx-put="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/star" data-hx-target="#star-amount">
+                        Stars
+                        <b id="star-amount" data-hx-get="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/star" data-hx-trigger="load">
+                            <div class="ui active tiny inline loader"></div>
+                        </b>
+                    </a> &middot;
+
+                    Forks <b>{{ 0 }}</b>
                 </h5>
             </div>
         </div>
