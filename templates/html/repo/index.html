@@ -61,7 +61,25 @@
                         Forked from <a href="/{{ repo_fork_owner }}/{{ repo_fork_name }}">{{ repo_fork_owner }}/{{ repo_fork_name }}</a>
                     {% endif %}
                 </h5>
-                <h1 class="condensed-repo-header"><b>{{ repo.name }}</b></h1>
+                <h1 class="condensed-repo-header">
+                    <b>{{ repo.name }}</b>
+
+                    <div class="project-visibility">
+                        {% if repo.visibility == "public" %}
+                            <div class="project-visibility popup" data-content="Public: Project is accessible even without being logged in">
+                                <i class="tiny globe project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "internal" %}
+                            <div class="project-visibility popup" data-content="Internal: Project is only accessible to logged in users">
+                                <i class="tiny eye slash project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "private" %}
+                            <div class="project-visibility popup" data-content="Private: Project is only accessible to users that have been explicitly given access">
+                                <i class="tiny lock project visibility icon"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                </h1>
                 <h3 style="overflow-wrap: break-word">
                     {% if repo.description is not empty %}
                         {{ repo.description }}
