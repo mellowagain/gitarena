@@ -63,6 +63,10 @@ pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Res
     Ok(result)
 }
 
+pub(crate) async fn get_all_settings<'e, E: Executor<'e, Database = Postgres>>(executor: E) -> Result<Vec<Setting>> {
+    Ok(sqlx::query_as::<_, Setting>("select * from settings order by key").fetch_all(executor).await?)
+}
+
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
 // Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
 pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E) -> impl Future<Output = Result<()>> + 'q
@@ -70,7 +74,7 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
           E: Executor<'e, Database = Postgres> + 'q
 {
     async move {
-        sqlx::query("update settings set value = $1 where $2")
+        sqlx::query("update settings set value = $1 where key = $2")
             .bind(value)
             .bind(key)
             .execute(executor)
@@ -168,7 +172,7 @@ impl TryFrom<Setting> for bool {
     fn try_from(setting: Setting) -> CoreResult<bool, Self::Error> {
         match setting.type_constraint {
             TypeConstraint::Boolean => {
-                let str = setting.value.ok_or_else(|| TypeConstraintViolated("None"))?;
+                let str = setting.value.ok_or(TypeConstraintViolated("None"))?;
 
                 match str.to_lowercase().as_str() {
                     "1" | "true" => Ok(true),
@@ -186,7 +190,7 @@ impl TryFrom<Setting> for String {
 
     fn try_from(setting: Setting) -> CoreResult<Self, Self::Error> {
         match setting.type_constraint {
-            TypeConstraint::String => Ok(setting.value.ok_or_else(|| TypeConstraintViolated("None"))?),
+            TypeConstraint::String => Ok(setting.value.ok_or(TypeConstraintViolated("None"))?),
             _ => Err(TypeConstraintViolated("method: try_from<String>"))
         }
     }

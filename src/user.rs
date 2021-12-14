@@ -23,6 +23,7 @@ use sqlx::{Executor, FromRow, PgPool, Postgres};
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,
+    #[serde(skip_serializing)]
     pub(crate) password: String,
     pub(crate) disabled: bool,
     pub(crate) admin: bool,

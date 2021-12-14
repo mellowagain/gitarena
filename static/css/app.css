@@ -36,6 +36,14 @@
     margin-top: 1px;
 }
 
+.project-visibility {
+    display: inline;
+}
+
+.project.visibility.icon {
+    color: #8b949e;
+}
+
 #segment-loading-indicator.htmx-request {
     display: block !important;
     padding-top: 3em;

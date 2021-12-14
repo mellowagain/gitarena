@@ -61,7 +61,25 @@
                         Forked from <a href="/{{ repo_fork_owner }}/{{ repo_fork_name }}">{{ repo_fork_owner }}/{{ repo_fork_name }}</a>
                     {% endif %}
                 </h5>
-                <h1 class="condensed-repo-header"><b>{{ repo.name }}</b></h1>
+                <h1 class="condensed-repo-header">
+                    <b>{{ repo.name }}</b>
+
+                    <div class="project-visibility">
+                        {% if repo.visibility == "public" %}
+                            <div class="project-visibility popup" data-content="Public: Project is accessible even without being logged in">
+                                <i class="tiny globe project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "internal" %}
+                            <div class="project-visibility popup" data-content="Internal: Project is only accessible to logged in users">
+                                <i class="tiny eye slash project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "private" %}
+                            <div class="project-visibility popup" data-content="Private: Project is only accessible to users that have been explicitly given access">
+                                <i class="tiny lock project visibility icon"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                </h1>
                 <h3 style="overflow-wrap: break-word">
                     {% if repo.description is not empty %}
                         {{ repo.description }}
@@ -72,12 +90,20 @@
                 <h5>
                     Project ID <b>{{ repo.id }}</b> &middot;
                     Repo Size <b>{{ repo_size | filesizeformat }}</b> &middot;
-                    Contributors <b>{{ 1 }}</b>
+                    Contributors <b>{{ 1 }}</b> &middot;
 
                     {% if repo.license is some %}
-                        &middot;
-                        License <b>{{ repo.license }}</b>
+                        License <b>{{ repo.license }}</b> &middot;
                     {% endif %}
+
+                    <a class="pointer" data-hx-put="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/star" data-hx-target="#star-amount">
+                        Stars
+                        <b id="star-amount" data-hx-get="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/star" data-hx-trigger="load">
+                            <div class="ui active tiny inline loader"></div>
+                        </b>
+                    </a> &middot;
+
+                    Forks <b>{{ 0 }}</b>
                 </h5>
             </div>
         </div>

@@ -37,15 +37,17 @@
                 <span class="pill" style="letter-spacing: normal;">Preview</span>
             </span>
             <span class="links">
-                <a href="/explore" class="link">
-                    explore
-                </a>
-                <a href="/" class="link">
-                    merge requests
-                </a>
-                <a href="/" class="link">
-                    releases
-                </a>
+                {% block links %}
+                    <a href="/explore" class="link">
+                        explore
+                    </a>
+                    <a href="/" class="link">
+                        merge requests
+                    </a>
+                    <a href="/" class="link">
+                        releases
+                    </a>
+                {% endblock %}
 
                 {% if user is undefined %}
                     <a id="login-link" href="/login" class="link">login</a>

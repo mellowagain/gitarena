@@ -58,3 +58,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+function displayHtmxError(event) {
+    sendNotification("error", "Error occurred while sending request");
+    console.error(event);
+}
+
+document.addEventListener("htmx:responseError", displayHtmxError);
+document.addEventListener("htmx:sendError", displayHtmxError);
