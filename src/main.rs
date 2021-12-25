@@ -9,7 +9,7 @@ use std::{env, io};
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::cookie::SameSite;
-use actix_web::dev::Service;
+use actix_web::dev::{Service, ServiceResponse};
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, LOCATION};
 use actix_web::http::{HeaderValue, Method};
 use actix_web::middleware::normalize::TrailingSlash;
@@ -43,6 +43,7 @@ mod session;
 mod templates;
 mod user;
 mod utils;
+mod sso;
 mod verification;
 
 #[actix_rt::main]
@@ -93,7 +94,7 @@ async fn main() -> Result<()> {
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
-                    let mut res = fut.await?;
+                    let mut res: ServiceResponse = fut.await?;
 
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response
@@ -115,8 +116,8 @@ async fn main() -> Result<()> {
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
             .configure(routes::proxy::init)
-            .configure(routes::repository::init)
             .configure(routes::user::init)
+            .configure(routes::repository::init) // Repository routes need to be always last
             .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
 
         if cfg!(debug_assertions) {

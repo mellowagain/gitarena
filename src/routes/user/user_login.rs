@@ -80,6 +80,13 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
 
     let user = option.unwrap_or_log();
 
+    if user.password == "sso-login" {
+        debug!("Received login request for an {} (id {}) despite being registered with SSO", &user.username, &user.id);
+
+        context.try_insert("password_error", "Your account has been registered with SSO. Try using another login method below.")?;
+        return render_template!(StatusCode::UNAUTHORIZED, "user/login.html", context, transaction);
+    }
+
     if !crypto::check_password(&user, password)? {
         debug!("Received login request with wrong password for {} (id {})", &user.username, &user.id);
 

@@ -156,6 +156,29 @@ create index stars_repo_index
 create index stars_stargazer_index
     on stars (stargazer);
 
+-- SSO
+
+create type sso_provider as enum ('github');
+
+create table sso
+(
+    user_id     integer      not null
+        constraint sso_users_id_fk
+            references users
+            on delete cascade,
+    provider    sso_provider not null,
+    provider_id integer      not null
+);
+
+create index sso_provider_id_index
+    on sso (provider_id);
+
+create index sso_provider_index
+    on sso (provider);
+
+create index sso_user_id_index
+    on sso (user_id);
+
 -- Settings
 -- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 
@@ -195,3 +218,6 @@ insert into settings (key, value, type) values ('sessions.log_ip', true, 'boolea
 insert into settings (key, value, type) values ('sessions.log_user_agent', true, 'boolean');
 insert into settings (key, value, type) values ('avatars.gravatar', true, 'boolean');
 insert into settings (key, value, type) values ('avatars.dir', 'avatars', 'string');
+insert into settings (key, value, type) values ('sso.github.enabled', false, 'boolean');
+insert into settings (key, value, type) values ('sso.github.client_id', null, 'string');
+insert into settings (key, value, type) values ('sso.github.client_secret', null, 'string');

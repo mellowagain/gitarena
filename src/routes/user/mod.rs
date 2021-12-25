@@ -1,6 +1,7 @@
 use actix_web::web::ServiceConfig;
 
 mod avatar;
+mod sso;
 mod user_create;
 mod user_login;
 mod user_logout;
@@ -18,4 +19,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 
     config.service(avatar::get_avatar);
     config.service(avatar::put_avatar);
+
+    config.service(sso::initiate_sso);
+    config.service(sso::sso_callback);
 }

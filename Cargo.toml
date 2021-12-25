@@ -47,6 +47,7 @@ memmem = "0.1.1"
 multimap = { version = "0.8.3", features = ["serde"] }
 notify = "5.0.0-pre.13"
 num_cpus = "1.13.0"
+oauth2 = { version = "4.1.0", git = "https://github.com/mellowagain/oauth2-rs" }
 qstring = "0.7.2"
 rand = "0.7.3"
 regex = "1.5.4"

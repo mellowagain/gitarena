@@ -2,10 +2,8 @@ use crate::user::User;
 
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
-use rand::Rng;
-
-const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
-const HEX_CHARSET: &[u8] = b"abcdef0123456789";
+use rand::distributions::Distribution;
+use rand::distributions::Uniform;
 
 const ARGON_CONFIG: Config = Config {
     ad: &[],
@@ -19,34 +17,44 @@ const ARGON_CONFIG: Config = Config {
     version: Version::Version13
 };
 
-pub(crate) fn random_string(length: usize) -> String {
+pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> String {
     let mut rng = rand::thread_rng();
+    let uniform = Uniform::new(0, charset.len());
 
     (0..length).map(|_| {
-        let index = rng.gen_range(0, CHARSET.len());
-        CHARSET[index] as char
+        let index = uniform.sample(&mut rng);
+        charset[index] as char
     }).collect()
+}
+
+pub(crate) fn random_string(length: usize) -> String {
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+
+    random_string_charset(length, CHARSET)
+}
+
+pub(crate) fn random_numeric_ascii_string(length: usize) -> String {
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    random_string_charset(length, CHARSET)
 }
 
 pub(crate) fn random_hex_string(length: usize) -> String {
-    let mut rng = rand::thread_rng();
+    const CHARSET: &[u8] = b"abcdef0123456789";
 
-    (0..length).map(|_| {
-        let index = rng.gen_range(0, HEX_CHARSET.len());
-        HEX_CHARSET[index] as char
-    }).collect()
+    random_string_charset(length, CHARSET)
 }
 
-pub(crate) fn hash_password(password: &String) -> Result<String> {
+pub(crate) fn hash_password(password: &str) -> Result<String> {
     let salt = random_string(16);
 
-    Ok(argon2::hash_encoded(
+    argon2::hash_encoded(
         password.as_bytes(), salt.as_bytes(), &ARGON_CONFIG
-    ).context("Failed to hash password")?)
+    ).context("Failed to hash password")
 }
 
-pub(crate) fn check_password(user: &User, password: &String) -> Result<bool> {
-    Ok(argon2::verify_encoded(
+pub(crate) fn check_password(user: &User, password: &str) -> Result<bool> {
+    argon2::verify_encoded(
         user.password.as_str(), password.as_bytes()
-    ).with_context(|| format!("Failed to check password for user #{}", user.id))?)
+    ).with_context(|| format!("Failed to check password for user #{}", user.id))
 }
