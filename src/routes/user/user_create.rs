@@ -3,7 +3,7 @@ use crate::error::GAErrors::HttpError;
 use crate::prelude::*;
 use crate::session::Session;
 use crate::user::{User, WebUser};
-use crate::utils::identifiers::{is_fs_legal, is_reserved_username, is_valid};
+use crate::utils::identifiers::{is_username_taken, validate_username};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, render_template};
 
@@ -52,24 +52,9 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     let username = &body.username;
 
-    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| is_valid(&c)) {
-        return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
-    }
+    validate_username(username.as_str())?;
 
-    if is_reserved_username(username.as_str()) {
-        return Err(HttpError(400, "Username is a reserved identifier".to_owned()).into());
-    }
-
-    if !is_fs_legal(username) {
-        return Err(HttpError(400, "Username is illegal".to_owned()).into());
-    }
-
-    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
-        .bind(username)
-        .fetch_one(&mut transaction)
-        .await?;
-
-    if username_exists {
+    if is_username_taken(username.as_str(), &mut transaction).await? {
         return Err(HttpError(409, "Username already in use".to_owned()).into());
     }
 

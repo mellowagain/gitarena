@@ -2,6 +2,7 @@ use crate::crypto;
 use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
+use crate::utils::identifiers::{is_username_taken, validate_username};
 
 use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
@@ -121,7 +122,7 @@ impl SSOProvider for GitHubSSO {
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitHub API json response"))?;
 
-        while is_username_taken(username.as_str(), &mut transaction).await? {
+        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
             username = crypto::random_numeric_ascii_string(16);
         }
 
@@ -197,14 +198,4 @@ struct GitHubEmail {
     verified: bool,
     primary: bool,
     visibility: Option<String>
-}
-
-// TODO: Put out of this module, generalize and allow additional usage by user_crate
-async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(input: &str, executor: E) -> Result<bool> {
-    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
-        .bind(input)
-        .fetch_one(executor)
-        .await?;
-
-    Ok(username_exists)
 }

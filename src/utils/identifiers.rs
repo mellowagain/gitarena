@@ -1,3 +1,8 @@
+use crate::error::GAErrors::HttpError;
+
+use anyhow::Result;
+use sqlx::{Executor, Postgres};
+
 /// Checks if the character is a valid GitArena identifier.
 ///
 /// Valid GitArena identifiers are either alphanumeric (`a-z`, `0-9`), dash (`-`) or underscore (`_`).
@@ -48,6 +53,54 @@ pub(crate) fn is_reserved_username(input: &str) -> bool {
     ILLEGAL_USERNAMES.contains(&lower_case.as_str())
 }
 
+/// Checks if the string is a valid username.
+/// Returns `Ok` on success and [HttpError][0] with error string on failure.
+///
+/// This method checks if the username is:
+/// - At least 3 characters long
+/// - At max 32 characters long
+/// - [A valid identifier](is_valid)
+/// - [Not a reserved username](is_reserved_username)
+/// - [Legal for the current OS filesystem](is_fs_legal)
+///
+/// [0]: crate::error::GAErrors::HttpError
+pub(crate) fn validate_username(input: &str) -> Result<()> {
+    if input.len() < 3 || input.len() > 32 || !input.chars().all(|c| is_valid(&c)) {
+        return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+    }
+
+    if is_reserved_username(input) {
+        return Err(HttpError(400, "Username is a reserved identifier".to_owned()).into());
+    }
+
+    if !is_fs_legal(input) {
+        return Err(HttpError(400, "Username is illegal".to_owned()).into());
+    }
+
+    Ok(())
+}
+
+/// Checks if the string is already a taken username.
+///
+/// This method requires a database connection as it will check the provided input against the user table.
+/// `input` _should_ already be checked to be a valid identifier ([is_valid] and [is_reserved_username]).
+///
+/// # Example
+///
+/// ```
+/// use crate::utils::identifiers::is_username_taken;
+///
+/// assert!(!is_username_taken("mellowagain"));
+/// ```
+pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(input: &str, executor: E) -> Result<bool> {
+    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
+        .bind(input)
+        .fetch_one(executor)
+        .await?;
+
+    Ok(username_exists)
+}
+
 /// Checks if the string is a reserved repository name.
 ///
 /// This method checks the input string against the list of hardcoded, reserved repository names.
@@ -75,7 +128,7 @@ pub(crate) fn is_reserved_repo_name(input: &str) -> bool {
 
 /// Checks if the string is a legal name for this operating system.
 ///
-/// On Windows, this checks the input against the a of hardcoded, illegal file names.
+/// On Windows, this checks the input against a list of hardcoded, illegal file names.
 /// On other operating systems, this function will always return `true`.
 ///
 /// # Example
