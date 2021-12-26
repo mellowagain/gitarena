@@ -1,4 +1,5 @@
-use crate::crypto;
+use crate::{config, crypto};
+use crate::sso::oauth_request::OAuthRequest;
 use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
@@ -16,18 +17,11 @@ use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
 use tracing_unwrap::ResultExt;
 
-type SerdeMap = Map<String, Value>;
-
 pub(crate) struct GitHubSSO;
 
 #[async_trait]
-trait OAuthRequest<T: DeserializeOwned = SerdeMap> {
-    async fn request_github_data(endpoint: &'static str, token: &str) -> Result<T>;
-}
-
-#[async_trait]
 impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
-    async fn request_github_data(endpoint: &'static str, token: &str) -> Result<T> {
+    async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::new();
 
         Ok(client.get(format!("https://api.github.com/{}", endpoint).as_str())
@@ -60,13 +54,13 @@ impl SSOProvider for GitHubSSO {
     }
 
     async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<ClientId> {
-        let client_id = crate::config::get_setting::<String, _>("sso.github.client_id", executor).await?;
+        let client_id = config::get_setting::<String, _>("sso.github.client_id", executor).await?;
 
         Ok(ClientId::new(client_id))
     }
 
     async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<Option<ClientSecret>> {
-        let client_secret = crate::config::get_setting::<String, _>("sso.github.client_secret", executor).await?;
+        let client_secret = config::get_setting::<String, _>("sso.github.client_secret", executor).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
     }
@@ -97,7 +91,7 @@ impl SSOProvider for GitHubSSO {
     }
 
     async fn get_provider_id(&self, token: &str) -> Result<i32> {
-        let profile_data: SerdeMap = GitHubSSO::request_github_data("user", token).await?;
+        let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
 
         profile_data.get("id")
             .map(|v| match v {
@@ -111,7 +105,7 @@ impl SSOProvider for GitHubSSO {
     async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
-        let profile_data: SerdeMap = GitHubSSO::request_github_data("user", token).await?;
+        let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
 
         let mut username = profile_data.get("login")
             .map(|v| match v {
@@ -150,7 +144,7 @@ impl SSOProvider for GitHubSSO {
 
         // TODO: Save avatar (profile data "avatar_url")
 
-        let emails: Vec<GitHubEmail> = GitHubSSO::request_github_data("user/emails?per_page=100", token).await?;
+        let emails: Vec<GitHubEmail> = GitHubSSO::request_data("user/emails?per_page=100", token).await?;
 
         for github_email in emails.iter().skip_while(|e| !e.verified) {
             let email = github_email.email.as_str();
