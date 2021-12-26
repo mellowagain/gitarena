@@ -11,7 +11,7 @@ use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_macros::route;
+use gitarena_macros::{from_config, route};
 use serde::Deserialize;
 use sqlx::PgPool;
 use tera::Context;
@@ -24,12 +24,19 @@ pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 
-    let mut transaction = db_pool.begin().await?;
+    let (allow_registrations, github_sso_enabled, gitlab_sso_enabled): (bool, bool, bool) = from_config!(
+        "allow_registrations" => bool,
+        "sso.github.enabled" => bool,
+        "sso.gitlab.enabled" => bool
+    );
+
     let mut context = Context::new();
 
-    context.try_insert("allow_registrations", &get_setting::<bool, _>("allow_registrations", &mut transaction).await?)?;
+    context.try_insert("allow_registrations", &allow_registrations)?;
+    context.try_insert("sso_github", &github_sso_enabled)?;
+    context.try_insert("sso_gitlab", &gitlab_sso_enabled)?;
 
-    render_template!("user/login.html", context, transaction)
+    render_template!("user/login.html", context)
 }
 
 #[route("/login", method = "POST")]

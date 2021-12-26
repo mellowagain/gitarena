@@ -43,6 +43,22 @@ Login
             <button class="ui button" type="submit">Login</button>
         </form>
 
+        <div class="ui vertical segment">
+            {% if sso_github is defined and sso_github %}
+                <a class="ui github button" role="button" href="/sso/github">
+                    <i class="github icon"></i>
+                    Login with GitHub
+                </a>
+            {% endif %}
+
+            {% if sso_github is defined and sso_github %}
+                <a class="ui gitlab button" role="button" href="/sso/gitlab">
+                    <i class="gitlab icon"></i>
+                    Login with GitLab
+                </a>
+            {% endif %}
+        </div>
+
         {% if allow_registrations is defined and allow_registrations %}
             <div class="ui vertical segment">
                 <a href="/register">Sign up</a>
