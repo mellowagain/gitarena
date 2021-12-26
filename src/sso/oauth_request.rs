@@ -8,4 +8,4 @@ pub(crate) trait OAuthRequest<T: DeserializeOwned = SerdeMap> {
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T>;
 }
 
-type SerdeMap = Map<String, Value>;
+pub(crate) type SerdeMap = Map<String, Value>;

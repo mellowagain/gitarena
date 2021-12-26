@@ -1,5 +1,5 @@
 use crate::{config, crypto};
-use crate::sso::oauth_request::OAuthRequest;
+use crate::sso::oauth_request::{OAuthRequest, SerdeMap};
 use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
