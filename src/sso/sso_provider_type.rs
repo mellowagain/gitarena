@@ -1,4 +1,5 @@
 use crate::sso::github_sso::GitHubSSO;
+use crate::sso::gitlab_sso::GitLabSSO;
 use crate::sso::sso_provider::SSOProvider;
 
 use std::result::Result as StdResult;
@@ -12,13 +13,15 @@ use sqlx::Type;
 #[sqlx(rename = "sso_provider", rename_all = "lowercase")]
 #[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
 pub(crate) enum SSOProviderType {
-    GitHub
+    GitHub,
+    GitLab
 }
 
 impl SSOProviderType {
-    pub(crate) fn get_implementation(&self) -> impl SSOProvider {
+    pub(crate) fn get_implementation(&self) -> Box<dyn SSOProvider + Send + Sync> {
         match self {
-            SSOProviderType::GitHub => GitHubSSO
+            SSOProviderType::GitHub => Box::new(GitHubSSO),
+            SSOProviderType::GitLab => Box::new(GitLabSSO)
         }
     }
 }
@@ -31,6 +34,7 @@ impl FromStr for SSOProviderType {
 
         match lower_input.as_str() {
             "github" => Ok(SSOProviderType::GitHub),
+            "gitlab" => Ok(SSOProviderType::GitLab),
             _ => Err(())
         }
     }

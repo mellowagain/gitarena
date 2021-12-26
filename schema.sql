@@ -221,3 +221,6 @@ insert into settings (key, value, type) values ('avatars.dir', 'avatars', 'strin
 insert into settings (key, value, type) values ('sso.github.enabled', false, 'boolean');
 insert into settings (key, value, type) values ('sso.github.client_id', null, 'string');
 insert into settings (key, value, type) values ('sso.github.client_secret', null, 'string');
+insert into settings (key, value, type) values ('sso.gitlab.enabled', false, 'boolean');
+insert into settings (key, value, type) values ('sso.gitlab.app_id', null, 'string');
+insert into settings (key, value, type) values ('sso.gitlab.client_secret', null, 'string');

@@ -7,6 +7,7 @@ use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::{User, WebUser};
 
+use std::ops::Deref;
 use std::str::FromStr;
 
 use actix_identity::Identity;
@@ -30,7 +31,7 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
     let provider_impl = provider.get_implementation();
 
     // TODO: Save token in cache to check for CSRF
-    let (url, _token) = SSOProvider::generate_auth_url(&provider_impl, &db_pool).await?;
+    let (url, _token) = SSOProvider::generate_auth_url(provider_impl.deref(), &provider, &db_pool).await?;
 
     Ok(HttpResponse::TemporaryRedirect().header(LOCATION, url.to_string()).finish())
 }
@@ -46,9 +47,9 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
     let provider_impl = provider.get_implementation();
 
     let query_string = request.q_string();
-    let token_response = SSOProvider::exchange_response(&provider_impl, &query_string, &db_pool).await?;
+    let token_response = SSOProvider::exchange_response(provider_impl.deref(), &query_string, &provider, &db_pool).await?;
 
-    if !SSOProvider::validate_scopes(&provider_impl, token_response.scopes()) {
+    if !SSOProvider::validate_scopes(provider_impl.deref(), token_response.scopes()) {
         return Err(HttpError(409, "Not all required scopes have been granted".to_owned()).into());
     }
 
@@ -57,7 +58,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     let mut transaction = db_pool.begin().await?;
 
-    let provider_id = SSOProvider::get_provider_id(&provider_impl, token.as_str()).await?;
+    let provider_id = SSOProvider::get_provider_id(provider_impl.deref(), token.as_str()).await?;
 
     let sso: Option<SSO> = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
         .bind(&provider)
@@ -75,7 +76,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         },
         None => {
             // User link does not exist -> Create new user
-            SSOProvider::create_user(&provider_impl, token.as_str(), &db_pool)
+            SSOProvider::create_user(provider_impl.deref(), token.as_str(), &db_pool)
                 .await
                 .context("Failed to create new user using sso")?
         }
