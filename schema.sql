@@ -158,7 +158,7 @@ create index stars_stargazer_index
 
 -- SSO
 
-create type sso_provider as enum ('github', 'gitlab');
+create type sso_provider as enum ('github', 'gitlab', 'bitbucket');
 
 create table sso
 (
@@ -224,3 +224,6 @@ insert into settings (key, value, type) values ('sso.github.client_secret', null
 insert into settings (key, value, type) values ('sso.gitlab.enabled', false, 'boolean');
 insert into settings (key, value, type) values ('sso.gitlab.app_id', null, 'string');
 insert into settings (key, value, type) values ('sso.gitlab.client_secret', null, 'string');
+insert into settings (key, value, type) values ('sso.bitbucket.enabled', false, 'boolean');
+insert into settings (key, value, type) values ('sso.bitbucket.key', null, 'string');
+insert into settings (key, value, type) values ('sso.bitbucket.secret', null, 'string');

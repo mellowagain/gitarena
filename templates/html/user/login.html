@@ -44,6 +44,13 @@ Login
         </form>
 
         <div class="ui vertical segment">
+            {% if sso_bitbucket is defined and sso_bitbucket %}
+                <a class="ui bitbucket button" role="button" href="/sso/bitbucket">
+                    <i class="bitbucket icon"></i>
+                    Login with BitBucket
+                </a>
+            {% endif %}
+
             {% if sso_github is defined and sso_github %}
                 <a class="ui github button" role="button" href="/sso/github">
                     <i class="github icon"></i>
@@ -51,7 +58,7 @@ Login
                 </a>
             {% endif %}
 
-            {% if sso_github is defined and sso_github %}
+            {% if sso_gitlab is defined and sso_gitlab %}
                 <a class="ui gitlab button" role="button" href="/sso/gitlab">
                     <i class="gitlab icon"></i>
                     Login with GitLab

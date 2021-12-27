@@ -24,8 +24,9 @@ pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
         return Err(HttpError(401, "Already logged in".to_owned()).into());
     }
 
-    let (allow_registrations, github_sso_enabled, gitlab_sso_enabled): (bool, bool, bool) = from_config!(
+    let (allow_registrations, bitbucket_sso_enabled, github_sso_enabled, gitlab_sso_enabled): (bool, bool, bool, bool) = from_config!(
         "allow_registrations" => bool,
+        "sso.bitbucket.enabled" => bool,
         "sso.github.enabled" => bool,
         "sso.gitlab.enabled" => bool
     );
@@ -33,6 +34,7 @@ pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     let mut context = Context::new();
 
     context.try_insert("allow_registrations", &allow_registrations)?;
+    context.try_insert("sso_bitbucket", &bitbucket_sso_enabled)?;
     context.try_insert("sso_github", &github_sso_enabled)?;
     context.try_insert("sso_gitlab", &gitlab_sso_enabled)?;
 

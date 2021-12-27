@@ -1,4 +1,5 @@
 use crate::config;
+use crate::sso::bitbucket_sso::BitBucketSSO;
 use crate::sso::github_sso::GitHubSSO;
 use crate::sso::gitlab_sso::GitLabSSO;
 use crate::sso::sso_provider_type::SSOProviderType;
@@ -25,6 +26,10 @@ pub(crate) trait SSOProvider {
         let mut transaction = db_pool.begin().await?;
 
         let (client_id, client_secret) = match provider {
+            SSOProviderType::BitBucket => (
+                DatabaseSSOProvider::get_client_id(&BitBucketSSO, &mut transaction).await.context("Failed to get client id")?,
+                DatabaseSSOProvider::get_client_secret(&BitBucketSSO, &mut transaction).await.context("Failed to get client secret")?
+            ),
             SSOProviderType::GitHub => (
                 DatabaseSSOProvider::get_client_id(&GitHubSSO, &mut transaction).await.context("Failed to get client id")?,
                 DatabaseSSOProvider::get_client_secret(&GitHubSSO, &mut transaction).await.context("Failed to get client secret")?
@@ -39,6 +44,7 @@ pub(crate) trait SSOProvider {
         let token_url = self.get_token_url();
 
         let redirect_url = match provider {
+            SSOProviderType::BitBucket => DatabaseSSOProvider::get_redirect_url(&BitBucketSSO, &mut transaction).await.context("Failed to get redirect url")?,
             SSOProviderType::GitHub => DatabaseSSOProvider::get_redirect_url(&GitHubSSO, &mut transaction).await.context("Failed to get redirect url")?,
             SSOProviderType::GitLab => DatabaseSSOProvider::get_redirect_url(&GitLabSSO, &mut transaction).await.context("Failed to get redirect url")?,
         };
