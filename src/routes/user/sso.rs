@@ -62,7 +62,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     let sso: Option<SSO> = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
         .bind(&provider)
-        .bind(&provider_id)
+        .bind(provider_id.as_str())
         .fetch_optional(&mut transaction)
         .await?;
 

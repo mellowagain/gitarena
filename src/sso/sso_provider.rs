@@ -102,7 +102,7 @@ pub(crate) trait SSOProvider {
         granted_scopes.iter().all(|item| requested_scopes.contains(item))
     }
 
-    async fn get_provider_id(&self, token: &str) -> Result<i32>;
+    async fn get_provider_id(&self, token: &str) -> Result<String>;
 
     async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User>;
 }

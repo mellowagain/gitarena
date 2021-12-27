@@ -158,7 +158,7 @@ create index stars_stargazer_index
 
 -- SSO
 
-create type sso_provider as enum ('github');
+create type sso_provider as enum ('github', 'gitlab');
 
 create table sso
 (
@@ -167,7 +167,7 @@ create table sso
             references users
             on delete cascade,
     provider    sso_provider not null,
-    provider_id integer      not null
+    provider_id varchar(64)  not null
 );
 
 create index sso_provider_id_index

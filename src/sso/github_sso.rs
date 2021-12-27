@@ -92,12 +92,12 @@ impl SSOProvider for GitHubSSO {
         granted_scopes.iter().all(|item| requested_scopes.contains(item))
     }
 
-    async fn get_provider_id(&self, token: &str) -> Result<i32> {
+    async fn get_provider_id(&self, token: &str) -> Result<String> {
         let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
 
         profile_data.get("id")
             .map(|v| match v {
-                Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v as i32)),
+                Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
             .flatten()
@@ -131,7 +131,7 @@ impl SSOProvider for GitHubSSO {
 
         let github_id = profile_data.get("id")
             .map(|v| match v {
-                Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v as i32)),
+                Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
             .flatten()
@@ -140,7 +140,7 @@ impl SSOProvider for GitHubSSO {
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")
             .bind(&user.id)
             .bind(&SSOProviderType::GitHub)
-            .bind(&github_id)
+            .bind(github_id.as_str())
             .execute(&mut transaction)
             .await?;
 
