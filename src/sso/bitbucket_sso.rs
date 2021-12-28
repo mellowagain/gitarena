@@ -134,7 +134,7 @@ impl SSOProvider for BitBucketSSO {
             let email = bitbucket_email.email.as_str();
 
             // Email exists
-            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1));")
+            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
                 .bind(email)
                 .fetch_one(&mut transaction)
                 .await?;

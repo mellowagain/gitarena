@@ -13,18 +13,18 @@ use sqlx::PgPool;
 pub(crate) async fn meta(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let (user_id,): (i32,) = sqlx::query_as("select id from users where lower(username) = lower($1)")
+    let (user_id,): (i32,) = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
         .bind(&uri.username)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or(HttpError(404, "Not found".to_owned()))?;
+        .ok_or(|| HttpError(404, "Not found".to_owned()))?;
 
-    let repo: Repository = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2)")
+    let repo: Repository = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(&user_id)
         .bind(&uri.repository)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or(HttpError(404, "Not found".to_owned()))?;
+        .ok_or(|| HttpError(404, "Not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());

@@ -87,7 +87,7 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
 pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
 
-    if let Some(err) = sqlx::query("select exists(select 1 from settings)").execute(&mut transaction).await.err() {
+    if let Some(err) = sqlx::query("select exists(select 1 from settings limit 1)").execute(&mut transaction).await.err() {
         if let Some(db_err) = err.as_database_error() {
             let pg_err = db_err.downcast_ref::<PgDatabaseError>();
 

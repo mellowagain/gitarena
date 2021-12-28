@@ -41,7 +41,7 @@ pub(crate) async fn check_access<'e, E: Executor<'e, Database = Postgres>>(repo:
     Ok(match repo.visibility {
         RepoVisibility::Private => {
             if let Some(user) = user {
-                if &user.id != &repo.owner && !user.admin {
+                if user.id != repo.owner && !user.admin {
                     get_repo_privilege(repo, user, executor)
                         .await
                         .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
@@ -63,7 +63,7 @@ generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
 
 async fn get_repo_privilege<'e, E: Executor<'e, Database = Postgres>>(repo: &Repository, user: &User, executor: E) -> Result<Option<Privilege>> {
-    Ok(sqlx::query_as::<_, Privilege>("select * from privileges where user_id = $1 and repo_id = $2")
+    Ok(sqlx::query_as::<_, Privilege>("select * from privileges where user_id = $1 and repo_id = $2 limit 1")
         .bind(&user.id)
         .bind(&repo.id)
         .fetch_optional(executor)

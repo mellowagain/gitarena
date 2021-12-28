@@ -38,7 +38,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         return Err(HttpError(400, "Description may only be up to 256 characters long".to_owned()).into());
     }
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2));")
+    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(&user.id)
         .bind(&name)
         .fetch_one(&mut transaction)

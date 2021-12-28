@@ -38,7 +38,7 @@ impl Repository {
         let user_id = user_id.into();
         let repo_name = repo_name.as_ref();
 
-        let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2)")
+        let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
             .bind(&user_id)
             .bind(repo_name)
             .fetch_optional(executor)
@@ -73,9 +73,9 @@ impl Repository {
         // https://stackoverflow.com/a/16364390
         let (base_dir, username): (String, String) = sqlx::query_as(
             "select * from \
-            (select value from settings where key = 'repositories.base_dir') A \
+            (select value from settings where key = 'repositories.base_dir' limit 1) A \
             cross join \
-            (select username from users where id = $1) B"
+            (select username from users where id = $1 limit 1) B"
         )
             .bind(&self.owner)
             .fetch_one(executor)

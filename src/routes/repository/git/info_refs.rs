@@ -22,7 +22,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1)")
+    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
         .bind(&uri.username)
         .fetch_optional(&mut transaction)
         .await?;
@@ -32,7 +32,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
         None => return Err(GitError(404, None).into())
     };
 
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2)")
+    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(user_id)
         .bind(&uri.repository)
         .fetch_optional(&mut transaction)

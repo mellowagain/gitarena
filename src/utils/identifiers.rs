@@ -93,7 +93,7 @@ pub(crate) fn validate_username(input: &str) -> Result<()> {
 /// assert!(!is_username_taken("mellowagain"));
 /// ```
 pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(input: &str, executor: E) -> Result<bool> {
-    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1));")
+    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1) limit 1)")
         .bind(input)
         .fetch_one(executor)
         .await?;

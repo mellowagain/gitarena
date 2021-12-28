@@ -104,7 +104,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     if let Some(fork_repo_id) = repo.forked_from {
         const QUERY: &str = "select users.username, repositories.name from repositories \
          inner join users on users.id = repositories.owner \
-         where repositories.id = $1";
+         where repositories.id = $1 limit 1";
 
         let option: Option<(String, String)> = sqlx::query_as(QUERY)
             .bind(fork_repo_id)

@@ -157,7 +157,7 @@ async fn remove_star<'e, E: Executor<'e, Database = Postgres>>(user: &User, repo
 }
 
 async fn has_star<'e, E: Executor<'e, Database = Postgres>>(user: &User, repo: &Repository, executor: E) -> Result<bool> {
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from stars where stargazer = $1 and repo = $2)")
+    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from stars where stargazer = $1 and repo = $2 limit 1)")
         .bind(user.id)
         .bind(repo.id)
         .fetch_one(executor)
