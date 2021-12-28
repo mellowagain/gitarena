@@ -17,14 +17,14 @@ pub(crate) async fn meta(uri: web::Path<GitRequest>, web_user: WebUser, db_pool:
         .bind(&uri.username)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or(|| HttpError(404, "Not found".to_owned()))?;
+        .ok_or_else(|| HttpError(404, "Not found".to_owned()))?;
 
     let repo: Repository = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(&user_id)
         .bind(&uri.repository)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or(|| HttpError(404, "Not found".to_owned()))?;
+        .ok_or_else(|| HttpError(404, "Not found".to_owned()))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         return Err(HttpError(404, "Not found".to_owned()).into());
