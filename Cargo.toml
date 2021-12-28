@@ -2,7 +2,7 @@
 name = "gitarena"
 version = "0.0.1"
 authors = ["Mari <me@cutegirl.tech>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
