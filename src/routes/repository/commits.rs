@@ -39,6 +39,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
 
     let query_string = request.q_string();
     let after_oid = query_string.get("after");
+    let before_oid = query_string.get("before");
 
     let mut context = Context::new();
 
@@ -75,12 +76,13 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
         });
     }
 
-    if after_oid.is_some() {
-        commits.remove(0); // Remove the first result as it contains the requested OID
+    if commits.is_empty() {
+        // TODO: Render empty repo skeleton template showing how to push files to this repository
+        return Err(HttpError(404, "No commits in this repository".to_owned()).into());
     }
 
-    if commits.is_empty() {
-        return Err(HttpError(404, "No commits in this repository".to_owned()).into());
+    if after_oid.is_some() || before_oid.is_some() {
+        commits.remove(0); // Remove the first result as it contains the requested OID
     }
 
     context.try_insert("commits", &commits)?;

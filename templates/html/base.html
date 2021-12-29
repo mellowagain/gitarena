@@ -22,10 +22,15 @@
 <body>
 
 <noscript>
-    <p style="background-color: red; color: white; text-align: center; padding-top: 5px; padding-bottom: 5px;">
-        <b>JavaScript is currently disabled in your browser.</b>
-        Some functionality may not be available
-    </p>
+    <div class="ui visible center aligned negative message">
+        <div class="header">
+            JavaScript is currently disabled in your browser
+        </div>
+        <p>
+            This mode is not <i>fully</i> supported on GitArena.
+            <a href="https://github.com/mellowagain/gitarena/issues/17#issuecomment-1002608584">Learn more</a>
+        </p>
+    </div>
 </noscript>
 
 {% block header %}

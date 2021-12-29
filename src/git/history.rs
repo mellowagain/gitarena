@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_recursion::async_recursion;
-use git2::{DiffOptions, Oid, Repository as Git2Repository};
+use git2::{DiffOptions, Oid, Repository as Git2Repository, Sort};
 use tracing::instrument;
 
 #[instrument(err, skip(repo))]
@@ -31,7 +31,7 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
     }
 
     let mut rev_walk = repo.revwalk()?;
-    rev_walk.set_sorting(git2::Sort::TIME)?;
+    rev_walk.set_sorting(Sort::TIME)?;
     rev_walk.push_ref(reference)?;
 
     'outer: for result in rev_walk {

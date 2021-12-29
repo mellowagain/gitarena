@@ -64,6 +64,26 @@
                 <div id="segment-loading-indicator" class="ui loading segment htmx-indicator">
                     <p></p>
                 </div>
+
+                <noscript>
+                    <div class="ui segment">
+                        <a class="icon item" href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree | urlencode }}/commits?before={{ commit.oid }}&date={{ date | urlencode }}">
+                            <button class="ui labeled icon button">
+                                <i class="left chevron icon"></i>
+                                Previous page
+                            </button>
+                        </a>
+
+                        <a class="icon item" href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree | urlencode }}/commits?after={{ commit.oid }}&date={{ date | urlencode }}">
+                            <button class="ui right floated right labeled icon button">
+                                Next page
+                                <i class="right chevron icon"></i>
+                            </button>
+                        </a>
+
+
+                    </div>
+                </noscript>
             {% endif %}
         {% endfor %}
     </div>
