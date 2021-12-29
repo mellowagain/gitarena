@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
 use derive_more::Display;
+use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::postgres::PgDatabaseError;
@@ -92,12 +93,14 @@ pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
             let pg_err = db_err.downcast_ref::<PgDatabaseError>();
 
             // 42P01: relation settings does not exist
-            // If we receive this error code we know the tables have not yet been generated
+            // If we receive this error code we know the tables have not yet been generated,
             // so we insert our schema and if that succeeds we're ready to go
             if pg_err.code() == "42P01" {
-                create_tables(&mut transaction).await?;
-
                 transaction.commit().await?;
+
+                info!("Required database tables do not exist. Creating...");
+
+                create_tables(&db_pool).await?;
                 return Ok(());
             }
         }
@@ -109,11 +112,12 @@ pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
 }
 
 // TODO: Use sqlx migrations
-pub(crate) async fn create_tables<'e, E: Executor<'e, Database = Postgres>>(executor: E) -> Result<()> {
+pub(crate) async fn create_tables(db_pool: &Pool<Postgres>) -> Result<()> {
     const DATABASE_INIT_DATA: &str = include_str!("../schema.sql");
+    let mut connection = db_pool.acquire().await?;
 
     sqlx::query(DATABASE_INIT_DATA)
-        .execute(executor)
+        .execute(&mut connection)
         .await
         .context("Failed to create initial database setup")?;
 
