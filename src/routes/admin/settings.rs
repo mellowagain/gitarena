@@ -14,7 +14,7 @@ use multimap::MultiMap;
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/settings", method = "GET")]
+#[route("/settings", method = "GET", err = "html")]
 pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -45,7 +45,7 @@ pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) 
     render_template!("admin/settings.html", context, transaction)
 }
 
-#[route("/settings", method = "PATCH")]
+#[route("/settings", method = "PATCH", err = "htmx+text")]
 pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 

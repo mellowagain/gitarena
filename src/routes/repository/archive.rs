@@ -28,7 +28,7 @@ use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::write::FileOptions as ZipFileOptions;
 use zip::ZipWriter;
 
-#[route("/{username}/{repository}/tree/{tree:.*}/archive/targz", method="GET")]
+#[route("/{username}/{repository}/tree/{tree:.*}/archive/targz", method = "GET", err = "html")]
 pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -120,7 +120,7 @@ async fn write_directory_tar(repo: &GitoxideRepository, tree: Tree, path: &Path,
     Ok(())
 }
 
-#[route("/{username}/{repository}/tree/{tree:.*}/archive/zip", method="GET")]
+#[route("/{username}/{repository}/tree/{tree:.*}/archive/zip", method = "GET", err = "html")]
 pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

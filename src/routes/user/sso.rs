@@ -20,7 +20,7 @@ use oauth2::TokenResponse;
 use serde::Deserialize;
 use sqlx::PgPool;
 
-#[route("/sso/{service}", method = "GET")]
+#[route("/sso/{service}", method = "GET", err = "html")]
 pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
@@ -36,7 +36,7 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
     Ok(HttpResponse::TemporaryRedirect().header(LOCATION, url.to_string()).finish())
 }
 
-#[route("/sso/{service}/callback", method = "GET")]
+#[route("/sso/{service}/callback", method = "GET", err = "html")]
 pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         return Err(HttpError(401, "Already logged in".to_owned()).into());

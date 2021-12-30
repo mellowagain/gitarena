@@ -18,7 +18,7 @@ use tera::Context;
 use tracing_unwrap::OptionExt;
 use log::debug;
 
-#[route("/login", method = "GET")]
+#[route("/login", method = "GET", err = "html")]
 pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         return Err(HttpError(401, "Already logged in".to_owned()).into());
@@ -41,7 +41,7 @@ pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     render_template!("user/login.html", context)
 }
 
-#[route("/login", method = "POST")]
+#[route("/login", method = "POST", err = "html")]
 pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let redirect = body.redirect.as_deref().unwrap_or("/");
 

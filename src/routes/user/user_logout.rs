@@ -10,7 +10,7 @@ use gitarena_macros::route;
 use log::debug;
 use sqlx::PgPool;
 
-#[route("/logout", method = "POST")]
+#[route("/logout", method = "POST", err = "htmx+html")]
 pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?

@@ -21,7 +21,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use sqlx::PgPool;
 
-#[route("/api/avatar/{user_id}", method = "GET")]
+#[route("/api/avatar/{user_id}", method = "GET", err = "text")]
 pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (gravatar_enabled, avatars_dir): (bool, String) = from_config!(
         "avatars.gravatar" => bool,
@@ -65,7 +65,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
     Ok(send_image(path, &request).await.context("Failed to read default avatar file")?)
 }
 
-#[route("/api/avatar", method = "PUT")]
+#[route("/api/avatar", method = "PUT", err = "text")]
 pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Anonymous) {
         return Err(HttpError(401, "Not logged in".to_owned()).into());

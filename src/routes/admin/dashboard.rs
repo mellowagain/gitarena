@@ -13,7 +13,7 @@ use heim::units::{Information, information, Time};
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/", method = "GET")]
+#[route("/", method = "GET", err = "html")]
 pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 

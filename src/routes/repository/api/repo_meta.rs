@@ -9,7 +9,7 @@ use anyhow::Result;
 use gitarena_macros::route;
 use sqlx::PgPool;
 
-#[route("/api/repo/{username}/{repository}", method="GET")]
+#[route("/api/repo/{username}/{repository}", method = "GET", err = "json")]
 pub(crate) async fn meta(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

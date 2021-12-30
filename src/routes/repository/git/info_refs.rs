@@ -11,7 +11,7 @@ use anyhow::Result;
 use gitarena_macros::route;
 use sqlx::{Executor, PgPool, Pool, Postgres};
 
-#[route("/{username}/{repository}.git/info/refs", method="GET")]
+#[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 

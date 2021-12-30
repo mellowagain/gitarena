@@ -12,7 +12,7 @@ use log::debug;
 use serde_json::json;
 use sqlx::{Executor, PgPool, Postgres};
 
-#[route("/api/repo/{username}/{repository}/star", method = "GET")]
+#[route("/api/repo/{username}/{repository}/star", method = "GET", err = "htmx+json")]
 pub(crate) async fn get_star(uri: web::Path<GitRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -44,7 +44,7 @@ pub(crate) async fn get_star(uri: web::Path<GitRequest>, web_user: WebUser, requ
     }
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "POST")]
+#[route("/api/repo/{username}/{repository}/star", method = "POST", err = "json")]
 pub(crate) async fn post_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -68,7 +68,7 @@ pub(crate) async fn post_star(uri: web::Path<GitRequest>, web_user: WebUser, db_
     Ok(HttpResponse::Created().finish())
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "DELETE")]
+#[route("/api/repo/{username}/{repository}/star", method = "DELETE", err = "json")]
 pub(crate) async fn delete_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -92,7 +92,7 @@ pub(crate) async fn delete_star(uri: web::Path<GitRequest>, web_user: WebUser, d
     Ok(HttpResponse::NoContent().finish())
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "PUT")]
+#[route("/api/repo/{username}/{repository}/star", method = "PUT", err = "text")]
 pub(crate) async fn put_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 

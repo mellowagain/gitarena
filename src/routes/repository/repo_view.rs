@@ -154,7 +154,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     render_template!("repo/index.html", context, transaction)
 }
 
-#[route("/{username}/{repository}/tree/{tree:.*}", method="GET")]
+#[route("/{username}/{repository}/tree/{tree:.*}", method = "GET", err = "html")]
 pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -164,7 +164,7 @@ pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: Web
     render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
 
-#[route("/{username}/{repository}", method="GET")]
+#[route("/{username}/{repository}", method = "GET", err = "html")]
 pub(crate) async fn view_repo(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

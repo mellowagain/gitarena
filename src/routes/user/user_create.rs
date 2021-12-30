@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/register", method = "GET")]
+#[route("/register", method = "GET", err = "html")]
 pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -37,7 +37,7 @@ pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) 
     render_template!("user/register.html", context, transaction)
 }
 
-#[route("/api/user", method = "POST")]
+#[route("/api/user", method = "POST", err = "htmx+html")]
 pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         // Maybe just redirect to home page?

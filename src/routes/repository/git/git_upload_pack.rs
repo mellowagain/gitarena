@@ -15,7 +15,7 @@ use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPe
 use gitarena_macros::route;
 use sqlx::PgPool;
 
-#[route("/{username}/{repository}.git/git-upload-pack", method="POST")]
+#[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
 pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();

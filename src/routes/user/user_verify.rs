@@ -9,7 +9,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use tracing_unwrap::OptionExt;
 
-#[route("/api/verify/{token}", method="GET")]
+#[route("/api/verify/{token}", method = "GET", err = "html")]
 pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let token = &verify_request.token;
 

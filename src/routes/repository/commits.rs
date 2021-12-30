@@ -16,7 +16,7 @@ use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET")]
+#[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET", err = "htmx+html")]
 pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

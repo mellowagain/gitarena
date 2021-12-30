@@ -12,7 +12,7 @@ use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use log::info;
 
-#[route("/api/repo", method="POST")]
+#[route("/api/repo", method = "POST", err = "json")]
 pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

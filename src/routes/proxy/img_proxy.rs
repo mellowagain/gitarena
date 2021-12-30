@@ -66,7 +66,7 @@ const ACCEPTED_MIME_TYPES: [&'static str; 43] = [
     "image/x-xwindowdump"
 ];
 
-#[route("/api/proxy/{url}", method="GET")]
+#[route("/api/proxy/{url}", method = "GET", err = "text")]
 pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) -> Result<impl Responder> {
     let url = &uri.url;
 
