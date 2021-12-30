@@ -11,7 +11,7 @@ use anyhow::Error as AnyhowError;
 use anyhow::Result as AnyhowResult;
 use async_compat::Compat;
 use futures::executor;
-use log::{error, warn};
+use log::error;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::json;
@@ -121,10 +121,7 @@ impl ResponseError for GitArenaError {
                             // TODO: Refactor this to no longer block the whole thread
                             let response: AnyhowResult<HttpResponse> = executor::block_on(Compat::new(async {
                                 let mut writer = GitWriter::new();
-
-                                if let Some(message) = message_option {
-                                    writer.write_text_sideband(Band::Error, format!("error: {}", message)).await?;
-                                }
+                                writer.write_text_sideband(Band::Error, format!("error: {}", message)).await?;
 
                                 let response = writer.serialize().await?;
 
