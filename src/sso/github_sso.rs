@@ -168,11 +168,10 @@ impl SSOProvider for GitHubSSO {
 
             let public = github_email.visibility.as_ref().map_or_else(|| false, |v| v == "public");
 
-            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $4, $5, $6)")
+            // All email addresses have already been verified by GitHub, so we also mark them as verified
+            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $3, $3, $4, current_timestamp)")
                 .bind(&user.id)
                 .bind(email)
-                .bind(&primary)
-                .bind(&primary)
                 .bind(&primary)
                 .bind(&public)
                 .execute(&mut transaction)

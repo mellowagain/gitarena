@@ -132,6 +132,7 @@ impl SSOProvider for GitLabSSO {
 
         // For some reason GitLab does not currently always provide the `verified_at` field even for verified email addresses
         // TODO: Reactivate check once GitLab fixed their endpoint
+        // Once their endpoint has been fixed, we can also mark all email addresses as verified
         for gitlab_email in emails.iter()/*.skip_while(|e| e.verified_at.is_none())*/ {
             let email = gitlab_email.email.as_str();
 
@@ -153,15 +154,14 @@ impl SSOProvider for GitLabSSO {
                 primary = true;
             });
 
-            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $4, $5, $6)")
+            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $3, $3, $3)")
                 .bind(&user.id)
                 .bind(email)
                 .bind(&primary)
-                .bind(&primary)
-                .bind(&primary)
-                .bind(&primary)
                 .execute(&mut transaction)
                 .await?;
+
+            // TODO: Send verification emails to all listed email addresses
         }
 
         if !once.is_completed() {
