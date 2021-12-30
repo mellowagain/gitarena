@@ -11,7 +11,6 @@ create table if not exists users
         constraint users_pk
             primary key,
     username   varchar(32)                                                          not null,
-    email      varchar(128)                                                         not null,
     password   char(96)                                                             not null,
     disabled   boolean                  default false                               not null,
     admin      boolean                  default false                               not null,

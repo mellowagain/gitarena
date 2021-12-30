@@ -97,9 +97,8 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
         }
     }
 
-    let user: User = sqlx::query_as::<_, User>("insert into users (username, email, password) values ($1, $2, $3) returning *")
+    let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
         .bind(username)
-        .bind(email)
         .bind(&password)
         .fetch_one(&mut transaction)
         .await?;

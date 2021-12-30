@@ -104,9 +104,8 @@ impl SSOProvider for GitLabSSO {
             username = crypto::random_numeric_ascii_string(16);
         }
 
-        let user: User = sqlx::query_as::<_, User>("insert into users (username, email, password) values ($1, $2, $3) returning *")
+        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
             .bind(username.as_str())
-            .bind("null@gitarena.com")
             .bind("sso-login")
             .fetch_one(&mut transaction)
             .await?;
