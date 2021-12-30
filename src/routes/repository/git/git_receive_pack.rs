@@ -69,6 +69,10 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         return Err(GitError(401, Some("No permission to push into this repo".to_owned())).into());
     }
 
+    if repo.archived {
+        return Err(GitError(401, Some("Repository is archived and thus read-only".to_owned())).into());
+    }
+
     let mut bytes = web::BytesMut::new();
 
     while let Some(item) = body.next().await {

@@ -1,3 +1,6 @@
+use crate::git::io::band::Band;
+use crate::git::io::writer::GitWriter;
+
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 use actix_web::dev::HttpResponseBuilder;
@@ -5,6 +8,9 @@ use actix_web::error::ResponseError;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use anyhow::Error as AnyhowError;
+use anyhow::Result as AnyhowResult;
+use async_compat::Compat;
+use futures::executor;
 use log::{error, warn};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
@@ -15,6 +21,9 @@ use thiserror::Error;
 pub(crate) enum GAErrors {
     #[error("{1}")]
     HttpError(u16, String),
+
+    #[error("{1}")]
+    PlainError(u16, String),
 
     #[error("(null)")]
     GitError(u16, Option<String>),
@@ -83,6 +92,7 @@ impl ResponseError for GitArenaError {
         if let Some(e) = self.error.downcast_ref::<GAErrors>() {
             match e {
                 GAErrors::HttpError(status_code, _) => StatusCode::from_u16(*status_code),
+                GAErrors::PlainError(status_code, _) => StatusCode::from_u16(*status_code),
                 GAErrors::GitError(status_code, _) => StatusCode::from_u16(*status_code),
                 GAErrors::NotAuthenticated => Ok(StatusCode::UNAUTHORIZED),
 
@@ -104,14 +114,31 @@ impl ResponseError for GitArenaError {
                             "error": message
                         }))
                 }
+                GAErrors::PlainError(_, message) => HttpResponseBuilder::new(self.status_code()).body(message),
                 GAErrors::GitError(_, message_option) => {
-                    let mut response = HttpResponseBuilder::new(self.status_code());
+                    match message_option {
+                        Some(message) => {
+                            // TODO: Refactor this to no longer block the whole thread
+                            let response: AnyhowResult<HttpResponse> = executor::block_on(Compat::new(async {
+                                let mut writer = GitWriter::new();
 
-                    if let Some(message) = message_option {
-                        return response.body(message);
+                                if let Some(message) = message_option {
+                                    writer.write_text_sideband(Band::Error, format!("error: {}", message)).await?;
+                                }
+
+                                let response = writer.serialize().await?;
+
+                                // Git doesn't show client errors if the response isn't 200 for some reason
+                                Ok(HttpResponse::Ok().body(response))
+                            }));
+
+                            response.unwrap_or_else(|err| {
+                                error!("In addition, another error occurred while handling the previous error: {}", err);
+                                HttpResponse::InternalServerError().finish()
+                            })
+                        }
+                        None => HttpResponseBuilder::new(self.status_code()).finish()
                     }
-
-                    response.finish()
                 },
                 GAErrors::NotAuthenticated => {
                     HttpResponse::Unauthorized()
