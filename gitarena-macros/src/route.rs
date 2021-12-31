@@ -121,7 +121,12 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                 #body
             }
 
-            Ok(#generated_ident_ts(#(#idents_vec),*).await.map_err(|e| -> crate::error::GitArenaError { e.into() }))
+            Ok(#generated_ident_ts(#(#idents_vec),*).await.map_err(|err| {
+                crate::error::GitArenaError {
+                    source: err,
+                    display_type: crate::error::ErrorDisplayType::#error_type
+                }
+            }))
         }
     })
 }
@@ -135,6 +140,24 @@ enum ErrorDisplayType {
 
     #[doc(hidden)]
     Unset
+}
+
+impl ToTokens for ErrorDisplayType {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        tokens.extend(match self {
+            ErrorDisplayType::Html => quote! { Html },
+            ErrorDisplayType::Htmx(inner) => {
+                let unboxed = &**inner.clone();
+
+                let ts = unboxed.to_token_stream();
+                quote! { Htmx(#ts) }
+            },
+            ErrorDisplayType::Json => quote! { Json },
+            ErrorDisplayType::Git => quote! { Git },
+            ErrorDisplayType::Plain => quote! { Plain },
+            ErrorDisplayType::Unset => unimplemented!("unset is not mapped to a GitArena type yet")
+        })
+    }
 }
 
 fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
