@@ -20,7 +20,7 @@ use tera::Context;
 
 #[macro_export]
 macro_rules! die {
-    ($code:expr) => {
+    ($code:ident) => {
         return Err($crate::error::WithStatusCode::new(actix_web::http::StatusCode::$code).into());
     };
     ($code:literal) => {{
@@ -28,26 +28,26 @@ macro_rules! die {
 
         return Err($crate::error::WithStatusCode::try_new($code).context("Tried to die with invalid status code")?.into());
     }};
-    ($code:expr, $message:literal) => {
+    ($code:ident, $message:literal) => {
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
-            source: anyhow::anyhow!($message),
+            source: Some(anyhow::anyhow!($message)),
             display: true
-        })
+        }.into());
     };
     ($err:expr $(,)?) => ({
         return Err($crate::error::WithStatusCode {
-            code: actix_web::http::StatusCode::$code,
-            source: anyhow::anyhow!($err),
-            display: true
-        })
+            code: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            source: Some(anyhow::anyhow!($err)),
+            display: false
+        }.into());
     });
-    ($code:expr, $fmt:literal, $($arg:tt)*) => {
+    ($code:ident, $fmt:literal, $($arg:tt)*) => {
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
-            source: anyhow::anyhow!($fmt, $($arg)*),
+            source: Some(anyhow::anyhow!($fmt, $($arg)*)),
             display: true
-        })
+        }.into());
     };
 }
 
