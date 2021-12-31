@@ -18,6 +18,7 @@ use log::error;
 use serde_json::json;
 use tera::Context;
 
+#[macro_export]
 macro_rules! die {
     ($code:expr) => {
         return Err($crate::error::WithStatusCode::new(actix_web::http::StatusCode::$code).into());
@@ -31,14 +32,14 @@ macro_rules! die {
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: anyhow::anyhow!($message),
-            display: false
+            display: true
         })
     };
     ($err:expr $(,)?) => ({
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: anyhow::anyhow!($err),
-            display: false
+            display: true
         })
     });
     ($code:expr, $fmt:literal, $($arg:tt)*) => {
