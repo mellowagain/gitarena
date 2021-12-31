@@ -2,7 +2,9 @@ use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 use crate::templates;
 
+use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::result::Result as StdResult;
 
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::error::{InternalError, PrivateHelper};
@@ -19,37 +21,37 @@ use tera::Context;
 macro_rules! die {
     ($code:expr) => {
         return Err($crate::error::WithStatusCode::new(actix_web::http::StatusCode::$code).into());
-    }
+    };
     ($code:literal) => {{
         use anyhow::Context as _;
 
         return Err($crate::error::WithStatusCode::try_new($code).context("Tried to die with invalid status code")?.into());
-    }}
+    }};
     ($code:expr, $message:literal) => {
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: anyhow::anyhow!($message),
             display: false
         })
-    }
+    };
     ($err:expr $(,)?) => ({
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: anyhow::anyhow!($err),
             display: false
         })
-    })
+    });
     ($code:expr, $fmt:literal, $($arg:tt)*) => {
         return Err($crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: anyhow::anyhow!($fmt, $($arg)*),
             display: true
         })
-    }
+    };
 }
 
 #[derive(Debug, Display, Error)]
-#[display("http status {} caused by {}", code, source)]
+#[display(fmt = "http status {} caused by {}", code, source)]
 pub(crate) struct WithStatusCode {
     code: StatusCode,
     source: Option<Error>,
@@ -143,7 +145,7 @@ async fn render_error_async(renderer: &GitArenaError, builder: HttpResponseBuild
     })
 }
 
-async fn render_html_error(code: StatusCode, message: &str, display: bool) -> Result<HttpResponse> {
+async fn render_html_error(code: StatusCode, message: &str) -> Result<HttpResponse> {
     let mut context = Context::new();
     context.try_insert("error", message)?;
 
@@ -165,6 +167,34 @@ async fn render_git_error(message: &str) -> Result<HttpResponse> {
 
     // Git doesn't show client errors if the response isn't 200 for some reason
     Ok(HttpResponse::Ok().body(response))
+}
+
+pub(crate) trait ExtendWithStatusCode<T, E> {
+    /// Exits early with status code on failure with `display` set to `false`
+    fn code(self, status_code: StatusCode) -> StdResult<T, WithStatusCode>;
+
+    /// Exits early with status code on failure with `display` set to `true`
+    fn code_show(self, status_code: StatusCode) -> StdResult<T, WithStatusCode>;
+}
+
+impl<T, E> ExtendWithStatusCode<T, E> for StdResult<T, E>
+    where E: StdError + Send + Sync + 'static
+{
+    fn code(self, status_code: StatusCode) -> StdResult<T, WithStatusCode> {
+        self.map_err(|err| WithStatusCode {
+            code: status_code,
+            source: Some(err),
+            display: false
+        })
+    }
+
+    fn code_show(self, status_code: StatusCode) -> StdResult<T, WithStatusCode> {
+        self.map_err(|err| WithStatusCode {
+            code: status_code,
+            source: Some(err),
+            display: true
+        })
+    }
 }
 
 pub(crate) enum ErrorDisplayType {
