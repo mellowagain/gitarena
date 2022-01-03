@@ -4,59 +4,119 @@ use crate::templates;
 
 use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::ops::Deref;
 use std::result::Result as StdResult;
+use std::sync::Arc;
 
 use actix_web::dev::HttpResponseBuilder;
-use actix_web::error::{InternalError, PrivateHelper};
+use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use anyhow::{Error, Result};
 use async_compat::Compat;
-use derive_more::{Display, Error};
+use derive_more::Error;
 use futures::executor;
 use log::error;
 use serde_json::json;
 use tera::Context;
 
+/// Returns early with an error. This macro is similar to the `bail!` macro which can be found in `anyhow`.
+/// This macro is equivalent to `return Err(err!(...))`.
+///
+/// # Example
+///
+/// ```
+/// # fn is_valid(input: &str) -> bool {
+/// #     true
+/// # }
+/// #
+/// # fn main() -> Result<()> {
+/// #     let input = "";
+/// #
+/// use crate::die;
+///
+/// if !is_valid("input") {
+///     die!(BAD_REQUEST, "Received invalid input");
+/// }
+/// #
+/// #     Ok(())
+/// # }
+/// ```
 #[macro_export]
 macro_rules! die {
+    ($($input:tt)*) => {
+        return Err($crate::err!($($input)*).into());
+    }
+}
+
+/// Constructs a new error with a status code or from an existing error.
+/// This macro is similar to the `anyhow!` macro which can be found in `anyhow`.
+///
+/// # Example
+///
+/// ```
+/// # fn process_input(input: &str) -> Result<()> {
+/// #     Ok(())
+/// # }
+/// #
+/// # fn main() -> Result<()> {
+/// #     let input = "";
+/// #
+/// use crate::err;
+///
+/// process_input(input).map_err(|_| err!(BAD_REQUEST, "Received invalid input"))?;
+/// #
+/// #     Ok(())
+/// # }
+/// ```
+#[macro_export]
+macro_rules! err {
     ($code:ident) => {
-        return Err($crate::error::WithStatusCode::new(actix_web::http::StatusCode::$code).into());
+        $crate::error::WithStatusCode::new(actix_web::http::StatusCode::$code)
     };
     ($code:literal) => {{
         use anyhow::Context as _;
 
-        return Err($crate::error::WithStatusCode::try_new($code).context("Tried to die with invalid status code")?.into());
+        $crate::error::WithStatusCode::try_new($code).context("Tried to die with invalid status code")?.into()
     }};
     ($code:ident, $message:literal) => {
-        return Err($crate::error::WithStatusCode {
+        $crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: Some(anyhow::anyhow!($message)),
             display: true
-        }.into());
+        }
     };
     ($err:expr $(,)?) => ({
-        return Err($crate::error::WithStatusCode {
+        $crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
             source: Some(anyhow::anyhow!($err)),
             display: false
-        }.into());
+        }
     });
     ($code:ident, $fmt:literal, $($arg:tt)*) => {
-        return Err($crate::error::WithStatusCode {
+        $crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::$code,
             source: Some(anyhow::anyhow!($fmt, $($arg)*)),
             display: true
-        }.into());
+        }
     };
 }
 
-#[derive(Debug, Display, Error)]
-#[display(fmt = "http status {} caused by {}", code, source)]
+#[derive(Debug, Error)]
+#[error(ignore)]
 pub(crate) struct WithStatusCode {
-    code: StatusCode,
-    source: Option<Error>,
-    display: bool // Whenever cause() should be shown to the user
+    pub(crate) code: StatusCode,
+    pub(crate) source: Option<Error>,
+    pub(crate) display: bool // Whenever cause() should be shown to the user
+}
+
+impl Display for WithStatusCode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match &self.source {
+            Some(source) => write!(f, "http status {} caused by {:#}", self.code, source),
+            None => write!(f, "http status {}", self.code)
+        }
+    }
 }
 
 impl WithStatusCode {
@@ -79,19 +139,19 @@ impl WithStatusCode {
 
 #[derive(Clone)]
 pub(crate) struct GitArenaError {
-    source: Error,
+    source: Arc<Error>,
     display_type: ErrorDisplayType
 }
 
 impl Debug for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(&self.source, f)
+        Debug::fmt(self.source.deref(), f)
     }
 }
 
 impl Display for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Display::fmt(&self.source, f)
+        Display::fmt(self.source.deref(), f)
     }
 }
 
@@ -142,7 +202,7 @@ async fn render_error_async(renderer: &GitArenaError, builder: HttpResponseBuild
         _ => unreachable!("Only html and git errors require async handling")
     }.unwrap_or_else(|err| {
         error!("In addition, another error occurred while handling the previous error: {}", err);
-        InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).into()
+        InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response()
     })
 }
 
@@ -178,13 +238,11 @@ pub(crate) trait ExtendWithStatusCode<T, E> {
     fn code_show(self, status_code: StatusCode) -> StdResult<T, WithStatusCode>;
 }
 
-impl<T, E> ExtendWithStatusCode<T, E> for StdResult<T, E>
-    where E: StdError + Send + Sync + 'static
-{
+impl<T, E: StdError + Send + Sync + 'static> ExtendWithStatusCode<T, E> for StdResult<T, E> {
     fn code(self, status_code: StatusCode) -> StdResult<T, WithStatusCode> {
         self.map_err(|err| WithStatusCode {
             code: status_code,
-            source: Some(err),
+            source: Some(Error::from(err)),
             display: false
         })
     }
@@ -192,12 +250,13 @@ impl<T, E> ExtendWithStatusCode<T, E> for StdResult<T, E>
     fn code_show(self, status_code: StatusCode) -> StdResult<T, WithStatusCode> {
         self.map_err(|err| WithStatusCode {
             code: status_code,
-            source: Some(err),
+            source: Some(Error::from(err)),
             display: true
         })
     }
 }
 
+#[derive(Clone)]
 pub(crate) enum ErrorDisplayType {
     Html,
     Htmx(Box<ErrorDisplayType>),

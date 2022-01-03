@@ -122,8 +122,10 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
             }
 
             Ok(#generated_ident_ts(#(#idents_vec),*).await.map_err(|err| {
+                use std::sync::Arc;
+
                 crate::error::GitArenaError {
-                    source: err,
+                    source: Arc::new(err),
                     display_type: crate::error::ErrorDisplayType::#error_type
                 }
             }))
