@@ -1,4 +1,4 @@
-use crate::error::GAErrors::GitError;
+use crate::die;
 use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
@@ -29,7 +29,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     let accept_header = request.get_header("accept").unwrap_or_default();
 
     if content_type != "application/x-git-receive-pack-request" || accept_header != "application/x-git-receive-pack-result" {
-        return Err(GitError(400, None).into());
+        die!(BAD_REQUEST);
     }
 
     let mut transaction = db_pool.begin().await?;
@@ -41,7 +41,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
-        None => return Err(GitError(404, None).into())
+        None => die!(NOT_FOUND)
     };
 
     let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
@@ -57,20 +57,20 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
     let mut repo = match repo_option {
         Some(repo) => repo,
-        None => return Err(GitError(404, None).into())
+        None => die!(NOT_FOUND)
     };
 
     // If the user doesn't have access return 404 Not found to not leak existence of internal/private repositories
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(GitError(404, None).into());
+        die!(NOT_FOUND)
     }
 
     if !privilege::check_push(&repo, Some(&user), &mut transaction).await? {
-        return Err(GitError(401, Some("No permission to push into this repo".to_owned())).into());
+        die!(UNAUTHORIZED, "No permission to push into this repo");
     }
 
     if repo.archived {
-        return Err(GitError(401, Some("Repository is archived and thus read-only".to_owned())).into());
+        die!(UNAUTHORIZED, "Repository is archived and thus read-only");
     }
 
     let mut bytes = web::BytesMut::new();
@@ -123,7 +123,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         None => {
             if !ref_update::is_only_deletions(updates.as_slice()).await? {
                 warn!("Client sent no PACK file despite having more than just deletions");
-                return Err(GitError(400, Some("No PACK payload was sent".to_owned())).into());
+                die!(BAD_REQUEST, "No PACK payload was sent");
             }
 
             // There wasn't actually something to unpack
