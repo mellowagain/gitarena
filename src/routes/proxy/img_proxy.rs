@@ -1,4 +1,4 @@
-use crate::error::GAErrors::HttpError;
+use crate::die;
 use crate::prelude::HttpRequestExtensions;
 use crate::utils::reqwest_actix_stream::ResponseStream;
 
@@ -10,7 +10,7 @@ use log::debug;
 use reqwest::Client;
 use serde::Deserialize;
 
-const PASSTHROUGH_HEADERS: [&'static str; 6] = [
+const PASSTHROUGH_HEADERS: [&str; 6] = [
     "cache-control",
     "content-encoding",
     "etag",
@@ -19,8 +19,8 @@ const PASSTHROUGH_HEADERS: [&'static str; 6] = [
     "transfer-encoding"
 ];
 
-// https://github.com/atmos/camo/blob/master/mime-types.json
-const ACCEPTED_MIME_TYPES: [&'static str; 43] = [
+// Source: https://github.com/atmos/camo/blob/master/mime-types.json
+const ACCEPTED_MIME_TYPES: [&str; 43] = [
     "image/bmp",
     "image/cgm",
     "image/g3fax",
@@ -71,7 +71,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
     let url = &uri.url;
 
     if url.is_empty() {
-        return Err(HttpError(404, "Invalid url".to_owned()).into());
+        die!(NOT_FOUND, "Invalid url");
     }
 
     let bytes = hex::decode(url)?;
@@ -98,7 +98,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
     if let Some(length) = gateway_response.content_length() {
         if length > 5242880 {
-            return Err(HttpError(502, "Content too big".to_owned()).into());
+            die!(BAD_GATEWAY, "Content too big");
         }
 
         response.header(CONTENT_LENGTH, length.to_string());
@@ -113,7 +113,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
         }
 
         if lowered_name == "content-type" && !ACCEPTED_MIME_TYPES.contains(&value_str) {
-            return Err(HttpError(502, "Response was not an image".to_owned()).into());
+            die!(BAD_GATEWAY, "Response was not an image");
         }
     }
 
@@ -124,5 +124,5 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
 #[derive(Deserialize)]
 pub(crate) struct ProxyRequest {
-    pub(crate) url: String // Hex bytes
+    pub(crate) url: String // Hex Digest
 }
