@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
