@@ -1,8 +1,6 @@
-use crate::error::GAErrors::ParseError;
-use crate::error::GAErrors;
 use crate::utils::oid;
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Error, Result};
 use tracing::instrument;
 
 #[instrument(err)]
@@ -13,16 +11,16 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
         c.is_whitespace() || c == '\x00'
     }).filter(|s| !s.is_empty());
 
-    let old_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
-    let new_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
+    let old_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected old ref, got: {}", line.clone()).into())?;
+    let new_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected new ref, got: {}", line.clone()).into())?;
 
     ref_update.old = oid::normalize_str(Some(old_ref)).map(|o| o.to_owned());
     ref_update.new = oid::normalize_str(Some(new_ref)).map(|o| o.to_owned());
 
-    let target_ref = split.next().ok_or::<GAErrors>(ParseError("Ref update", line.clone()).into())?;
+    let target_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected target ref, got: {}", line.clone()).into())?;
 
     if !target_ref.starts_with("refs/") {
-        return Err(ParseError("Ref update", line.clone()).into());
+        bail!("Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {}", target_ref);
     }
 
     ref_update.target_ref = target_ref.to_owned();
@@ -94,7 +92,7 @@ pub(crate) enum RefUpdateType {
 impl RefUpdateType {
     pub(crate) async fn determinate(old: &Option<String>, new: &Option<String>) -> Result<RefUpdateType> {
         match (old, new) {
-            (None, None) => Err(ParseError("Ref update type determination", "(None, None)".to_owned()).into()),
+            (None, None) => bail!("Unable to determinate ref update type, both old and new OID are None"),
             (None, Some(_)) => Ok(RefUpdateType::Create),
             (Some(_), None) => Ok(RefUpdateType::Delete),
             (Some(_), Some(_)) => Ok(RefUpdateType::Update)

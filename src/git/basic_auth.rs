@@ -1,7 +1,5 @@
-use crate::crypto;
-use crate::error::GAErrors::{GitError, PlainError};
+use crate::{crypto, die};
 use crate::git::basic_auth;
-use crate::mail::Email;
 use crate::prelude::*;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
@@ -32,7 +30,7 @@ pub(crate) async fn validate_repo_access<'e, E>(repo: Option<Repository>, conten
             // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
             let _ = login_flow(request, executor, content_type).await?;
 
-            Err(GitError(404, None).into())
+            die!(NOT_FOUND, "Repository not found");
         }
     }
 }
@@ -68,7 +66,7 @@ pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -
             let (username, password) = parse_basic_auth(auth_header).await?;
 
             if username.is_empty() || password.is_empty() {
-                return Err(PlainError(401, "Username and password cannot be empty".to_owned()).into());
+                die!(UNAUTHORIZED, "Username and password cannot be empty");
             }
 
             let option: Option<User> = sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
@@ -77,29 +75,27 @@ pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -
                 .await?;
 
             if option.is_none() {
-                return Err(PlainError(401, "User does not exist".to_owned()).into());
+                die!(UNAUTHORIZED, "User does not exist");
             }
 
             let user = option.unwrap_or_log();
 
             if !crypto::check_password(&user, &password)? {
-                return Err(PlainError(401, "Incorrect password".to_owned()).into());
+                die!(UNAUTHORIZED, "Incorrect password");
             }
 
             // TODO: Check for allowed login
             /*let primary_email = Email::find_primary_email(&user, transaction)
                 .await?
-                .ok_or_else(|| PlainError(401, "No primary email".to_owned()))?;*/
+                .ok_or_else(|| anyhow!("No primary email".to_owned()))?;*/
 
             if user.disabled/* || !primary_email.is_allowed_login()*/ {
-                return Err(PlainError(401, "Account has been disabled. Please contact support.".to_owned()).into());
+                die!(UNAUTHORIZED, "Account has been disabled. Please contact support.");
             }
 
             Ok(user)
         }
-        None => {
-            Err(GitError(401, None).into())
-        }
+        None => die!(UNAUTHORIZED)
     }
 }
 
@@ -110,7 +106,7 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
     let base64_creds = split.next().unwrap_or_default();
 
     if auth_type != "Basic" {
-        return Err(GitError(401, None).into());
+        die!(UNAUTHORIZED);
     }
 
     let creds = String::from_utf8(base64::decode(base64_creds)?)?;
@@ -120,7 +116,7 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
     let password = splitted_creds.next().unwrap_or_default();
 
     if username.is_empty() || password.is_empty() {
-        return Err(PlainError(401, "Username and password cannot be empty".to_owned()).into());
+        die!(UNAUTHORIZED, "Username and password cannot be empty");
     }
 
     Ok((username.to_owned(), password.to_owned()))
