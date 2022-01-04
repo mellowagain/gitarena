@@ -1,20 +1,20 @@
-use crate::error::{GAErrors, GitArenaError};
+use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::session::Session;
-use crate::session;
+use crate::{err, session};
 
 use std::convert::TryFrom;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use actix_identity::Identity;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpRequest, Result as ActixResult};
-use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, bail, Error, Result as AnyhowResult};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
 use ipnetwork::IpNetwork;
-use log::warn;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, PgPool, Postgres};
 
@@ -77,10 +77,10 @@ impl From<&User> for i32 {
 }
 
 impl TryFrom<WebUser> for User {
-    type Error = GAErrors;
+    type Error = Error;
 
     fn try_from(web_user: WebUser) -> Result<Self, Self::Error> {
-        web_user.into_user().map_err(|_| GAErrors::NotAuthenticated)
+        web_user.into_user().map_err(|_| err!(UNAUTHORIZED).into())
     }
 }
 
@@ -105,7 +105,7 @@ impl WebUser {
     pub(crate) fn into_user(self) -> AnyhowResult<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
-            WebUser::Anonymous => Err(GAErrors::NotAuthenticated.into())
+            WebUser::Anonymous => bail!("Not authenticated")
         }
     }
 }
@@ -119,37 +119,31 @@ impl FromRequest for WebUser {
         match req.app_data::<Data<PgPool>>() {
             Some(db_pool) => {
                 // HttpRequest is just a wrapper around `Rc<R>` so .clone() is cheap
-                let (ip_network, user_agent) = match session::extract_ip_and_ua_owned(req.clone()) {
-                    Ok(tuple) => tuple,
-                    Err(err) => return Box::pin(async {
-                        match err.downcast::<Self::Error>() {
-                            Ok(ga_error) => Err(ga_error),
-                            Err(err) => {
-                                warn!("Error occurred while trying to resolve user: {}", err);
-                                Err(GAErrors::HttpError(500, String::new()).into())
-                            }
-                        }
-                    })
-                };
-
+                let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req.clone());
                 let id_future = Identity::from_request(req, payload);
 
                 // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
-                    extract_from_request(db_pool, id_future, ip_network, user_agent).await.map_err(|err| -> GitArenaError { err.into() })
+                    extract_from_request(db_pool, id_future, ip_network, user_agent).await.map_err(|err| GitArenaError {
+                        source: Arc::new(err),
+                        display_type: ErrorDisplayType::Html // TODO: Check whenever route is err = "html|json|git" etc...
+                    })
                 })
             }
             None => Box::pin(async {
-                Err(GAErrors::HttpError(500, "No PgPool in application data".to_owned()).into())
+                Err(GitArenaError {
+                    source: Arc::new(anyhow!("No PgPool in application data")),
+                    display_type: ErrorDisplayType::Html // TODO: Check whenever route is err = "html|json|git" etc...
+                })
             })
         }
     }
 }
 
 async fn extract_from_request<F: Future<Output = ActixResult<Identity>>>(db_pool: Data<PgPool>, id_future: F, ip_network: IpNetwork, user_agent: String) -> AnyhowResult<WebUser> {
-    let id = id_future.await.map_err(|_| GAErrors::HttpError(500, "Failed to build identity".to_owned()))?;
+    let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
 
     match id.identity() {
         Some(identity) => {
