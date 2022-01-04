@@ -1,5 +1,4 @@
-use crate::error::GAErrors::HttpError;
-use crate::render_template;
+use crate::{die, render_template};
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
 
@@ -18,7 +17,7 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     let user = web_user.into_user()?;
 
     if !user.admin {
-        return Err(HttpError(403, "Not allowed".to_owned()).into());
+        die!(FORBIDDEN, "Not allowed");
     }
 
     let mut context = Context::new();

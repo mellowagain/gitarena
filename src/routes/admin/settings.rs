@@ -1,8 +1,7 @@
 use crate::config::{Setting, TypeConstraint};
-use crate::error::GAErrors::HttpError;
 use crate::prelude::HttpRequestExtensions;
 use crate::user::WebUser;
-use crate::{config, render_template};
+use crate::{config, die, err, render_template};
 
 use std::collections::HashMap;
 use std::sync::Once;
@@ -19,7 +18,7 @@ pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) 
     let user = web_user.into_user()?;
 
     if !user.admin {
-        return Err(HttpError(403, "Not allowed".to_owned()).into());
+        die!(FORBIDDEN, "Not allowed");
     }
 
     let mut context = Context::new();
@@ -50,7 +49,7 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
     let user = web_user.into_user()?;
 
     if !user.admin {
-        return Err(HttpError(403, "Not allowed".to_owned()).into());
+        die!(FORBIDDEN, "Not allowed");
     }
 
     let mut transaction = db_pool.begin().await?;
@@ -61,7 +60,7 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
             .bind(key.as_str())
             .fetch_one(&mut transaction)
             .await
-            .map_err(|_| HttpError(400, "Setting not found".to_owned()))?;
+            .map_err(|_| err!(BAD_REQUEST, "Setting not found"))?;
 
         let valid = match setting.type_constraint {
             TypeConstraint::Boolean => value.parse::<bool>().is_ok(),
@@ -71,7 +70,7 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
         };
 
         if !valid {
-            return Err(HttpError(400, format!("Value for {} does not follow type constraint", key)).into());
+            die!(BAD_REQUEST, "Value for {} does not follow type constraint", key);
         }
 
         // This does on purpose not use config::set_setting as that method requires a key: &'static str
@@ -90,7 +89,7 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
     if !once.is_completed() {
         let setting = match request.get_header("hx-trigger-name") {
             Some(setting) => setting,
-            None => return Err(HttpError(400, "Setting not found".to_owned()).into())
+            None => die!(BAD_REQUEST, "Setting not found")
         };
 
         sqlx::query("update settings set value = false where key = $1")
@@ -106,6 +105,6 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
     if once.is_completed() {
         Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(HttpError(400, "No data provided".to_owned()).into())
+        die!(BAD_REQUEST, "No data provided")
     }
 }
