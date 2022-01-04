@@ -139,8 +139,8 @@ impl WithStatusCode {
 
 #[derive(Clone)]
 pub(crate) struct GitArenaError {
-    source: Arc<Error>,
-    display_type: ErrorDisplayType
+    pub(crate) source: Arc<Error>,
+    pub(crate) display_type: ErrorDisplayType
 }
 
 impl Debug for GitArenaError {
@@ -230,7 +230,7 @@ async fn render_git_error(message: &str) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().body(response))
 }
 
-pub(crate) trait ExtendWithStatusCode<T, E> {
+pub(crate) trait ExtendWithStatusCode<T> {
     /// Exits early with status code on failure with `display` set to `false`
     fn code(self, status_code: StatusCode) -> StdResult<T, WithStatusCode>;
 
@@ -238,7 +238,7 @@ pub(crate) trait ExtendWithStatusCode<T, E> {
     fn code_show(self, status_code: StatusCode) -> StdResult<T, WithStatusCode>;
 }
 
-impl<T, E: StdError + Send + Sync + 'static> ExtendWithStatusCode<T, E> for StdResult<T, E> {
+impl<T, E: StdError + Send + Sync + 'static> ExtendWithStatusCode<T> for StdResult<T, E> {
     fn code(self, status_code: StatusCode) -> StdResult<T, WithStatusCode> {
         self.map_err(|err| WithStatusCode {
             code: status_code,
@@ -263,4 +263,33 @@ pub(crate) enum ErrorDisplayType {
     Json,
     Git,
     Plain
+}
+
+/// Simple struct which wraps an anyhow [Error](anyhow::Error). Used in conjunction with [HoldsError] trait.
+#[repr(transparent)]
+pub(crate) struct ErrorHolder(pub(crate) Error);
+
+/// Dummy trait used to constrain a template parameter to a [ErrorHolder].
+pub(crate) trait HoldsError {
+    /// Returns the wrapped [Error](anyhow::Error) as a value, consuming this `HoldsError` instance
+    fn into_inner(self) -> Error;
+
+    /// Returns the wrapped [Error](anyhow::Error) as a reference, leaving this `HoldsError` instance alive
+    fn as_inner(&self) -> &Error;
+}
+
+impl HoldsError for ErrorHolder {
+    fn into_inner(self) -> Error {
+        self.0
+    }
+
+    fn as_inner(&self) -> &Error {
+        &self.0
+    }
+}
+
+impl From<Error> for ErrorHolder {
+    fn from(err: Error) -> Self {
+        ErrorHolder(err)
+    }
 }
