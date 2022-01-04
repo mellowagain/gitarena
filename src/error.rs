@@ -45,7 +45,7 @@ use tera::Context;
 #[macro_export]
 macro_rules! die {
     ($($input:tt)*) => {
-        return Err($crate::err!($($input)*).into());
+        return Err($crate::err!($($input)*).into())
     }
 }
 
