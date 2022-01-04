@@ -1,9 +1,9 @@
-use crate::error::GAErrors::HttpError;
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use crate::user::{User, WebUser};
+use crate::{die, err};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -16,11 +16,11 @@ use sqlx::{Executor, PgPool, Postgres};
 pub(crate) async fn get_star(uri: web::Path<GitRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(&repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(&repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Repository not found");
     }
 
     let count = get_star_count(&repo, &mut transaction).await?;
@@ -50,15 +50,15 @@ pub(crate) async fn post_star(uri: web::Path<GitRequest>, web_user: WebUser, db_
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     if has_star(&user, &repo, &mut transaction).await? {
-        return Err(HttpError(409, "Already starred".to_owned()).into());
+        die!(CONFLICT, "Already starred");
     }
 
     add_star(&user, &repo, &mut transaction).await?;
@@ -74,15 +74,15 @@ pub(crate) async fn delete_star(uri: web::Path<GitRequest>, web_user: WebUser, d
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     if !has_star(&user, &repo, &mut transaction).await? {
-        return Err(HttpError(409, "Not starred".to_owned()).into());
+        die!(CONFLICT, "Not starred");
     }
 
     remove_star(&user, &repo, &mut transaction).await?;
@@ -98,11 +98,11 @@ pub(crate) async fn put_star(uri: web::Path<GitRequest>, web_user: WebUser, db_p
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     let mut response = HttpResponse::Ok();

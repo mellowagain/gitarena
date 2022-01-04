@@ -1,5 +1,5 @@
 use crate::config::get_optional_setting;
-use crate::error::GAErrors::HttpError;
+use crate::die;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::WebUser;
@@ -21,21 +21,21 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     let name = &body.name;
 
     if name.is_empty() || name.len() > 32 || !name.chars().all(|c| is_valid(&c)) {
-        return Err(HttpError(400, "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+        die!(BAD_REQUEST, "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -");
     }
 
     if is_reserved_repo_name(name.as_str()) {
-        return Err(HttpError(400, "Repository name is a reserved identifier".to_owned()).into());
+        die!(BAD_REQUEST, "Repository name is a reserved identifier");
     }
 
     if !is_fs_legal(name) {
-        return Err(HttpError(400, "Repository name is illegal".to_owned()).into());
+        die!(BAD_REQUEST, "Repository name is illegal");
     }
 
     let description = &body.description;
 
     if description.len() > 256 {
-        return Err(HttpError(400, "Description may only be up to 256 characters long".to_owned()).into());
+        die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
@@ -45,7 +45,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         .await?;
 
     if exists {
-        return Err(HttpError(409, "Repository name already in use for your account".to_owned()).into());
+        die!(CONFLICT, "Repository name already in use for your account");
     }
 
     let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")

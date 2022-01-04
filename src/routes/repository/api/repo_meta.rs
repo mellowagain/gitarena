@@ -1,8 +1,8 @@
-use crate::error::GAErrors::HttpError;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use crate::user::WebUser;
+use crate::{die, err};
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
@@ -17,17 +17,17 @@ pub(crate) async fn meta(uri: web::Path<GitRequest>, web_user: WebUser, db_pool:
         .bind(&uri.username)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or_else(|| HttpError(404, "Not found".to_owned()))?;
+        .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
     let repo: Repository = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(&user_id)
         .bind(&uri.repository)
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or_else(|| HttpError(404, "Not found".to_owned()))?;
+        .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     transaction.commit().await?;
