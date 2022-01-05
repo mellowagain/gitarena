@@ -99,7 +99,7 @@ pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
 
                 info!("Required database tables do not exist. Creating...");
 
-                create_tables(&db_pool).await?;
+                create_tables(db_pool).await?;
                 return Ok(());
             }
         }
@@ -185,7 +185,7 @@ impl TryFrom<Setting> for bool {
                 }
             }
             _ => bail!("Tried to cast setting `{}` into boolean despite it being {}", setting.key.as_str(), setting.type_constraint)
-        })().map_err(|err| ErrorHolder(err))
+        })().map_err(ErrorHolder)
     }
 }
 
@@ -196,7 +196,7 @@ impl TryFrom<Setting> for String {
         (|| match setting.type_constraint {
             TypeConstraint::String => Ok(setting.value.ok_or_else(|| anyhow!("Value for String setting `{}` is not set", setting.key.as_str()))?),
             _ => bail!("Tried to cast setting `{}` into string despite it being {}", setting.key.as_str(), setting.type_constraint)
-        })().map_err(|err| ErrorHolder(err))
+        })().map_err(ErrorHolder)
     }
 }
 

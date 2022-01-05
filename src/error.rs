@@ -163,6 +163,7 @@ impl ResponseError for GitArenaError {
         }
     }
 
+    #[allow(clippy::async_yields_async)] // False positive on this method
     fn error_response(&self) -> HttpResponse {
         let mut builder = HttpResponseBuilder::new(self.status_code());
 
@@ -177,7 +178,7 @@ impl ResponseError for GitArenaError {
             ErrorDisplayType::Html | ErrorDisplayType::Git => {
                 // TODO: Refactor this to no longer block the whole thread
                 executor::block_on(Compat::new(async {
-                    render_error_async(&self, message.as_str()).await
+                    render_error_async(self, message.as_str()).await
                 }))
             },
             ErrorDisplayType::Htmx(inner) => {

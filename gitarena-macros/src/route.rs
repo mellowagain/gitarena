@@ -19,12 +19,11 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                 if let Some(segment) = name_value.path.segments.first() {
                     let lowered = segment.ident.to_string().to_lowercase();
 
-                    match lowered.as_str() {
-                        "err" => if let Some(parsed_error_type) = match_error_type(&name_value.lit) {
+                    if lowered.as_str() == "err" {
+                        if let Some(parsed_error_type) = match_error_type(&name_value.lit) {
                             error_type = parsed_error_type;
                             error_type_index = index;
-                        },
-                        _ => { /* ignored */ }
+                        }
                     }
                 } else {
                     emit_error! {
@@ -133,6 +132,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     })
 }
 
+#[derive(Clone)]
 enum ErrorDisplayType {
     Html,
     Htmx(Box<ErrorDisplayType>),
@@ -149,7 +149,7 @@ impl ToTokens for ErrorDisplayType {
         tokens.extend(match self {
             ErrorDisplayType::Html => quote! { Html },
             ErrorDisplayType::Htmx(inner) => {
-                let unboxed = &**inner.clone();
+                let unboxed = &*(*inner).clone();
 
                 let ts = unboxed.to_token_stream();
                 quote! { Htmx(Box::new(crate::error::ErrorDisplayType::#ts)) }
@@ -203,21 +203,18 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
 /// Transforms routes which are only a "/" to an empty string. This allows scoped routes to have index
 /// pages without having to declare their route with a literal empty string (which is quite confusing).
 fn sanitize_first_argument(literal: &Lit) -> Option<NestedMeta> {
-    match literal {
-        Lit::Str(str) => {
-            let value = str.value();
+    if let Lit::Str(str) = literal {
+        let value = str.value();
 
-            if value.is_empty() {
-                emit_error! {
-                    str.span(),
-                    "route cannot be empty";
-                    help = "if you want to match on index, use \"/\""
-                }
-            } else if value == "/" {
-                return Some(NestedMeta::Lit(Lit::Str(LitStr::new("", str.span()))));
+        if value.is_empty() {
+            emit_error! {
+                str.span(),
+                "route cannot be empty";
+                help = "if you want to match on index, use \"/\""
             }
+        } else if value == "/" {
+            return Some(NestedMeta::Lit(Lit::Str(LitStr::new("", str.span()))));
         }
-        _ => { /* ignored */ },
     }
 
     None
