@@ -1,4 +1,3 @@
-use crate::error::WithStatusCode;
 use crate::git::GitoxideCacheList;
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
@@ -12,7 +11,6 @@ use std::convert::TryInto;
 use std::io::Write;
 use std::path::PathBuf;
 
-use actix_web::http::StatusCode;
 use anyhow::{anyhow, Result};
 use bstr::BString;
 use git_repository::actor::Signature;
@@ -162,7 +160,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
 
     gitoxide_repo.refs.transaction()
         .prepare(edits, Fail::Immediately)
-        .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
+        .map_err(|err| err!(INTERNAL_SERVER_ERROR, "Failed to commit transaction: {}", err))?
         .commit(&Signature::gitarena_default())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {

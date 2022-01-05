@@ -160,10 +160,10 @@ macro_rules! generate_try_from {
             fn try_from(setting: Setting) -> StdResult<$type_, Self::Error> {
                 (|| match setting.type_constraint {
                     TypeConstraint::$type_constraint => {
-                        let str = setting.value.ok_or_else(|| anyhow!("Value for {} setting `{}` is not set", stringify!($type_constraint), setting))?;
-                        <$type_>::from_str(&str).map_err(|err| anyhow!("Expected valid value for {} on setting `{}` but instead received `{:?}`: {}", stringify!($type_constraint), setting, setting.value, err))
+                        let str = setting.value.as_ref().ok_or_else(|| anyhow!("Value for {} setting `{}` is not set", stringify!($type_constraint), setting))?;
+                        <$type_>::from_str(str).map_err(|err| anyhow!("Expected valid value for {} on setting `{}` but instead received `{:?}`: {}", stringify!($type_constraint), setting.key.as_str(), setting.value, err))
                     },
-                    _ => bail!("Tried to cast setting `{}` into {} despite it being {}", setting, stringify!($type_constraint), setting.type_constraint)
+                    _ => bail!("Tried to cast setting `{}` into {} despite it being {}", setting.key.as_str(), stringify!($type_constraint), setting.type_constraint)
                 })().map_err(|err| ErrorHolder(err))
             }
         }
@@ -176,15 +176,15 @@ impl TryFrom<Setting> for bool {
     fn try_from(setting: Setting) -> StdResult<bool, Self::Error> {
         (|| match setting.type_constraint {
             TypeConstraint::Boolean => {
-                let str = setting.value.ok_or_else(|| anyhow!("Value for Boolean setting `{}` is not set", setting))?;
+                let str = setting.value.ok_or_else(|| anyhow!("Value for Boolean setting `{}` is not set", setting.key.as_str()))?;
 
                 match str.to_lowercase().as_str() {
                     "1" | "true" => Ok(true),
                     "0" | "false" => Ok(false),
-                    _ => bail!("Expected valid value for boolean on setting `{}` but instead received `{}`", setting, str)
+                    _ => bail!("Expected valid value for boolean on setting `{}` but instead received `{}`", setting.key.as_str(), str.as_str())
                 }
             }
-            _ => bail!("Tried to cast setting `{}` into boolean despite it being {}", setting, setting.type_constraint)
+            _ => bail!("Tried to cast setting `{}` into boolean despite it being {}", setting.key.as_str(), setting.type_constraint)
         })().map_err(|err| ErrorHolder(err))
     }
 }
@@ -194,8 +194,8 @@ impl TryFrom<Setting> for String {
 
     fn try_from(setting: Setting) -> StdResult<Self, Self::Error> {
         (|| match setting.type_constraint {
-            TypeConstraint::String => Ok(setting.value.ok_or_else(|| anyhow!("Value for String setting `{}` is not set", setting))?),
-            _ => bail!("Tried to cast setting `{}` into string despite it being {}", setting, setting.type_constraint)
+            TypeConstraint::String => Ok(setting.value.ok_or_else(|| anyhow!("Value for String setting `{}` is not set", setting.key.as_str()))?),
+            _ => bail!("Tried to cast setting `{}` into string despite it being {}", setting.key.as_str(), setting.type_constraint)
         })().map_err(|err| ErrorHolder(err))
     }
 }

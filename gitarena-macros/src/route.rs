@@ -152,7 +152,7 @@ impl ToTokens for ErrorDisplayType {
                 let unboxed = &**inner.clone();
 
                 let ts = unboxed.to_token_stream();
-                quote! { Htmx(crate::error::ErrorDisplayType::#ts) }
+                quote! { Htmx(Box::new(crate::error::ErrorDisplayType::#ts)) }
             },
             ErrorDisplayType::Json => quote! { Json },
             ErrorDisplayType::Git => quote! { Git },

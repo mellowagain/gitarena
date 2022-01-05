@@ -14,7 +14,7 @@ use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use anyhow::{Error, Result};
 use async_compat::Compat;
-use derive_more::Error;
+use derive_more::{Display, Error};
 use futures::executor;
 use log::error;
 use serde_json::json;
@@ -177,13 +177,13 @@ impl ResponseError for GitArenaError {
             ErrorDisplayType::Html | ErrorDisplayType::Git => {
                 // TODO: Refactor this to no longer block the whole thread
                 executor::block_on(Compat::new(async {
-                    render_error_async(&self, builder, message.as_str()).await
+                    render_error_async(&self, message.as_str()).await
                 }))
             },
             ErrorDisplayType::Htmx(inner) => {
                 // TODO: Send partial htmx instead
                 let mut error = self.clone();
-                error.display_type = **inner;
+                error.display_type = *inner.clone();
 
                 error.error_response()
             }
@@ -195,7 +195,7 @@ impl ResponseError for GitArenaError {
     }
 }
 
-async fn render_error_async(renderer: &GitArenaError, builder: HttpResponseBuilder, message: &str) -> HttpResponse {
+async fn render_error_async(renderer: &GitArenaError, message: &str) -> HttpResponse {
     match renderer.display_type {
         ErrorDisplayType::Html => render_html_error(renderer.status_code(), message).await,
         ErrorDisplayType::Git => render_git_error(message).await,
@@ -256,7 +256,7 @@ impl<T, E: StdError + Send + Sync + 'static> ExtendWithStatusCode<T> for StdResu
     }
 }
 
-#[derive(Clone)]
+#[derive(Display, Debug, Clone)]
 pub(crate) enum ErrorDisplayType {
     Html,
     Htmx(Box<ErrorDisplayType>),

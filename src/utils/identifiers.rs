@@ -1,4 +1,4 @@
-use crate::error::GAErrors::HttpError;
+use crate::die;
 
 use anyhow::Result;
 use sqlx::{Executor, Postgres};
@@ -66,15 +66,15 @@ pub(crate) fn is_reserved_username(input: &str) -> bool {
 /// [0]: crate::error::GAErrors::HttpError
 pub(crate) fn validate_username(input: &str) -> Result<()> {
     if input.len() < 3 || input.len() > 32 || !input.chars().all(|c| is_valid(&c)) {
-        return Err(HttpError(400, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -".to_owned()).into());
+        die!(BAD_REQUEST, "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -");
     }
 
     if is_reserved_username(input) {
-        return Err(HttpError(400, "Username is a reserved identifier".to_owned()).into());
+        die!(CONFLICT, "Username is a reserved identifier");
     }
 
     if !is_fs_legal(input) {
-        return Err(HttpError(400, "Username is illegal".to_owned()).into());
+        die!(BAD_REQUEST, "Username is illegal");
     }
 
     Ok(())
