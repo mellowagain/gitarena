@@ -1,12 +1,11 @@
-use crate::error::GAErrors::HttpError;
 use crate::git::history::{all_branches, all_commits, all_tags};
 use crate::prelude::*;
 use crate::privileges::privilege;
-use crate::render_template;
 use crate::repository::Repository;
 use crate::routes::repository::GitTreeRequest;
 use crate::templates::web::GitCommit;
 use crate::user::{User, WebUser};
+use crate::{die, err, render_template};
 
 use actix_web::{HttpRequest, Responder, web};
 use anyhow::Result;
@@ -20,11 +19,11 @@ use tera::Context;
 pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found")  )?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
@@ -32,7 +31,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
     let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => return Err(HttpError(404, "Not found".to_owned()).into())
+        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
     }?; // Handle 404
 
     let full_tree_name = loose_ref.name.as_bstr().to_str()?;
@@ -78,7 +77,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
 
     if commits.is_empty() {
         // TODO: Render empty repo skeleton template showing how to push files to this repository
-        return Err(HttpError(404, "No commits in this repository".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     if after_oid.is_some() || before_oid.is_some() {

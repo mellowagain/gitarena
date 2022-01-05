@@ -1,14 +1,13 @@
-use crate::error::GAErrors::HttpError;
 use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::privileges::privilege;
-use crate::render_template;
 use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
 use crate::templates::web::{GitCommit, RepoFile};
 use crate::user::{User, WebUser};
+use crate::{die, err, render_template};
 
 use std::cmp::Ordering;
 
@@ -28,7 +27,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let tree_name = tree_option.unwrap_or_else(|| repo.default_branch.as_str());
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     let mut context = Context::new();
@@ -39,7 +38,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => return Err(HttpError(404, "Not found".to_owned()).into())
+        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
     }?; // Handle 404
 
     let full_tree_name = loose_ref.name.as_bstr().to_str()?;
@@ -123,9 +122,9 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     context.try_insert("files", &files)?;
     context.try_insert("tree", tree_name)?;
     context.try_insert("full_tree", full_tree_name)?;
-    context.try_insert("issues_count", &0)?;
-    context.try_insert("merge_requests_count", &0)?;
-    context.try_insert("releases_count", &0)?;
+    context.try_insert("issues_count", &0_i32)?;
+    context.try_insert("merge_requests_count", &0_i32)?;
+    context.try_insert("releases_count", &0_i32)?;
     context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
 
     context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
@@ -135,7 +134,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         context.try_insert("user", user)?;
     }
 
-    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| HttpError(200, "Repository is empty".to_owned()))?;
+    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     // TODO: Additionally show last_commit.committer and if doesn't match with author
@@ -158,8 +157,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
 pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
@@ -168,8 +167,8 @@ pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: Web
 pub(crate) async fn view_repo(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     render(None, repo, &uri.username, web_user, transaction).await
 }
