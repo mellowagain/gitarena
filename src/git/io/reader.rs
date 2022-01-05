@@ -1,6 +1,4 @@
-use crate::error::GAErrors::ParseError;
-
-use anyhow::Result;
+use anyhow::{bail, Result};
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use log::warn;
 use tracing::instrument;
@@ -26,14 +24,14 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
                     None => continue
                 }
             }
-            Err(e) => {
-                warn!("Failed to read line into UTF-8 vec: {}", e);
+            Err(err) => {
+                warn!("Failed to read line into UTF-8 vec: {}", err);
                 continue;
             }
         }
     }
 
-    Err(ParseError("Git request body", String::new()).into())
+    bail!("Unable to parse Git request body")
 }
 
 #[instrument(err, skip(iter))]

@@ -1,5 +1,4 @@
-use crate::error::GAErrors::HttpError;
-use crate::render_template;
+use crate::{die, render_template};
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
 
@@ -13,12 +12,12 @@ use heim::units::{Information, information, Time};
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/", method = "GET")]
+#[route("/", method = "GET", err = "html")]
 pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
-        return Err(HttpError(403, "Not allowed".to_owned()).into());
+        die!(FORBIDDEN, "Not allowed");
     }
 
     let mut context = Context::new();

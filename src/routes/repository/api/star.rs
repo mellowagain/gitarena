@@ -1,9 +1,9 @@
-use crate::error::GAErrors::HttpError;
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use crate::user::{User, WebUser};
+use crate::{die, err};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -12,15 +12,15 @@ use log::debug;
 use serde_json::json;
 use sqlx::{Executor, PgPool, Postgres};
 
-#[route("/api/repo/{username}/{repository}/star", method = "GET")]
+#[route("/api/repo/{username}/{repository}/star", method = "GET", err = "htmx+json")]
 pub(crate) async fn get_star(uri: web::Path<GitRequest>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(&repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(&repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Repository not found");
     }
 
     let count = get_star_count(&repo, &mut transaction).await?;
@@ -44,21 +44,21 @@ pub(crate) async fn get_star(uri: web::Path<GitRequest>, web_user: WebUser, requ
     }
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "POST")]
+#[route("/api/repo/{username}/{repository}/star", method = "POST", err = "json")]
 pub(crate) async fn post_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     if has_star(&user, &repo, &mut transaction).await? {
-        return Err(HttpError(409, "Already starred".to_owned()).into());
+        die!(CONFLICT, "Already starred");
     }
 
     add_star(&user, &repo, &mut transaction).await?;
@@ -68,21 +68,21 @@ pub(crate) async fn post_star(uri: web::Path<GitRequest>, web_user: WebUser, db_
     Ok(HttpResponse::Created().finish())
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "DELETE")]
+#[route("/api/repo/{username}/{repository}/star", method = "DELETE", err = "json")]
 pub(crate) async fn delete_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     if !has_star(&user, &repo, &mut transaction).await? {
-        return Err(HttpError(409, "Not starred".to_owned()).into());
+        die!(CONFLICT, "Not starred");
     }
 
     remove_star(&user, &repo, &mut transaction).await?;
@@ -92,17 +92,17 @@ pub(crate) async fn delete_star(uri: web::Path<GitRequest>, web_user: WebUser, d
     Ok(HttpResponse::NoContent().finish())
 }
 
-#[route("/api/repo/{username}/{repository}/star", method = "PUT")]
+#[route("/api/repo/{username}/{repository}/star", method = "PUT", err = "text")]
 pub(crate) async fn put_star(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| HttpError(404, "Repository not found".to_owned()))?;
+    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
-        return Err(HttpError(404, "Not found".to_owned()).into());
+        die!(NOT_FOUND, "Not found");
     }
 
     let mut response = HttpResponse::Ok();

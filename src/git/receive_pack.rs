@@ -1,4 +1,3 @@
-use crate::error::GAErrors::{GitError, PackUnpackError};
 use crate::git::GitoxideCacheList;
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
@@ -6,12 +5,13 @@ use crate::git::ref_update::RefUpdate;
 use crate::prelude::*;
 use crate::repository::Repository;
 use crate::utils::oid;
+use crate::{die, err};
 
 use std::convert::TryInto;
 use std::io::Write;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use bstr::BString;
 use git_repository::actor::Signature;
 use git_repository::lock::acquire::Fail;
@@ -43,7 +43,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
             (Some(index_path), Some(pack_path)) => {
                 let index_file = IndexFile::at(index_path)?;
 
-                let index = index_file.lookup(new_oid.as_ref()).ok_or(PackUnpackError("oid index"))?;
+                let index = index_file.lookup(new_oid.as_ref()).ok_or_else(|| anyhow!("Failed to lookup new oid in index file"))?;
                 let offset = index_file.pack_offset_at_index(index);
 
                 let data_file = DataFile::at(pack_path)?;
@@ -76,7 +76,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
 
                 match outcome.kind {
                     Kind::Commit => CommitRef::from_bytes(buffer.as_slice())?,
-                    _ => return Err(GitError(400, Some("Unexpected payload data type".to_owned())).into())
+                    _ => die!(BAD_REQUEST, "Unexpected payload data type")
                 }
             },
             _ => {
@@ -113,7 +113,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
 
         gitoxide_repo.refs.transaction()
             .prepare(edits, Fail::Immediately)
-            .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
+            .map_err(|err| anyhow!("Failed to commit transaction: {}", err))?
             .commit(&Signature::from(commit.committer))?;
     }
 
@@ -145,7 +145,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
 
     let gitoxide_repo = repo.gitoxide(executor).await?;
 
-    let object_id = oid::from_hex_str(ref_update.old.as_deref()).map_err(|_| GitError(404, Some("Ref does not exist".to_owned())))?;
+    let object_id = oid::from_hex_str(ref_update.old.as_deref()).map_err(|_| err!(NOT_FOUND, "Ref does not exist"))?;
 
     let edits = vec![
         RefEdit {
@@ -160,7 +160,7 @@ pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(ref
 
     gitoxide_repo.refs.transaction()
         .prepare(edits, Fail::Immediately)
-        .map_err(|e| GitError(500, Some(format!("Failed to commit transaction: {}", e))))?
+        .map_err(|err| err!(INTERNAL_SERVER_ERROR, "Failed to commit transaction: {}", err))?
         .commit(&Signature::gitarena_default())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {

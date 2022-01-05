@@ -1,4 +1,4 @@
-use crate::error::GAErrors::GitError;
+use crate::die;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::ls_refs_all;
@@ -11,13 +11,13 @@ use anyhow::Result;
 use gitarena_macros::route;
 use sqlx::{Executor, PgPool, Pool, Postgres};
 
-#[route("/{username}/{repository}.git/info/refs", method="GET")]
+#[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let service = match query_string.get("service") {
         Some(value) => value.trim(),
-        None => return Err(GitError(400, Some("Dumb clients are not supported".to_owned())).into())
+        None => die!(BAD_REQUEST, "Dumb clients are not supported")
     };
 
     let mut transaction = db_pool.begin().await?;
@@ -29,7 +29,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
-        None => return Err(GitError(404, None).into())
+        None => die!(NOT_FOUND)
     };
 
     let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
@@ -51,9 +51,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
             Ok(response)
         }
-        _ => {
-            Err(GitError(403, Some("Requested service not found".to_owned())).into())
-        }
+        _ => die!(FORBIDDEN, "Requested service not found")
     }
 }
 
@@ -63,7 +61,7 @@ async fn upload_pack_info_refs<'e, E>(repo_option: Option<Repository>, service: 
     let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
-        return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
+        die!(BAD_REQUEST, "Unsupported Git protocol version");
     }
 
     let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, executor).await? {
@@ -88,7 +86,7 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
 
     let repo = match repo_option {
         Some(repo) => repo,
-        None => return Err(GitError(404, None).into())
+        None => die!(NOT_FOUND)
     };
 
     let git2repo = repo.libgit2(&mut transaction).await?;

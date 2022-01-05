@@ -1,10 +1,8 @@
-use crate::config::get_setting;
-use crate::crypto;
-use crate::error::GAErrors::HttpError;
 use crate::mail::Email;
 use crate::render_template;
 use crate::session::Session;
 use crate::user::{User, WebUser};
+use crate::{crypto, die, err};
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
@@ -18,10 +16,10 @@ use tera::Context;
 use tracing_unwrap::OptionExt;
 use log::debug;
 
-#[route("/login", method = "GET")]
+#[route("/login", method = "GET", err = "html")]
 pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
-        return Err(HttpError(401, "Already logged in".to_owned()).into());
+        die!(UNAUTHORIZED, "Already logged in");
     }
 
     let (allow_registrations, bitbucket_sso_enabled, github_sso_enabled, gitlab_sso_enabled): (bool, bool, bool, bool) = from_config!(
@@ -41,7 +39,7 @@ pub(crate) async fn get_login(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     render_template!("user/login.html", context)
 }
 
-#[route("/login", method = "POST")]
+#[route("/login", method = "POST", err = "html")]
 pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let redirect = body.redirect.as_deref().unwrap_or("/");
 
@@ -105,7 +103,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
 
     let primary_email = Email::find_primary_email(&user, &mut transaction)
         .await?
-        .ok_or_else(|| HttpError(401, "No primary email".to_owned()))?;
+        .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
     if user.disabled || !primary_email.is_allowed_login() {
         debug!("Received login request for disabled user {} (id {})", &user.username, &user.id);

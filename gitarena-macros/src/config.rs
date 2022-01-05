@@ -98,7 +98,7 @@ impl Parse for Setting {
         input.parse::<Token![=>]>()?;
         let ty: Type = input.parse()?;
         let key_str = key.value();
-        let ident = Ident::new(key_str.replace(".", "_").as_str(), input.span());
+        let ident = Ident::new(key_str.replace('.', "_").as_str(), input.span());
 
         Ok(Setting {
             identifier: ident,

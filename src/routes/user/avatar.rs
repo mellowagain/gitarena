@@ -1,8 +1,8 @@
-use crate::error::GAErrors::HttpError;
 use crate::mail::Email;
 use crate::prelude::HttpRequestExtensions;
 use crate::user::WebUser;
 use crate::utils::reqwest_actix_stream::ResponseStream;
+use crate::{die, err};
 
 use std::fs;
 use std::io::Cursor;
@@ -21,7 +21,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use sqlx::PgPool;
 
-#[route("/api/avatar/{user_id}", method = "GET")]
+#[route("/api/avatar/{user_id}", method = "GET", err = "text")]
 pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let (gravatar_enabled, avatars_dir): (bool, String) = from_config!(
         "avatars.gravatar" => bool,
@@ -49,7 +49,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
         } else {
             Email::find_primary_email(avatar_request.user_id, &mut transaction)
                 .await?
-                .ok_or_else(|| HttpError(404, "User not found".to_owned()))?
+                .ok_or_else(|| err!(NOT_FOUND, "User not found"))?
                 .email
         };
 
@@ -65,31 +65,31 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
     Ok(send_image(path, &request).await.context("Failed to read default avatar file")?)
 }
 
-#[route("/api/avatar", method = "PUT")]
+#[route("/api/avatar", method = "PUT", err = "text")]
 pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Anonymous) {
-        return Err(HttpError(401, "Not logged in".to_owned()).into());
+        die!(UNAUTHORIZED, "No logged in");
     }
 
     let user = web_user.into_user()?;
 
     if user.disabled {
-        return Err(HttpError(403, "User is disabled".to_owned()).into());
+        die!(FORBIDDEN, "User is disabled");
     }
 
     let avatars_dir: String = from_config!("avatars.dir" => String);
 
     let mut field = match payload.try_next().await {
         Ok(Some(field)) => field,
-        Ok(None) => return Err(HttpError(400, "No multipart field found".to_owned()).into()),
+        Ok(None) => die!(BAD_REQUEST, "No multipart field found"),
         Err(err) => return Err(err.into())
     };
 
-    let content_disposition = field.content_disposition().ok_or_else(|| HttpError(400, "No content disposition".to_owned()))?;
-    let file_name = content_disposition.get_filename().ok_or_else(|| HttpError(400, "No file name".to_owned()))?;
+    let content_disposition = field.content_disposition().ok_or_else(|| err!(BAD_REQUEST, "No content disposition"))?;
+    let file_name = content_disposition.get_filename().ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
     let extension = file_name.rsplit_once('.')
         .map(|(_, ext)| ext.to_owned())
-        .ok_or_else(|| HttpError(400, "Invalid file name".to_owned()))?;
+        .ok_or_else(|| err!(BAD_REQUEST, "Invalid file name"))?;
 
     let mut bytes = web::BytesMut::new();
 
@@ -100,7 +100,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     let frozen_bytes = bytes.freeze();
 
     web::block(move || -> Result<()> {
-        let format = ImageFormat::from_extension(extension).ok_or_else(|| HttpError(400, "Unsupported image format".to_owned()))?;
+        let format = ImageFormat::from_extension(extension).ok_or_else(|| err!(BAD_REQUEST, "Unsupported image format"))?;
 
         let mut cursor = Cursor::new(frozen_bytes.as_ref());
 

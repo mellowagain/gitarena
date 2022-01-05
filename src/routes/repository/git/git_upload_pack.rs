@@ -1,4 +1,4 @@
-use crate::error::GAErrors::GitError;
+use crate::die;
 use crate::git::basic_auth;
 use crate::git::fetch::fetch;
 use crate::git::io::reader::{read_data_lines, read_until_command};
@@ -15,19 +15,19 @@ use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPe
 use gitarena_macros::route;
 use sqlx::PgPool;
 
-#[route("/{username}/{repository}.git/git-upload-pack", method="POST")]
+#[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
 pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
 
     if content_type != "application/x-git-upload-pack-request" || accept_header != "application/x-git-upload-pack-result" {
-        return Err(GitError(400, None).into());
+        die!(BAD_REQUEST);
     }
 
     let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
-        return Err(GitError(400, Some("Unsupported Git protocol version".to_owned())).into());
+        die!(BAD_REQUEST, "Unsupported Git protocol version");
     }
 
     let mut transaction = db_pool.begin().await?;
@@ -39,7 +39,7 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
-        None => return Err(GitError(404, None).into())
+        None => die!(NOT_FOUND)
     };
 
     let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
@@ -54,7 +54,7 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
     };
 
     if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
-        return Err(GitError(404, None).into());
+        die!(NOT_FOUND);
     }
 
     let git2repo = repo.libgit2(&mut transaction).await?;

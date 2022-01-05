@@ -1,4 +1,3 @@
-use crate::error::GAErrors::HttpError;
 use crate::mail::Email;
 use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
@@ -6,6 +5,7 @@ use crate::sso::SSO;
 use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::{User, WebUser};
+use crate::{die, err};
 
 use std::ops::Deref;
 use std::str::FromStr;
@@ -20,14 +20,14 @@ use oauth2::TokenResponse;
 use serde::Deserialize;
 use sqlx::PgPool;
 
-#[route("/sso/{service}", method = "GET")]
+#[route("/sso/{service}", method = "GET", err = "html")]
 pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
-        return Err(HttpError(401, "Already logged in".to_owned()).into());
+        die!(UNAUTHORIZED, "Already logged in");
     }
 
     let provider = SSOProviderType::from_str(sso_request.service.as_str())
-        .map_err(|_| HttpError(400, "Unknown service".to_owned()))?;
+        .map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     // TODO: Save token in cache to check for CSRF
@@ -36,21 +36,21 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
     Ok(HttpResponse::TemporaryRedirect().header(LOCATION, url.to_string()).finish())
 }
 
-#[route("/sso/{service}/callback", method = "GET")]
+#[route("/sso/{service}/callback", method = "GET", err = "html")]
 pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_some() {
-        return Err(HttpError(401, "Already logged in".to_owned()).into());
+        die!(UNAUTHORIZED, "Already logged in");
     }
 
     let provider = SSOProviderType::from_str(sso_request.service.as_str())
-        .map_err(|_| HttpError(400, "Unknown service".to_owned()))?;
+        .map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     let query_string = request.q_string();
     let token_response = SSOProvider::exchange_response(provider_impl.deref(), &query_string, &provider, &db_pool).await?;
 
     if !SSOProvider::validate_scopes(provider_impl.deref(), token_response.scopes()) {
-        return Err(HttpError(409, "Not all required scopes have been granted".to_owned()).into());
+        die!(CONFLICT, "Not all required scopes have been granted");
     }
 
     let access_token = token_response.access_token();
@@ -84,12 +84,12 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     let primary_email = Email::find_primary_email(&user, &mut transaction)
         .await?
-        .ok_or_else(|| HttpError(401, "No primary email".to_owned()))?;
+        .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
     if user.disabled || !primary_email.is_allowed_login() {
         debug!("Received {} sso login request for disabled user {} (id {})", &provider, &user.username, &user.id);
 
-        return Err(HttpError(403, "Account has been disabled. Please contact support.".to_owned()).into());
+        die!(FORBIDDEN, "Account has been disabled. Please contact support.");
     }
 
     // We're now doing something *very* illegal: We're changing state in a GET request

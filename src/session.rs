@@ -1,5 +1,4 @@
-use crate::error::GAErrors::HttpError;
-use crate::prelude::*;
+use crate::prelude::HttpRequestExtensions;
 use crate::user::User;
 
 use std::error::Error;
@@ -8,7 +7,7 @@ use std::net::Ipv6Addr;
 use std::str::FromStr;
 
 use actix_web::HttpRequest;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local};
 use ipnetwork::{IpNetwork, Ipv6Network};
 use log::warn;
@@ -35,7 +34,7 @@ impl Display for Session {
 
 impl Session {
     pub(crate) async fn new<'e, E: Executor<'e, Database = Postgres>>(request: &HttpRequest, user: &User, executor: E) -> Result<Session> {
-        let (ip_address, user_agent) = extract_ip_and_ua(request)?;
+        let (ip_address, user_agent) = extract_ip_and_ua(request);
 
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
         let user_agent = user_agent.chars().take(256).collect::<String>();
@@ -54,7 +53,7 @@ impl Session {
     pub(crate) async fn from_identity<'e, E: Executor<'e, Database = Postgres>>(identity: Option<String>, executor: E) -> Result<Option<Session>> {
         match identity {
             Some(identity) => {
-                let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| HttpError(500, "Unable to parse identity".to_owned()))?;
+                let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
                 let user_id = user_id_str.parse::<i32>()?;
 
                 let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
@@ -89,7 +88,7 @@ impl Session {
 
     #[allow(dead_code)]
     pub(crate) async fn update_from_request<'e, E: Executor<'e, Database = Postgres>>(&self, request: &HttpRequest, executor: E) -> Result<()> {
-        let (ip_address, user_agent) = extract_ip_and_ua(request)?;
+        let (ip_address, user_agent) = extract_ip_and_ua(request);
 
         self.update_explicit(&ip_address, user_agent, executor).await
     }
@@ -106,33 +105,33 @@ impl Session {
     }
 }
 
-pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> Result<(IpNetwork, &str)> {
-    let ip_address = extract_ip(request)?;
-    let user_agent = request.get_header("user-agent").ok_or_else(|| HttpError(500, "No user-agent header in request".to_owned()))?;
+pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> (IpNetwork, &str) {
+    let ip_address = extract_ip(request);
+    let user_agent = request.get_header("user-agent").unwrap_or_default();
 
-    Ok((ip_address, user_agent))
+    (ip_address, user_agent)
 }
 
-pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> Result<(IpNetwork, String)> {
-    let ip_address = extract_ip(&request)?;
+pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> (IpNetwork, String) {
+    let ip_address = extract_ip(&request);
     let user_agent = request.get_header("user-agent").unwrap_or("No user agent sent");
 
-    Ok((ip_address, user_agent.to_owned()))
+    (ip_address, user_agent.to_owned())
 }
 
-fn extract_ip(request: &HttpRequest) -> Result<IpNetwork> {
+fn extract_ip(request: &HttpRequest) -> IpNetwork {
     let connection_info = request.connection_info();
     let ip_str = connection_info.realip_remote_addr().unwrap_or("No user agent sent");
 
     match IpNetwork::from_str(ip_str) {
-        Ok(ip_network) => Ok(ip_network),
+        Ok(ip_network) => ip_network,
         Err(err) => {
             // If we got the local address, it includes the port so try again but with port stripped
-            Ok(if let Some((ip, _)) = ip_str.split_once(':') {
+            if let Some((ip, _)) = ip_str.split_once(':') {
                 IpNetwork::from_str(ip).unwrap_or_else(|err| default_ip_address(Some(err)))
             } else {
                 default_ip_address(Some(err))
-            })
+            }
         }
     }
 }

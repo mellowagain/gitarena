@@ -1,6 +1,8 @@
-use crate::error::GitArenaError;
+use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::render_template;
 use crate::user::WebUser;
+
+use std::sync::Arc;
 
 use actix_web::http::StatusCode;
 use actix_web::Result as ActixResult;
@@ -37,8 +39,14 @@ pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_
     debug!("Got request for non-existent resource: {}", request.path());
 
     Ok(if !request.path().starts_with("/api") {
-        web_not_found(request, web_user, db_pool).await
+        web_not_found(request, web_user, db_pool).await.map_err(|err| GitArenaError {
+            source: Arc::new(err),
+            display_type: ErrorDisplayType::Html
+        })
     } else {
-        api_not_found().await
-    }.map_err(|err| -> GitArenaError { err.into() }))
+        api_not_found().await.map_err(|err| GitArenaError {
+            source: Arc::new(err),
+            display_type: ErrorDisplayType::Json
+        })
+    })
 }

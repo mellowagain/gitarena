@@ -1,11 +1,10 @@
-use crate::error::GAErrors::PackUnpackError;
 use crate::repository::Repository;
 
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use git_repository::odb::pack::bundle::write::Options as GitPackWriteOptions;
 use git_repository::odb::pack::data::input::{Mode as PackIterationMode};
 use git_repository::odb::pack::index::Version as PackVersion;
@@ -53,8 +52,8 @@ pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: 
         options
     )?;
 
-    let index_path = bundle.index_path.ok_or(PackUnpackError("index file"))?;
-    let data_path = bundle.data_path.ok_or(PackUnpackError("data file"))?;
+    let index_path = bundle.index_path.ok_or_else(|| anyhow!("Failed to unpack index file"))?;
+    let data_path = bundle.data_path.ok_or_else(|| anyhow!("Failed to unpack data file"))?;
 
     Ok((index_path, data_path))
 }
