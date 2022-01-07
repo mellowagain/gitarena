@@ -1,8 +1,9 @@
 use crate::error::{ErrorHolder, HoldsError};
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::{Infallible, TryFrom, TryInto};
 use std::fmt::Debug;
 use std::future::Future;
+use std::process::exit;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::postgres::PgDatabaseError;
 use sqlx::{Executor, FromRow, Pool, Postgres, Type};
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_unwrap::OptionExt;
 
 /// Gets the value of a setting from the database.
@@ -84,7 +86,7 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
     }
 }
 
-pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
+pub(crate) async fn init(db_pool: &Pool<Postgres>, log_guard: WorkerGuard) -> Result<WorkerGuard> {
     let mut transaction = db_pool.begin().await?;
 
     if let Some(err) = sqlx::query("select exists(select 1 from settings limit 1)").execute(&mut transaction).await.err() {
@@ -99,28 +101,34 @@ pub(crate) async fn init(db_pool: &Pool<Postgres>) -> Result<()> {
 
                 info!("Required database tables do not exist. Creating...");
 
-                create_tables(db_pool).await?;
-                return Ok(());
+                create_tables(db_pool, log_guard).await?;
             }
         }
 
         bail!(err);
     }
 
-    Ok(())
+    Ok(log_guard)
 }
 
 // TODO: Use sqlx migrations
-pub(crate) async fn create_tables(db_pool: &Pool<Postgres>) -> Result<()> {
+pub(crate) async fn create_tables(db_pool: &Pool<Postgres>, log_guard: WorkerGuard) -> Result<Infallible> {
     const DATABASE_INIT_DATA: &str = include_str!("../schema.sql");
     let mut connection = db_pool.acquire().await?;
 
-    sqlx::query(DATABASE_INIT_DATA)
-        .execute(&mut connection)
+    connection.execute(DATABASE_INIT_DATA)
         .await
         .context("Failed to create initial database setup")?;
 
-    Ok(())
+    info!("Successfully created initial database tables");
+    info!("Please change the config values in the `settings` table and restart GitArena");
+
+    drop(connection); // Drop connection so when we close the pool below it doesn't hang
+    db_pool.close().await; // Close the pool so the database flushes
+    drop(log_guard); // Drop the log guard so the log file gets flushed
+
+    // We had to drop everything above manually as exit below does not call destructors
+    exit(0);
 }
 
 #[derive(FromRow, Debug, Deserialize, Serialize, Display)]

@@ -40,15 +40,15 @@ mod privileges;
 mod repository;
 mod routes;
 mod session;
+mod sso;
 mod templates;
 mod user;
 mod utils;
-mod sso;
 mod verification;
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let _log_guard = init_logger()?;
+    let mut log_guard = init_logger()?;
 
     let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
     env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
         .connect(db_url.as_str())
         .await?;
 
-    config::init(&db_pool).await.context("Unable to initialize config in database")?;
+    log_guard = config::init(&db_pool, log_guard).await.context("Unable to initialize config in database")?;
 
     licenses::init().await?;
 
