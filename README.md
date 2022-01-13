@@ -42,3 +42,19 @@ your account. In order to access the admin panel (`/admin`), please set
 Repository:
 
 ![Repository](https://i.cutegirl.tech/vka53i6m9wnv.png)
+
+Repository commits:
+
+![Commits](https://i.cutegirl.tech/ed3qdisinquh.png)
+
+Login:
+
+![Login](https://i.cutegirl.tech/8biqtc0a7fhi.png)
+
+Sign up:
+
+![Sign up](https://i.cutegirl.tech/xiuba03gdmkv.png)
+
+Admin panel:
+
+![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)
