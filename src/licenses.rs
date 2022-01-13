@@ -1,32 +1,26 @@
-use crate::utils::time_function;
-
-use std::env;
-use std::path::Path;
+use std::fs::File;
 
 use anyhow::Result;
 use askalono::Store;
-use futures_locks::Mutex;
 use lazy_static::lazy_static;
 use log::info;
 use tracing_unwrap::ResultExt;
 
 lazy_static! {
-    pub(crate) static ref LICENSE_STORE: Mutex<Store> = Mutex::new(Store::new());
+    pub(crate) static ref LICENSE_STORE: Store = init_askalono();
 }
 
 pub(crate) async fn init() -> Result<()> {
-    info!("Loading SPDX license data. This may take a while.");
-
-    let mut path = env::current_dir()?;
-    path.push(Path::new("license-list-data/json/details"));
-
-    let elapsed = time_function(|| async {
-        LICENSE_STORE.lock().await.load_spdx(path.as_path(), true).unwrap_or_log();
-    }).await;
-
-    info!("Successfully loaded SPDX license data. Took {} seconds.", elapsed);
+    // Calling .len() here initializes the lazy static variable
+    info!("Successfully loaded {} licenses from cache", LICENSE_STORE.len());
 
     Ok(())
+}
+
+fn init_askalono() -> Store {
+    let file = File::open("askalono-cache.bin.zstd").expect_or_log("Failed to open askalono cache file");
+
+    Store::from_cache(file).expect_or_log("Failed to parse askalono cache file")
 }
 
 pub(crate) const fn license_file_names() -> [&'static [u8]; 18] {
