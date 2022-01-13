@@ -67,6 +67,11 @@
 
 /* repo navigation */
 
+.extra-bottom-padding {
+    margin-bottom: 24px;
+    background: #3c3f41 !important;
+}
+
 header.background {
     background-size: cover;
     background-position: center center;
