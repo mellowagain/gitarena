@@ -27,6 +27,7 @@ The resulting binary can be found in `./target/release`.
 In order to run GitArena, the following environment variable needs to be set:
 
 * `DATABASE_URL`: [Postgres connection string](https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6)
+* `BIND_ADDRESS`: [Socket address](https://doc.rust-lang.org/nightly/std/net/trait.ToSocketAddrs.html) to bind to, for example `localhost:8080` or `127.0.0.1:80` (Port is required)
 
 After start GitArena will automatically create the required table as defined
 in `schema.sql`. Please edit the `settings` table to configure your
