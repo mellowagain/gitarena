@@ -55,6 +55,10 @@ Sign up:
 
 ![Sign up](https://i.cutegirl.tech/xiuba03gdmkv.png)
 
+Explore:
+
+![Explore](https://i.cutegirl.tech/c6uba7e0os35.png)
+
 Admin panel:
 
 ![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)

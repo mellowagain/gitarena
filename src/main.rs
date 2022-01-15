@@ -115,6 +115,7 @@ async fn main() -> Result<()> {
             })
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
+            .configure(routes::init)
             .configure(routes::proxy::init)
             .configure(routes::user::init)
             .configure(routes::repository::init) // Repository routes need to be always last

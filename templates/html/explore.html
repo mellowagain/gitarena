@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}
+Explore
+{% endblock %}
+
+{% block content %}
+<div class="ui grid">
+    <div class="seven wide column">
+        <div class="ui labeled icon top left pointing dropdown button">
+            <i class="filter icon"></i>
+            <span class="text">Filter</span>
+            <div class="menu">
+                <div class="header">
+                    <i class="sort amount up alternate icon"></i>
+                    Sorting
+                </div>
+                <div class="item" data-sort="creation_desc">
+                    {% if options.sort != "stars" and options.sort != "name" and options.order == "desc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Newest
+                </div>
+                <div class="item" data-sort="creation_asc">
+                    {% if options.sort != "stars" and options.sort != "name" and options.order == "asc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Oldest
+                </div>
+                <div class="item" data-sort="stars_desc">
+                    {% if options.sort == "stars" and options.order == "desc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Most starred
+                </div>
+                <div class="item" data-sort="stars_asc">
+                    {% if options.sort == "stars" and options.order == "asc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Least starred
+                </div>
+                <div class="item" data-sort="name_asc">
+                    {% if options.sort == "name" and options.order == "asc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Name ascending
+                </div>
+                <div class="item" data-sort="name_desc">
+                    {% if options.sort == "name" and options.order == "desc" %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Name descending
+                </div>
+                <div class="divider"></div>
+                <div class="header">
+                    <i class="filter icon"></i>
+                    Options
+                </div>
+                <div class="item" data-option="archived" data-value="{% if options.archived %} 0 {% else %} 1 {% endif %}">
+                    {% if options.archived %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Show archived
+                </div>
+                <div class="item" data-option="fork" data-value="{% if options.forked %} 0 {% else %} 1 {% endif %}">
+                    {% if options.forked %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Show forks
+                </div>
+                <div class="item" data-option="mirror" data-value="{% if options.mirrored %} 0 {% else %} 1 {% endif %}">
+                    {% if options.mirrored %}
+                        <i class="check icon"></i>
+                    {% endif %}
+                    Show mirrors
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="two wide column"></div>
+    <div class="right aligned seven wide column"></div>
+</div>
+
+<div id="repo-list" class="ui segments">
+    {% if repositories | length > 0 %}
+        {% include "explore_list_component.html" %}
+    {% else %}
+        <div class="ui visible center aligned negative message">
+            <div class="header">
+                No repositories found matching your filters
+            </div>
+            <p>
+                {% if user is undefined or not user.admin %}
+                    Please contact your GitArena administrator if you believe this is a mistake
+                {% else %}
+                    Please open an issue if you believe this is a mistake
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener("DOMContentLoaded", () => {
+        $(".ui.dropdown").dropdown({
+            onChange: function(_value, _text, item) {
+                let domElement = $(item["0"]);
+
+                let searchParams = new URLSearchParams(window.location.search);
+
+                let dataSort = domElement.attr("data-sort");
+
+                if (dataSort !== undefined) {
+                    searchParams.set("sort", dataSort);
+
+                    if (searchParams.has("offset")) {
+                        searchParams.delete("offset");
+                    }
+                }
+
+                let dataOption = domElement.attr("data-option");
+                let dataValue = domElement.attr("data-value");
+
+                if (dataOption !== undefined && dataValue !== undefined) {
+                    searchParams.set(dataOption, dataValue.trim());
+                }
+
+                window.location.search = searchParams.toString();
+            }
+        });
+    });
+</script>
+{% endblock %}

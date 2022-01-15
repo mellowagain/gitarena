@@ -1,0 +1,116 @@
+{% for repo in repositories %}
+<div class="ui segment"
+     {% if loop.last %}
+     data-hx-get="/explore?{{ query_string }}&offset={{ options.offset + 20 }}"
+     data-hx-trigger="revealed"
+     data-hx-target="#repo-list"
+     data-hx-swap="beforeend"
+     data-hx-indicator="#segment-loading-indicator"
+     {% endif %}
+>
+    <div class="ui two column grid">
+        <div class="column">
+            <div class="ui grid">
+                <div class="two wide computer only column">
+                    <a href="/{{ repo.owner_name }}">
+                        <img class="ui circular image" src="/api/avatar/{{ repo.owner_id }}" alt="{{ repo.owner_name }}">
+                    </a>
+                </div>
+                <div class="sixteen wide mobile fourteen wide computer column no-left-padding">
+                    <a href="/{{ repo.owner_name }}/{{ repo.name }}">{{ repo.owner_name }} / <b>{{ repo.name }}</b></a>
+
+                    <div class="project-visibility">
+                        {% if repo.visibility == "public" %}
+                            <div class="project-visibility popup" data-content="Public: Project is accessible even without being logged in">
+                                <i class="globe project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "internal" %}
+                            <div class="project-visibility popup" data-content="Internal: Project is only accessible to logged in users">
+                                <i class="eye slash project visibility icon"></i>
+                            </div>
+                        {% elif repo.visibility == "private" %}
+                            <div class="project-visibility popup" data-content="Private: Project is only accessible to users that have been explicitly given access">
+                                <i class="lock project visibility icon"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if repo.description is not empty %}
+                        <br>
+                        <span class="ui text">{{ repo.description }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="right aligned column computer only">
+            <div class="ui grid">
+                <div class="seven wide right aligned column">
+                    {% if repo.archived %}
+                        <div class="ui orange horizontal label">
+                            <div class="popup" data-content="Files as well as other resources in this repository are read-only">
+                                Archived
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if repo.disabled %}
+                        <div class="ui red horizontal label">
+                            <div class="popup" data-content="Repository is disabled for public access. You can still see this repository because you're an admin">
+                                Disabled
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="three wide center aligned column">
+                    <a href="/{{ repo.owner_name | urlencode }}/{{ repo.name | urlencode }}/stargazers" title="Stars">
+                        <i class="star icon"></i>
+                        {{ repo.stars }}
+                        <span class="sr-only">stars</span>
+                    </a>
+                </div>
+                <div class="three wide center aligned column">
+                    <a href="/{{ repo.owner_name | urlencode }}/{{ repo.name | urlencode }}/issues" title="Issues">
+                        <i class="bug icon"></i>
+                        {{ repo.issues }}
+                        <span class="sr-only">issues</span>
+                    </a>
+                </div>
+                <div class="three wide center aligned column">
+                    <a href="/{{ repo.owner_name | urlencode }}/{{ repo.name | urlencode }}/mergers" title="Merge requests">
+                        <i class="code branch icon"></i>
+                        {{ repo.merge_requests }}
+                        <span class="sr-only">merge requests</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if loop.last %}
+<div id="segment-loading-indicator" class="ui loading segment htmx-indicator">
+    <p></p>
+</div>
+
+<noscript>
+    <div class="ui segment">
+        {% set previous_offset = options.offset - 20 %}
+        {% set disable_previous = previous_offset <= 0 %}
+
+        <a class="icon item" href="/explore?{{ query_string }}&offset={{ previous_offset }}" {% if disable_previous %} disabled {% endif %}>
+            <button class="ui {% if disable_previous %} disabled {% endif %} labeled icon button" {% if disable_previous %} disabled {% endif %}>
+                <i class="left chevron icon"></i>
+                Previous page
+            </button>
+        </a>
+
+        <a class="icon item" href="/explore?{{ query_string }}&offset={{ options.offset + 20 }}">
+            <button class="ui right floated right labeled icon button">
+                Next page
+                <i class="right chevron icon"></i>
+            </button>
+        </a>
+    </div>
+</noscript>
+{% endif %}
+{% endfor %}
