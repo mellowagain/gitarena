@@ -29,7 +29,7 @@ function loadReadme(username, repo, tree) {
 
             if (isMarkdown) {
                 insertScript("/static/js/third_party/marked.min.js");
-                content = marked(content);
+                content = marked.parse(content);
             }
 
             fileName = DOMPurify.sanitize(fileName, {
