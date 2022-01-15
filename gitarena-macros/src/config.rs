@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Formatter};
+
 use proc_macro2::TokenStream;
 use proc_macro::TokenStream as ProcMacroTS;
 use quote::{quote, ToTokens};
@@ -77,11 +79,20 @@ impl ToTokens for SettingsList {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct Setting {
     identifier: Ident,
     key: String,
     ty: Type
+}
+
+impl Debug for Setting {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Setting")
+            .field("identifier", &self.identifier)
+            .field("key", &self.key)
+            .finish()
+    }
 }
 
 impl Setting {
