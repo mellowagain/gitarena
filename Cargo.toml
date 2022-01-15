@@ -1,6 +1,6 @@
 [package]
 name = "gitarena"
-version = "0.0.1"
+version = "0.0.0"
 authors = ["mellowagain <me@cutegirl.tech>"]
 edition = "2021"
 readme = "README.md"

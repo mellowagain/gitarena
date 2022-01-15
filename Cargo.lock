@@ -2038,7 +2038,7 @@ dependencies = [
 
 [[package]]
 name = "gitarena"
-version = "0.0.1"
+version = "0.0.0"
 dependencies = [
  "actix-files",
  "actix-identity",
@@ -2062,7 +2062,7 @@ dependencies = [
  "futures-locks",
  "git-repository",
  "git2",
- "gitarena-macros 0.0.1",
+ "gitarena-macros 0.0.0 (git+https://github.com/mellowagain/gitarena)",
  "heim",
  "hex",
  "image",
@@ -2112,8 +2112,8 @@ dependencies = [
 
 [[package]]
 name = "gitarena-macros"
-version = "0.0.1"
-source = "git+https://github.com/mellowagain/gitarena#49037d9b609d09b10eaa9e52b3ce91563de25918"
+version = "0.0.0"
+source = "git+https://github.com/mellowagain/gitarena#d5bbc3bd6878102edd6238d4d57c0ee9baf4a5c1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
