@@ -122,7 +122,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
     info!("New user registered: {} (id {})", &user.username, &user.id);
 
     Ok(if request.get_header("hx-request").is_some() {
-        HttpResponse::Ok().header("hx-redirect", "/").header("hx-refresh", "true").finish()
+        HttpResponse::Ok().append_header(("hx-redirect", "/")).append_header(("hx-refresh", "true")).finish()
     } else {
         HttpResponse::Ok().json(RegisterJsonResponse {
             success: true,

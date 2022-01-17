@@ -5,6 +5,7 @@ use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::User;
 
+use actix_web::http::header::{CONTENT_TYPE, WWW_AUTHENTICATE};
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
 use sqlx::{Executor, Postgres};
@@ -19,12 +20,12 @@ pub(crate) async fn validate_repo_access<'e, E>(repo: Option<Repository>, conten
         Some(repo) => {
             if repo.visibility != RepoVisibility::Public {
                 return match login_flow(request, executor, content_type).await? {
-                    Either::A(user) => Ok(Either::A((Some(user), repo))),
-                    Either::B(response) => Ok(Either::B(response))
+                    Either::Left(user) => Ok(Either::Left((Some(user), repo))),
+                    Either::Right(response) => Ok(Either::Right(response))
                 }
             }
 
-            Ok(Either::A((None, repo)))
+            Ok(Either::Left((None, repo)))
         },
         None => {
             // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
@@ -40,18 +41,18 @@ pub(crate) async fn login_flow<'e, E>(request: &HttpRequest, executor: E, conten
     where E: Executor<'e, Database = Postgres>
 {
     if !basic_auth::is_present(request).await {
-        return Ok(Either::B(prompt(content_type).await));
+        return Ok(Either::Right(prompt(content_type).await));
     }
 
-    Ok(Either::A(basic_auth::authenticate(request, executor).await?))
+    Ok(Either::Left(basic_auth::authenticate(request, executor).await?))
 }
 
 #[allow(clippy::async_yields_async)] // False positive on this method
 #[instrument]
 pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
     HttpResponse::Unauthorized()
-        .header("Content-Type", content_type)
-        .header("WWW-Authenticate", "Basic realm=\"GitArena\", charset=\"UTF-8\"")
+        .append_header((CONTENT_TYPE, content_type))
+        .append_header((WWW_AUTHENTICATE, "Basic realm=\"GitArena\", charset=\"UTF-8\""))
         .finish()
 }
 

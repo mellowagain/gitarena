@@ -13,6 +13,7 @@ use crate::routes::repository::GitRequest;
 
 use std::path::Path;
 
+use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use async_process::{Command, Stdio};
@@ -51,8 +52,8 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         .await?;
 
     let user = match basic_auth::login_flow(&request, &mut transaction, "application/x-git-receive-pack-result").await? {
-        Either::A(user) => user,
-        Either::B(response) => return Ok(response)
+        Either::Left(user) => user,
+        Either::Right(response) => return Ok(response)
     };
 
     let mut repo = match repo_option {
@@ -97,7 +98,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
         warn!("Upload pack ref update list provided by client is empty");
 
         return Ok(HttpResponse::NoContent()
-            .header("Content-Type", accept_header)
+            .append_header((CONTENT_TYPE, accept_header))
             .finish());
     }
 
@@ -163,6 +164,6 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     transaction.commit().await?;
 
     Ok(HttpResponse::Ok()
-        .header("Content-Type", accept_header)
+        .append_header((CONTENT_TYPE, accept_header))
         .body(output_writer.serialize().await?))
 }

@@ -8,6 +8,7 @@ use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
+use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
@@ -49,8 +50,8 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
         .await?;
 
     let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
-        Either::A(tuple) => tuple,
-        Either::B(response) => return Ok(response)
+        Either::Left(tuple) => tuple,
+        Either::Right(response) => return Ok(response)
     };
 
     if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
@@ -80,18 +81,18 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
             let output = ls_refs(body, &git2repo).await?;
 
             HttpResponse::Ok()
-                .header("Content-Type", accept_header)
+                .append_header((CONTENT_TYPE, accept_header))
                 .body(output)
         }
         "fetch" => {
             let output = fetch(body, &git2repo).await?;
 
             HttpResponse::Ok()
-                .header("Content-Type", accept_header)
+                .append_header((CONTENT_TYPE, accept_header))
                 .body(output)
         }
         _ => HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
-                .header("Content-Type", accept_header)
+                .append_header((CONTENT_TYPE, accept_header))
                 .finish()
     };
 

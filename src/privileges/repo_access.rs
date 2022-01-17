@@ -1,11 +1,9 @@
-use std::fmt::Display;
-
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 
 #[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
-#[sqlx(rename = "access_level", rename_all = "lowercase")]
+#[sqlx(type_name = "access_level", rename_all = "lowercase")]
 #[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
 pub(crate) enum AccessLevel {
     Viewer,

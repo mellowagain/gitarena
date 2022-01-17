@@ -13,7 +13,7 @@ use std::path::Path;
 use actix_web::http::header::CONTENT_DISPOSITION;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use async_compression::tokio_02::write::GzipEncoder;
+use async_compression::tokio::write::GzipEncoder;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
 use git_repository::objs::tree::EntryMode;
@@ -63,7 +63,7 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUse
     let gzip_data = encoder.into_inner();
 
     Ok(HttpResponse::Ok()
-        .header(CONTENT_DISPOSITION, format!("attachment; filename=\"{}.tar.gz\"", &repo.name))
+        .append_header((CONTENT_DISPOSITION, format!("attachment; filename=\"{}.tar.gz\"", &repo.name)))
         .body(gzip_data))
 }
 
@@ -152,7 +152,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, 
     let data = cursor.into_inner();
 
     Ok(HttpResponse::Ok()
-        .header(CONTENT_DISPOSITION, format!("attachment; filename=\"{}.zip\"", &repo.name))
+        .append_header((CONTENT_DISPOSITION, format!("attachment; filename=\"{}.zip\"", &repo.name)))
         .body(data))
 }
 

@@ -6,6 +6,7 @@ use crate::prelude::*;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
+use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
@@ -65,12 +66,12 @@ async fn upload_pack_info_refs<'e, E>(repo_option: Option<Repository>, service: 
     }
 
     let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, executor).await? {
-        Either::A(tuple) => tuple,
-        Either::B(response) => return Ok(response)
+        Either::Left(tuple) => tuple,
+        Either::Right(response) => return Ok(response)
     };
 
     Ok(HttpResponse::Ok()
-        .header("Content-Type", "application/x-git-upload-pack-advertisement")
+        .append_header((CONTENT_TYPE, "application/x-git-upload-pack-advertisement"))
         .body(capabilities(service).await?))
 }
 
@@ -78,8 +79,8 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
     let mut transaction = db_pool.begin().await?;
 
     let _user = match basic_auth::login_flow(request, &mut transaction, "application/x-git-receive-pack-advertisement").await? {
-        Either::A(user) => user,
-        Either::B(response) => return Ok(response)
+        Either::Left(user) => user,
+        Either::Right(response) => return Ok(response)
     };
 
     // TODO: Check if the user has actually `write` access to the repository
@@ -95,6 +96,6 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
     transaction.commit().await?;
 
     Ok(HttpResponse::Ok()
-        .header("Content-Type", "application/x-git-receive-pack-advertisement")
+        .append_header((CONTENT_TYPE, "application/x-git-receive-pack-advertisement"))
         .body(output))
 }

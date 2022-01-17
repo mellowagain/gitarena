@@ -127,7 +127,7 @@ macro_rules! render_template {
         }
 
         let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
-        Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
+        Ok(actix_web::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
         let domain = $crate::config::get_optional_setting::<String, _>("domain", &mut $transaction).await?.unwrap_or_default();
@@ -141,6 +141,6 @@ macro_rules! render_template {
 
         $transaction.commit().await?;
 
-        Ok(actix_web::dev::HttpResponseBuilder::new($status).body(template))
+        Ok(actix_web::HttpResponseBuilder::new($status).body(template))
     }};
 }

@@ -45,7 +45,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
 
     // User is already logged in
     if id.identity().is_some() {
-        return Ok(HttpResponse::Found().header(LOCATION, redirect).finish());
+        return Ok(HttpResponse::Found().append_header((LOCATION, redirect)).finish());
     }
 
     // TODO: Maybe allow login with email address?
@@ -119,7 +119,7 @@ pub(crate) async fn post_login(body: web::Form<LoginRequest>, request: HttpReque
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::Found().header(LOCATION, redirect).finish())
+    Ok(HttpResponse::Found().append_header((LOCATION, redirect)).finish())
 }
 
 #[derive(Deserialize)]

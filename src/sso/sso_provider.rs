@@ -13,6 +13,7 @@ use oauth2::url::Url;
 use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use qstring::QString;
 use sqlx::{Executor, PgPool, Postgres};
+use tokio_compat_02::FutureExt;
 use tracing_unwrap::OptionExt;
 
 #[async_trait]
@@ -93,6 +94,7 @@ pub(crate) trait SSOProvider {
 
         Ok(client.exchange_code(code)
             .request_async(async_http_client)
+            .compat()
             .await
             .with_context(|| format!("Failed to contact {} in order to exchange oauth token", &self.get_name()))?)
     }

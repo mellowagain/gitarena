@@ -8,10 +8,9 @@ use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
-use actix_web::dev::HttpResponseBuilder;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use async_compat::Compat;
 use derive_more::{Display, Error};
@@ -202,7 +201,7 @@ async fn render_error_async(renderer: &GitArenaError, message: &str) -> HttpResp
         ErrorDisplayType::Git => render_git_error(message).await,
         _ => unreachable!("Only html and git errors require async handling")
     }.unwrap_or_else(|err| {
-        error!("In addition, another error occurred while handling the previous error: {}", err);
+        error!("Error occurred while handling the error below! This should not happen. Please open an issue. Caused by: {}", err);
         InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response()
     })
 }

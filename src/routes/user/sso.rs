@@ -33,7 +33,7 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
     // TODO: Save token in cache to check for CSRF
     let (url, _token) = SSOProvider::generate_auth_url(provider_impl.deref(), &provider, &db_pool).await?;
 
-    Ok(HttpResponse::TemporaryRedirect().header(LOCATION, url.to_string()).finish())
+    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, url.to_string())).finish())
 }
 
 #[route("/sso/{service}/callback", method = "GET", err = "html")]
@@ -103,7 +103,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::Found().header(LOCATION, "/").finish())
+    Ok(HttpResponse::Found().append_header((LOCATION, "/")).finish())
 }
 
 #[derive(Deserialize)]

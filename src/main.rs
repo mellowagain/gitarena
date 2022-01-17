@@ -9,12 +9,11 @@ use std::{env, io};
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::cookie::SameSite;
-use actix_web::dev::{Service, ServiceResponse};
-use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, LOCATION};
-use actix_web::http::{HeaderValue, Method};
-use actix_web::middleware::normalize::TrailingSlash;
-use actix_web::middleware::NormalizePath;
-use actix_web::web::{route, to};
+use actix_web::dev::Service;
+use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue, LOCATION};
+use actix_web::http::Method;
+use actix_web::middleware::{NormalizePath, TrailingSlash};
+use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
 use fs_extra::dir;
@@ -48,7 +47,7 @@ mod verification;
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let mut log_guard = init_logger()?;
+    let mut _log_guard = init_logger()?;
 
     let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
     env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
@@ -65,7 +64,7 @@ async fn main() -> Result<()> {
         .connect(db_url.as_str())
         .await?;
 
-    log_guard = config::init(&db_pool, log_guard).await.context("Unable to initialize config in database")?;
+    _log_guard = config::init(&db_pool, _log_guard).await.context("Unable to initialize config in database")?;
 
     licenses::init().await?;
 
@@ -81,20 +80,20 @@ async fn main() -> Result<()> {
         let identity_service = IdentityService::new(
             CookieIdentityPolicy::new(secret.as_bytes())
                 .name("gitarena-auth")
-                .max_age(TimeDuration::days(10).whole_seconds())
+                .max_age(TimeDuration::days(10))
                 .http_only(true)
                 .same_site(SameSite::Lax)
                 .secure(secure)
         );
 
         let mut app = App::new()
-            .data(db_pool.clone()) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
+            .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
-                    let mut res: ServiceResponse = fut.await?;
+                    let mut res = fut.await?;
 
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response
@@ -119,7 +118,7 @@ async fn main() -> Result<()> {
             .configure(routes::proxy::init)
             .configure(routes::user::init)
             .configure(routes::repository::init) // Repository routes need to be always last
-            .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().header(LOCATION, "/static/img/favicon.ico").finish()));
+            .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish()));
 
         if cfg!(debug_assertions) {
             app = app.service(
@@ -161,8 +160,10 @@ fn init_logger() -> Result<WorkerGuard> {
             .add_directive(level.into())
             .add_directive("askalono=warn".parse().unwrap_or_log())
             .add_directive("globset=info".parse().unwrap_or_log())
+            .add_directive("h2=info".parse().unwrap_or_log())
             .add_directive("hyper=info".parse().unwrap_or_log())
             .add_directive("reqwest=info".parse().unwrap_or_log())
+            .add_directive("rustls=info".parse().unwrap_or_log())
             .add_directive("sqlx=warn".parse().unwrap_or_log())
     });
 

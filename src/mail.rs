@@ -14,8 +14,9 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Local};
 use derive_more::Display;
 use gitarena_macros::from_config;
+use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::{AsyncSmtpTransport, Mailbox, Message, Tokio02Connector, Tokio02Transport};
+use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
 use sqlx::{Executor, FromRow, Pool, Postgres};
 
@@ -157,13 +158,13 @@ async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {
     let credentials = Credentials::new(username, password);
 
     let transporter = if tls {
-        AsyncSmtpTransport::<Tokio02Connector>::relay(server.as_str())
+        AsyncSmtpTransport::<Tokio1Executor>::relay(server.as_str())
             .context("Unable to create TLS connection")?
             .port(port as u16)
             .credentials(credentials)
             .build()
     } else {
-        AsyncSmtpTransport::<Tokio02Connector>::builder_dangerous(server.as_str())
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(server.as_str())
             .port(port as u16)
             .credentials(credentials)
             .build()

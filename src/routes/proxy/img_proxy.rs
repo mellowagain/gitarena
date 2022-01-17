@@ -9,6 +9,7 @@ use gitarena_macros::route;
 use log::debug;
 use reqwest::Client;
 use serde::Deserialize;
+use tokio_compat_02::FutureExt;
 
 const PASSTHROUGH_HEADERS: [&str; 6] = [
     "cache-control",
@@ -93,7 +94,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
     debug!("Image proxy request for {}", &url);
 
-    let gateway_response = client.send().await.context("Failed to send request to gateway")?;
+    let gateway_response = client.send().compat().await.context("Failed to send request to gateway")?;
     let mut response = HttpResponse::build(gateway_response.status());
 
     if let Some(length) = gateway_response.content_length() {
@@ -101,7 +102,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
             die!(BAD_GATEWAY, "Content too big");
         }
 
-        response.header(CONTENT_LENGTH, length.to_string());
+        response.append_header((CONTENT_LENGTH, length.to_string()));
     }
 
     for (name, value) in gateway_response.headers() {
@@ -109,7 +110,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
         let value_str = value.to_str()?;
 
         if PASSTHROUGH_HEADERS.contains(&lowered_name.as_str()) {
-            response.header(name.as_str(), value_str);
+            response.append_header((name.as_str(), value_str));
         }
 
         if lowered_name == "content-type" && !ACCEPTED_MIME_TYPES.contains(&value_str) {

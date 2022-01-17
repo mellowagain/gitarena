@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Type;
 
 #[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
-#[sqlx(rename = "sso_provider", rename_all = "lowercase")]
+#[sqlx(type_name = "sso_provider", rename_all = "lowercase")]
 #[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
 pub(crate) enum SSOProviderType {
     BitBucket,

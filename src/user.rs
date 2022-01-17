@@ -113,7 +113,6 @@ impl WebUser {
 impl FromRequest for WebUser {
     type Error = GitArenaError;
     type Future = Pin<Box<dyn Future<Output = Result<WebUser, Self::Error>>>>;
-    type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
         match req.app_data::<Data<PgPool>>() {

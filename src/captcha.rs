@@ -5,6 +5,7 @@ use log::{error, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Postgres};
+use tokio_compat_02::FutureExt;
 
 pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(token: &String, executor: E) -> Result<bool> {
     let api_key = match get_optional_setting::<String, _>("hcaptcha.site_key", executor).await? {
@@ -16,9 +17,11 @@ pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(tok
         .post("https://hcaptcha.com/siteverify")
         .form(&[("response", token), ("secret", &api_key)])
         .send()
+        .compat()
         .await
         .context("Unable to verify hCaptcha captcha token.")?
         .json()
+        .compat()
         .await
         .context("Unable to convert hCaptcha response into Json structure.")?;
 

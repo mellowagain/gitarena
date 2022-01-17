@@ -76,7 +76,7 @@ pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str, limit: u
     let mut results = Vec::<Oid>::with_capacity(limit);
 
     let mut rev_walk = repo.revwalk()?;
-    rev_walk.set_sorting(git2::Sort::TIME)?;
+    rev_walk.set_sorting(Sort::TIME)?;
 
     match Oid::from_str(reference) {
         Ok(oid) => rev_walk.push(oid)?,

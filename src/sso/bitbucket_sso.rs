@@ -14,6 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
+use tokio_compat_02::FutureExt;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct BitBucketSSO;
@@ -28,9 +29,11 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
             .header(AUTHORIZATION, format!("Bearer {}", token))
             .header(USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION")))
             .send()
+            .compat()
             .await
             .context("Failed to connect to BitBucket api")?
             .json::<T>()
+            .compat()
             .await
             .context("Failed to parse BitBucket response as JSON")?)
     }

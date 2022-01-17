@@ -10,7 +10,7 @@ use std::path::Path;
 use std::time::SystemTime;
 
 use actix_multipart::Multipart;
-use actix_web::web::Buf;
+use actix_web::http::header::{CACHE_CONTROL, LAST_MODIFIED};
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDateTime};
@@ -20,6 +20,7 @@ use image::ImageFormat;
 use reqwest::Client;
 use serde::Deserialize;
 use sqlx::PgPool;
+use tokio_compat_02::FutureExt;
 
 #[route("/api/avatar/{user_id}", method = "GET", err = "text")]
 pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -85,7 +86,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
         Err(err) => return Err(err.into())
     };
 
-    let content_disposition = field.content_disposition().ok_or_else(|| err!(BAD_REQUEST, "No content disposition"))?;
+    let content_disposition = field.content_disposition();
     let file_name = content_disposition.get_filename().ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
     let extension = file_name.rsplit_once('.')
         .map(|(_, ext)| ext.to_owned())
@@ -94,7 +95,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     let mut bytes = web::BytesMut::new();
 
     while let Some(chunk) = field.try_next().await.context("Failed to read multipart data chunk")? {
-        bytes.extend_from_slice(chunk.bytes());
+        bytes.extend_from_slice(chunk.as_ref());
     }
 
     let frozen_bytes = bytes.freeze();
@@ -113,7 +114,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
         img.save_with_format(path, ImageFormat::Jpeg)?;
 
         Ok(())
-    }).await.context("Failed to save image")?;
+    }).await.context("Failed to save image")?.context("Failed to save image")?;
 
     Ok(HttpResponse::Created().finish())
 }
@@ -140,11 +141,11 @@ async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<Ht
 
             // Image is still OK on client side cache
             if duration > Duration::seconds(0) {
-                return Ok(HttpResponse::NotModified().header("last-modified", format).finish());
+                return Ok(HttpResponse::NotModified().append_header((LAST_MODIFIED, format)).finish());
             }
         }
 
-        response.header("last-modified", format);
+        response.append_header((LAST_MODIFIED, format));
     }
 
     let file_content = fs::read(path)?;
@@ -162,17 +163,17 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
         client = client.header("if-modified-since", header_value);
     }
 
-    let gateway_response = client.send().await.context("Failed to send request to Gravatar")?;
+    let gateway_response = client.send().compat().await.context("Failed to send request to Gravatar")?;
     let mut response = HttpResponse::build(gateway_response.status());
 
     let headers = gateway_response.headers();
 
     if let Some(cache_control) = headers.get("cache-control") {
-        response.header("cache-control", cache_control.to_str()?);
+        response.append_header((CACHE_CONTROL, cache_control.to_str()?));
     }
 
     if let Some(last_modified) = headers.get("last-modified") {
-        response.header("last-modified", last_modified.to_str()?);
+        response.append_header((LAST_MODIFIED, last_modified.to_str()?));
     }
 
     Ok(response.streaming(ResponseStream {

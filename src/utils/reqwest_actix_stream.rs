@@ -32,6 +32,7 @@ impl Stream for PayloadStream {
                 PayloadError::UnknownLength => io::Error::new(io::ErrorKind::Other, "PayloadError::UnknownLength"),
                 PayloadError::Http2Payload(e) => io::Error::new(io::ErrorKind::Other, format!("PayloadError::Http2Payload {:?}", e)),
                 PayloadError::Io(e) => e,
+                _ => io::Error::new(io::ErrorKind::Other, "_") // PayloadError is marked as #[non_exhaustive]
             }))),
             Poll::Ready(None) => Poll::Ready(None),
         }

@@ -109,10 +109,10 @@ pub(crate) async fn put_star(uri: web::Path<GitRequest>, web_user: WebUser, db_p
 
     if has_star(&user, &repo, &mut transaction).await? {
         remove_star(&user, &repo, &mut transaction).await?;
-        response.header("x-gitarena-action", "remove");
+        response.append_header(("x-gitarena-action", "remove"));
     } else {
         add_star(&user, &repo, &mut transaction).await?;
-        response.header("x-gitarena-action", "add");
+        response.append_header(("x-gitarena-action", "add"));
     }
 
     let count = get_star_count(&repo, &mut transaction).await?;
