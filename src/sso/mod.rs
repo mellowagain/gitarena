@@ -5,6 +5,7 @@ use sqlx::FromRow;
 mod bitbucket_sso;
 mod github_sso;
 mod gitlab_sso;
+mod oauth2_awc_client;
 pub(crate) mod oauth_request;
 pub(crate) mod sso_provider;
 pub(crate) mod sso_provider_type;

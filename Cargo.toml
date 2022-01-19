@@ -7,11 +7,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 description = "Software development platform with built-in vcs, issue tracking and code review"
-exclude = [
-    "_admin_area_screenshots/*",
-    "_TODO.txt",
-    "ARCHITECTURE.md"
-]
+homepage = "https://gitarena.com"
 
 [[bin]]
 name = "gitarena"
@@ -27,7 +23,7 @@ actix-files = "0.6.0-beta.14"
 actix-identity = "0.4.0-beta.7"
 actix-multipart = "0.4.0-beta.12"
 actix-rt = "2.6.0"
-actix-web = "4.0.0-beta.20"
+actix-web = { version = "4.0.0-beta.20", features = ["secure-cookies"] }
 anyhow = "1.0.52"
 askalono = { version = "0.4.4", git = "https://github.com/mellowagain/askalono" } # Currently uses my own fork until https://github.com/jpeddicord/askalono/pull/72 is merged
 async-compat = "0.2.1"
@@ -35,6 +31,7 @@ async-compression = { version = "0.3.8", features = ["gzip", "tokio"] }
 async-process = "1.3.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.52"
+awc = { version = "3.0.0-beta.18", features = ["rustls"] } # awc uses rustls for the time being because of version conflicts with openssl
 base64 = "0.13.0"
 bstr = "0.2.16"
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -58,11 +55,10 @@ memmem = "0.1.1"
 multimap = { version = "0.8.3", features = ["serde"] }
 notify = "5.0.0-pre.13"
 num_cpus = "1.13.1"
-oauth2 = { version = "4.1.0", git = "https://github.com/mellowagain/oauth2-rs" }
+oauth2 = { version = "4.1.0", default-features = false, git = "https://github.com/mellowagain/oauth2-rs" }
 qstring = "0.7.2"
 rand = "0.8.4"
 regex = "1.5.4"
-reqwest = { version = "0.11.9", features = ["json", "native-tls", "stream"] } # This dependency is planned to be replaced by awc
 rust-argon2 = { version = "1.0.0", features = ["crossbeam-utils"] }
 rustc_version_runtime = "0.2.1"
 serde = { version = "1.0.133", features = ["derive"] }
@@ -72,7 +68,6 @@ tempfile = "3.3.0"
 tera = { version = "1.15.0", features = ["builtins"] }
 time = "0.3.5"
 tinytemplate = "1.2.1"
-tokio-compat-02 = "0.2" # Only one crate (and it's dependencies) still use tokio 0.2: *reqwest* - All usages with it should call .compat() before .await
 tokio-tar = "0.3.0"
 toml = "0.5.8"
 tracing = "0.1.29"

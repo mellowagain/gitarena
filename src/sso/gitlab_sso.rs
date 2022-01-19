@@ -1,42 +1,40 @@
+use crate::prelude::AwcExtensions;
 use crate::sso::oauth_request::{OAuthRequest, SerdeMap};
 use crate::sso::sso_provider::{DatabaseSSOProvider, SSOProvider};
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
-use crate::{config, crypto};
+use crate::{config, crypto, err};
 
 use std::sync::Once;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
+use awc::Client;
+use awc::http::header::{AUTHORIZATION, USER_AGENT};
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
-use reqwest::Client;
-use reqwest::header::{AUTHORIZATION, USER_AGENT};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
-use tokio_compat_02::FutureExt;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitLabSSO;
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
-        let client = Client::new();
+        let client = Client::gitarena();
 
         Ok(client.get(format!("https://gitlab.com/api/v4/{}", endpoint).as_str())
-            .header(AUTHORIZATION, format!("Bearer {}", token))
-            .header(USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION")))
+            .append_header((AUTHORIZATION, format!("Bearer {}", token)))
+            .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
             .send()
-            .compat()
             .await
-            .context("Failed to connect to GitLab api")?
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitLab api: {}", err))?
             .json::<T>()
-            .compat()
             .await
-            .context("Failed to parse GitLab response as JSON")?)
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse GitLab response as JSON: {}", err))?)
     }
 }
 
@@ -55,7 +53,7 @@ impl DatabaseSSOProvider for GitLabSSO {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl SSOProvider for GitLabSSO {
     fn get_name(&self) -> &'static str {
         "gitlab"

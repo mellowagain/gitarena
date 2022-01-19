@@ -2,21 +2,20 @@ use crate::config;
 use crate::sso::bitbucket_sso::BitBucketSSO;
 use crate::sso::github_sso::GitHubSSO;
 use crate::sso::gitlab_sso::GitLabSSO;
+use crate::sso::oauth2_awc_client::async_http_client;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::async_http_client;
 use oauth2::url::Url;
 use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use qstring::QString;
 use sqlx::{Executor, PgPool, Postgres};
-use tokio_compat_02::FutureExt;
 use tracing_unwrap::OptionExt;
 
-#[async_trait]
+#[async_trait(?Send)]
 pub(crate) trait SSOProvider {
     fn get_name(&self) -> &'static str;
 
@@ -94,7 +93,6 @@ pub(crate) trait SSOProvider {
 
         Ok(client.exchange_code(code)
             .request_async(async_http_client)
-            .compat()
             .await
             .with_context(|| format!("Failed to contact {} in order to exchange oauth token", &self.get_name()))?)
     }

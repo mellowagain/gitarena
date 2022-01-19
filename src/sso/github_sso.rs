@@ -1,41 +1,39 @@
-use crate::{config, crypto};
+use crate::prelude::AwcExtensions;
 use crate::sso::oauth_request::{OAuthRequest, SerdeMap};
 use crate::sso::sso_provider::{DatabaseSSOProvider, SSOProvider};
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
+use crate::{config, crypto, err};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
+use awc::Client;
+use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
-use reqwest::Client;
-use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
-use tokio_compat_02::FutureExt;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitHubSSO;
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
-        let client = Client::new();
+        let client = Client::gitarena();
 
         Ok(client.get(format!("https://api.github.com/{}", endpoint).as_str())
-            .header(ACCEPT, "application/vnd.github.v3+json")
-            .header(AUTHORIZATION, format!("token {}", token))
-            .header(USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION")))
+            .append_header((ACCEPT, "application/vnd.github.v3+json"))
+            .append_header((AUTHORIZATION, format!("token {}", token)))
+            .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
             .send()
-            .compat()
             .await
-            .context("Failed to connect to GitHub api")?
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitHub api: {}", err))?
             .json::<T>()
-            .compat()
             .await
-            .context("Failed to parse GitHub response as JSON")?)
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse GitHub response as JSON: {}", err))?)
     }
 }
 
@@ -54,7 +52,7 @@ impl DatabaseSSOProvider for GitHubSSO {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl SSOProvider for GitHubSSO {
     fn get_name(&self) -> &'static str {
         "github"

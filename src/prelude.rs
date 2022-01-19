@@ -3,6 +3,8 @@ use crate::user::{User, WebUser};
 use actix_web::HttpRequest;
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
+use awc::http::header::USER_AGENT;
+use awc::{Client, ClientBuilder};
 use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
@@ -204,5 +206,20 @@ impl ContextExtensions for Context {
         self.try_insert("user", user)?;
 
         Ok(())
+    }
+}
+
+pub(crate) const USER_AGENT_STR: &str = concat!("GitArena ", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
+
+pub(crate) trait AwcExtensions {
+    /// Returns a [Client](awc::client::Client) configured with GitArena's default user agent
+    fn gitarena() -> Client;
+}
+
+impl AwcExtensions for Client {
+    fn gitarena() -> Client {
+        ClientBuilder::new()
+            .add_default_header((USER_AGENT, USER_AGENT_STR))
+            .finish()
     }
 }

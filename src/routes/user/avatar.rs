@@ -1,7 +1,6 @@
 use crate::mail::Email;
-use crate::prelude::HttpRequestExtensions;
+use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
-use crate::utils::reqwest_actix_stream::ResponseStream;
 use crate::{die, err};
 
 use std::fs;
@@ -13,14 +12,14 @@ use actix_multipart::Multipart;
 use actix_web::http::header::{CACHE_CONTROL, LAST_MODIFIED};
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
+use awc::Client;
+use awc::http::header::IF_MODIFIED_SINCE;
 use chrono::{Duration, NaiveDateTime};
 use futures::TryStreamExt;
 use gitarena_macros::{from_config, route};
 use image::ImageFormat;
-use reqwest::Client;
 use serde::Deserialize;
 use sqlx::PgPool;
-use tokio_compat_02::FutureExt;
 
 #[route("/api/avatar/{user_id}", method = "GET", err = "text")]
 pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -157,13 +156,15 @@ async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<Ht
 async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpResponse> {
     let md5hash = md5::compute(email);
 
-    let mut client = Client::new().get(&format!("https://www.gravatar.com/avatar/{:x}?s=500&r=pg&d=identicon", md5hash));
+    let url = format!("https://www.gravatar.com/avatar/{:x}?s=500&r=pg&d=identicon", md5hash);
+
+    let mut client = Client::gitarena().get(url);
 
     if let Some(header_value) = request.get_header("if-modified-since") {
-        client = client.header("if-modified-since", header_value);
+        client = client.append_header((IF_MODIFIED_SINCE, header_value));
     }
 
-    let gateway_response = client.send().compat().await.context("Failed to send request to Gravatar")?;
+    let gateway_response = client.send().await.map_err(|err| err!(BAD_GATEWAY, "Failed to send request to Gravatar: {}", err))?;
     let mut response = HttpResponse::build(gateway_response.status());
 
     let headers = gateway_response.headers();
@@ -176,9 +177,7 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
         response.append_header((LAST_MODIFIED, last_modified.to_str()?));
     }
 
-    Ok(response.streaming(ResponseStream {
-        stream: gateway_response.bytes_stream()
-    }))
+    Ok(response.streaming(gateway_response))
 }
 
 #[derive(Deserialize)]

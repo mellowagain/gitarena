@@ -2,7 +2,6 @@ use std::future::Future;
 use std::time::Instant;
 
 pub(crate) mod identifiers;
-pub(crate) mod reqwest_actix_stream;
 pub(crate) mod oid;
 
 /// Counts the amount of seconds the provided [Future][future] took to execute.

@@ -1,15 +1,13 @@
-use crate::die;
-use crate::prelude::HttpRequestExtensions;
-use crate::utils::reqwest_actix_stream::ResponseStream;
+use crate::{die, err};
+use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 
-use actix_web::http::header::CONTENT_LENGTH;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result};
+use anyhow::Result;
+use awc::Client;
+use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
 use gitarena_macros::route;
 use log::debug;
-use reqwest::Client;
 use serde::Deserialize;
-use tokio_compat_02::FutureExt;
 
 const PASSTHROUGH_HEADERS: [&str; 6] = [
     "cache-control",
@@ -78,32 +76,28 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
     let bytes = hex::decode(url)?;
     let url = String::from_utf8(bytes)?;
 
-    let mut client = Client::new().get(&url);
+    let mut client = Client::gitarena().get(&url);
 
     if let Some(header_value) = request.get_header("if-modified-since") {
-        client = client.header("if-modified-since", header_value);
+        client = client.append_header((IF_MODIFIED_SINCE, header_value));
     }
 
     if let Some(header_value) = request.get_header("if-none-match") {
-        client = client.header("if-none-match", header_value);
+        client = client.append_header((IF_NONE_MATCH, header_value));
     }
 
     if let Some(header_value) = request.get_header("cache-control") {
-        client = client.header("cache-control", header_value);
+        client = client.append_header((CACHE_CONTROL, header_value));
     }
 
     debug!("Image proxy request for {}", &url);
 
-    let gateway_response = client.send().compat().await.context("Failed to send request to gateway")?;
+    let gateway_response = client.send().await.map_err(|err| err!(BAD_GATEWAY, "Failed to send request to gateway: {}", err))?;
     let mut response = HttpResponse::build(gateway_response.status());
 
-    if let Some(length) = gateway_response.content_length() {
-        if length > 5242880 {
-            die!(BAD_GATEWAY, "Content too big");
-        }
-
-        response.append_header((CONTENT_LENGTH, length.to_string()));
-    }
+    /*if length > 5242880 {
+        die!(BAD_GATEWAY, "Content too big");
+    }*/
 
     for (name, value) in gateway_response.headers() {
         let lowered_name = name.as_str().to_lowercase();
@@ -118,9 +112,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
         }
     }
 
-    Ok(response.streaming(ResponseStream {
-        stream: gateway_response.bytes_stream()
-    }))
+    Ok(response.streaming(gateway_response))
 }
 
 #[derive(Deserialize)]
