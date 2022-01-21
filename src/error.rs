@@ -195,7 +195,7 @@ impl ResponseError for GitArenaError {
                 // This method is not async which means we can't call async renders such as HTML and Git
                 // As a workaround, we let a middleware (which is async) render these two error types
                 // More information: https://github.com/actix/actix-web/discussions/2593
-                builder.body("NEEDS TO BE RENDERED BY MIDDLEWARE")
+                builder.finish()
             },
             ErrorDisplayType::Htmx(inner) => {
                 // TODO: Send partial htmx instead
