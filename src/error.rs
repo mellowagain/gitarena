@@ -9,8 +9,8 @@ use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
-use actix_web::body::{BoxBody, EitherBody};
-use actix_web::dev::{MessageBody, ResponseHead, Service, ServiceRequest, ServiceResponse};
+use actix_web::body::{BoxBody, MessageBody};
+use actix_web::dev::{ResponseHead, Service, ServiceRequest, ServiceResponse};
 use actix_web::Error as ActixError;
 use actix_web::error::InternalError;
 use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
@@ -216,13 +216,13 @@ impl ResponseError for GitArenaError {
 pub(crate) fn error_renderer_middleware<S, B>(request: ServiceRequest, service: &S) -> impl Future<Output = ActixResult<ServiceResponse<impl MessageBody>>> + 'static
     where S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixError>,
           S::Future: 'static,
-          B: MessageBody + 'static,
+          B: MessageBody + 'static
 {
     let future = service.call(request);
 
     async {
-        let response = future.await?.map_into_boxed_body();
-        let gitarena_error = response.response().extensions().remove::<GitArenaError>();
+        let mut response = future.await?.map_into_boxed_body();
+        let gitarena_error = response.response_mut().extensions_mut().remove::<GitArenaError>();
 
         Ok(if let Some(error) = gitarena_error {
             match error.display_type {
