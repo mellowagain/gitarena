@@ -10,7 +10,7 @@ use std::result::Result as StdResult;
 use std::sync::Arc;
 
 use actix_web::body::{BoxBody, EitherBody};
-use actix_web::dev::{ResponseHead, Service, ServiceRequest, ServiceResponse};
+use actix_web::dev::{MessageBody, ResponseHead, Service, ServiceRequest, ServiceResponse};
 use actix_web::Error as ActixError;
 use actix_web::error::InternalError;
 use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
@@ -213,15 +213,16 @@ impl ResponseError for GitArenaError {
 }
 
 /// Middleware which renders HTML and Git errors
-pub(crate) fn error_renderer_middleware<S>(request: ServiceRequest, service: &S) -> impl Future<Output = ActixResult<ServiceResponse<EitherBody<BoxBody>>>> + 'static
-    where S: Service<ServiceRequest, Response = ServiceResponse<EitherBody<BoxBody>>, Error = ActixError>,
-          S::Future: 'static
+pub(crate) fn error_renderer_middleware<S, B>(request: ServiceRequest, service: &S) -> impl Future<Output = ActixResult<ServiceResponse<impl MessageBody>>> + 'static
+    where S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixError>,
+          S::Future: 'static,
+          B: MessageBody + 'static,
 {
     let future = service.call(request);
 
     async {
-        let response: ServiceResponse<EitherBody<BoxBody>> = future.await?;
-        let gitarena_error = response.response().extensions().get::<GitArenaError>().cloned();
+        let response = future.await?.map_into_boxed_body();
+        let gitarena_error = response.response().extensions().remove::<GitArenaError>();
 
         Ok(if let Some(error) = gitarena_error {
             match error.display_type {
@@ -231,7 +232,7 @@ pub(crate) fn error_renderer_middleware<S>(request: ServiceRequest, service: &S)
                     response.map_body(|head, _| {
                         head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
 
-                        EitherBody::<BoxBody>::new(result.unwrap_or_else(|err| error_render_error(err, head)))
+                        result.unwrap_or_else(|err| error_render_error(err, head))
                     })
                 },
                 ErrorDisplayType::Git => {
@@ -244,9 +245,9 @@ pub(crate) fn error_renderer_middleware<S>(request: ServiceRequest, service: &S)
                                 head.status = StatusCode::OK;
                                 head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/octet-stream"));
 
-                                EitherBody::<BoxBody>::new(body)
+                                body
                             }
-                            Err(err) => EitherBody::<BoxBody>::new(error_render_error(err, head))
+                            Err(err) => error_render_error(err, head)
                         }
                     })
                 }
