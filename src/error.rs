@@ -4,17 +4,21 @@ use crate::templates;
 
 use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::future::Future;
 use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
+use actix_web::body::{BoxBody, EitherBody};
+use actix_web::dev::{ResponseHead, Service, ServiceRequest, ServiceResponse};
+use actix_web::Error as ActixError;
 use actix_web::error::InternalError;
+use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
 use actix_web::http::StatusCode;
+use actix_web::Result as ActixResult;
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
-use async_compat::Compat;
 use derive_more::{Display, Error};
-use futures::executor;
 use log::error;
 use serde_json::json;
 use tera::Context;
@@ -142,6 +146,27 @@ pub(crate) struct GitArenaError {
     pub(crate) display_type: ErrorDisplayType
 }
 
+impl GitArenaError {
+    fn status_code(&self) -> StatusCode {
+        match self.source.downcast_ref::<WithStatusCode>() {
+            Some(with_code) => with_code.code,
+            None => StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+
+    fn should_display_message(&self) -> bool {
+        self.source.downcast_ref::<WithStatusCode>().map_or_else(|| false, |w| w.display)
+    }
+
+    fn message(&self) -> String {
+        if self.should_display_message() {
+            self.source.to_string()
+        } else {
+            self.status_code().canonical_reason().map_or_else(String::new, str::to_owned)
+        }
+    }
+}
+
 impl Debug for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Debug::fmt(self.source.deref(), f)
@@ -156,29 +181,21 @@ impl Display for GitArenaError {
 
 impl ResponseError for GitArenaError {
     fn status_code(&self) -> StatusCode {
-        match self.source.downcast_ref::<WithStatusCode>() {
-            Some(with_code) => with_code.code,
-            None => StatusCode::INTERNAL_SERVER_ERROR
-        }
+        GitArenaError::status_code(&self)
     }
 
     #[allow(clippy::async_yields_async)] // False positive on this method
     fn error_response(&self) -> HttpResponse {
         let mut builder = HttpResponseBuilder::new(self.status_code());
 
-        let display = self.source.downcast_ref::<WithStatusCode>().map_or_else(|| false, |w| w.display);
-        let message = if display {
-            self.source.to_string()
-        } else {
-            self.status_code().canonical_reason().unwrap_or_default().to_string()
-        };
-
         match &self.display_type {
             ErrorDisplayType::Html | ErrorDisplayType::Git => {
-                // TODO: Refactor this to no longer block the whole thread
-                executor::block_on(Compat::new(async {
-                    render_error_async(self, message.as_str()).await
-                }))
+                builder.extensions_mut().insert::<GitArenaError>(self.clone());
+
+                // This method is not async which means we can't call async renders such as HTML and Git
+                // As a workaround, we let a middleware (which is async) render these two error types
+                // More information: https://github.com/actix/actix-web/discussions/2593
+                builder.body("NEEDS TO BE RENDERED BY MIDDLEWARE")
             },
             ErrorDisplayType::Htmx(inner) => {
                 // TODO: Send partial htmx instead
@@ -188,46 +205,94 @@ impl ResponseError for GitArenaError {
                 error.error_response()
             }
             ErrorDisplayType::Json => builder.json(json!({
-                "error": message
+                "error": self.message()
             })),
-            ErrorDisplayType::Plain => builder.body(message)
+            ErrorDisplayType::Plain => builder.body(self.message())
         }
     }
 }
 
-async fn render_error_async(renderer: &GitArenaError, message: &str) -> HttpResponse {
-    match renderer.display_type {
-        ErrorDisplayType::Html => render_html_error(renderer.status_code(), message).await,
-        ErrorDisplayType::Git => render_git_error(message).await,
-        _ => unreachable!("Only html and git errors require async handling")
-    }.unwrap_or_else(|err| {
-        error!("Error occurred while handling the error below! This should not happen. Please open an issue. Caused by: {}", err);
-        InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response()
-    })
+/// Middleware which renders HTML and Git errors
+pub(crate) fn error_renderer_middleware<S>(request: ServiceRequest, service: &S) -> impl Future<Output = ActixResult<ServiceResponse<EitherBody<BoxBody>>>> + 'static
+    where S: Service<ServiceRequest, Response = ServiceResponse<EitherBody<BoxBody>>, Error = ActixError>,
+          S::Future: 'static
+{
+    let future = service.call(request);
+
+    async {
+        let response: ServiceResponse<EitherBody<BoxBody>> = future.await?;
+        let gitarena_error = response.response().extensions().get::<GitArenaError>().cloned();
+
+        Ok(if let Some(error) = gitarena_error {
+            match error.display_type {
+                ErrorDisplayType::Html => {
+                    let result = render_html_error(&error).await;
+
+                    response.map_body(|head, _| {
+                        head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
+
+                        EitherBody::<BoxBody>::new(result.unwrap_or_else(|err| error_render_error(err, head)))
+                    })
+                },
+                ErrorDisplayType::Git => {
+                    let result = render_git_error(&error).await;
+
+                    response.map_body(|head, _| {
+                        match result {
+                            Ok(body) => {
+                                // Git doesn't show client errors if the response isn't 200 for some reason
+                                head.status = StatusCode::OK;
+                                head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/octet-stream"));
+
+                                EitherBody::<BoxBody>::new(body)
+                            }
+                            Err(err) => EitherBody::<BoxBody>::new(error_render_error(err, head))
+                        }
+                    })
+                }
+                _ => unreachable!("Only html and Git error responses are handled in the async middleware")
+            }
+        } else {
+            response
+        })
+    }
 }
 
-async fn render_html_error(code: StatusCode, message: &str) -> Result<HttpResponse> {
+async fn render_html_error(renderer: &GitArenaError) -> Result<BoxBody> {
     let mut context = Context::new();
-    context.try_insert("error", message)?;
+    context.try_insert("error", renderer.message().as_str())?;
 
     if cfg!(debug_assertions) {
         context.try_insert("debug", &true)?;
     }
 
-    let template_name = format!("error/{}.html", code.as_u16());
+    let template_name = format!("error/{}.html", renderer.status_code().as_u16());
     let template = templates::TERA.read().await.render(template_name.as_str(), &context)?;
 
-    Ok(HttpResponseBuilder::new(code).body(template))
+    Ok(BoxBody::new(template))
 }
 
-async fn render_git_error(message: &str) -> Result<HttpResponse> {
+async fn render_git_error(renderer: &GitArenaError) -> Result<BoxBody> {
     let mut writer = GitWriter::new();
-    writer.write_text_sideband(Band::Error, format!("error: {}", message)).await?;
+    writer.write_text_sideband(Band::Error, format!("error: {}", renderer.message())).await?;
 
-    let response = writer.serialize().await?;
+    Ok(BoxBody::new(writer.serialize().await?))
+}
 
-    // Git doesn't show client errors if the response isn't 200 for some reason
-    Ok(HttpResponse::Ok().body(response))
+/// Returns generic Actix 500 Internal Server Error body and logs a error message similar to Rust's ICE message.
+/// This function is meant to be called when a error renderer errors.
+fn error_render_error(err: Error, head: &mut ResponseHead) -> BoxBody {
+    error!("| Failed to render error response: {}", err);
+    error!("| GitArena encountered a error when rendering a error. This is a bug.");
+    error!("| We would appreciate a bug report: https://github.com/mellowagain/gitarena/issues/new?labels=priority%3A%3Ahigh%2C+type%3A%3Acrash");
+
+    // Fall back to the generic actix response
+    let actix_response = InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response();
+
+    head.status = StatusCode::INTERNAL_SERVER_ERROR;
+    head.headers = actix_response.headers().clone();
+
+    actix_response.into_body()
 }
 
 pub(crate) trait ExtendWithStatusCode<T> {

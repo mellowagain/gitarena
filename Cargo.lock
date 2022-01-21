@@ -1794,7 +1794,7 @@ dependencies = [
  "futures-locks",
  "git-repository",
  "git2",
- "gitarena-macros 0.0.0 (git+https://github.com/mellowagain/gitarena)",
+ "gitarena-macros",
  "heim",
  "hex",
  "image",
@@ -1832,17 +1832,6 @@ dependencies = [
 [[package]]
 name = "gitarena-macros"
 version = "0.0.0"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "gitarena-macros"
-version = "0.0.0"
-source = "git+https://github.com/mellowagain/gitarena#d5bbc3bd6878102edd6238d4d57c0ee9baf4a5c1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

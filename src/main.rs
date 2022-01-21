@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use crate::error::error_renderer_middleware;
+
 use std::env::VarError;
 use std::error::Error;
 use std::path::Path;
@@ -8,8 +10,9 @@ use std::{env, io};
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
-use actix_web::dev::Service;
+use actix_web::dev::{Service, ServiceResponse};
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue, LOCATION};
 use actix_web::http::Method;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
@@ -93,7 +96,7 @@ async fn main() -> Result<()> {
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
-                    let mut res = fut.await?;
+                    let mut res: ServiceResponse<EitherBody<BoxBody>> = fut.await?;
 
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response
@@ -112,6 +115,7 @@ async fn main() -> Result<()> {
                     Ok(res)
                 }
             })
+            .wrap_fn(error_renderer_middleware)
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
             .configure(routes::init)
