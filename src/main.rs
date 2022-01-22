@@ -124,12 +124,15 @@ async fn main() -> Result<()> {
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish()));
 
-        if cfg!(debug_assertions) {
+        let debug_mode = cfg!(debug_assertions);
+        let serve_static = matches!(env::var("SERVE_STATIC_FILES"), Ok(_) | Err(VarError::NotUnicode(_))) || debug_mode;
+
+        if serve_static {
             app = app.service(
                 Files::new("/static", "./static")
                     .show_files_listing()
-                    .use_etag(false)
-                    .use_last_modified(false)
+                    .use_etag(!debug_mode)
+                    .use_last_modified(!debug_mode)
                     .use_hidden_files()
             );
         }
