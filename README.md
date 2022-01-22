@@ -30,12 +30,22 @@ In order to run GitArena, the following environment variable needs to be set:
 * `BIND_ADDRESS`: [Socket address](https://doc.rust-lang.org/nightly/std/net/trait.ToSocketAddrs.html) to bind to, for example `localhost:8080` or `127.0.0.1:80` (Port is required)
 
 After start GitArena will automatically create the required table as defined
-in `schema.sql`. Please edit the `settings` table to configure your
-GitArena instance. In the future this will be do-able in the web ui.
+in `schema.sql` and exit. Please edit the `settings` table to configure your
+GitArena instance and start GitArena again. In the future this will be do-able in the web ui.
 
 Afterwards your GitArena instance will be fully set up and you can register
 your account. In order to access the admin panel (`/admin`), please set
 `admin` on your user account in the `users` table to `true`.
+
+### Logs
+
+By default, GitArena will write logs to a file (instead of the console) when built with `--release`. In order
+to view the logs, look for a file in the `logs` directory ending with the current date.
+
+### Optional environment variables
+
+* `MAX_POOL_CONNECTIONS`: Max amount of Postgres connection pool should keep open and ready to use.
+* `SERVE_STATIC_FILES`: If this environment variable is set, GitArena will serve `/static` resources. This is not experimental. It is instead recommended to let your reverse proxy serve them.
 
 ## Screenshots
 
