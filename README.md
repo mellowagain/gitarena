@@ -44,8 +44,8 @@ to view the logs, look for a file in the `logs` directory ending with the curren
 
 ### Optional environment variables
 
-* `MAX_POOL_CONNECTIONS`: Max amount of Postgres connection pool should keep open and ready to use.
-* `SERVE_STATIC_FILES`: If this environment variable is set, GitArena will serve `/static` resources. This is not experimental. It is instead recommended to let your reverse proxy serve them.
+* `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
+* `SERVE_STATIC_FILES`: If this environment variable is set, GitArena will serve `/static` resources. This is experimental. It is instead recommended configuring your reverse proxy to serve them.
 
 ## Screenshots
 
