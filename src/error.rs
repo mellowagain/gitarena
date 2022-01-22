@@ -268,7 +268,7 @@ async fn render_html_error(renderer: &GitArenaError) -> Result<BoxBody> {
     }
 
     let template_name = format!("error/{}.html", renderer.status_code().as_u16());
-    let template = templates::TERA.read().await.render(template_name.as_str(), &context)?;
+    let template = templates::render(template_name.as_str(), &context).await?;
 
     Ok(BoxBody::new(template))
 }

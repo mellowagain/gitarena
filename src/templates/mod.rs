@@ -1,16 +1,10 @@
 use crate::templates::plain::Template;
 use crate::utils::time_function;
 
-use std::path::Path;
-
 use anyhow::Result;
-use async_compat::Compat;
-use futures::executor;
-use futures_locks::RwLock;
 use lazy_static::lazy_static;
-use log::{error, info};
-use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use tera::Tera;
+use log::info;
+use tera::{Context, Tera};
 
 mod filters;
 mod tests;
@@ -18,65 +12,95 @@ mod tests;
 pub(crate) mod plain;
 pub(crate) mod web;
 
+#[cfg(debug_assertions)]
+type GlobalTera = futures_locks::RwLock<Tera>;
+
+#[cfg(debug_assertions)]
+type TemplateInitResult = notify::RecommendedWatcher;
+
+#[cfg(not(debug_assertions))]
+type GlobalTera = Tera;
+
+#[cfg(not(debug_assertions))]
+type TemplateInitResult = ();
+
 lazy_static! {
     pub(crate) static ref VERIFY_EMAIL: Template = parse_template("email/user/verify_email.txt".to_owned());
-    pub(crate) static ref TERA: RwLock<Tera> = RwLock::new(init_tera());
+    pub(crate) static ref TERA: GlobalTera = init_tera();
 }
 
-pub(crate) async fn init() -> Result<RecommendedWatcher> {
-    info!("Loading templates. This may take a while.");
+pub(crate) async fn init() -> Result<TemplateInitResult> {
+    info!("Loading templates. This may take a few seconds.");
 
+    // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
     let elapsed = time_function(|| async {
-        // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
+        #[cfg(debug_assertions)]
         TERA.read().await;
+
+        #[cfg(not(debug_assertions))]
+        let _ = TERA.get_template("<null>");
     }).await;
 
     info!("Successfully loaded templates. Took {} seconds.", elapsed);
 
-    let mut watcher = RecommendedWatcher::new(|result: std::result::Result<Event, NotifyError>| {
-        let event = match result {
-            Ok(event) => event,
-            Err(err) => {
-                error!("Failed to unwrap file system notify event: {}", err);
+    #[cfg(debug_assertions)]
+    {
+        use std::path::Path;
+
+        use actix_rt::Runtime;
+        use log::error;
+        use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
+
+        let mut watcher = RecommendedWatcher::new(|result: std::result::Result<Event, NotifyError>| {
+            let event = match result {
+                Ok(event) => event,
+                Err(err) => {
+                    error!("Failed to unwrap file system notify event: {}", err);
+                    return;
+                }
+            };
+
+            if !event.kind.is_modify() {
                 return;
             }
-        };
 
-        if !event.kind.is_modify() {
-            return;
-        }
+            for path in &event.paths {
+                if path.is_dir() {
+                    return;
+                }
 
-        for path in &event.paths {
-            if path.is_dir() {
-                return;
-            }
-
-            match path.file_name() {
-                Some(file_name) => match file_name.to_str() {
-                    Some(file_name) => if !file_name.ends_with(".html") {
-                        return
+                match path.file_name() {
+                    Some(file_name) => match file_name.to_str() {
+                        Some(file_name) => if !file_name.ends_with(".html") {
+                            return
+                        }
+                        None => return
                     }
                     None => return
                 }
-                None => return
             }
-        }
 
-        info!("Detected modification in templates directory, reloading...");
+            if let Ok(runtime) = Runtime::new() {
+                info!("Detected modification in templates directory, reloading...");
 
-        executor::block_on(Compat::new(async {
-            match TERA.write().await.full_reload() {
-                Ok(_) => info!("Successfully reloaded templates."),
-                Err(err) => error!("Failed to reload templates: {}", err)
+                runtime.block_on(async {
+                    match TERA.write().await.full_reload() {
+                        Ok(_) => info!("Successfully reloaded templates."),
+                        Err(err) => error!("Failed to reload templates: {}", err)
+                    }
+                });
             }
-        }));
-    })?;
+        })?;
 
-    watcher.watch(Path::new("templates/html"), RecursiveMode::Recursive)?;
+        watcher.watch(Path::new("templates/html"), RecursiveMode::Recursive)?;
 
-    info!("Started watching ./templates/html for changes...");
+        info!("Started watching ./templates/html for changes...");
 
-    Ok(watcher)
+        Ok(watcher)
+    }
+
+    #[cfg(not(debug_assertions))]
+    Ok(())
 }
 
 fn parse_template(template_path: String) -> Template {
@@ -86,7 +110,15 @@ fn parse_template(template_path: String) -> Template {
     }
 }
 
-fn init_tera() -> Tera {
+pub(crate) async fn render(template: &str, context: &Context) -> Result<String> {
+    #[cfg(debug_assertions)]
+    return Ok(TERA.read().await.render(template, context)?);
+
+    #[cfg(not(debug_assertions))]
+    return Ok(TERA.render(template, context)?);
+}
+
+fn init_tera() -> GlobalTera {
     let mut tera = match Tera::new("templates/html/**/*") {
         Ok(tera) => tera,
         Err(err) => panic!("{}", err)
@@ -99,7 +131,11 @@ fn init_tera() -> Tera {
     tera.register_tester("none", tests::none);
     tera.register_tester("some", tests::some);
 
-    tera
+    #[cfg(debug_assertions)]
+    return futures_locks::RwLock::new(tera);
+
+    #[cfg(not(debug_assertions))]
+    return tera;
 }
 
 #[macro_export]
@@ -126,7 +162,7 @@ macro_rules! render_template {
             $context.try_insert("debug", &true)?;
         }
 
-        let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
+        let template = $crate::templates::render($template_name, &$context).await?;
         Ok(actix_web::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
@@ -137,7 +173,7 @@ macro_rules! render_template {
             $context.try_insert("debug", &true)?;
         }
 
-        let template = $crate::templates::TERA.read().await.render($template_name, &$context)?;
+        let template = $crate::templates::render($template_name, &$context).await?;
 
         $transaction.commit().await?;
 
