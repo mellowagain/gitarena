@@ -47,7 +47,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
     {
         use std::path::Path;
 
-        use actix_rt::Runtime;
+        use actix_web::rt::Runtime;
         use log::error;
         use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
 

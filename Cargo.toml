@@ -22,7 +22,6 @@ lto = true
 actix-files = "0.6.0-beta.14"
 actix-identity = "0.4.0-beta.7"
 actix-multipart = "0.4.0-beta.12"
-actix-rt = "2.6.0"
 actix-web = { version = "4.0.0-beta.20", features = ["secure-cookies"] }
 anyhow = "1.0.52"
 askalono = { version = "0.4.4", git = "https://github.com/mellowagain/askalono" } # Currently uses my own fork until https://github.com/jpeddicord/askalono/pull/72 is merged

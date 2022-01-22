@@ -1774,7 +1774,6 @@ dependencies = [
  "actix-files",
  "actix-identity",
  "actix-multipart",
- "actix-rt",
  "actix-web",
  "anyhow",
  "askalono",

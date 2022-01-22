@@ -48,7 +48,7 @@ mod user;
 mod utils;
 mod verification;
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> Result<()> {
     let mut _log_guard = init_logger()?;
 
