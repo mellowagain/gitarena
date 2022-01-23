@@ -35,13 +35,37 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
+    context.try_insert("repo", &repo)?;
+    context.try_insert("repo_owner_name", &username)?;
+    context.try_insert("issues_count", &0_i32)?;
+    context.try_insert("merge_requests_count", &0_i32)?;
+    context.try_insert("releases_count", &0_i32)?;
+    context.try_insert("tree", tree_name)?;
+    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
+    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
+    context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;
+
+    if let Some(user) = web_user.as_ref() {
+        context.try_insert("user", user)?;
+    }
+
     let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
+        Err(GitoxideFindError::NotFound(_)) => {
+            if tree_name == repo.default_branch {
+                context.try_insert("files", &Vec::<()>::new())?;
+
+                return render_template!("repo/index.html", context, transaction);
+            } else {
+                die!(NOT_FOUND, "Not found")
+            }
+        }
     }?; // Handle 404
 
     let full_tree_name = loose_ref.name.as_bstr().to_str()?;
+
+    context.try_insert("full_tree", full_tree_name)?;
 
     let mut buffer = Vec::<u8>::new();
     let mut cache = GitoxideCacheList::default();
@@ -116,23 +140,8 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         }
     }
 
-    context.try_insert("repo", &repo)?;
-    context.try_insert("repo_owner_name", &username)?;
-    context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;
     context.try_insert("files", &files)?;
-    context.try_insert("tree", tree_name)?;
-    context.try_insert("full_tree", full_tree_name)?;
-    context.try_insert("issues_count", &0_i32)?;
-    context.try_insert("merge_requests_count", &0_i32)?;
-    context.try_insert("releases_count", &0_i32)?;
     context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
-
-    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
-    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
-
-    if let Some(user) = web_user.as_ref() {
-        context.try_insert("user", user)?;
-    }
 
     let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;

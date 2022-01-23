@@ -125,44 +125,46 @@
 
     <div class="ui grid">
         <div class="seven wide column">
-            <div class="ui labeled icon top left pointing dropdown button">
-                <i class="code branch icon"></i>
-                <span class="text">{{ tree }}</span>
-                <div class="menu">
-                    <div class="ui search icon input">
-                        <i class="search icon"></i>
-                        <input type="text" name="search" placeholder="Search branch or tag">
-                    </div>
-                    <div class="divider"></div>
-                    <div class="header">
-                        <i class="code branch icon"></i>
-                        Branches
-                    </div>
-                    {% for branch in branches %}
-                        <div class="item {% if branch == tree %} active selected {% endif %}">
-                            <code>{{ branch }}</code>
-
-                            {% if branch == repo.default_branch %}
-                                <span class="pill">Default</span>
-                            {% endif %}
+            {% if branches | length > 0 %}
+                <div class="ui labeled icon top left pointing dropdown button">
+                    <i class="code branch icon"></i>
+                    <span class="text">{{ tree }}</span>
+                    <div class="menu">
+                        <div class="ui search icon input">
+                            <i class="search icon"></i>
+                            <input type="text" name="search" placeholder="Search branch or tag">
                         </div>
-                    {% endfor %}
-                    <div class="divider"></div>
-                    <div class="header">
-                        <i class="tags icon"></i>
-                        Tags
-                    </div>
-                    {% for tag in tags %}
-                        <div class="item {% if tag == tree %} active selected {% endif %}">
-                            <code>{{ tag }}</code>
-
-                            {% if loop.last %}
-                                <span class="pill">Latest</span>
-                            {% endif %}
+                        <div class="divider"></div>
+                        <div class="header">
+                            <i class="code branch icon"></i>
+                            Branches
                         </div>
-                    {% endfor %}
+                        {% for branch in branches %}
+                            <div class="item {% if branch == tree %} active selected {% endif %}">
+                                <code>{{ branch }}</code>
+
+                                {% if branch == repo.default_branch %}
+                                    <span class="pill">Default</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        <div class="divider"></div>
+                        <div class="header">
+                            <i class="tags icon"></i>
+                            Tags
+                        </div>
+                        {% for tag in tags %}
+                            <div class="item {% if tag == tree %} active selected {% endif %}">
+                                <code>{{ tag }}</code>
+
+                                {% if loop.last %}
+                                    <span class="pill">Latest</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
 
         {#
@@ -199,107 +201,142 @@
         </div>
     </div>
 
-    <table class="ui celled table">
-        <thead>
-        <tr>
-            <th colspan="3" class="non-bold">
-                <div class="ui grid">
-                    <div class="ten wide column">
-                        {% if last_commit.author_uid is some %}
-                            <a href="/{{ last_commit.author_name }}">
-                                <img class="ui avatar image" src="/api/avatar/{{ last_commit.author_uid }}" alt="{{ last_commit.author_name }}">
+    {% if files | length > 0 %}
+        <table class="ui celled table">
+            <thead>
+            <tr>
+                <th colspan="3" class="non-bold">
+                    <div class="ui grid">
+                        <div class="ten wide column">
+                            {% if last_commit.author_uid is some %}
+                                <a href="/{{ last_commit.author_name }}">
+                                    <img class="ui avatar image" src="/api/avatar/{{ last_commit.author_uid }}" alt="{{ last_commit.author_name }}">
+                                    <b>{{ last_commit.author_name }}</b>
+                                </a>
+                            {% else %}
+                                <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.email | urlencode }}" alt="{{ last_commit.author_name }}">
                                 <b>{{ last_commit.author_name }}</b>
+                            {% endif %}
+
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
+                                {{ last_commit.message | split(pat="\n") | first }}
                             </a>
-                        {% else %}
-                            <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.email | urlencode }}" alt="{{ last_commit.author_name }}">
-                            <b>{{ last_commit.author_name }}</b>
-                        {% endif %}
+                        </div>
+                        <div class="right aligned six wide column">
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
+                                <code class="element computer only">{{ last_commit.oid | truncate(length=7, end="") }}</code>
+                                {{ last_commit.time | human_time }}
+                            </a>
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/commits" class="element computer only">
+                                <i class="history icon"></i>
+                                <b>{{ commits_count }}</b> commits
+                            </a>
+                        </div>
+                    </div>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                    <tr>
+                        <td>
+                            {% if file.file_type == 16384 %}
+                                {# Directory #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/directory/{{ file.file_name | urlencode }}">
+                                    <i class="folder icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 33188 %}
+                                {# Regular file #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
+                                    <i class="file icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 33261 %}
+                                {# Executable #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
+                                    <i class="file icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 40960 %}
+                                {# Symlink #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/symlink/{{ file.file_name | urlencode }}">
+                                    <i class="linkify icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 57344 %}
+                                {# Submodule #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/submodule/{{ file.file_name | urlencode }}">
+                                    <i class="folder outline icon"></i>
+                                    {{ file.file_name }} @ <code>{{ file.submodule_target_oid | truncate(length=7, end="") }}</code>
+                                </a>
+                            {% else %}
+                                {# Unknown #}
+                                <i class="file icon"></i>
+                                {{ file.file_name }}
+                            {% endif %}
+                        </td>
+                        <td class="no-left-border">
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ file.commit.oid }}">
+                                {{ file.commit.message | split(pat="\n") | first }}
+                            </a>
+                        </td>
+                        <td class="ui right aligned no-left-border">{{ file.commit.time | human_time }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
-                            {{ last_commit.message | split(pat="\n") | first }}
-                        </a>
-                    </div>
-                    <div class="right aligned six wide column">
-                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
-                            <code class="element computer only">{{ last_commit.oid | truncate(length=7, end="") }}</code>
-                            {{ last_commit.time | human_time }}
-                        </a>
-                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/commits" class="element computer only">
-                            <i class="history icon"></i>
-                            <b>{{ commits_count }}</b> commits
-                        </a>
-                    </div>
+        <div id="readme-parent" class="ui segments" data-hx-disable>
+            <div class="ui segment">
+                <b id="readme-file-name">readme</b>
+            </div>
+
+            <div class="ui segment">
+                <div id="readme" class="ui fluid placeholder">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
                 </div>
-            </th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for file in files %}
-        <tr>
-            <td>
-                {% if file.file_type == 16384 %}
-                    {# Directory #}
-                    <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/directory/{{ file.file_name | urlencode }}">
-                        <i class="folder icon"></i>
-                        {{ file.file_name }}
-                    </a>
-                {% elif file.file_type == 33188 %}
-                    {# Regular file #}
-                    <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
-                        <i class="file icon"></i>
-                        {{ file.file_name }}
-                    </a>
-                {% elif file.file_type == 33261 %}
-                    {# Executable #}
-                    <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ file.file_name | urlencode }}">
-                        <i class="file icon"></i>
-                        {{ file.file_name }}
-                    </a>
-                {% elif file.file_type == 40960 %}
-                    {# Symlink #}
-                    <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/symlink/{{ file.file_name | urlencode }}">
-                        <i class="linkify icon"></i>
-                        {{ file.file_name }}
-                    </a>
-                {% elif file.file_type == 57344 %}
-                    {# Submodule #}
-                    <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/submodule/{{ file.file_name | urlencode }}">
-                        <i class="folder outline icon"></i>
-                        {{ file.file_name }} @ <code>{{ file.submodule_target_oid | truncate(length=7, end="") }}</code>
-                    </a>
-                {% else %}
-                    {# Unknown #}
-                    <i class="file icon"></i>
-                    {{ file.file_name }}
-                {% endif %}
-            </td>
-            <td class="no-left-border">
-                <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ file.commit.oid }}">
-                    {{ file.commit.message | split(pat="\n") | first }}
-                </a>
-            </td>
-            <td class="ui right aligned no-left-border">{{ file.commit.time | human_time }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-
-    <div id="readme-parent" class="ui segments" data-hx-disable>
-        <div class="ui segment">
-            <b id="readme-file-name">readme</b>
-        </div>
-
-        <div class="ui segment">
-            <div id="readme" class="ui fluid placeholder">
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
             </div>
         </div>
-    </div>
+    {% else %}
+        <div class="ui placeholder segment">
+            <div class="ui icon header">
+                <i class="code branch icon"></i>
+                <div class="content">
+                    Repository is empty
+
+                    <div class="element computer only sub header">
+                        {% if user and repo.owner == user.id %}
+                            Try pushing your existing code:
+                            <br>
+                            <br>
+
+                            <div class="ui two column centered grid">
+                                <div class="column">
+                                    <div class="ui compact segment">
+                                        <code>
+                                            git remote add origin {{ domain | safe }}/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}.git <br>
+                                            git branch -M {{ tree }} <br>
+                                            git push -u origin {{ tree }}
+                                        </code>
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif user is undefined or not user.admin %}
+                            Please contact your GitArena administrator if you believe this is a mistake.
+                        {% else %}
+                            Please open an issue if you believe this is a mistake.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </main>
 {% endblock %}
 
@@ -338,7 +375,10 @@
             button.children().first().addClass(`${currentElement.attr("data-icon")} icon`);
         });
 
-        loadReadme("{{ repo_owner_name }}", "{{ repo.name }}", "{{ tree }}");
+        {% if tree %}
+            loadReadme("{{ repo_owner_name }}", "{{ repo.name }}", "{{ tree }}");
+        {% endif %}
     });
 </script>
 {% endblock %}
+
