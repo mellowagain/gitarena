@@ -9,6 +9,7 @@ use chrono_humanize::{Accuracy, HumanTime, Tense};
 use git2::Version as LibGit2Version;
 use gitarena_macros::route;
 use heim::units::{Information, information, Time};
+use lazy_static::lazy_static;
 use sqlx::PgPool;
 use tera::Context;
 
@@ -44,7 +45,7 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
 
     // Groups
 
-    context.try_insert("groups_count", &0)?; // TODO: Update once groups are a thing
+    context.try_insert("groups_count", &0_i32)?; // TODO: Update once groups are a thing
 
     // Repos
 
@@ -70,16 +71,22 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     }
 
     // Components
-
-    let rustc_version = format!("{}", rustc_version_runtime::version());
-    context.try_insert("rustc_version", rustc_version.as_str())?;
+    context.try_insert("rustc_version", env!("VERGEN_RUSTC_SEMVER"))?;
 
     let (postgres_version,): (String,) = sqlx::query_as("show server_version")
         .fetch_one(&mut transaction)
         .await?;
 
     context.try_insert("postgres_version", postgres_version.as_str())?;
-    context.try_insert("gitarena_version", env!("CARGO_PKG_VERSION"))?;
+
+    const GITARENA_SHA1: &str = env!("VERGEN_GIT_SHA");
+
+    lazy_static! {
+        static ref GITARENA_SHA1_SHORT: &'static str = &GITARENA_SHA1[0..7];
+        static ref GITARENA_VERSION: String = format!("{}-{}", env!("CARGO_PKG_VERSION"), *GITARENA_SHA1_SHORT);
+    }
+
+    context.try_insert("gitarena_version", GITARENA_VERSION.as_str())?;
 
     let libgit2_version = LibGit2Version::get();
     let (major, minor, patch) = libgit2_version.libgit2_version();

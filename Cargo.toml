@@ -8,6 +8,7 @@ license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 description = "Software development platform with built-in vcs, issue tracking and code review"
 homepage = "https://gitarena.com"
+build = "build.rs"
 
 [[bin]]
 name = "gitarena"
@@ -59,7 +60,6 @@ qstring = "0.7.2"
 rand = "0.8.4"
 regex = "1.5.4"
 rust-argon2 = { version = "1.0.0", features = ["crossbeam-utils"] }
-rustc_version_runtime = "0.2.1"
 serde = { version = "1.0.133", features = ["derive"] }
 serde_json = "1.0.75"
 sqlx = { version = "=0.5.7", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-actix-native-tls", "tls"] } # Pinned to 0.5.7 as everything higher introduces cyclic dependencies: https://github.com/tkaitchuck/ahash/issues/95
@@ -74,6 +74,9 @@ tracing-appender = "0.2.0"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std"] }
 tracing-unwrap = "0.9.2"
 zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
+
+[build-dependencies]
+vergen = { version = "6.0.0", default-features = false, features = ["git", "rustc"] }
 
 [patch.crates-io]
 gitarena-macros = { path = "gitarena-macros" }
