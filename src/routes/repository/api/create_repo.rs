@@ -1,11 +1,12 @@
 use crate::config::get_optional_setting;
 use crate::die;
+use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use sqlx::PgPool;
 use anyhow::Result;
 use gitarena_macros::route;
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use log::info;
 
 #[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let user = web_user.into_user()?;
@@ -59,16 +60,22 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     repo.create_fs(&mut transaction).await?;
 
     let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
-    let url = format!("{}/{}/{}", domain, &user.username, &repo.name);
+    let path = format!("/{}/{}", &user.username, &repo.name);
 
     transaction.commit().await?;
 
     info!("New repository created: {}/{} (id {})", &user.username, &repo.name, &repo.id);
 
-    Ok(HttpResponse::Ok().json(CreateJsonResponse {
-        id: repo.id,
-        url
-    }))
+    Ok(if request.get_header("hx-request").is_some() {
+        HttpResponse::Ok().append_header(("hx-redirect", path)).append_header(("hx-refresh", "true")).finish()
+    } else {
+        let url = format!("{}{}", domain, path);
+
+        HttpResponse::Ok().json(CreateJsonResponse {
+            id: repo.id,
+            url
+        })
+    })
 }
 
 #[derive(Deserialize)]

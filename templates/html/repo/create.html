@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create repository
+{% endblock %}
+
+{% block content %}
+<form class="ui form" data-hx-post="/api/repo" data-hx-ext="json-enc">
+    <div id="error-message" class="ui error message"></div>
+
+    <div class="ui grid">
+        <div class="row">
+            <div class="center aligned column">
+                <div class="ui block header">
+                    <h2>Create new repository</h2>
+                    <div class="content font-normal">
+                        Create a new blank repository now to hold all your files, track issues and collaborate on your code.
+                        Already have an existing repository somewhere else? <a href="/new/import">Import it.</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="two wide column"></div>
+            <div class="six wide center aligned computer only column">
+                <div class="ui one column grid">
+                    <div class="column">
+                        <div class="required inline field">
+                            <label for="owner"><b>Namespace</b></label>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="ui labeled input">
+                            <div class="ui label">{{ domain }}/</div>
+                            <select id="owner" name="owner" class="ui selection dropdown">
+                                <option>{{ user.username }}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="six wide center aligned column">
+                <div class="ui one column grid">
+                    <div class="column">
+                        <div class="required inline field">
+                            <label for="name"><b>Name</b></label>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="required field">
+                            <div class="ui input">
+                                <input id="name" name="name" type="text" placeholder="my-project" maxlength="32" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="two wide column"></div>
+        </div>
+        <div class="row">
+            <div class="two wide column"></div>
+            <div class="twelve wide center aligned column">
+                <div class="ui one column grid">
+                    <div class="column">
+                        <label for="description"><b>Description</b></label>
+                    </div>
+                    <div class="column">
+                        <div class="ui fluid input">
+                            <textarea id="description" name="description" class="full-width" placeholder="My project is the best project in the world" rows="2" maxlength="256"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="two wide column"></div>
+        </div>
+        <div class="row">
+            <div class="two wide column"></div>
+            <div class="six wide center aligned column">
+                <div class="ui one column grid">
+                    <div class="column">
+                        <div class="required inline field">
+                            <label><b>Visibility</b></label>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="grouped fields">
+                            <div class="field">
+                                <div class="ui radio checkbox">
+                                    <input id="public" type="radio" name="visibility" value="public" tabindex="0" class="hidden" checked>
+                                    <label for="public">
+                                        Public
+                                        <a class="popup" data-content="Repository will be indexed by search engines and will be accessible to everyone, including logged out users.">
+                                            <i class="question circle icon"></i>
+                                        </a>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="ui radio checkbox">
+                                    <input id="internal" type="radio" name="visibility" value="internal" tabindex="0" class="hidden">
+                                    <label for="internal">
+                                        Internal
+                                        <a class="popup" data-content="Project will only be accessible to logged in users. Project will not be indexed by search engines.">
+                                            <i class="question circle icon"></i>
+                                        </a>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="ui radio checkbox">
+                                    <input id="private" type="radio" name="visibility" value="private" tabindex="0" class="hidden">
+                                    <label for="private">
+                                        Private
+                                        <a class="popup" data-content="Project will only be accessible to logged in users that you explicitly added to this project.">
+                                            <i class="question circle icon"></i>
+                                        </a>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="six wide center aligned column">
+                <div class="ui one column grid">
+                    <div class="column">
+                        <b>Options</b>
+                    </div>
+                    <div class="column">
+                        <div class="ui checkbox">
+                            <input id="create-readme" type="checkbox" name="readme">
+                            <label for="create-readme">Create a <code>README.md</code> file</label>
+                        </div>
+                        <div id="branch-info" class="text element computer only" style="display: none">
+                            <br>
+                            The default branch <code>main</code> will be created for you with a <code>README.md</code> file.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="two wide column"></div>
+        </div>
+        <div class="row">
+            <div class="two wide column"></div>
+            <div class="twelve wide center aligned column">
+                <button class="ui primary button" type="submit">
+                    Create
+                </button>
+            </div>
+            <div class="two wide column"></div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("htmx:responseError", (error) => {
+        let json = JSON.parse(error.detail.xhr.responseText);
+
+        $("#error-message").text(json.error);
+        $(".ui.form").addClass("error");
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        let form = $(".ui.form")
+
+        form.form({
+            fields: {
+                owner: ["empty"],
+                name: ["empty", "maxLength[32]"],
+                description: ["maxLength[256]"],
+                visibility: ["empty"],
+            }
+        });
+
+        form.submit((event) => event.preventDefault());
+
+        $("#create-readme").click(function() {
+            let isChecked = $(this).is(":checked");
+
+            if (isChecked) {
+                $("#branch-info").show();
+            } else {
+                $("#branch-info").hide();
+            }
+        });
+
+        $(".ui.dropdown").dropdown();
+    });
+</script>
+{% endblock %}

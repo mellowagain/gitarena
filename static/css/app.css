@@ -10,6 +10,14 @@
     border: 0;
 }
 
+.font-normal {
+    font-weight: normal;
+}
+
+.full-width {
+    width: 100%;
+}
+
 .popup {
     cursor: help;
 }

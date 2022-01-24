@@ -40,11 +40,12 @@ pub(crate) fn is_valid(c: &char) -> bool {
 /// assert!(!is_reserved_username("login")); // Invalid
 /// ```
 pub(crate) fn is_reserved_username(input: &str) -> bool {
-    const ILLEGAL_USERNAMES: [&str; 6] = [
+    const ILLEGAL_USERNAMES: [&str; 7] = [
         "admin",
         "api",
         "login",
         "logout",
+        "new",
         "register",
         "static"
     ];
