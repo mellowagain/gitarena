@@ -7,7 +7,7 @@ Register
 {% block content %}
 <div class="ui two column centered grid">
     <div class="center aligned column">
-        <form class="ui form" method="post" data-hx-post="/api/user" data-hx-ext="json-enc">
+        <form class="ui form" data-hx-post="/api/user" data-hx-ext="json-enc">
             <div id="error-message" class="ui error message">
             </div>
 
@@ -52,7 +52,9 @@ Register
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-        $(".ui.form").form({
+        let form = $(".ui.form");
+
+        form.form({
             fields: {
                 username: {
                     rules: [
@@ -69,6 +71,8 @@ Register
                 password: ["empty", "minLength[8]"]
             }
         });
+
+        form.submit((event) => event.preventDefault());
     });
 </script>
 {% endblock %}

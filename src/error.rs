@@ -116,8 +116,8 @@ pub(crate) struct WithStatusCode {
 impl Display for WithStatusCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match &self.source {
-            Some(source) => write!(f, "http status {} caused by {:#}", self.code, source),
-            None => write!(f, "http status {}", self.code)
+            Some(source) if self.display => write!(f, "{}", source),
+            _ => write!(f, "{} {}", self.code.as_str(), self.code.canonical_reason().unwrap_or_default())
         }
     }
 }
