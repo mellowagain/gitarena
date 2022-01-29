@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  database:
+    image: "postgres"
+    ports:
+      - "15432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: gitarena
+    secrets:
+      - db_password
+  gitarena:
+    build: Dockerfile
+    depends_on:
+      - database
+    ports:
+      - "8080:8080"
+    volumes:
+      - repo_data:repositories
+    environment:
+      # TODO: Remove this once nginx is also added to this compose
+      SERVE_STATIC_FILES: true
+      DATABASE_URL_FILE: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+
+volumes:
+  db_data:
+  repo_data:

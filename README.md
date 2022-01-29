@@ -26,8 +26,10 @@ The resulting binary can be found in `./target/release`.
 
 In order to run GitArena, the following environment variable needs to be set:
 
-* `DATABASE_URL`: [Postgres connection string](https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6)
 * `BIND_ADDRESS`: [Socket address](https://doc.rust-lang.org/nightly/std/net/trait.ToSocketAddrs.html) to bind to, for example `localhost:8080` or `127.0.0.1:80` (Port is required)
+* Specify either of these two environment variables:
+    * `DATABASE_URL_FILE`: Path to a file containing the [Postgres connection string][postgres]
+    * `DATABASE_URL`: Raw [Postgres connection string][postgres]
 
 After start GitArena will automatically create the required table as defined
 in `schema.sql` and exit. Please edit the `settings` table to configure your
@@ -46,6 +48,7 @@ to view the logs, look for a file in the `logs` directory ending with the curren
 
 * `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
 * `SERVE_STATIC_FILES`: If this environment variable is set, GitArena will serve `/static` resources. This is experimental. It is instead recommended configuring your reverse proxy to serve them.
+* `DATABASE_PASSWORD_FILE`: If `DATABASE_URL_FILE` is specified, this environment variable may contain a path to a file containing the Postgres database password. In that case, the password does not need to be specified in the [Postgres connection string][postgres]. This is for usage with Docker secrets.
 
 ## Screenshots
 
@@ -76,3 +79,5 @@ Explore:
 Admin panel:
 
 ![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)
+
+[postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6
