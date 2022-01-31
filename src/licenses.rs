@@ -1,26 +1,28 @@
 use std::fs::File;
 
-use anyhow::Result;
 use askalono::Store;
-use lazy_static::lazy_static;
 use log::info;
-use tracing_unwrap::ResultExt;
+use once_cell::sync::OnceCell;
+use tracing_unwrap::{OptionExt, ResultExt};
 
-lazy_static! {
-    pub(crate) static ref LICENSE_STORE: Store = init_askalono();
-}
+static LICENSE_STORE: OnceCell<Store> = OnceCell::new();
 
-pub(crate) async fn init() -> Result<()> {
-    // Calling .len() here initializes the lazy static variable
-    info!("Successfully loaded {} licenses from cache", LICENSE_STORE.len());
+pub(crate) async fn init() {
+    // Normally we'd use .expect_or_log() here but askalono::Store does not implement Debug, so just ignore the error
+    // This is safe because OnceCell only returns an Error on set() when it already was once initialized
+    let _ = LICENSE_STORE.set(init_askalono());
 
-    Ok(())
+    info!("Successfully loaded {} licenses from cache", store().len());
 }
 
 fn init_askalono() -> Store {
     let file = File::open("askalono-cache.bin.zstd").expect_or_log("Failed to open askalono cache file");
 
     Store::from_cache(file).expect_or_log("Failed to parse askalono cache file")
+}
+
+pub(crate) fn store() -> &'static Store {
+    LICENSE_STORE.get().unwrap_or_log()
 }
 
 pub(crate) const fn license_file_names() -> [&'static [u8]; 18] {

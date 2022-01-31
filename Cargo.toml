@@ -47,7 +47,6 @@ heim = { version = "0.1.0-rc.2", git = "https://github.com/mellowagain/heim", fe
 hex = "0.4.3"
 image = "0.23.14"
 ipnetwork = { version = "0.17.0", features = ["serde"] } # Will be upgraded to v0.18.0 when sqlx also upgrades to it (to prevent incompatibilities)
-lazy_static = "1.4.0"
 lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1", "tokio1-native-tls"] }
 log = "0.4.14"
 md5 = "0.7.0"
@@ -56,6 +55,7 @@ multimap = { version = "0.8.3", features = ["serde"] }
 notify = "5.0.0-pre.13"
 num_cpus = "1.13.1"
 oauth2 = { version = "4.1.0", default-features = false, git = "https://github.com/mellowagain/oauth2-rs" }
+once_cell = "1.9.0"
 qstring = "0.7.2"
 rand = "0.8.4"
 regex = "1.5.4"

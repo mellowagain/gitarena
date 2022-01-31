@@ -9,7 +9,7 @@ use chrono_humanize::{Accuracy, HumanTime, Tense};
 use git2::Version as LibGit2Version;
 use gitarena_macros::route;
 use heim::units::{Information, information, Time};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use tera::Context;
 
@@ -80,11 +80,8 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     context.try_insert("postgres_version", postgres_version.as_str())?;
 
     const GITARENA_SHA1: &str = env!("VERGEN_GIT_SHA");
-
-    lazy_static! {
-        static ref GITARENA_SHA1_SHORT: &'static str = &GITARENA_SHA1[0..7];
-        static ref GITARENA_VERSION: String = format!("{}-{}", env!("CARGO_PKG_VERSION"), *GITARENA_SHA1_SHORT);
-    }
+    static GITARENA_SHA1_SHORT: Lazy<&'static str> = Lazy::new(|| &GITARENA_SHA1[0..7]);
+    static GITARENA_VERSION: Lazy<String> = Lazy::new(|| format!("{}-{}", env!("CARGO_PKG_VERSION"), *GITARENA_SHA1_SHORT));
 
     context.try_insert("gitarena_version", GITARENA_VERSION.as_str())?;
 
@@ -95,22 +92,22 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
 
     // System Info
 
-    if let Some(platform) = heim::host::platform().await.ok() {
+    if let Ok(platform) = heim::host::platform().await {
         context.try_insert("os", platform.system())?;
         context.try_insert("version", platform.release())?;
         context.try_insert("architecture", platform.architecture().as_str())?;
     }
 
-    if let Some(uptime) = heim::host::uptime().await.ok() {
+    if let Ok(uptime) = heim::host::uptime().await {
         context.try_insert("uptime", format_heim_time(uptime).as_str())?;
     }
 
-    if let Some(memory) = heim::memory::memory().await.ok() {
+    if let Ok(memory) = heim::memory::memory().await {
         context.try_insert("memory_available", &heim_size_to_bytes(memory.available()))?;
         context.try_insert("memory_total", &heim_size_to_bytes(memory.total()))?;
     }
 
-    if let Some(process) = heim::process::current().await.ok() {
+    if let Ok(process) = heim::process::current().await {
         context.try_insert("pid", &process.pid())?;
     }
 

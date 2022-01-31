@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
 
     _log_guard = config::init(&db_pool, _log_guard).await.context("Unable to initialize config in database")?;
 
-    licenses::init().await?;
+    licenses::init().await;
 
     let _watcher = templates::init().await?;
 

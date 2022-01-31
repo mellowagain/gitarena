@@ -2,9 +2,10 @@ use crate::templates::plain::Template;
 use crate::utils::time_function;
 
 use anyhow::Result;
-use lazy_static::lazy_static;
 use log::info;
+use once_cell::sync::OnceCell;
 use tera::{Context, Tera};
+use tracing_unwrap::{OptionExt, ResultExt};
 
 mod filters;
 mod tests;
@@ -24,21 +25,17 @@ type GlobalTera = Tera;
 #[cfg(not(debug_assertions))]
 type TemplateInitResult = ();
 
-lazy_static! {
-    pub(crate) static ref VERIFY_EMAIL: Template = parse_template("email/user/verify_email.txt".to_owned());
-    pub(crate) static ref TERA: GlobalTera = init_tera();
-}
+pub(crate) static VERIFY_EMAIL: OnceCell<Template> = OnceCell::new();
+static TERA: OnceCell<GlobalTera> = OnceCell::new();
 
 pub(crate) async fn init() -> Result<TemplateInitResult> {
     info!("Loading templates. This may take a few seconds.");
 
-    // Initialize the `TERA` lazy variable immediately in order to check for template errors at init
     let elapsed = time_function(|| async {
-        #[cfg(debug_assertions)]
-        TERA.read().await;
+        VERIFY_EMAIL.set(parse_template("email/user/verify_email.txt".to_owned())).expect_or_log("Verify email template should only be initialized once");
 
-        #[cfg(not(debug_assertions))]
-        let _ = TERA.get_template("<null>");
+        // This additionally checks the templates for errors
+        TERA.set(init_tera()).expect_or_log("Tera should only be initialized once");
     }).await;
 
     info!("Successfully loaded templates. Took {} seconds.", elapsed);
@@ -84,7 +81,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
                 info!("Detected modification in templates directory, reloading...");
 
                 runtime.block_on(async {
-                    match TERA.write().await.full_reload() {
+                    match tera().write().await.full_reload() {
                         Ok(_) => info!("Successfully reloaded templates."),
                         Err(err) => error!("Failed to reload templates: {}", err)
                     }
@@ -112,10 +109,10 @@ fn parse_template(template_path: String) -> Template {
 
 pub(crate) async fn render(template: &str, context: &Context) -> Result<String> {
     #[cfg(debug_assertions)]
-    return Ok(TERA.read().await.render(template, context)?);
+    return Ok(tera().read().await.render(template, context)?);
 
     #[cfg(not(debug_assertions))]
-    return Ok(TERA.render(template, context)?);
+    return Ok(tera().render(template, context)?);
 }
 
 fn init_tera() -> GlobalTera {
@@ -136,6 +133,10 @@ fn init_tera() -> GlobalTera {
 
     #[cfg(not(debug_assertions))]
     return tera;
+}
+
+pub(crate) fn tera() -> &'static GlobalTera {
+    TERA.get().unwrap_or_log()
 }
 
 #[macro_export]

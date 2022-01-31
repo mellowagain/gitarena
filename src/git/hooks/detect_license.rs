@@ -1,5 +1,6 @@
 use crate::git::utils::{read_blob_content, repo_files_at_head};
-use crate::licenses::{license_file_names, LICENSE_STORE};
+use crate::licenses::license_file_names;
+use crate::licenses;
 use crate::repository::Repository;
 
 use anyhow::Result;
@@ -40,7 +41,8 @@ pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_re
 #[instrument]
 async fn detect_license_from_file(repo: &mut Repository, data: &str) {
     let text_data = TextData::from(data);
-    let license_match = LICENSE_STORE.analyze(&text_data);
+
+    let license_match = licenses::store().analyze(&text_data);
 
     // Only apply license if we're confident
     repo.license = if license_match.score >= 0.9 {

@@ -5,6 +5,7 @@ use crate::{crypto, mail, template_context, templates};
 
 use anyhow::{Context, Result};
 use sqlx::{Pool, Postgres};
+use tracing_unwrap::OptionExt;
 
 pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool<Postgres>) -> Result<()> {
     assert!(user.id >= 0);
@@ -21,7 +22,7 @@ pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool<Postgres>
     let domain = get_setting::<String, _>("domain", &mut transaction).await?;
     let url = format!("{}/api/verify/{}", domain, hash);
 
-    let template = &templates::VERIFY_EMAIL;
+    let template = &templates::VERIFY_EMAIL.get().unwrap_or_log();
     let body = &template.0;
     let tags = &template.1;
 
