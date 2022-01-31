@@ -114,8 +114,14 @@ impl Debug for Email {
     }
 }
 
-pub(crate) async fn get_root_mailbox(db_pool: &Pool<Postgres>) -> Result<Mailbox> {
+pub(crate) async fn get_root_email(db_pool: &Pool<Postgres>) -> Result<String> {
     let address: String = from_config!("smtp.address" => String);
+
+    Ok(address)
+}
+
+pub(crate) async fn get_root_mailbox(db_pool: &Pool<Postgres>) -> Result<Mailbox> {
+    let address = get_root_email(db_pool).await?;
 
     // TODO: Allow customization of display name for email address
     Ok(Mailbox::new(Some("GitArena".to_owned()), address.parse()?))

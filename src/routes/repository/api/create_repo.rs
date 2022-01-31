@@ -1,13 +1,14 @@
 use crate::config::get_optional_setting;
 use crate::die;
+use crate::git::write;
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use sqlx::PgPool;
+use sqlx::{PgPool, Pool, Postgres};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
@@ -59,6 +60,11 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     repo.create_fs(&mut transaction).await?;
 
+    // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
+    if let Some(readme) = &body.readme {
+        create_readme(&repo, &user, &db_pool).await?;
+    }
+
     let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
 
@@ -78,11 +84,23 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     })
 }
 
+async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool<Postgres>) -> Result<()> {
+    let mut transaction = db_pool.begin().await?;
+    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());
+
+    transaction.commit().await?;
+
+    write::write_file(&libgit2_repo, user, Some("HEAD"), "README.md", readme.as_bytes(), db_pool).await
+}
+
 #[derive(Deserialize)]
 pub(crate) struct CreateJsonRequest {
     name: String,
     description: String,
-    visibility: RepoVisibility
+    visibility: RepoVisibility,
+    #[serde(default)]
+    readme: Option<String>
 }
 
 #[derive(Serialize)]

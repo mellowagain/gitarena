@@ -11,6 +11,7 @@ pub(crate) mod pack;
 pub(crate) mod receive_pack;
 pub(crate) mod ref_update;
 pub(crate) mod utils;
+pub(crate) mod write;
 
 pub(crate) const ODB_CACHE_SIZE: usize = 64;
 pub(crate) type GitoxideCacheList = StaticLinkedList<ODB_CACHE_SIZE>;
