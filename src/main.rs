@@ -4,7 +4,9 @@ use crate::error::error_renderer_middleware;
 
 use std::env::VarError;
 use std::error::Error;
+use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 use std::time::Duration;
 use std::{env, io};
 
@@ -22,7 +24,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use fs_extra::dir;
 use gitarena_macros::from_optional_config;
 use log::info;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
@@ -52,9 +54,6 @@ mod verification;
 async fn main() -> Result<()> {
     let mut _log_guard = init_logger()?;
 
-    let db_url = env::var("DATABASE_URL").context("Unable to read mandatory DATABASE_URL environment variable")?;
-    env::remove_var("DATABASE_URL"); // Remove the env variable now to prevent it from being passed to a untrusted child process later
-
     let max_pool_connections = match env::var("MAX_POOL_CONNECTIONS") {
         Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
         Err(VarError::NotPresent) => num_cpus::get() as u32,
@@ -64,7 +63,7 @@ async fn main() -> Result<()> {
     let db_pool = PgPoolOptions::new()
         .max_connections(max_pool_connections)
         .connect_timeout(Duration::from_secs(10))
-        .connect(db_url.as_str())
+        .connect_with(read_database_config()?)
         .await?;
 
     _log_guard = config::init(&db_pool, _log_guard).await.context("Unable to initialize config in database")?;
@@ -206,4 +205,29 @@ fn init_logger() -> Result<WorkerGuard> {
 
         guard
     })
+}
+
+fn read_database_config() -> Result<PgConnectOptions> {
+    let mut options = match (env::var_os("DATABASE_URL"), env::var_os("DATABASE_URL_FILE")) {
+        (Some(url), None) => {
+            let str = url.into_string().map_err(|_| anyhow!("`DATABASE_URL` environment variable is not valid unicode"))?;
+            PgConnectOptions::from_str(str.as_str())?
+        },
+        (None, Some(file)) => {
+            let url = fs::read_to_string(file)?;
+            PgConnectOptions::from_str(url.as_str())?
+        },
+        _ => bail!("Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena")
+    };
+
+    match env::var("DATABASE_PASSWORD_FILE") {
+        Ok(file) => {
+            let password = fs::read_to_string(file)?;
+            options = options.password(password.as_str());
+        }
+        Err(VarError::NotUnicode(_)) => bail!("`DATABASE_PASSWORD_FILE` environment variable is not valid unicode"),
+        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */ }
+    }
+
+    Ok(options)
 }

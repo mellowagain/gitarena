@@ -22,7 +22,7 @@ services:
     environment:
       # TODO: Remove this once nginx is also added to this compose
       SERVE_STATIC_FILES: true
-      DATABASE_URL_FILE: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
+      DATABASE_URL: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
       DATABASE_PASSWORD_FILE: /run/secrets/db_password
     secrets:
       - db_password
