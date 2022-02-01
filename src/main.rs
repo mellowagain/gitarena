@@ -121,7 +121,9 @@ async fn main() -> Result<()> {
             .configure(routes::proxy::init)
             .configure(routes::user::init)
             .configure(routes::repository::init) // Repository routes need to be always last
-            .route("/favicon.ico", to(|| HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish()));
+            .route("/favicon.ico", to(|| async {
+                HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish()
+            }));
 
         let debug_mode = cfg!(debug_assertions);
         let serve_static = matches!(env::var("SERVE_STATIC_FILES"), Ok(_) | Err(VarError::NotUnicode(_))) || debug_mode;
