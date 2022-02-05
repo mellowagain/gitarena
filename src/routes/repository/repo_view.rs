@@ -1,7 +1,7 @@
 use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::prelude::LibGit2SignatureExtensions;
+use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::{GitRequest, GitTreeRequest};
@@ -44,10 +44,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
     context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
     context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;
-
-    if let Some(user) = web_user.as_ref() {
-        context.try_insert("user", user)?;
-    }
+    context.insert_web_user(&web_user)?;
 
     let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
         Ok(loose_ref) => Ok(loose_ref),

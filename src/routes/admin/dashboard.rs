@@ -1,6 +1,7 @@
-use crate::{die, render_template};
+use crate::prelude::ContextExtensions;
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
+use crate::{die, render_template};
 
 use actix_web::{Responder, web};
 use anyhow::Result;
@@ -24,8 +25,7 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     let mut context = Context::new();
 
     // Users
-
-    context.try_insert("user", &user)?;
+    context.insert_user(&user)?;
 
     let mut transaction = db_pool.begin().await?;
 

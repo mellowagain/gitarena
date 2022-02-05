@@ -1,3 +1,4 @@
+use crate::prelude::ContextExtensions;
 use crate::render_template;
 use crate::user::WebUser;
 
@@ -13,8 +14,7 @@ pub(crate) async fn new_repo(web_user: WebUser, db_pool: web::Data<PgPool>) -> R
     let mut transaction = db_pool.begin().await?;
 
     let mut context = Context::new();
-
-    context.try_insert("user", &user)?;
+    context.insert_user(&user)?;
 
     render_template!("repo/create.html", context, transaction)
 }

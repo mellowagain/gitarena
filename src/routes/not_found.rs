@@ -1,4 +1,5 @@
 use crate::error::{ErrorDisplayType, GitArenaError};
+use crate::prelude::ContextExtensions;
 use crate::render_template;
 use crate::user::WebUser;
 
@@ -25,10 +26,7 @@ async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Da
     let mut transaction = db_pool.begin().await?;
     let mut context = Context::new();
 
-    if let Some(user) = web_user.ok() {
-        context.try_insert("user", &user)?;
-    }
-
+    context.insert_web_user(&web_user);
     context.try_insert("path", request.path())?;
 
     render_template!(StatusCode::NOT_FOUND, "error/404.html", context, transaction)

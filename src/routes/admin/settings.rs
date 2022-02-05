@@ -1,5 +1,5 @@
 use crate::config::{Setting, TypeConstraint};
-use crate::prelude::HttpRequestExtensions;
+use crate::prelude::{ContextExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
 use crate::{config, die, err, render_template};
 
@@ -22,8 +22,7 @@ pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) 
     }
 
     let mut context = Context::new();
-
-    context.try_insert("user", &user)?;
+    context.insert_user(&user)?;
 
     let mut transaction = db_pool.begin().await?;
 
