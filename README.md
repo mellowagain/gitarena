@@ -68,6 +68,10 @@ Repository commits:
 
 ![Commits](https://i.cutegirl.tech/ed3qdisinquh.png)
 
+File view:
+
+![File](https://i.cutegirl.tech/cjqzyh1lre07.png)
+
 Create repository:
 
 ![Create](https://i.cutegirl.tech/2xfz586doi0q.png)
