@@ -9,6 +9,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 use std::{env, io};
+use std::sync::Arc;
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
@@ -24,6 +25,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use fs_extra::dir;
 use gitarena_macros::from_optional_config;
 use log::info;
+use magic::{Cookie, CookieFlags};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -88,8 +90,12 @@ async fn main() -> Result<()> {
                 .secure(secure)
         );
 
+        let cookie = Arc::new(Cookie::open(CookieFlags::default()).unwrap_or_log());
+        cookie.load(&["magic"]).unwrap_or_log();
+
         let mut app = App::new()
             .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
+            .app_data(Data::new(cookie.clone()))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
