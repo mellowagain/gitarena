@@ -36,20 +36,9 @@ pub(crate) async fn repo_files_at_head<'a>(repo: &'a Repository, buffer: &'a mut
 #[instrument(err, skip(repo, cache))]
 pub(crate) async fn read_raw_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<Vec<u8>> {
     let mut buffer = Vec::<u8>::new();
+    repo.odb.find_blob(oid, &mut buffer, cache)?;
 
-    repo.odb.find_blob(oid, &mut buffer, cache).map(|blob| {
-        // Honestly no idea how but this seems to yield out the correct file content
-        // TODO: This is *most likely* bugged and needs to be fixed at some point
-        let content_vec: Vec<u8> = blob.data.iter()
-            .copied()
-            .skip(2)
-            .filter(|b| *b != 0)
-            .collect();
-
-        let content = &content_vec[..content_vec.len() - 2];
-
-        Ok(content.to_vec()) // TODO: We allocate a vec twice here, need to change this
-    })?
+    Ok(buffer)
 }
 
 pub(crate) async fn read_blob_content(repo: &Repository, oid: &oid, cache: &mut impl DecodeEntry) -> Result<String> {
