@@ -13,7 +13,15 @@ work. Please see the issues tab for features that are still work in progress.
 
 ## Building
 
-Latest Rust stable toolchain and compiler is required to be installed.
+Requirements:
+
+* Latest Rust stable toolchain
+* `libmagic`
+  * Windows: Please install `libmagic` via `vcpkg` (triplet `x64-windows-static-md`) and set the environment variable `VCPKG_ROOT` to your vcpkg directory ([more information](https://github.com/robo9k/rust-magic-sys#building))
+  * macOS: Please install `libmagic` using Homebrew
+  * Linux: Please install `libmagic` with your system package manager
+
+Compiling:
 
 ```
 $ cargo build --release
