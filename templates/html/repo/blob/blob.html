@@ -103,9 +103,9 @@
         {{ size | filesizeformat }}
     </div>
 
-    <div class="ui {% if content is some %} code-block {% else %} placeholder {% endif %} segment">
+    <div id="content" class="ui {% if content is some %} code-block {% else %} placeholder {% endif %} segment">
         {% if content is some %}
-            <pre class="no-margin"><code>{{ content }}</code></pre>
+            <pre class="no-margin"><code id="actual-content">{{ content }}</code></pre>
         {% elif type == "text" %}
             <div class="ui icon header">
                 <i class="file icon"></i>
@@ -142,8 +142,22 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        hljs.highlightAll();
-        hljs.initLineNumbersOnLoad();
+        let fileName = "{{ name }}";
+        const loweredFileName = fileName.toLowerCase();
+        const isMarkdown = loweredFileName.endsWith(".md") || loweredFileName.endsWith(".markdown");
+
+        if (isMarkdown) {
+            insertScript("/static/js/readme.js");
+
+            let contentElement = $("#content");
+
+            renderMarkdown($("#actual-content").text(), contentElement);
+
+            contentElement.removeClass().addClass("ui very padded segment");
+        } else {
+            hljs.highlightAll();
+            hljs.initLineNumbersOnLoad();
+        }
     });
 </script>
 {% endblock %}

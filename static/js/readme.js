@@ -7,61 +7,77 @@ function proxyAttribute(url) {
     }
 }
 
+function renderMarkdown(content, element) {
+    insertScript("/static/js/third_party/purify.min.js");
+
+    const HEADINGS = ["h1", "h2", "h3", "h4", "h5"];
+    let containsCode = false;
+
+    DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+        if (node.tagName === "IMG") {
+            node.classList.add("ui");
+            node.classList.add("image");
+
+            if (node.hasAttribute("src")) {
+                node.setAttribute("src", proxyAttribute(node.getAttribute("src")));
+                node.setAttribute("loading", "lazy");
+            }
+        }
+
+        if (HEADINGS.includes(node.tagName.toLowerCase())) {
+            node.classList.add("ui");
+            node.classList.add("header");
+        }
+
+        if (node.tagName === "CODE" && !containsCode) {
+            containsCode = true;
+        }
+    });
+
+    insertScript("/static/js/third_party/marked.min.js");
+
+    let renderedContent = marked.parse(content);
+
+    renderedContent = DOMPurify.sanitize(renderedContent, {
+        ALLOWED_TAGS: HEADINGS.concat(["p", "ul", "ol", "li", "em", "strong", "italic", "code", "a", "blockquote", "pre", "hr", "img"]),
+        KEEP_CONTENT: true
+    });
+
+    element.html(renderedContent);
+
+    if (containsCode) {
+        insertScript("/static/js/third_party/highlight.min.js");
+        insertStyleSheet("/static/css/third_party/highlight.min.css");
+
+        hljs.highlightAll();
+    }
+}
+
 function loadReadme(username, repo, tree) {
     $.getJSON(`/api/repo/${username}/${repo}/tree/${tree}/readme`)
         .done((json) => {
-            insertScript("/static/js/third_party/purify.min.js");
-
-            DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-                if (node.tagName === "IMG" && node.hasAttribute("src")) {
-                    node.setAttribute("src", proxyAttribute(node.getAttribute("src")));
-                    node.setAttribute("loading", "lazy");
-                }
-            });
-
             let fileName = json.file_name;
             const loweredFileName = fileName.toLowerCase();
+            const isMarkdown = loweredFileName.endsWith(".md") || loweredFileName.endsWith(".markdown");
 
             let content = json.content;
-
-            const isMarkdown = loweredFileName.endsWith(".md") || loweredFileName.endsWith(".markdown");
-            const allowedTags = isMarkdown ? ["h1", "h2", "h3", "h4", "h5", "p", "ul", "ol", "li", "em", "strong", "italic", "code", "a", "blockquote", "pre", "hr", "img"] : [];
+            let readmeElement = $("#readme");
 
             if (isMarkdown) {
-                insertScript("/static/js/third_party/marked.min.js");
-                content = marked.parse(content);
+                renderMarkdown(content, readmeElement);
+            } else {
+                insertScript("/static/js/third_party/purify.min.js");
+
+                readmeElement.html(DOMPurify.sanitize(content, {
+                    ALLOWED_TAGS: [],
+                    KEEP_CONTENT: true
+                }));
             }
 
-            fileName = DOMPurify.sanitize(fileName, {
+            $("#readme-file-name").html(DOMPurify.sanitize(fileName, {
                 ALLOWED_TAGS: [],
                 KEEP_CONTENT: true
-            });
-
-            content = DOMPurify.sanitize(content, {
-                ALLOWED_TAGS: allowedTags,
-                KEEP_CONTENT: true
-            });
-
-            $("#readme-file-name").html(fileName);
-
-            const readmeElement = $("#readme");
-
-            readmeElement.html(content);
-
-            if (isMarkdown) {
-                $("#readme img").addClass("ui image");
-
-                for (let i = 1; i < 6; i++) {
-                    $(`#readme h${i}`).addClass("ui header");
-                }
-
-                if ($("#readme code").length > 0) {
-                    insertScript("/static/js/third_party/highlight.min.js");
-                    insertStyleSheet("/static/css/third_party/highlight.min.css");
-
-                    hljs.highlightAll();
-                }
-            }
+            }));
 
             readmeElement.removeClass("ui fluid placeholder");
         })
