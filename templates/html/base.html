@@ -57,14 +57,28 @@
                 {% if user is undefined %}
                     <a id="login-link" href="/login" class="link">login</a>
                 {% else %}
-                    <a href="/new" class="link">
+                    <a href="/new" class="link extra-right-padding">
                         <i class="plus icon"></i>
                         <span class="sr-only">create new repository</span>
                     </a>
-
-                    <a class="link pointer" data-hx-post="/logout">
+                    <div id="user-popup" class="ui floating dropdown">
                         <img class="ui avatar image" src="/api/avatar/{{ user.id }}" alt="{{ user.username }}">
-                    </a>
+
+                        <div class="menu">
+                            <div class="item">
+                                <a href="/{{ user.username }}">
+                                    Signed in as <br>
+                                    <b>{{ user.username }}</b>
+                                </a>
+                            </div>
+                            <div class="item">
+                                <a href="/settings">Preferences</a>
+                            </div>
+                            <div class="item">
+                                <a data-hx-post="/logout">Sign out</a>
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
             </span>
         </div>

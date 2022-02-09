@@ -10,6 +10,10 @@
     border: 0;
 }
 
+.extra-right-padding {
+    padding-right: 0.5em !important;
+}
+
 .code-block {
     background-color: #282b2e !important;
     padding: 0 !important;

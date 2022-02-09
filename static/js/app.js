@@ -56,6 +56,8 @@ document.addEventListener("DOMContentLoaded", () => {
         $(".copy.button").off().click(function () {
             writeClipboard($(this).attr("data-copy"));
         });
+
+        $("#user-popup").dropdown();
     });
 });
 
