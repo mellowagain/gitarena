@@ -184,7 +184,6 @@ impl ResponseError for GitArenaError {
         GitArenaError::status_code(&self)
     }
 
-    #[allow(clippy::async_yields_async)] // False positive on this method
     fn error_response(&self) -> HttpResponse {
         let mut builder = HttpResponseBuilder::new(self.status_code());
 
