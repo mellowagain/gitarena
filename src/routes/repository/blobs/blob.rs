@@ -10,17 +10,18 @@ use crate::user::{User, WebUser};
 use crate::utils::cookie_file::{CookieExtensions, FileType};
 use crate::{die, err, render_template};
 
+use std::sync::Arc;
+
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::{BString, ByteSlice};
+use git_repository::objs::tree::EntryMode;
 use git_repository::objs::Tree;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use magic::Cookie;
 use sqlx::PgPool;
-use std::sync::Arc;
-use git_repository::objs::tree::EntryMode;
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
