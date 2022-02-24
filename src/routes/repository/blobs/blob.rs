@@ -20,6 +20,7 @@ use gitarena_macros::route;
 use magic::Cookie;
 use sqlx::PgPool;
 use std::sync::Arc;
+use git_repository::objs::tree::EntryMode;
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
@@ -56,6 +57,10 @@ pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, co
         .iter()
         .find(|e| e.filename == BString::from(uri.blob.as_str()))
         .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
+
+    if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable {
+        die!(BAD_REQUEST, "Only blobs can be viewed in blob view");
+    }
 
     let name = entry.filename.to_str().unwrap_or("Invalid file name");
 
