@@ -72,6 +72,10 @@ File view:
 
 ![File](https://i.cutegirl.tech/cjqzyh1lre07.png)
 
+Directory view:
+
+![Directory](https://i.cutegirl.tech/kxgv64zjneoz.png)
+
 Create repository:
 
 ![Create](https://i.cutegirl.tech/2xfz586doi0q.png)
