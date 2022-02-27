@@ -55,7 +55,7 @@ pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, co
     // TODO: Check if directories work with these
     let entry = tree.entries
         .iter()
-        .find(|e| e.filename == BString::from(uri.blob.as_str()))
+        .find(|e| e.filename == *uri.blob.as_str())
         .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
     if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable {
@@ -138,7 +138,7 @@ pub(crate) async fn view_raw_blob(uri: web::Path<BlobRequest>, web_user: WebUser
     // TODO: Check if directories work with these
     let entry = tree.entries
         .iter()
-        .find(|e| e.filename == BString::from(uri.blob.as_str()))
+        .find(|e| e.filename == *uri.blob.as_str())
         .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
     let content = read_blob_content(entry.oid.as_ref(), store).await?;
