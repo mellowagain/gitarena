@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}
+Internal Server Error
+{% endblock %}
+
+{% block content %}
+<div class="ui center aligned icon header">
+    <i class="exclamation triangle icon"></i>
+    <div class="content">
+        Internal Server Error
+
+        <div class="sub header">
+            {% if not debug %}
+                Please advise your GitArena administrator to check the error log.
+            {% else %}
+                Error: <b>{{ error }}</b>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
