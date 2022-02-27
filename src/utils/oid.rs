@@ -1,3 +1,5 @@
+use crate::git::GIT_HASH_KIND;
+
 use anyhow::{anyhow, Result};
 use git_repository::hash::ObjectId;
 
@@ -55,6 +57,6 @@ pub(crate) fn from_hex_str(option: Option<&str>) -> Result<ObjectId> {
         } else {
             Err(anyhow!("Input string is not hexadecimal: {}", oid))
         }
-        None => Ok(ObjectId::null_sha1())
+        None => Ok(ObjectId::null(GIT_HASH_KIND))
     }
 }
