@@ -2,10 +2,12 @@ use actix_web::web::ServiceConfig;
 use serde::Deserialize;
 
 mod blob;
+mod directory;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(blob::view_blob);
     config.service(blob::view_raw_blob);
+    config.service(directory::view_dir);
 }
 
 #[derive(Deserialize)]

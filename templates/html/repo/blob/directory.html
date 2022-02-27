@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ name }} - {{ repo_owner_name }}/{{ repo.name }}
+{% endblock %}
+
+{% block content %}
+<main class="repo container">
+    {% if files | length >= 1000 %}
+        <div class="ui icon warning message">
+            <i class="exclamation triangle icon"></i>
+            <div class="content">
+                <div class="header">This directory contains too many files</div>
+                Some files may not be displayed as the current view has been limited to 1000 files
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="ui grid">
+        <div class="two wide column">
+            <div class="ui labeled icon top left pointing dropdown button">
+                <i class="code branch icon"></i>
+                <span class="text">{{ tree }}</span>
+                <div class="menu">
+                    <div class="ui search icon input">
+                        <i class="search icon"></i>
+                        <input type="text" name="search" placeholder="Search branch or tag">
+                    </div>
+                    <div class="divider"></div>
+                    <div class="header">
+                        <i class="code branch icon"></i>
+                        Branches
+                    </div>
+                    {% for branch in branches %}
+                    <div class="item {% if branch == tree %} active selected {% endif %}">
+                        <code>{{ branch }}</code>
+
+                        {% if branch == repo.default_branch %}
+                            <span class="pill">Default</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <div class="divider"></div>
+                    <div class="header">
+                        <i class="tags icon"></i>
+                        Tags
+                    </div>
+                    {% for tag in tags %}
+                    <div class="item {% if tag == tree %} active selected {% endif %}">
+                        <code>{{ tag }}</code>
+
+                        {% if loop.last %}
+                            <span class="pill">Latest</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="fourteen wide computer only column">
+            <div class="ui breadcrumb">
+                <a class="section" href="/{{ repo_owner_name }}/{{ repo.name }}">{{ repo.name }}</a>
+
+                {% set_global previous = "" %}
+                {% for dir in name | split(pat="/") %}
+                    <div class="divider"> / </div>
+                    <a class="section" href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/directory{{ previous }}/{{ dir }}">{{ dir }}</a>
+
+                    {% set_global previous = previous ~ "/" ~ dir %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if files | length > 0 %}
+        <table class="ui celled table">
+            <thead>
+            <tr>
+                <th colspan="3" class="non-bold">
+                    <div class="ui grid">
+                        <div class="ten wide column">
+                            {% if last_commit.author_uid is some %}
+                                <a href="/{{ last_commit.author_name }}">
+                                    <img class="ui avatar image" src="/api/avatar/{{ last_commit.author_uid }}" alt="{{ last_commit.author_name }}">
+                                    <b>{{ last_commit.author_name }}</b>
+                                </a>
+                            {% else %}
+                                <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.email | urlencode }}" alt="{{ last_commit.author_name }}">
+                                <b>{{ last_commit.author_name }}</b>
+                            {% endif %}
+
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
+                                {{ last_commit.message | split(pat="\n") | first }}
+                            </a>
+                        </div>
+                        <div class="right aligned six wide column">
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ last_commit.oid }}">
+                                <code class="element computer only">{{ last_commit.oid | truncate(length=7, end="") }}</code>
+                                {{ last_commit.time | human_time }}
+                            </a>
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/commits" class="element computer only">
+                                <i class="history icon"></i>
+                                <b>{{ commits_count }}</b> commits
+                            </a>
+                        </div>
+                    </div>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                    <tr>
+                        <td>
+                            {% if file.file_type == 16384 %}
+                                {# Directory #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/directory/{{ name }}/{{ file.file_name | urlencode }}">
+                                    <i class="folder icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 33188 %}
+                                {# Regular file #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ name }}/{{ file.file_name | urlencode }}">
+                                    <i class="file icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 33261 %}
+                                {# Executable #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ name }}/{{ file.file_name | urlencode }}">
+                                    <i class="file icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 40960 %}
+                                {# Symlink #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/symlink/{{ name }}/{{ file.file_name | urlencode }}">
+                                    <i class="linkify icon"></i>
+                                    {{ file.file_name }}
+                                </a>
+                            {% elif file.file_type == 57344 %}
+                                {# Submodule #}
+                                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/submodule/{{ name }}/{{ file.file_name | urlencode }}">
+                                    <i class="folder outline icon"></i>
+                                    {{ file.file_name }} @ <code>{{ file.submodule_target_oid | truncate(length=7, end="") }}</code>
+                                </a>
+                            {% else %}
+                                {# Unknown #}
+                                <i class="file icon"></i>
+                                {{ file.file_name }}
+                            {% endif %}
+                        </td>
+                        <td class="no-left-border">
+                            <a href="/{{ repo_owner_name }}/{{ repo.name }}/commit/{{ file.commit.oid }}">
+                                {{ file.commit.message | split(pat="\n") | first }}
+                            </a>
+                        </td>
+                        <td class="ui right aligned no-left-border">{{ file.commit.time | human_time }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</main>
+{% endblock %}
