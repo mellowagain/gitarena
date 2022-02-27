@@ -1,4 +1,4 @@
-use git_repository::odb::pack::cache::lru::StaticLinkedList;
+use git_repository::hash::Kind;
 
 pub(crate) mod basic_auth;
 pub(crate) mod capabilities;
@@ -13,5 +13,4 @@ pub(crate) mod ref_update;
 pub(crate) mod utils;
 pub(crate) mod write;
 
-pub(crate) const ODB_CACHE_SIZE: usize = 64;
-pub(crate) type GitoxideCacheList = StaticLinkedList<ODB_CACHE_SIZE>;
+pub(crate) const GIT_HASH_KIND: Kind = Kind::Sha1;

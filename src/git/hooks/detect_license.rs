@@ -3,18 +3,20 @@ use crate::licenses::license_file_names;
 use crate::licenses;
 use crate::repository::Repository;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use askalono::TextData;
 use bstr::ByteSlice;
 use git_repository::objs::tree::EntryMode;
-use git_repository::odb::pack::cache::DecodeEntry;
+use git_repository::odb::Store;
 use tracing::instrument;
 
-#[instrument(err, skip(gitoxide_repo, cache))]
-pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_repository::Repository, cache: &mut impl DecodeEntry) -> Result<()> {
+#[instrument(err, skip(store))]
+pub(crate) async fn detect_license(store: Arc<Store>, gitoxide_repo: &git_repository::Repository, repo: &mut Repository) -> Result<()> {
     let mut buffer = Vec::<u8>::new();
 
-    let tree = repo_files_at_head(gitoxide_repo, &mut buffer, cache).await?;
+    let tree = repo_files_at_head(store.clone(), gitoxide_repo, &mut buffer).await?;
 
     for entry in tree.entries {
         let lowered_file_name = entry.filename.to_lowercase();
@@ -25,7 +27,7 @@ pub(crate) async fn detect_license(repo: &mut Repository, gitoxide_repo: &git_re
 
         match entry.mode {
             EntryMode::Blob => {
-                let content = read_blob_content(gitoxide_repo, entry.oid, cache).await?;
+                let content = read_blob_content(entry.oid, store).await?;
 
                 detect_license_from_file(repo, content.as_str()).await;
                 break;

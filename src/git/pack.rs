@@ -1,14 +1,16 @@
+use crate::git::GIT_HASH_KIND;
 use crate::repository::Repository;
 
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use anyhow::{anyhow, Result};
 use git_repository::odb::pack::bundle::write::Options as GitPackWriteOptions;
 use git_repository::odb::pack::data::input::{Mode as PackIterationMode};
 use git_repository::odb::pack::index::Version as PackVersion;
-use git_repository::odb::pack::{Bundle, cache, FindExt};
+use git_repository::odb::pack::{Bundle, FindExt};
 use git_repository::progress;
 use sqlx::{Executor, Postgres};
 use tempfile::{Builder, TempDir};
@@ -35,10 +37,13 @@ pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: 
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),
         iteration_mode: PackIterationMode::Verify,
-        index_kind: PackVersion::V2
+        index_kind: PackVersion::V2,
+        object_hash: GIT_HASH_KIND
     };
 
     let repo = repo.gitoxide(executor).await?;
+    let objects = Arc::new(repo.objects);
+
     let buf_reader = BufReader::new(data);
 
     let bundle = Bundle::write_to_directory(
@@ -47,7 +52,7 @@ pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(data: 
         progress::Discard,
         &AtomicBool::new(false), // The Actix runtime (+ tokio) handles timeouts for us
         Some(Box::new(move |oid, buffer| {
-            repo.odb.find(oid, buffer, &mut cache::Never).ok()
+            objects.to_cache_arc().find(oid, buffer).ok().map(|(data, _)| data)
         })),
         options
     )?;
