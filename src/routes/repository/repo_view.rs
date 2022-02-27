@@ -1,4 +1,4 @@
-use crate::git::GitoxideCacheList;
+use crate::git::GIT_HASH_KIND;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
@@ -65,9 +65,9 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     context.try_insert("full_tree", full_tree_name)?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
+    let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
 
     let mut files = Vec::<RepoFile>::new();
@@ -80,7 +80,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
-            Some(read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await.unwrap_or_else(|_| ObjectId::null_sha1().to_sha1_hex_string()))
+            Some(read_blob_content(entry.oid.as_ref(), store.clone()).await.unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()))
         } else {
             None
         };

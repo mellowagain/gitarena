@@ -1,4 +1,3 @@
-use crate::git::GitoxideCacheList;
 use crate::git::history::{all_branches, all_tags, last_commit_for_blob};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
@@ -48,10 +47,10 @@ pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, co
     let full_tree_name = loose_ref.name.as_bstr().to_str()?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
-    let tree = Tree::from(tree);
+    let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
+    let tree = Tree::from(tree_ref);
 
     // TODO: Check if directories work with these
     let entry = tree.entries
@@ -86,7 +85,7 @@ pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, co
         }
     })?;
 
-    let content = read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await?;
+    let content = read_blob_content(entry.oid.as_ref(), store).await?;
     let size = content.len();
     let file_type = cookie.probe(content.as_bytes())?;
 
@@ -131,9 +130,9 @@ pub(crate) async fn view_raw_blob(uri: web::Path<BlobRequest>, web_user: WebUser
     }?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
+    let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
 
     // TODO: Check if directories work with these
@@ -142,7 +141,7 @@ pub(crate) async fn view_raw_blob(uri: web::Path<BlobRequest>, web_user: WebUser
         .find(|e| e.filename == BString::from(uri.blob.as_str()))
         .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
-    let content = read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await?;
+    let content = read_blob_content(entry.oid.as_ref(), store).await?;
 
     let mime = if let Some(file_type) = infer::get(content.as_bytes()) {
         file_type.mime_type()
