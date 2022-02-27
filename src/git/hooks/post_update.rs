@@ -1,8 +1,10 @@
-use crate::git::GitoxideCacheList;
 use crate::git::hooks::detect_license::detect_license;
 use crate::repository::Repository;
 
+use std::sync::Arc;
+
 use anyhow::Result;
+use git_repository::odb::Store;
 use log::warn;
 use sqlx::{Executor, Postgres};
 
@@ -10,13 +12,12 @@ use sqlx::{Executor, Postgres};
 // prefered: https://www.reddit.com/r/rust/comments/fddf6y/handling_longrunning_background_tasks_in_actixweb/
 // https://stackoverflow.com/a/66181410
 
-pub(crate) async fn run<'e, E: Executor<'e, Database = Postgres>>(repo: &mut Repository, executor: E, cache: GitoxideCacheList) -> Result<GitoxideCacheList> {
+pub(crate) async fn run<'e, E: Executor<'e, Database = Postgres>>(store: Arc<Store>, repo: &mut Repository, executor: E) -> Result<()> {
     let gitoxide_repo = repo.gitoxide(executor).await?;
-    let mut mut_cache = cache;
 
-    if let Err(e) = detect_license(repo, &gitoxide_repo, &mut mut_cache).await {
-        warn!("Failed to detect license for repo id {}: {}", repo.id, e);
+    if let Err(err) = detect_license(store, &gitoxide_repo, repo).await {
+        warn!("Failed to detect license for repo id {}: {}", repo.id, err);
     }
 
-    Ok(mut_cache)
+    Ok(())
 }
