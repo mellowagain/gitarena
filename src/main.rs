@@ -52,7 +52,7 @@ mod user;
 mod utils;
 mod verification;
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     let mut _log_guard = init_logger()?;
 

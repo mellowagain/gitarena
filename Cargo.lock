@@ -1931,6 +1931,7 @@ dependencies = [
  "tera",
  "time 0.3.5",
  "tinytemplate",
+ "tokio",
  "tokio-tar",
  "toml",
  "tracing",
@@ -4038,7 +4039,19 @@ dependencies = [
  "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
+ "tokio-macros",
  "winapi",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b557f72f448c511a979e2564e55d74e6c4432fc96ff4f6241bc6bded342643b7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
