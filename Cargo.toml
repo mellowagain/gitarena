@@ -40,7 +40,7 @@ derive_more = "0.99.17"
 fs_extra = "1.2.0"
 futures = "0.3.19"
 futures-locks = "0.7.0"
-git-repository = { version = "0.13.0", features = ["async-network-client", "max-performance", "one-stop-shop", "unstable"] }
+git-repository = { version = "0.14.0", features = ["async-network-client", "max-performance", "one-stop-shop", "unstable"] }
 git2 = "0.13.25"
 gitarena-macros = "0.0.0"
 heim = { version = "0.1.0-rc.2", git = "https://github.com/mellowagain/heim", features = ["host", "cpu", "memory", "process"] }
