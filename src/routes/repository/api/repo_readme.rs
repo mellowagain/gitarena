@@ -1,4 +1,3 @@
-use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -35,10 +34,10 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db
     }?;
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
-    let tree = Tree::from(tree);
+    let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
+    let tree = Tree::from(tree_ref);
 
     let entry = tree.entries
         .iter()
@@ -47,7 +46,7 @@ pub(crate) async fn readme(uri: web::Path<GitTreeRequest>, web_user: WebUser, db
 
     let name = entry.filename.to_str().unwrap_or("Invalid file name");
 
-    let content = read_blob_content(&gitoxide_repo, entry.oid.as_ref(), &mut cache).await?;
+    let content = read_blob_content(entry.oid.as_ref(), store).await?;
 
     Ok(HttpResponse::Ok().json(json!({
         "file_name": name,

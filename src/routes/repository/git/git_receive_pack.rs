@@ -5,7 +5,7 @@ use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{basic_auth, GitoxideCacheList, pack, ref_update};
+use crate::git::{basic_auth, pack, ref_update};
 use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -102,7 +102,8 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
             .finish());
     }
 
-    let mut cache = GitoxideCacheList::default();
+    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+    let store = gitoxide_repo.objects.clone();
 
     let mut output_writer = GitWriter::new();
 
@@ -116,7 +117,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create | RefUpdateType::Update => cache = process_create_update(&update, &repo, &db_pool, &mut output_writer, index_path.as_ref(), pack_path.as_ref(), &vec[pos..], cache).await?,
+                    RefUpdateType::Create | RefUpdateType::Update => process_create_update(&update, &repo, store.clone(), &db_pool, &mut output_writer, index_path.as_ref(), pack_path.as_ref(), &vec[pos..]).await?,
                     RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?
                 };
             }
@@ -151,7 +152,7 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     output_writer.flush().await?;
 
     // Run post update hooks
-    post_update::run(&mut repo, &mut transaction, cache)
+    post_update::run(store, &mut repo, &mut transaction)
         .await
         .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 

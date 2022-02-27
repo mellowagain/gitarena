@@ -1,4 +1,3 @@
-use crate::git::GitoxideCacheList;
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -9,6 +8,7 @@ use crate::{die, err};
 use std::borrow::Borrow;
 use std::io::{Cursor, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use actix_web::http::header::CONTENT_DISPOSITION;
 use actix_web::{HttpResponse, Responder, web};
@@ -18,10 +18,9 @@ use async_recursion::async_recursion;
 use bstr::ByteSlice;
 use git_repository::objs::tree::EntryMode;
 use git_repository::objs::Tree;
-use git_repository::odb::pack::cache::DecodeEntry;
 use git_repository::odb::pack::FindExt;
+use git_repository::odb::Store;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
-use git_repository::Repository as GitoxideRepository;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
@@ -49,13 +48,13 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUse
 
     let mut buffer = Vec::<u8>::new();
 
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
+    let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
 
     let mut builder = TarBuilder::new(Vec::new());
-    write_directory_tar(&gitoxide_repo, tree, Path::new("."), &mut builder, &mut buffer, &mut cache).await?;
+    write_directory_tar(store.clone(), tree, Path::new("."), &mut builder, &mut buffer).await?;
 
     let tar_data = builder.into_inner().await?;
 
@@ -68,20 +67,20 @@ pub(crate) async fn tar_gz_file(uri: web::Path<GitTreeRequest>, web_user: WebUse
 }
 
 #[async_recursion(?Send)]
-async fn write_directory_tar(repo: &GitoxideRepository, tree: Tree, path: &Path, builder: &mut TarBuilder<Vec<u8>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
+async fn write_directory_tar(store: Arc<Store>, tree: Tree, path: &Path, builder: &mut TarBuilder<Vec<u8>>, buffer: &mut Vec<u8>) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path = path.join(filename);
 
         match entry.mode {
             EntryMode::Tree => {
-                let tree = repo.odb.find_tree(&entry.oid, buffer, cache)?;
-                let tree = Tree::from(tree);
+                let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
+                let tree = Tree::from(tree_ref);
 
-                write_directory_tar(repo, tree, path.as_path(), builder, buffer, cache).await?;
+                write_directory_tar(store.clone(), tree, path.as_path(), builder, buffer).await?;
             }
             EntryMode::Blob | EntryMode::BlobExecutable | EntryMode::Link => {
-                let content = read_raw_blob_content(repo, entry.oid.as_ref(), cache).await?;
+                let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
                 let mut header = TarHeader::new_gnu();
                 header.set_size(content.len() as u64);
@@ -140,13 +139,13 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, 
     }?; // Handle 404
 
     let mut buffer = Vec::<u8>::new();
-    let mut cache = GitoxideCacheList::default();
+    let store = gitoxide_repo.objects.clone();
 
-    let tree = repo_files_at_ref(&gitoxide_repo, &loose_ref, &mut buffer, &mut cache).await?;
+    let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
 
     let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
-    write_directory_zip(&gitoxide_repo, tree, Path::new(""), &mut writer, &mut buffer, &mut cache).await?;
+    write_directory_zip(store.clone(), tree, Path::new(""), &mut writer, &mut buffer).await?;
 
     let cursor = writer.finish()?;
     let data = cursor.into_inner();
@@ -157,7 +156,7 @@ pub(crate) async fn zip_file(uri: web::Path<GitTreeRequest>, web_user: WebUser, 
 }
 
 #[async_recursion(?Send)]
-async fn write_directory_zip(repo: &GitoxideRepository, tree: Tree, path: &Path, writer: &mut ZipWriter<Cursor<Vec<u8>>>, buffer: &mut Vec<u8>, cache: &mut impl DecodeEntry) -> Result<()> {
+async fn write_directory_zip(store: Arc<Store>, tree: Tree, path: &Path, writer: &mut ZipWriter<Cursor<Vec<u8>>>, buffer: &mut Vec<u8>) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path_buffer = path.join(filename);
@@ -165,15 +164,15 @@ async fn write_directory_zip(repo: &GitoxideRepository, tree: Tree, path: &Path,
 
         match entry.mode {
             EntryMode::Tree => {
-                let tree = repo.odb.find_tree(&entry.oid, buffer, cache)?;
-                let tree = Tree::from(tree);
+                let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
+                let tree = Tree::from(tree_ref);
 
                 writer.add_directory(format!("{}", path.display()), ZipFileOptions::default())?;
 
-                write_directory_zip(repo, tree, path, writer, buffer, cache).await?;
+                write_directory_zip(store.clone(), tree, path, writer, buffer).await?;
             }
             EntryMode::Blob | EntryMode::BlobExecutable => {
-                let content = read_raw_blob_content(repo, entry.oid.as_ref(), cache).await?;
+                let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
                 let options = ZipFileOptions::default()
                     .unix_permissions(if matches!(entry.mode, EntryMode::BlobExecutable) {
