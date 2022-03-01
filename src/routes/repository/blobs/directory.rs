@@ -18,15 +18,14 @@ use async_recursion::async_recursion;
 use bstr::ByteSlice;
 use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
+use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::refs::file::loose::Reference;
 use git_repository::{ObjectId, Repository as GitoxideRepository};
-use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
-use tracing_unwrap::OptionExt;
 
 #[route("/{username}/{repository}/tree/{tree}/directory/{blob:.*}", method = "GET", err = "html")]
 pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -79,25 +78,26 @@ pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_
     files.reserve(tree.entries.len().min(1000));
 
     for entry in tree.entries.iter().take(1000) {
-        let name = dbg!(entry.filename.to_str().unwrap_or("Invalid file name"));
+        let name = entry.filename.to_str().unwrap_or("Invalid file name");
+        let file_path = format!("{}/{}", uri.blob.as_str(), name);
 
-        /*let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob (this should never happen)"))?;
+        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, file_path.as_str()).await?.ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob (this should never happen)"))?;
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
             Some(read_blob_content(entry.oid.as_ref(), store.clone()).await.unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()))
         } else {
             None
-        };*/
+        };
 
         files.push(RepoFile {
             file_type: entry.mode as u16,
             file_name: name,
-            submodule_target_oid: None,
+            submodule_target_oid,
             commit: GitCommit {
-                oid: "0000000000000000000000000000000000000000".to_owned()/*format!("{}", oid)*/,
-                message: "Not yet implemented".to_owned()/*commit.message().unwrap_or_default().to_owned()*/,
-                time: 0/*commit.time().seconds()*/,
+                oid: format!("{}", oid),
+                message: commit.message().unwrap_or_default().to_owned(),
+                time: commit.time().seconds(),
                 date: None,
                 author_name: String::new(), // Unused for file listing
                 author_uid: None, // Unused for file listing
@@ -152,7 +152,7 @@ pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_
 async fn recursively_visit_tree<'a>(reference: &Reference, tree_ref: TreeRef<'a>, path: &str, repo: &'a GitoxideRepository, store: Arc<Store>, buffer: &'a mut Vec<u8>) -> Result<Tree> {
     let tree = Tree::from(tree_ref);
 
-    match dbg!(path.split_once('/')) {
+    match path.split_once('/') {
         Some((search, remaining)) => {
             let entry = tree.entries
                 .iter()
