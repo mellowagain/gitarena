@@ -111,6 +111,13 @@
 
 <div class="ui segments">
     <div class="ui segment">
+        {% if file.file_type == 33261 %}
+            <span class="popup" data-content="Executable file">
+                <i class="terminal icon"></i>
+            </span>
+        {% endif %}
+
+
         <b id="readme-file-name">{{ file.file_name }}</b>
         {{ size | filesizeformat }}
     </div>
