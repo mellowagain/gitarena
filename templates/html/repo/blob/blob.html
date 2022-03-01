@@ -54,8 +54,20 @@
     <div class="fourteen wide computer only column">
         <div class="ui breadcrumb">
             <a class="section" href="/{{ repo_owner_name }}/{{ repo.name }}">{{ repo.name }}</a>
-            <div class="divider"> / </div>
-            <a class="section" href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/blob/{{ name }}">{{ name }}</a>
+
+            {% set_global previous = "" %}
+            {% for dir in full_path | split(pat="/") %}
+                {% if loop.last %}
+                    {% set uri = "blob" %}
+                {% else %}
+                    {% set uri = "directory" %}
+                {% endif %}
+
+                <div class="divider"> / </div>
+                <a class="section" href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/{{ uri }}{{ previous }}/{{ dir }}">{{ dir }}</a>
+
+                {% set_global previous = previous ~ "/" ~ dir %}
+            {% endfor %}
         </div>
     </div>
 </div>
