@@ -154,6 +154,12 @@ impl GitArenaError {
         }
     }
 
+    /// Whenever this error should be printed to the console
+    fn should_print(&self) -> bool {
+        self.status_code() == StatusCode::INTERNAL_SERVER_ERROR && !self.should_display_message()
+    }
+
+    /// Whenever this error should be displayed to the end user
     fn should_display_message(&self) -> bool {
         self.source.downcast_ref::<WithStatusCode>().map_or_else(|| false, |w| w.display)
     }
@@ -185,6 +191,10 @@ impl ResponseError for GitArenaError {
     }
 
     fn error_response(&self) -> HttpResponse {
+        if self.should_print() {
+            error!("Error occurred in route: {:?}", self.source);
+        }
+
         let mut builder = HttpResponseBuilder::new(self.status_code());
 
         match &self.display_type {
