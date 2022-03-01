@@ -20,7 +20,7 @@ impl CookieExtensions for Cookie {
     fn probe(&self, buffer: &[u8]) -> Result<FileType> {
         let output = self.buffer(buffer).context("Failed to find type of buffer")?;
 
-        Ok(if output == "ASCII text" {
+        Ok(if output.contains("ASCII text") {
             FileType::Text
         } else if output == "data" {
             FileType::Binary
