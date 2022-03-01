@@ -9,7 +9,7 @@ use serde::Serialize;
 pub(crate) enum FileType {
     Text,
     Binary,
-    Unknown
+    Unknown(String)
 }
 
 pub(crate) trait CookieExtensions {
@@ -20,14 +20,17 @@ impl CookieExtensions for Cookie {
     fn probe(&self, buffer: &[u8]) -> Result<FileType> {
         let output = self.buffer(buffer).context("Failed to find type of buffer")?;
 
-        Ok(match output.as_str() {
-            "ASCII text" => FileType::Text,
-            "data" => FileType::Binary,
-            _ => {
-                warn!("Received unknown output from libmagic: {}", output);
+        Ok(if output == "ASCII text" {
+            FileType::Text
+        } else if output == "data" {
+            FileType::Binary
+        } else {
+            let header = buffer.iter().take(5).copied().collect::<Vec<u8>>();
+            let hex_str = hex::encode(header);
 
-                FileType::Unknown
-            }
+            warn!("Received unknown output from libmagic (0x{}): {}", hex_str, output);
+
+            FileType::Unknown(hex_str)
         })
     }
 }

@@ -130,6 +130,25 @@
                     </div>
                 </div>
             </div>
+        {% elif type is object %}
+            <div class="ui icon header">
+                <i class="question icon"></i>
+                <div class="content">
+                    Unknown file type
+
+                    <div class="sub header">
+                        {% if user is undefined or not user.admin %}
+                            Please contact your GitArena administrator if you believe this is a mistake. <br>
+                        {% else %}
+                            Please open an issue if you believe this is a mistake. <br>
+                        {% endif %}
+                        <br>
+
+                        Additional information: <b><code>0x{{ type.unknown }}</code></b> <br>
+                        <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/~blob/{{ name }}">View raw</a>
+                    </div>
+                </div>
+            </div>
         {% else %}
             <div class="ui icon header">
                 <i class="terminal icon"></i>
