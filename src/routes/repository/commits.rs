@@ -85,6 +85,7 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
     }
 
     context.try_insert("commits", &commits)?;
+    context.insert_web_user(&web_user)?;
 
     // Only send a partial result (only the components) if it's a request by htmx
     if request.get_header("hx-request").is_some() {
