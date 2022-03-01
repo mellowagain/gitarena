@@ -24,6 +24,9 @@ impl CookieExtensions for Cookie {
             FileType::Text
         } else if output == "data" {
             FileType::Binary
+        } else if output == "empty" {
+            // Rendered template handles this
+            FileType::Unknown(String::new())
         } else {
             let header = buffer.iter().take(5).copied().collect::<Vec<u8>>();
             let hex_str = hex::encode(header);
