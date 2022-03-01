@@ -57,6 +57,7 @@ to view the logs, look for a file in the `logs` directory ending with the curren
 * `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
 * `DATABASE_PASSWORD_FILE`: This environment variable may contain a path to a file containing the Postgres database password. In that case, the password does not need to be specified in the [Postgres connection string][postgres]. This is for usage with Docker secrets.
 * `SERVE_STATIC_FILES`: If this environment variable is set, GitArena will serve `/static` resources. This is experimental. It is instead recommended configuring your reverse proxy to serve them.
+* `MAGIC`: Path to a [libmagic](https://man7.org/linux/man-pages/man3/libmagic.3.html) file database. If not specified, GitArena will fall back to the generic one shipped with this program.
 
 ## Screenshots
 

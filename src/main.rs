@@ -90,8 +90,7 @@ async fn main() -> Result<()> {
                 .secure(secure)
         );
 
-        let cookie = Arc::new(Cookie::open(CookieFlags::default()).unwrap_or_log());
-        cookie.load(&["magic"]).unwrap_or_log();
+        let cookie = Arc::new(read_magic_database().expect_or_log("Failed to libmagic database"));
 
         let mut app = App::new()
             .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
@@ -238,4 +237,19 @@ fn read_database_config() -> Result<PgConnectOptions> {
     }
 
     Ok(options)
+}
+
+fn read_magic_database() -> Result<Cookie> {
+    let cookie = Cookie::open(CookieFlags::default())?;
+
+    // https://man7.org/linux/man-pages/man3/libmagic.3.html
+    let database_path = if let Some(magic_env) = env::var_os("MAGIC") {
+        magic_env.into_string().expect_or_log("`MAGIC` environment variable contains invalid UTF-8 string")
+    } else {
+        "magic".to_owned()
+    };
+
+    cookie.load(&[database_path.as_str()])?;
+
+    Ok(cookie)
 }
