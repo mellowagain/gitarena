@@ -31,7 +31,11 @@ use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::{FmtSubscriber, EnvFilter};
+use tracing_subscriber::{FmtSubscriber, EnvFilter, Registry};
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use tracing_unwrap::ResultExt;
 
 mod captcha;
@@ -54,7 +58,7 @@ mod verification;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut _log_guard = init_logger()?;
+    let mut _log_guards = init_logger()?;
 
     let max_pool_connections = match env::var("MAX_POOL_CONNECTIONS") {
         Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
@@ -68,7 +72,7 @@ async fn main() -> Result<()> {
         .connect_with(read_database_config()?)
         .await?;
 
-    _log_guard = config::init(&db_pool, _log_guard).await.context("Unable to initialize config in database")?;
+    _log_guards = config::init(&db_pool, _log_guards).await.context("Unable to initialize config in database")?;
 
     licenses::init().await;
 
@@ -153,7 +157,12 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_logger() -> Result<WorkerGuard> {
+fn init_logger() -> Result<Vec<WorkerGuard>> {
+    #[cfg(debug_assertions)]
+    const GUARD_VEC_PRE_ALLOCATION: usize = 1;
+    #[cfg(not(debug_assertions))]
+    const GUARD_VEC_PRE_ALLOCATION: usize = 2;
+
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
         let not_found = err.source()
             .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
@@ -180,38 +189,50 @@ fn init_logger() -> Result<WorkerGuard> {
             .add_directive("sqlx=warn".parse().unwrap_or_log())
     });
 
-    // In debug mode we only write to stdout (pretty), in production to a file (json)
-    Ok(if cfg!(debug_assertions) {
+    let mut guards = Vec::<WorkerGuard>::with_capacity(GUARD_VEC_PRE_ALLOCATION);
+
+    // In debug mode we only write to stdout, in production to a both stdout (pretty) and file (json)
+    let stdout_log = {
         let (writer, guard) = tracing_appender::non_blocking(io::stdout());
 
-        FmtSubscriber::builder()
-            .with_writer(writer)
-            .with_env_filter(env_filter)
+        let layer = Layer::new()
             .with_thread_ids(true)
-            .try_init()
-            .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
+            .with_writer(writer);
 
-        guard
-    } else {
+        guards.push(guard);
+        layer
+    };
+
+    let file_log = if cfg!(debug_assertions) || env::var_os("DEBUG_FILE_LOG").is_some() {
         let logs_dir = Path::new("logs");
 
         if !logs_dir.exists() {
             dir::create_all(logs_dir, false)?;
         }
 
-        let appender = rolling::daily("logs", "gitarena");
+        let appender = rolling::daily("logs", "gitarena.log");
         let (writer, guard) = tracing_appender::non_blocking(appender);
 
-        FmtSubscriber::builder()
-            .with_writer(writer)
-            .with_env_filter(env_filter)
+        let layer = Layer::new()
             .with_thread_ids(true)
-            .json()
-            .try_init()
-            .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
+            .with_writer(writer)
+            .json();
 
-        guard
-    })
+        guards.push(guard);
+        Some(layer)
+    } else {
+        None
+    };
+
+    // https://stackoverflow.com/a/66138267
+    Registry::default()
+        .with(env_filter)
+        .with(stdout_log)
+        .with(file_log)
+        .try_init()
+        .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
+
+    Ok(guards)
 }
 
 fn read_database_config() -> Result<PgConnectOptions> {

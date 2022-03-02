@@ -86,7 +86,7 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
     }
 }
 
-pub(crate) async fn init(db_pool: &Pool<Postgres>, log_guard: WorkerGuard) -> Result<WorkerGuard> {
+pub(crate) async fn init(db_pool: &Pool<Postgres>, log_guards: Vec<WorkerGuard>) -> Result<Vec<WorkerGuard>> {
     let mut transaction = db_pool.begin().await?;
 
     if let Some(err) = sqlx::query("select exists(select 1 from settings limit 1)").execute(&mut transaction).await.err() {
@@ -101,18 +101,18 @@ pub(crate) async fn init(db_pool: &Pool<Postgres>, log_guard: WorkerGuard) -> Re
 
                 info!("Required database tables do not exist. Creating...");
 
-                create_tables(db_pool, log_guard).await?;
+                create_tables(db_pool, log_guards).await?;
             }
         }
 
         bail!(err);
     }
 
-    Ok(log_guard)
+    Ok(log_guards)
 }
 
 // TODO: Use sqlx migrations
-pub(crate) async fn create_tables(db_pool: &Pool<Postgres>, log_guard: WorkerGuard) -> Result<Infallible> {
+pub(crate) async fn create_tables(db_pool: &Pool<Postgres>, log_guards: Vec<WorkerGuard>) -> Result<Infallible> {
     const DATABASE_INIT_DATA: &str = include_str!("../schema.sql");
     let mut connection = db_pool.acquire().await?;
 
@@ -125,7 +125,7 @@ pub(crate) async fn create_tables(db_pool: &Pool<Postgres>, log_guard: WorkerGua
 
     drop(connection); // Drop connection so when we close the pool below it doesn't hang
     db_pool.close().await; // Close the pool so the database flushes
-    drop(log_guard); // Drop the log guard so the log file gets flushed
+    drop(log_guards); // Drop the vec of log guards (calls destructors of items as well) so the log files gets flushed
 
     // We had to drop everything above manually as exit below does not call destructors
     exit(0);
