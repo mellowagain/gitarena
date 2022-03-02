@@ -3871,7 +3871,6 @@ version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8061cbaa91ee75041514f67a09398c65a64efed72c90151ecd47593bad53da99"
 dependencies = [
- "actix-rt",
  "native-tls",
  "once_cell",
  "tokio",
