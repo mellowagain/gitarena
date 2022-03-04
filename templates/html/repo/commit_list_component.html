@@ -10,7 +10,7 @@
     <div class="ui segments">
         {% for commit in commit_list %}
             <div class="ui segment"
-                 {% if loop.last and is_last_iter is some %}
+                 {% if loop.last and is_last_iter is some and commits | length >= 19 %}
                  data-hx-get="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree | urlencode }}/commits?after={{ commit.oid }}&date={{ date | urlencode }}"
                  data-hx-trigger="revealed"
                  data-hx-target="#commit-list"

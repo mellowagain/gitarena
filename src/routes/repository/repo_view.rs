@@ -18,6 +18,7 @@ use git_repository::hash::ObjectId;
 use git_repository::objs::tree::EntryMode;
 use git_repository::objs::Tree;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
+use git_repository::traverse::commit::ancestors::State;
 use gitarena_macros::route;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
@@ -138,7 +139,11 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     }
 
     context.try_insert("files", &files)?;
-    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
+
+    let mut state = State::default();
+    let commits = all_commits(full_tree_name, store, &mut state, &gitoxide_repo, 0).await?;
+
+    context.try_insert("commits_count", &commits.len())?;
 
     let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;

@@ -1,6 +1,15 @@
+use std::str::FromStr;
+use std::sync::Arc;
+
 use anyhow::Result;
 use async_recursion::async_recursion;
 use git2::{DiffOptions, Oid, Repository as Git2Repository, Sort};
+use git_repository::odb::pack::FindExt;
+use git_repository::odb::Store;
+use git_repository::refs::Target;
+use git_repository::traverse::commit::ancestors::State;
+use git_repository::traverse::commit::{Ancestors, Parents, Sorting};
+use git_repository::{ObjectId, Repository as GitoxideRepository};
 use tracing::instrument;
 
 #[instrument(err, skip(repo))]
@@ -71,22 +80,21 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
 
 /// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
 /// Returns at most `limit` commits or all commits if `limit == 0`
-#[instrument(err, skip(repo))]
-pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str, limit: usize) -> Result<Vec<Oid>> {
-    let mut results = Vec::<Oid>::with_capacity(limit);
+#[instrument(err, skip(store, state, repo))]
+pub(crate) async fn all_commits(reference: &str, store: Arc<Store>, state: &mut State, repo: &GitoxideRepository, limit: usize) -> Result<Vec<ObjectId>> {
+    let mut results = Vec::<ObjectId>::with_capacity(limit);
+    let tip = ObjectId::from_str(reference).or_else(|_| resolve_into_id(repo, repo.refs.find_loose(reference)?.target))?;
 
-    let mut rev_walk = repo.revwalk()?;
-    rev_walk.set_sorting(Sort::TIME)?;
+    let cache = store.to_cache_arc();
 
-    match Oid::from_str(reference) {
-        Ok(oid) => rev_walk.push(oid)?,
-        Err(_) => rev_walk.push_ref(reference)?
-    }
+    let ancestors = Ancestors::new(
+        Some(tip), // Option<T> implements IntoIterator<T> so this is totally ok
+        state,
+        |oid, buffer| cache.find_commit_iter(oid, buffer).ok().map(|(commit, _)| commit)
+    ).sorting(Sorting::ByCommitterDate).parents(Parents::First);
 
-    for result in rev_walk {
-        let commit_oid = result?;
-
-        results.push(commit_oid);
+    for ancestor in ancestors {
+        results.push(ancestor?);
 
         if limit > 0 && results.len() >= limit {
             break;
@@ -119,4 +127,15 @@ pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Res
     Ok(tags.iter()
         .filter_map(|o| o.map(|o| o.to_owned()))
         .collect())
+}
+
+/// Recursively resolves symbolic refs until hitting a peeled target
+fn resolve_into_id(repo: &GitoxideRepository, target: Target) -> Result<ObjectId> {
+    match target {
+        Target::Peeled(oid) => Ok(oid),
+        Target::Symbolic(target) => {
+            let reference = repo.refs.find_loose(target.to_partial())?;
+            resolve_into_id(repo, reference.target)
+        }
+    }
 }

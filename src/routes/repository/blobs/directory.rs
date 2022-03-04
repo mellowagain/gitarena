@@ -22,6 +22,7 @@ use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::refs::file::loose::Reference;
+use git_repository::traverse::commit::ancestors::State;
 use git_repository::{ObjectId, Repository as GitoxideRepository};
 use gitarena_macros::route;
 use sqlx::PgPool;
@@ -127,7 +128,11 @@ pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_
     });
 
     context.try_insert("files", &files)?;
-    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
+
+    let mut state = State::default();
+    let commits = all_commits(full_tree_name, store, &mut state, &gitoxide_repo, 0).await?;
+
+    context.try_insert("commits_count", &commits.len())?;
 
     let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;

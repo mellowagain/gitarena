@@ -10,7 +10,9 @@ use crate::{die, err, render_template};
 use actix_web::{HttpRequest, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
+use git_repository::odb::pack::FindExt;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
+use git_repository::traverse::commit::ancestors::State;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
@@ -53,21 +55,29 @@ pub(crate) async fn commits(uri: web::Path<GitTreeRequest>, web_user: WebUser, r
 
     let searching_ref = after_oid.unwrap_or(full_tree_name);
 
-    let commit_ids = all_commits(&libgit2_repo, searching_ref, 20).await?;
+    let store = gitoxide_repo.objects.clone();
+    let mut state = State::default();
+
+    let mut commit_ids = all_commits(searching_ref, store.clone(), &mut state, &gitoxide_repo, 20).await?;
     let mut commits = Vec::<GitCommit>::with_capacity(commit_ids.len());
 
-    for oid in commit_ids {
-        let commit = libgit2_repo.find_commit(oid)?;
-        let (name, uid, email) = commit.author().try_disassemble(&mut transaction).await;
+    let cache = store.to_cache_arc();
 
-        let chrono_time = commit.time().try_as_chrono()?;
+    for oid in commit_ids {
+        let mut buffer = Vec::<u8>::new();
+        let (commit, _) = cache.find_commit(oid.as_ref(), &mut buffer)?;
+
+        // TODO: Check if commit.committer and commit.author is different, if yes display them separately in the frontend
+        let (name, uid, email) = commit.author.try_disassemble(&mut transaction).await;
+
+        let chrono_time = commit.author.time.try_as_chrono()?;
         let chrono_date = chrono_time.date();
         let chrono_time_only_date = chrono_date.and_hms(0, 0, 0);
 
         commits.push(GitCommit {
-            oid: format!("{}", commit.id()),
-            message: commit.message().unwrap_or_default().to_owned(),
-            time: commit.time().seconds(),
+            oid: oid.to_string(),
+            message: commit.message().title.to_str().map_or_else(|_| "<!> GitArena Error: Invalid Commit message".to_owned(), str::to_owned),
+            time: commit.author.time.time as i64,
             date: Some(chrono_time_only_date),
             author_name: name,
             author_uid: uid,

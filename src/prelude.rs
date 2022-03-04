@@ -5,10 +5,10 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use awc::http::header::USER_AGENT;
 use awc::{Client, ClientBuilder};
-use bstr::BString;
+use bstr::{BString, ByteSlice};
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
-use git_repository::actor::{Sign, Signature as GitoxideSignature, Time as GitoxideTime};
+use git_repository::actor::{Sign, Signature as GitoxideSignature, SignatureRef as GitoxideSignatureRef, Time as GitoxideTime, Time};
 use log::warn;
 use qstring::QString;
 use sqlx::{Executor, Postgres};
@@ -120,6 +120,27 @@ impl LibGit2TimeExtensions for LibGit2Time {
     }
 }
 
+impl LibGit2TimeExtensions for Time {
+    fn try_as_chrono(&self) -> Result<DateTime<FixedOffset>> {
+        let abs_offset_seconds = self.offset.abs();
+
+        let offset = match self.sign {
+            Sign::Plus => FixedOffset::east_opt(abs_offset_seconds).ok_or_else(|| anyhow!("Offset out of bounds"))?,
+            Sign::Minus => FixedOffset::west_opt(abs_offset_seconds).ok_or_else(|| anyhow!("Offset out of bounds"))?,
+        };
+
+        match offset.timestamp_opt(self.time as i64, 0) {
+            LocalResult::Single(date_time) => Ok(date_time),
+            LocalResult::Ambiguous(min, max) => {
+                warn!("Received ambiguous result for commit: {} and {}", &min, &max);
+                Ok(min)
+            },
+            LocalResult::None => bail!("Cannot convert to UNIX time {} to DateTime<{}>", self.time, offset)
+        }
+    }
+}
+
+// TODO: Rename this as this is no longer specific to libgit2 but to all both git libraries (libgit2 and gitoxide)
 #[async_trait(?Send)]
 pub(crate) trait LibGit2SignatureExtensions {
     /// Tries to disassemble this [Signature][signature] as `(Username, User ID, Email)`.
@@ -158,6 +179,20 @@ impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
             .await
             .map_or_else(
                 || (self.name().unwrap_or("Ghost").to_owned(), None, email.to_owned()),
+                |user| (user.username, Some(user.id), email.to_owned())
+            )
+    }
+}
+
+#[async_trait(?Send)]
+impl LibGit2SignatureExtensions for GitoxideSignatureRef<'_> {
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>, String) {
+        let email = self.email.to_str().unwrap_or("Invalid email address");
+
+        User::find_using_email(email, executor)
+            .await
+            .map_or_else(
+                || (self.name.to_str().map_or_else(|_| "Ghost".to_owned(), str::to_owned), None, email.to_owned()),
                 |user| (user.username, Some(user.id), email.to_owned())
             )
     }
