@@ -179,6 +179,8 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
 
         EnvFilter::default()
             .add_directive(level.into())
+            .add_directive("actix_http=info".parse().unwrap_or_log())
+            .add_directive("actix_server=info".parse().unwrap_or_log())
             .add_directive("askalono=warn".parse().unwrap_or_log())
             .add_directive("globset=info".parse().unwrap_or_log())
             .add_directive("h2=info".parse().unwrap_or_log())
