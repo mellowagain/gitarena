@@ -231,7 +231,7 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
         .with(stdout_log)
         .with(file_log)
         .try_init()
-        .map_err(|err| anyhow!(err))?; // https://github.com/dtolnay/anyhow/issues/83
+        .context("Failed to initialize logger")?;
 
     Ok(guards)
 }
