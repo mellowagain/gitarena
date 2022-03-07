@@ -162,7 +162,7 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
     #[cfg(not(debug_assertions))]
     const GUARD_VEC_PRE_ALLOCATION: usize = 2;
 
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
+    let mut env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
         let not_found = err.source()
             .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
             .unwrap_or(false);
@@ -225,11 +225,21 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
         None
     };
 
+    let tokio_console = if cfg!(tokio_unstable) {
+        env_filter = env_filter.add_directive("tokio=trace".parse().unwrap_or_log())
+            .add_directive("runtime=trace".parse().unwrap_or_log());
+
+        Some(console_subscriber::spawn())
+    } else {
+        None
+    };
+
     // https://stackoverflow.com/a/66138267
     Registry::default()
         .with(env_filter)
         .with(stdout_log)
         .with(file_log)
+        .with(tokio_console)
         .try_init()
         .context("Failed to initialize logger")?;
 
