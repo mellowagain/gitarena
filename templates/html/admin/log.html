@@ -9,12 +9,7 @@ Log Viewer
 {% endblock %}
 
 {% block links %}
-<a href="/admin/settings" class="link">
-    settings
-</a>
-<a href="/admin/log" class="active link">
-    log
-</a>
+{% include "admin/links.html" %}
 {% endblock %}
 
 {% block content %}

@@ -4,6 +4,10 @@
 Instance settings
 {% endblock %}
 
+{% block links %}
+{% include "admin/links.html" %}
+{% endblock %}
+
 {% block content %}
 <div class="ui segment">
     {% for key, value in settings %}

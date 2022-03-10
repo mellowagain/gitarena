@@ -74,6 +74,11 @@
                             <div class="item">
                                 <a href="/settings">Preferences</a>
                             </div>
+                            {% if user.admin %}
+                                <div class="item">
+                                    <a href="/admin">Admin Panel</a>
+                                </div>
+                            {% endif %}
                             <div class="item">
                                 <a data-hx-post="/logout">Sign out</a>
                             </div>
