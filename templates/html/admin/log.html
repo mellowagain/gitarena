@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}
+Log Viewer
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" media="screen" href="/static/css/third_party/highlight.min.css">
+{% endblock %}
+
+{% block links %}
+<a href="/admin/settings" class="link">
+    settings
+</a>
+<a href="/admin/log" class="active link">
+    log
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="ui segments">
+    <div class="ui segment">
+        <b id="readme-file-name">Logs</b>
+    </div>
+
+    <div
+            id="content"
+            class="ui code-block segment"
+            data-hx-sse="connect:/admin/log/sse swap:log"
+            data-hx-swap="none"
+    >
+        <pre class="no-margin"><code id="actual-content" class="language-plaintext">{% for line in lines %}{{ line }}
+{% endfor %}</code></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/third_party/highlight.min.js" defer></script>
+<script src="/static/js/third_party/highlightjs-line-numbers.min.js" defer></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        hljs.highlightAll();
+    });
+
+    document.addEventListener("htmx:sseMessage", function (event) {
+        document.getElementById("actual-content").insertAdjacentHTML('beforeend', event.detail.data + "\r\n");
+    });
+</script>
+{% endblock %}

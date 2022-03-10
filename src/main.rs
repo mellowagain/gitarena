@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 
 use crate::error::error_renderer_middleware;
+use crate::sse::Broadcaster;
+use crate::utils::admin_panel_layer::AdminPanelLayer;
 
 use std::env::VarError;
 use std::error::Error;
@@ -23,6 +25,7 @@ use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
 use fs_extra::dir;
+use futures_locks::RwLock;
 use gitarena_macros::from_optional_config;
 use log::info;
 use magic::{Cookie, CookieFlags};
@@ -31,10 +34,10 @@ use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::{EnvFilter, Registry};
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Registry};
 use tracing_unwrap::ResultExt;
 
 mod captcha;
@@ -49,6 +52,7 @@ mod privileges;
 mod repository;
 mod routes;
 mod session;
+mod sse;
 mod sso;
 mod templates;
 mod user;
@@ -57,7 +61,8 @@ mod verification;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut _log_guards = init_logger()?;
+    let broadcaster = Broadcaster::new();
+    let mut _log_guards = init_logger(broadcaster.clone())?;
 
     let max_pool_connections = match env::var("MAX_POOL_CONNECTIONS") {
         Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
@@ -98,6 +103,7 @@ async fn main() -> Result<()> {
         let mut app = App::new()
             .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
             .app_data(Data::new(cookie.clone()))
+            .app_data(broadcaster.clone())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {
@@ -156,7 +162,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_logger() -> Result<Vec<WorkerGuard>> {
+fn init_logger(broadcaster: Data<RwLock<Broadcaster>>) -> Result<Vec<WorkerGuard>> {
     #[cfg(debug_assertions)]
     const GUARD_VEC_PRE_ALLOCATION: usize = 1;
     #[cfg(not(debug_assertions))]
@@ -240,6 +246,7 @@ fn init_logger() -> Result<Vec<WorkerGuard>> {
         .with(stdout_log)
         .with(file_log)
         .with(tokio_console)
+        .with(AdminPanelLayer::new(broadcaster))
         .try_init()
         .context("Failed to initialize logger")?;
 
@@ -251,11 +258,11 @@ fn read_database_config() -> Result<PgConnectOptions> {
         (Some(url), None) => {
             let str = url.into_string().map_err(|_| anyhow!("`DATABASE_URL` environment variable is not valid unicode"))?;
             PgConnectOptions::from_str(str.as_str())?
-        },
+        }
         (None, Some(file)) => {
             let url = fs::read_to_string(file)?;
             PgConnectOptions::from_str(url.as_str())?
-        },
+        }
         _ => bail!("Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena")
     };
 
