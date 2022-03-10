@@ -38,18 +38,21 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
         if valid {
             match self.broadcaster.try_read() {
                 Ok(broadcaster) => {
-                    let mut fields = BTreeMap::new();
+                    // Don't fill the channel if no consumer is active to prevent the channel from reaching its buffer size
+                    if !broadcaster.is_empty() {
+                        let mut fields = BTreeMap::new();
 
-                    let mut visitor = AdminPanelVisitor(&mut fields);
-                    event.record(&mut visitor);
+                        let mut visitor = AdminPanelVisitor(&mut fields);
+                        event.record(&mut visitor);
 
-                    if let Some(message) = fields.get("message") {
-                        // Short the rfc 3339 timestamp to be consistent with the default log format
-                        let timestamp = Utc::now().to_rfc3339();
-                        let shortened = &timestamp[..26];
-                        let formatted_message = format!("{}Z [{}] {}", shortened, level.as_str(), message.as_str());
+                        if let Some(message) = fields.get("message") {
+                            // Short the rfc 3339 timestamp to be consistent with the default log format
+                            let timestamp = Utc::now().to_rfc3339();
+                            let shortened = &timestamp[..26];
+                            let formatted_message = format!("{}Z [{}] {}", shortened, level.as_str(), message.as_str());
 
-                        broadcaster.send(Category::AdminLog, formatted_message.as_str());
+                            broadcaster.send(Category::AdminLog, formatted_message.as_str());
+                        }
                     }
                 }
                 Err(err) => warn!("Failed to acquire read lock for Broadcaster: {}", err)
