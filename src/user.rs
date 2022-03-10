@@ -1,6 +1,6 @@
 use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::session::Session;
-use crate::{err, session};
+use crate::{die, err, session};
 
 use std::convert::TryFrom;
 use std::pin::Pin;
@@ -105,7 +105,7 @@ impl WebUser {
     pub(crate) fn into_user(self) -> AnyhowResult<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
-            WebUser::Anonymous => bail!("Not authenticated")
+            WebUser::Anonymous => die!(UNAUTHORIZED, "Not authenticated")
         }
     }
 }
