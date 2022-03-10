@@ -21,7 +21,7 @@ lto = true
 
 [dependencies]
 actix-files = "0.6.0"
-actix-identity = "0.4.0-beta.9"
+actix-identity = "0.4.0"
 actix-multipart = "0.4.0"
 actix-web = { version = "4.0.1", features = ["secure-cookies"] }
 anyhow = "1.0.52"
@@ -31,7 +31,7 @@ async-compression = { version = "0.3.8", features = ["gzip", "tokio"] }
 async-process = "1.3.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.52"
-awc = { version = "3.0.0-beta.21", features = ["rustls"] } # awc uses rustls for the time being because of version conflicts with openssl
+awc = { version = "3.0.0", features = ["rustls"] } # awc uses rustls for the time being because of version conflicts with openssl
 base64 = "0.13.0"
 bstr = "0.2.16"
 chrono = { version = "0.4.19", features = ["serde"] }
