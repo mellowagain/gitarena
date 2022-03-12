@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}
+Issues - {{ repo_owner_name }}/{{ repo.name }}
+{% endblock %}
+
+{% block content %}
+{% if repo.mirrored_from is some %}
+<div id="mirror" class="ui warning message">
+    <i class="close icon"></i>
+    <div class="header">
+        Repository is mirrored
+    </div>
+    Please note that while repo content is mirrored, issues are not
+</div>
+{% endif %}
+
+<div class="ui segments">
+    {% for issue in issues %}
+        <div class="ui segment">
+            <div class="ui grid">
+                <div class="ten wide column">
+                    <a href="/issue/{{ issue.index }}">
+                        <b>{{ issue.title }}</b>
+                    </a>
+
+                    {% for label in issue.labels %}
+                        <div class="ui teal horizontal label">{{ label }}</div>
+                    {% endfor %}
+                    <br>
+
+                    #{{ issue.index }} created {{ issue.created_at | human_time }} by
+
+                    {% set issue_author = "u" ~ issue.author %}
+                    <a href="/{{ usernames[issue_author] }}">
+                        {{ usernames[issue_author] }}
+                    </a>
+
+                    {% if issue.milestone is some %}
+                        <i class="clock outline icon"></i> {{ issue.milestone }}
+                    {% endif %}
+                </div>
+                <div class="six wide right aligned column">
+                    {% if issue.confidential %}
+                        <div class="ui purple horizontal basic label">Confidential</div>
+                    {% endif %}
+
+                    {% if issue.closed %}
+                        <div class="ui red horizontal basic label">Closed</div>
+                    {% endif %}
+
+                    {% for assignee in issue.assignees %}
+                        {% set assignee_key = "u" ~ assignee %}
+                        <a href="/{{ usernames[assignee_key] }}">
+                            <img class="ui avatar image" src="/api/avatar/{{ assignee }}" alt="{{ usernames[assignee_key] }}">
+                        </a>
+                    {% endfor %}
+
+                    {% if issue.locked %}
+                        <i class="lock icon"></i>
+                    {% else %}
+                        <i class="comment alternate icon"></i>
+                    {% endif %}
+
+                    0 {# comment count #} <br>
+
+                    updated {{ issue.updated_at | human_time }}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const repo_id = "{{ repo.id }}";
+
+        $(".message .close").on("click", function() {
+            $(this).closest(".message").transition("fade");
+            setCookie("noAlertFor" + repo_id, "true", 30);
+        });
+
+        if (document.cookie.split(";").some((item) => item.trim().startsWith("noAlertFor" + repo_id))) {
+            $("#mirror").hide();
+        }
+    });
+</script>
+{% endblock %}

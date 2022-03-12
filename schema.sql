@@ -178,6 +178,36 @@ create index sso_provider_index
 create index sso_user_id_index
     on sso (user_id);
 
+-- Issues
+
+create table issues
+(
+    id           serial
+        constraint issues_pk
+            primary key,
+    repo         integer                                              not null
+        constraint issues_repositories_id_fk
+            references repositories
+            on delete cascade,
+    index        integer                                              not null,
+    author       integer                                              not null
+        constraint issues_users_id_fk
+            references users
+            on delete cascade,
+    title        varchar(256)                                         not null,
+    labels       integer[]                default ARRAY []::integer[] not null,
+    milestone    integer,
+    assignees    integer[]                default ARRAY []::integer[] not null,
+    closed       boolean                  default false               not null,
+    confidential boolean                  default false               not null,
+    locked       boolean                  default false               not null,
+    created_at   timestamp with time zone default CURRENT_TIMESTAMP   not null,
+    updated_at   timestamp with time zone default CURRENT_TIMESTAMP   not null
+);
+
+comment on table issues is 'Contains issues and their corresponding data; Does *not* contain the actual text content';
+comment on column issues.index is 'Issue # per repository (not global instance)';
+
 -- Settings
 -- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 

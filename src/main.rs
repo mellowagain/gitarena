@@ -45,6 +45,7 @@ mod config;
 mod crypto;
 mod error;
 mod git;
+mod issue;
 mod licenses;
 mod mail;
 mod prelude;

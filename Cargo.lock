@@ -1976,6 +1976,7 @@ dependencies = [
  "image",
  "infer",
  "ipnetwork",
+ "itertools",
  "lettre",
  "log",
  "magic",

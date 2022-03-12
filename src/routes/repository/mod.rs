@@ -6,6 +6,7 @@ mod archive;
 mod blobs;
 mod commits;
 mod git;
+mod issues;
 mod repo_create;
 mod repo_view;
 
@@ -17,6 +18,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(commits::commits);
     config.service(archive::tar_gz_file);
     config.service(archive::zip_file);
+    config.service(issues::all_issues);
     config.service(repo_create::new_repo);
     config.service(repo_view::view_repo);
     config.service(repo_view::view_repo_tree); // Always needs to be last in this list

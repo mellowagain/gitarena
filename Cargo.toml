@@ -49,6 +49,7 @@ hex = "0.4.3"
 image = "0.23.14"
 infer = "0.6.0"
 ipnetwork = { version = "0.17.0", features = ["serde"] } # Will be upgraded to v0.18.0 when sqlx also upgrades to it (to prevent incompatibilities)
+itertools = "0.10.3"
 lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1", "tokio1-native-tls"] }
 log = "0.4.14"
 magic = "0.13.0-alpha.3"

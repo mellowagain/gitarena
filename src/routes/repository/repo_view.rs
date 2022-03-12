@@ -35,9 +35,14 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
+    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1")
+        .bind(&repo.id)
+        .fetch_one(&mut transaction)
+        .await?;
+
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", &username)?;
-    context.try_insert("issues_count", &0_i32)?;
+    context.try_insert("issues_count", &issues_count)?;
     context.try_insert("merge_requests_count", &0_i32)?;
     context.try_insert("releases_count", &0_i32)?;
     context.try_insert("tree", tree_name)?;
