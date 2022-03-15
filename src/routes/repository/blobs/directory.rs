@@ -60,7 +60,7 @@ pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_
     let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
     let tree = recursively_visit_tree(&loose_ref, tree_ref, path.as_str(), &gitoxide_repo, store.clone(), &mut tree_buffer).await?;
 
-    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1")
+    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
         .bind(&repo.id)
         .fetch_one(&mut transaction)
         .await?;

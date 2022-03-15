@@ -35,7 +35,7 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
-    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1")
+    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
         .bind(&repo.id)
         .fetch_one(&mut transaction)
         .await?;
