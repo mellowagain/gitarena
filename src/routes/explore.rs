@@ -50,10 +50,12 @@ async fn get_repositories<'e, E: Executor<'e, Database = Postgres>>(options: &Ex
         repositories.visibility, \
         repositories.archived, \
         repositories.disabled, \
-        count(distinct stars.stargazer) as stars \
+        count(distinct stars.stargazer) as stars, \
+        count(distinct issues.id) filter (where not(issues.closed = true or issues.confidential = true)) as issues \
         from repositories \
         left join stars on repositories.id = stars.repo \
         left join users on repositories.owner = users.id \
+        left join issues on repositories.id = issues.repo \
      {}", options);
 
     Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str())
@@ -72,7 +74,6 @@ struct ExploreRepo {
     archived: bool,
     disabled: bool,
     stars: i64,
-    #[sqlx(default)]
     issues: i64,
     #[sqlx(default)]
     merge_requests: i64,
