@@ -29,6 +29,7 @@ use futures_locks::RwLock;
 use gitarena_macros::from_optional_config;
 use log::info;
 use magic::{Cookie, CookieFlags};
+use sqlx::Executor;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -74,6 +75,9 @@ async fn main() -> Result<()> {
     let db_pool = PgPoolOptions::new()
         .max_connections(max_pool_connections)
         .connect_timeout(Duration::from_secs(10))
+        .after_connect(|connection| Box::pin(async move {
+            connection.execute("set application_name = 'gitarena';").await.map(|_| ())
+        }))
         .connect_with(read_database_config()?)
         .await?;
 
