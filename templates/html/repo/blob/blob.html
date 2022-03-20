@@ -111,15 +111,21 @@
 
 <div class="ui segments">
     <div class="ui segment">
-        {% if file.file_type == 33261 %}
-            <span class="popup" data-content="Executable file">
-                <i class="terminal icon"></i>
-            </span>
-        {% endif %}
+        <div class="ui grid">
+            <div class="twelve wide column">
+                {% if file.file_type == 33261 %}
+                    <span class="popup" data-content="Executable file">
+                        <i class="terminal icon"></i>
+                    </span>
+                {% endif %}
 
-
-        <b id="readme-file-name">{{ file.file_name }}</b>
-        {{ size | filesizeformat }}
+                <b id="readme-file-name">{{ file.file_name }}</b>
+                {{ size | filesizeformat }}
+            </div>
+            <div class="four wide right aligned column">
+                <a href="/{{ repo_owner_name }}/{{ repo.name }}/tree/{{ tree }}/~blob/{{ name }}">View raw</a>
+            </div>
+        </div>
     </div>
 
     {% if size > 0 %}
