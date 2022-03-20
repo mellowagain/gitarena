@@ -14,7 +14,7 @@ build = "build.rs"
 name = "gitarena"
 
 [workspace]
-members = [".", "gitarena-macros", "gitarena-ssh"]
+members = [".", "gitarena-common", "gitarena-macros", "gitarena-ssh", "gitarena-workhorse"]
 
 [profile.release]
 lto = true
@@ -43,6 +43,7 @@ futures = "0.3.19"
 futures-locks = "0.7.0"
 git-repository = { version = "0.14.0", features = ["async-network-client", "max-performance", "one-stop-shop", "unstable"] }
 git2 = "0.13.25"
+gitarena-common = { version = "0.0.0", path = "gitarena-common" }
 gitarena-macros = "0.0.0"
 heim = { version = "0.1.0-rc.2", git = "https://github.com/mellowagain/heim", features = ["host", "cpu", "memory", "process"] }
 hex = "0.4.3"
@@ -60,6 +61,7 @@ notify = "5.0.0-pre.13"
 num_cpus = "1.13.1"
 oauth2 = { version = "4.1.0", default-features = false, git = "https://github.com/mellowagain/oauth2-rs" }
 once_cell = "1.9.0"
+parity-tokio-ipc = "0.9.0"
 qstring = "0.7.2"
 rand = "0.8.4"
 regex = "1.5.4"
