@@ -643,6 +643,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1970,6 +1979,7 @@ dependencies = [
  "futures-locks",
  "git-repository",
  "git2",
+ "gitarena-common",
  "gitarena-macros",
  "heim",
  "hex",
@@ -1987,6 +1997,7 @@ dependencies = [
  "num_cpus",
  "oauth2",
  "once_cell",
+ "parity-tokio-ipc",
  "qstring",
  "rand 0.8.4",
  "regex",
@@ -2010,6 +2021,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gitarena-common"
+version = "0.0.0"
+dependencies = [
+ "bincode",
+]
+
+[[package]]
 name = "gitarena-macros"
 version = "0.0.0"
 dependencies = [
@@ -2022,6 +2040,14 @@ dependencies = [
 [[package]]
 name = "gitarena-ssh"
 version = "0.0.1"
+
+[[package]]
+name = "gitarena-workhorse"
+version = "0.0.0"
+dependencies = [
+ "gitarena-common",
+ "parity-tokio-ipc",
+]
 
 [[package]]
 name = "glob"
@@ -3120,6 +3146,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "parity-tokio-ipc"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9981e32fb75e004cc148f5fb70342f393830e0a4aa62e3cc93b50976218d42b6"
+dependencies = [
+ "futures",
+ "libc",
+ "log",
+ "rand 0.7.3",
+ "tokio",
+ "winapi",
 ]
 
 [[package]]

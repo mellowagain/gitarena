@@ -1,0 +1,9 @@
+[package]
+name = "gitarena-workhorse"
+version = "0.0.0"
+authors = ["mellowagain <me@cutegirl.tech>"]
+edition = "2021"
+
+[dependencies]
+gitarena-common = { version = "0.0.0", path = "../gitarena-common" }
+parity-tokio-ipc = "0.9.0"
