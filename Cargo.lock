@@ -2045,8 +2045,18 @@ version = "0.0.1"
 name = "gitarena-workhorse"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "console-subscriber",
+ "futures",
+ "futures-locks",
  "gitarena-common",
+ "log",
  "parity-tokio-ipc",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "tracing-unwrap",
 ]
 
 [[package]]
