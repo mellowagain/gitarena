@@ -1,10 +1,12 @@
+use crate::bincode::bincode as internal_bincode;
+use crate::config::from_config as internal_from_config;
+use crate::config::from_optional_config as internal_from_optional_config;
+use crate::route::route as internal_route;
+
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 
-use config::from_config as internal_from_config;
-use config::from_optional_config as internal_from_optional_config;
-use route::route as internal_route;
-
+mod bincode;
 mod config;
 mod route;
 
@@ -43,4 +45,9 @@ pub fn from_config(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn from_optional_config(input: TokenStream) -> TokenStream {
     internal_from_optional_config(input)
+}
+
+#[proc_macro_derive(Bincode)]
+pub fn derive_bincode(input: TokenStream) -> TokenStream {
+    internal_bincode(input)
 }
