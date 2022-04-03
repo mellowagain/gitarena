@@ -93,7 +93,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                 impl crate::ipc::PacketId for #identifier {
                     #[inline]
                     fn id(&self) -> usize {
-                        crate::packets::PacketId::#identifier as usize + #packet_id
+                        crate::packets::PacketCategory::#identifier as usize + #packet_id
                     }
                 }
             })
