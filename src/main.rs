@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::error::error_renderer_middleware;
+use crate::ipc::Ipc;
 use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
 
@@ -46,6 +47,7 @@ mod config;
 mod crypto;
 mod error;
 mod git;
+mod ipc;
 mod issue;
 mod licenses;
 mod mail;
@@ -93,6 +95,12 @@ async fn main() -> Result<()> {
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.map_or_else(|| false, |d| d.starts_with("https"));
 
+    let ipc = RwLock::new(Ipc::new().await?);
+
+    if !ipc.read().await.is_connected() {
+        ipc::spawn_connection_task(ipc.clone());
+    }
+
     let server = HttpServer::new(move || {
         let identity_service = IdentityService::new(
             CookieIdentityPolicy::new(secret.as_bytes())
@@ -108,6 +116,7 @@ async fn main() -> Result<()> {
         let mut app = App::new()
             .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
             .app_data(Data::new(cookie.clone()))
+            .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
