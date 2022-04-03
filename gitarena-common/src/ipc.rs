@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
-use std::mem;
+use std::{fs, mem};
 
+use anyhow::{Context, Result};
 use bincode::config::{AllowTrailing, Bounded, LittleEndian, VarintEncoding, WithOtherEndian, WithOtherIntEncoding, WithOtherLimit, WithOtherTrailing};
 use bincode::{DefaultOptions, Options as _};
 use serde::de::DeserializeOwned;
@@ -72,4 +73,18 @@ impl<T: DeserializeOwned + ?Sized> IpcPacket<T> {
 
 pub trait PacketId {
     fn id(&self) -> usize;
+}
+
+/// Cross-platform way to get the socket/pipe path.
+///
+/// # Side effects
+///
+/// On *non-Windows systems* this function exhibits side effects (creation of directory `/run/gitarena`)
+pub fn ipc_path() -> Result<&'static str> {
+    Ok(if cfg!(windows) {
+        r"\\.\pipe\gitarena-workhorse"
+    } else {
+        fs::create_dir_all("/run/gitarena").context("Failed to create directory")?;
+        "/run/gitarena/workhorse"
+    })
 }
