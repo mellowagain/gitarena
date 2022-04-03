@@ -1,13 +1,13 @@
-use crate::bincode::bincode as internal_bincode;
 use crate::config::from_config as internal_from_config;
 use crate::config::from_optional_config as internal_from_optional_config;
+use crate::ipc_packet::ipc_packet as internal_ipc_packet;
 use crate::route::route as internal_route;
 
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 
-mod bincode;
 mod config;
+mod ipc_packet;
 mod route;
 
 /// Creates resource handler, allowing multiple HTTP method guards.
@@ -47,7 +47,13 @@ pub fn from_optional_config(input: TokenStream) -> TokenStream {
     internal_from_optional_config(input)
 }
 
-#[proc_macro_derive(Bincode)]
-pub fn derive_bincode(input: TokenStream) -> TokenStream {
-    internal_bincode(input)
+#[proc_macro_derive(IpcPacket)]
+#[proc_macro_error]
+pub fn derive_ipc_packet(input: TokenStream) -> TokenStream {
+    internal_ipc_packet(input)
+}
+
+#[proc_macro_attribute]
+pub fn ipc(_: TokenStream, item: TokenStream) -> TokenStream {
+    item
 }
