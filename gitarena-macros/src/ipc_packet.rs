@@ -7,6 +7,7 @@ use syn::{DeriveInput, Lit, Meta, NestedMeta, parse_macro_input};
 
 pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
     let mut input  = parse_macro_input!(input as DeriveInput);
+    let identifier = input.ident;
 
     let mut category = None;
     let mut packet_id = None;
@@ -85,7 +86,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                 }
             };
 
-            let identifier = Ident::new(uppercased_category.as_str(), Span::call_site());
+            let enum_identifier = Ident::new(uppercased_category.as_str(), Span::call_site());
 
             TokenStream::from(quote! {
                 use gitarena_macros::ipc;
@@ -93,7 +94,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                 impl crate::ipc::PacketId for #identifier {
                     #[inline]
                     fn id(&self) -> usize {
-                        crate::packets::PacketCategory::#identifier as usize + #packet_id
+                        crate::packets::PacketCategory::#enum_identifier as usize + #packet_id
                     }
                 }
             })
