@@ -7,6 +7,9 @@ use bincode::{DefaultOptions, Options as _};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+// World's longest type, thank you
+pub type BincodeType = WithOtherTrailing<WithOtherIntEncoding<WithOtherEndian<WithOtherLimit<DefaultOptions, Bounded>, LittleEndian>, VarintEncoding>, AllowTrailing>;
+
 /// [Type-length-value](https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value) packet to be used for GitArena IPC
 #[derive(Deserialize, Serialize)]
 pub struct IpcPacket<T: ?Sized> {
@@ -36,7 +39,7 @@ impl<T: Sized> IpcPacket<T> {
     }
 
     #[inline]
-    fn bincode() -> WithOtherTrailing<WithOtherIntEncoding<WithOtherEndian<WithOtherLimit<DefaultOptions, Bounded>, LittleEndian>, VarintEncoding>, AllowTrailing> {
+    fn bincode() -> BincodeType {
         DefaultOptions::new()
             .with_limit(Self::max_size())
             .with_little_endian()

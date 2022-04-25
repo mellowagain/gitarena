@@ -6,12 +6,10 @@ use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
 
 use std::env::VarError;
-use std::error::Error;
 use std::fs;
-use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
-use std::{env, io};
+use std::env;
 use std::sync::Arc;
 
 use actix_files::Files;
@@ -25,7 +23,6 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, bail, Context, Result};
-use fs_extra::dir;
 use futures_locks::RwLock;
 use gitarena_macros::from_optional_config;
 use log::info;
@@ -34,13 +31,11 @@ use sqlx::Executor;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_appender::rolling;
-use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::util::SubscriberInitExt;
 use tracing_unwrap::ResultExt;
+use gitarena_common::log::{default_env, log_file, stdout, tokio_console};
 
 mod captcha;
 mod config;
@@ -176,91 +171,42 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+// This method is basically the same as `gitarena_common::log::init_logger` except it additionally adds the AdminPanelLayer at the end
+// Please keep this in sync with it
 fn init_logger(broadcaster: Data<RwLock<Broadcaster>>) -> Result<Vec<WorkerGuard>> {
-    #[cfg(debug_assertions)]
-    const GUARD_VEC_PRE_ALLOCATION: usize = 1;
-    #[cfg(not(debug_assertions))]
-    const GUARD_VEC_PRE_ALLOCATION: usize = 2;
+    let mut guards = Vec::new();
 
-    let mut env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
-        let not_found = err.source()
-            .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
-            .unwrap_or(false);
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(err, &[
+        "actix_http=info",
+        "actix_server=info",
+        "askalono=warn",
+        "globset=info",
+        "h2=info",
+        "hyper=info",
+        "reqwest=info",
+        "rustls=info",
+        "sqlx=warn"
+    ]));
 
-        if !not_found {
-            eprintln!("Warning: Unable to parse `{}` environment variable, using default values: {}", EnvFilter::DEFAULT_ENV, err);
-        }
-
-        let level = if cfg!(debug_assertions) {
-            LevelFilter::DEBUG
-        } else {
-            LevelFilter::INFO
-        };
-
-        EnvFilter::default()
-            .add_directive(level.into())
-            .add_directive("actix_http=info".parse().unwrap_or_log())
-            .add_directive("actix_server=info".parse().unwrap_or_log())
-            .add_directive("askalono=warn".parse().unwrap_or_log())
-            .add_directive("globset=info".parse().unwrap_or_log())
-            .add_directive("h2=info".parse().unwrap_or_log())
-            .add_directive("hyper=info".parse().unwrap_or_log())
-            .add_directive("reqwest=info".parse().unwrap_or_log())
-            .add_directive("rustls=info".parse().unwrap_or_log())
-            .add_directive("sqlx=warn".parse().unwrap_or_log())
-    });
-
-    let mut guards = Vec::<WorkerGuard>::with_capacity(GUARD_VEC_PRE_ALLOCATION);
-
-    // In debug mode we only write to stdout, in production to a both stdout (pretty) and file (json)
-    let stdout_log = {
-        let (writer, guard) = tracing_appender::non_blocking(io::stdout());
-
-        let layer = Layer::new()
-            .with_thread_ids(true)
-            .with_writer(writer);
-
+    let stdout_layer = stdout().map(|(layer, guard)| {
         guards.push(guard);
         layer
-    };
+    });
 
-    let file_log = if cfg!(debug_assertions) || env::var_os("DEBUG_FILE_LOG").is_some() {
-        let logs_dir = Path::new("logs");
-
-        if !logs_dir.exists() {
-            dir::create_all(logs_dir, false)?;
-        }
-
-        let appender = rolling::daily("logs", "gitarena.log");
-        let (writer, guard) = tracing_appender::non_blocking(appender);
-
-        let layer = Layer::new()
-            .with_thread_ids(true)
-            .with_writer(writer)
-            .json();
-
+    let file_layer = log_file("gitarena")?.map(|(layer, guard)| {
         guards.push(guard);
-        Some(layer)
-    } else {
-        None
-    };
+        layer
+    });
 
-    let tokio_console = if cfg!(tokio_unstable) {
-        env_filter = env_filter.add_directive("tokio=trace".parse().unwrap_or_log())
-            .add_directive("runtime=trace".parse().unwrap_or_log());
-
-        Some(console_subscriber::spawn())
-    } else {
-        None
-    };
+    let (env_filter, tokio_console_layer) = tokio_console(env_filter);
 
     // https://stackoverflow.com/a/66138267
     Registry::default()
         .with(env_filter)
-        .with(stdout_log)
-        .with(file_log)
-        .with(tokio_console)
-        .with(AdminPanelLayer::new(broadcaster))
+        .with(stdout_layer)
+        .with(file_layer)
+        .with(tokio_console_layer)
+        .with(AdminPanelLayer::new(broadcaster.clone()))
         .try_init()
         .context("Failed to initialize logger")?;
 
