@@ -75,6 +75,7 @@ async fn main() -> Result<()> {
         .after_connect(|connection| Box::pin(async move {
             // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
             let _ = connection.execute("set application_name = 'gitarena';").await;
+            Ok(())
         }))
         .connect_with(read_database_config()?)
         .await?;
