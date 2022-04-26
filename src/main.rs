@@ -73,7 +73,8 @@ async fn main() -> Result<()> {
         .max_connections(max_pool_connections)
         .connect_timeout(Duration::from_secs(10))
         .after_connect(|connection| Box::pin(async move {
-            connection.execute("set application_name = 'gitarena';").await.map(|_| ())
+            // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
+            let _ = connection.execute("set application_name = 'gitarena';").await;
         }))
         .connect_with(read_database_config()?)
         .await?;
@@ -110,7 +111,7 @@ async fn main() -> Result<()> {
 
         let mut app = App::new()
             .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
-            .app_data(Data::new(cookie.clone()))
+            .app_data(Data::new(cookie))
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
@@ -206,7 +207,7 @@ fn init_logger(broadcaster: Data<RwLock<Broadcaster>>) -> Result<Vec<WorkerGuard
         .with(stdout_layer)
         .with(file_layer)
         .with(tokio_console_layer)
-        .with(AdminPanelLayer::new(broadcaster.clone()))
+        .with(AdminPanelLayer::new(broadcaster))
         .try_init()
         .context("Failed to initialize logger")?;
 
