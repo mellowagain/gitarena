@@ -13,61 +13,57 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
     let mut packet_id = None;
 
     input.attrs.retain(|attribute| {
-        if let Ok(meta) = attribute.parse_meta() {
-            if let Meta::List(list) = meta {
-                let ipc = list.path.segments.first().map(|segment| segment.ident.to_string() == "ipc").unwrap_or_default();
+        if let Ok(Meta::List(list)) = attribute.parse_meta() {
+            let ipc = list.path.segments.first().map(|segment| segment.ident == "ipc").unwrap_or_default();
 
-                if ipc {
-                    for args in list.nested {
-                        if let NestedMeta::Meta(meta) = args {
-                            if let Meta::NameValue(pair) = meta {
-                                if let Some(segment) = pair.path.segments.first() {
-                                    let identifier = segment.ident.to_string();
-                                    let value = pair.lit;
+            if ipc {
+                for args in list.nested {
+                    if let NestedMeta::Meta(Meta::NameValue(pair)) = args {
+                        if let Some(segment) = pair.path.segments.first() {
+                            let identifier = segment.ident.to_string();
+                            let value = pair.lit;
 
-                                    match identifier.as_str() {
-                                        "packet" => {
-                                            if let Lit::Str(value) = value {
-                                                category = Some(value.value());
-                                            } else {
-                                                emit_error! {
-                                                    value.span(),
-                                                    "packet requires a string argument"
-                                                }
-                                            }
-                                        }
-                                        "id" => {
-                                            if let Lit::Int(value) = value {
-                                                packet_id = match value.base10_parse::<u64>() {
-                                                    Ok(id) => Some(id),
-                                                    Err(_) => {
-                                                        emit_error! {
-                                                            value.span(),
-                                                            "id argument could not be parsed into u64"
-                                                        }
-
-                                                        None
-                                                    }
-                                                };
-                                            } else {
-                                                emit_error! {
-                                                    value.span(),
-                                                    "id requires a int argument"
-                                                }
-                                            }
-                                        }
-                                        _ => emit_error! {
-                                            segment.span(),
-                                            "unknown identifier, expected `packet` or `id`"
+                            match identifier.as_str() {
+                                "packet" => {
+                                    if let Lit::Str(value) = value {
+                                        category = Some(value.value());
+                                    } else {
+                                        emit_error! {
+                                            value.span(),
+                                            "packet requires a string argument"
                                         }
                                     }
+                                }
+                                "id" => {
+                                    if let Lit::Int(value) = value {
+                                        packet_id = match value.base10_parse::<u64>() {
+                                            Ok(id) => Some(id),
+                                            Err(_) => {
+                                                emit_error! {
+                                                    value.span(),
+                                                    "id argument could not be parsed into u64"
+                                                }
+
+                                                None
+                                            }
+                                        };
+                                    } else {
+                                        emit_error! {
+                                            value.span(),
+                                            "id requires a int argument"
+                                        }
+                                    }
+                                }
+                                _ => emit_error! {
+                                    segment.span(),
+                                    "unknown identifier, expected `packet` or `id`"
                                 }
                             }
                         }
                     }
-
-                    return false;
                 }
+
+                return false;
             }
         }
 

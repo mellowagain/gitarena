@@ -21,7 +21,7 @@ pub struct IpcPacket<T: ?Sized> {
 
 impl<T: Serialize + Sized + PacketId> IpcPacket<T> {
     pub fn new(data: T) -> Self {
-        let size = Self::bincode().serialized_size(&data).unwrap_or_else(|_| mem::size_of::<T>() as u64);
+        let size = Self::bincode().serialized_size(&data).unwrap_or(mem::size_of::<T>() as u64);
 
         IpcPacket {
             id: data.id(),
