@@ -38,12 +38,12 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                                         }
                                         "id" => {
                                             if let Lit::Int(value) = value {
-                                                packet_id = match value.base10_parse::<usize>() {
+                                                packet_id = match value.base10_parse::<u64>() {
                                                     Ok(id) => Some(id),
                                                     Err(_) => {
                                                         emit_error! {
                                                             value.span(),
-                                                            "id argument could not be parsed into usize"
+                                                            "id argument could not be parsed into u64"
                                                         }
 
                                                         None
@@ -93,8 +93,8 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
 
                 impl crate::ipc::PacketId for #identifier {
                     #[inline]
-                    fn id(&self) -> usize {
-                        crate::packets::PacketCategory::#enum_identifier as usize + #packet_id
+                    fn id(&self) -> u64 {
+                        crate::packets::PacketCategory::#enum_identifier as u64 + #packet_id
                     }
                 }
             })
