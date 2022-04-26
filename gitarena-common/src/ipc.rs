@@ -13,14 +13,14 @@ pub type BincodeType = WithOtherTrailing<WithOtherIntEncoding<WithOtherEndian<Wi
 /// [Type-length-value](https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value) packet to be used for GitArena IPC
 #[derive(Deserialize, Serialize)]
 pub struct IpcPacket<T: ?Sized> {
-    id: usize,
-    length: usize,
+    id: u64,
+    length: u64,
     data: T
 }
 
 impl<T: Serialize + Sized + PacketId> IpcPacket<T> {
     pub fn new(data: T) -> Self {
-        let size = Self::bincode().serialized_size(&data).map_or_else(|_| mem::size_of::<T>(), |size| size as usize);
+        let size = Self::bincode().serialized_size(&data).unwrap_or_else(|_| mem::size_of::<T>() as u64);
 
         IpcPacket {
             id: data.id(),
@@ -75,7 +75,7 @@ impl<T: DeserializeOwned + ?Sized> IpcPacket<T> {
 }
 
 pub trait PacketId {
-    fn id(&self) -> usize;
+    fn id(&self) -> u64;
 }
 
 /// Cross-platform way to get the socket/pipe path.
