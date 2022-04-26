@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
-use std::{fs, mem};
+use std::{fmt, fs, mem};
+use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{Context, Result};
 use bincode::config::{AllowTrailing, Bounded, LittleEndian, VarintEncoding, WithOtherEndian, WithOtherIntEncoding, WithOtherLimit, WithOtherTrailing};
@@ -71,6 +72,22 @@ impl<'a, T: Deserialize<'a>> IpcPacket<T> {
 impl<T: DeserializeOwned + ?Sized> IpcPacket<T> {
     pub fn deserialize_from<R: Read>(input: R) -> bincode::Result<Self> {
         Self::bincode().deserialize_from::<_, Self>(input)
+    }
+}
+
+impl<T: Display> Display for IpcPacket<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.data.fmt(f)
+    }
+}
+
+impl<T: Debug> Debug for IpcPacket<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IpcPacket")
+            .field("id", &self.id)
+            .field("length", &self.length)
+            .field("data", &self.data)
+            .finish()
     }
 }
 
