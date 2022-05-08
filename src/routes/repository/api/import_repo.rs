@@ -1,4 +1,4 @@
-use crate::config::get_optional_setting;
+use crate::config::{get_optional_setting, get_setting};
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
@@ -17,13 +17,18 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use url::Url;
 
-// This whole handler is very similiar to `create_repo.rs` so at some point this should be consolidated into one
+// This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[route("/api/repo/import", method = "POST", err = "json")]
 pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>, request: HttpRequest, ipc: web::Data<RwLock<Ipc>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
-    let user = web_user.into_user()?;
+    let enabled = get_setting::<bool, _>("repositories.importing_enabled", &mut transaction).await?;
+
+    if !enabled || !ipc.read().await.is_connected() {
+        die!(NOT_IMPLEMENTED, "Importing is disabled on this instance");
+    }
 
     let name = &body.name;
 
@@ -45,7 +50,7 @@ pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>
         die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
-    let url = Url::parse(body.import_url.as_str()).map_err(|err| err!(BAD_REQUEST, "Unable to parse import url"))?;
+    let url = Url::parse(body.import_url.as_str()).map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
 
     if body.mirror.is_some() {
         die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");

@@ -231,6 +231,7 @@ insert into settings (key, value, type) values ('domain', null, 'string');
 insert into settings (key, value, type) values ('secret', md5((random())::text), 'string');
 insert into settings (key, value, type) values ('allow_registrations', null, 'boolean');
 insert into settings (key, value, type) values ('repositories.base_dir', null, 'string');
+insert into settings (key, value, type) values ('repositories.importing_enabled', true, 'boolean');
 insert into settings (key, value, type) values ('hcaptcha.enabled', null, 'boolean');
 insert into settings (key, value, type) values ('hcaptcha.site_key', null, 'string');
 insert into settings (key, value, type) values ('hcaptcha.secret', null, 'string');
