@@ -2016,6 +2016,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "tracing-unwrap",
+ "url",
  "vergen",
  "zip",
 ]

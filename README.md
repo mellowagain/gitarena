@@ -81,6 +81,10 @@ Create repository:
 
 ![Create](https://i.cutegirl.tech/2xfz586doi0q.png)
 
+Import repository:
+
+![Import](https://i.cutegirl.tech/ya0rkuv0py0c.png)
+
 Login:
 
 ![Login](https://i.cutegirl.tech/8biqtc0a7fhi.png)

@@ -1,24 +1,26 @@
 use crate::config::get_optional_setting;
-use crate::die;
-use crate::git::write;
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::repository::api::CreateJsonResponse;
-use crate::user::{User, WebUser};
+use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
+use crate::{die, err, Ipc};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use sqlx::{PgPool, Pool, Postgres};
-use anyhow::Result;
+use anyhow::{Context, Result};
+use futures_locks::RwLock;
+use gitarena_common::packets::git::GitImport;
 use gitarena_macros::route;
-use serde::Deserialize;
 use log::info;
+use serde::Deserialize;
+use sqlx::PgPool;
+use url::Url;
 
-// This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
+// This whole handler is very similiar to `create_repo.rs` so at some point this should be consolidated into one
 
-#[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route("/api/repo/import", method = "POST", err = "json")]
+pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>, request: HttpRequest, ipc: web::Data<RwLock<Ipc>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let user = web_user.into_user()?;
@@ -43,6 +45,12 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
+    let url = Url::parse(body.import_url.as_str()).map_err(|err| err!(BAD_REQUEST, "Unable to parse import url"))?;
+
+    if body.mirror.is_some() {
+        die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");
+    }
+
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(&user.id)
         .bind(&name)
@@ -63,17 +71,22 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     repo.create_fs(&mut transaction).await?;
 
-    // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
-    if let Some(readme) = &body.readme {
-        create_readme(&repo, &user, &db_pool).await?;
-    }
+    // Currently, only Git importing is supported. TODO: Support other VCS as well as GitLab export
+    // At some point it is also planned to import issues and such, requiring support for specific hosters such as GitHub, GitLab, BitBucket and Gitea
+    let packet = GitImport {
+        url: url.to_string(),
+        username: body.username.clone(),
+        password: body.password.clone()
+    };
+
+    ipc.write().await.send(packet).await.context("Failed to send import packet to workhorse")?;
 
     let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
 
     transaction.commit().await?;
 
-    info!("New repository created: {}/{} (id {})", &user.username, &repo.name, &repo.id);
+    info!("New repository created for importing: {}/{} (id {}) (source: {})", &user.username, &repo.name, &repo.id, url);
 
     Ok(if request.get_header("hx-request").is_some() {
         HttpResponse::Ok().append_header(("hx-redirect", path)).append_header(("hx-refresh", "true")).finish()
@@ -87,21 +100,19 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     })
 }
 
-async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool<Postgres>) -> Result<()> {
-    let mut transaction = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
-    let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());
-
-    transaction.commit().await?;
-
-    write::write_file(&libgit2_repo, user, Some("HEAD"), "README.md", readme.as_bytes(), db_pool).await
-}
-
 #[derive(Deserialize)]
-pub(crate) struct CreateJsonRequest {
+pub(crate) struct ImportJsonRequest {
+    //owner: String,
     name: String,
     description: String,
-    visibility: RepoVisibility,
+    #[serde(rename = "url")]
+    import_url: String,
     #[serde(default)]
-    readme: Option<String>
+    mirror: Option<String>,
+    visibility: RepoVisibility,
+
+    #[serde(default)]
+    username: Option<String>,
+    #[serde(default)]
+    password: Option<String>,
 }
