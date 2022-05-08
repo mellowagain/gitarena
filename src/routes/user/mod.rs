@@ -1,5 +1,6 @@
 use actix_web::web::ServiceConfig;
 
+mod api;
 mod avatar;
 mod sso;
 mod user_create;
@@ -8,6 +9,8 @@ mod user_logout;
 mod user_verify;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
+    api::init(config);
+
     config.service(user_create::get_register);
     config.service(user_create::post_register);
 

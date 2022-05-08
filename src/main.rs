@@ -52,6 +52,7 @@ mod repository;
 mod routes;
 mod session;
 mod sse;
+mod ssh;
 mod sso;
 mod templates;
 mod user;

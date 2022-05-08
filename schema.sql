@@ -208,6 +208,39 @@ create table issues
 comment on table issues is 'Contains issues and their corresponding data; Does *not* contain the actual text content';
 comment on column issues.index is 'Issue # per repository (not global instance)';
 
+-- SSH keys
+
+create type ssh_key_type as enum (
+    'ssh-rsa',
+    'ecdsa-sha2-nistp256',
+    'ecdsa-sha2-nistp384',
+    'ecdsa-sha2-nistp521',
+    'ssh-ed25519'
+);
+
+create table ssh_keys
+(
+    id          serial
+        constraint ssh_keys_pk
+            primary key,
+    owner       integer                                not null
+        constraint ssh_keys_users_id_fk
+            references users
+            on delete cascade,
+    title       varchar(64)                            not null,
+    fingerprint char(47)                               not null,
+    algorithm   ssh_key_type                           not null,
+    key         bytea                                  not null,
+    created_at  timestamp with time zone default now() not null,
+    expires_at  timestamp with time zone
+);
+
+create unique index ssh_keys_fingerprint_uindex
+    on ssh_keys (fingerprint);
+
+create unique index ssh_keys_key_uindex
+    on ssh_keys (key);
+
 -- Settings
 -- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 
