@@ -52,7 +52,6 @@ impl Repository {
     pub(crate) async fn create_fs<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head(self.default_branch.as_str());
-        init_ops.no_reinit(true);
         init_ops.bare(true);
 
         Git2Repository::init_opts(self.get_fs_path(executor).await?, &init_ops)?;
