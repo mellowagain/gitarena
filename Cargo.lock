@@ -2079,6 +2079,7 @@ name = "gitarena-common"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "base64",
  "bincode",
  "console-subscriber",
  "futures",
@@ -2744,9 +2745,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.109"
+version = "0.2.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
+checksum = "5916d2ae698f6de9bfb891ad7a8d65c09d232dc58cc4ac433c7da3b2fd84bc2b"
 
 [[package]]
 name = "libgit2-sys"

@@ -1,7 +1,9 @@
 [package]
 name = "gitarena-ssh"
-version = "0.0.1"
-authors = ["Mari <me@cutegirl.tech>"]
-edition = "2018"
+version = "0.0.0"
+authors = ["mellowagain <me@cutegirl.tech>"]
+edition = "2021"
 
 [dependencies]
+clap = { version = "3.1.17", features = ["derive", "unicode", "wrap_help"] }
+gitarena-common = { version = "0.0.0", path = "../gitarena-common" }
