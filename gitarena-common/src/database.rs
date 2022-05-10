@@ -8,6 +8,8 @@ use once_cell::sync::OnceCell;
 use sqlx::{Executor, Postgres};
 use tokio::fs;
 
+pub mod models;
+
 // These are all type aliased to allow for compile time switching of database backend in the future
 use sqlx::postgres::{PgConnectOptions, PgDatabaseError};
 
