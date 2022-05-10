@@ -1,4 +1,4 @@
-use crate::ssh::{KeyType, SshKey};
+use crate::ssh::SshKey;
 use crate::user::WebUser;
 use crate::{die, err};
 
@@ -7,6 +7,7 @@ use anyhow::Context;
 use anyhow::Result;
 use chrono::serde::ts_seconds_option;
 use chrono::{DateTime, Utc};
+use gitarena_common::database::models::KeyType;
 use gitarena_macros::route;
 use log::{debug, warn};
 use openssh_keys::PublicKey;
