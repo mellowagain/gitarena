@@ -8,11 +8,17 @@ edition = "2021"
 anyhow = "1.0.52"
 bincode = "1.3.3"
 console-subscriber = { version = "0.1.3", features = ["parking_lot"] }
+futures = "0.3.19"
+futures-locks = "0.7.0"
 gitarena-macros = "0.0.0"
 log = "0.4.14"
 num-derive = "0.3.3"
 num-traits = "0.2.14"
+num_cpus = "1.13.1"
+once_cell = "1.9.0"
 serde = { version = "1.0.133", features = ["derive"] }
+sqlx = { version = "=0.5.7", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio-native-tls", "tls"] } # Pinned to 0.5.7 as everything higher introduces cyclic dependencies: https://github.com/tkaitchuck/ahash/issues/95
+tokio = { version = "1.15.0", features = ["full", "tracing"] }
 tracing = "0.1.29"
 tracing-appender = "0.2.0"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std"] }

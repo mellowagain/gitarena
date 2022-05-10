@@ -6,9 +6,6 @@ use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
 
 use std::env::VarError;
-use std::fs;
-use std::str::FromStr;
-use std::time::Duration;
 use std::env;
 use std::sync::Arc;
 
@@ -22,20 +19,19 @@ use actix_web::http::Method;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use futures_locks::RwLock;
+use gitarena_common::database::create_postgres_pool;
+use gitarena_common::log::{default_env, log_file, stdout, tokio_console};
 use gitarena_macros::from_optional_config;
 use log::info;
 use magic::{Cookie, CookieFlags};
-use sqlx::Executor;
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter, Registry};
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Registry};
 use tracing_unwrap::ResultExt;
-use gitarena_common::log::{default_env, log_file, stdout, tokio_console};
 
 mod captcha;
 mod config;
@@ -64,22 +60,7 @@ async fn main() -> Result<()> {
     let broadcaster = Broadcaster::new();
     let mut _log_guards = init_logger(broadcaster.clone())?;
 
-    let max_pool_connections = match env::var("MAX_POOL_CONNECTIONS") {
-        Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
-        Err(VarError::NotPresent) => num_cpus::get() as u32,
-        Err(VarError::NotUnicode(_)) => bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
-    };
-
-    let db_pool = PgPoolOptions::new()
-        .max_connections(max_pool_connections)
-        .connect_timeout(Duration::from_secs(10))
-        .after_connect(|connection| Box::pin(async move {
-            // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
-            let _ = connection.execute("set application_name = 'gitarena';").await;
-            Ok(())
-        }))
-        .connect_with(read_database_config()?)
-        .await?;
+    let db_pool = create_postgres_pool("gitarena", None).await?;
 
     _log_guards = config::init(&db_pool, _log_guards).await.context("Unable to initialize config in database")?;
 
@@ -214,31 +195,6 @@ fn init_logger(broadcaster: Data<RwLock<Broadcaster>>) -> Result<Vec<WorkerGuard
         .context("Failed to initialize logger")?;
 
     Ok(guards)
-}
-
-fn read_database_config() -> Result<PgConnectOptions> {
-    let mut options = match (env::var_os("DATABASE_URL"), env::var_os("DATABASE_URL_FILE")) {
-        (Some(url), None) => {
-            let str = url.into_string().map_err(|_| anyhow!("`DATABASE_URL` environment variable is not valid unicode"))?;
-            PgConnectOptions::from_str(str.as_str())?
-        }
-        (None, Some(file)) => {
-            let url = fs::read_to_string(file)?;
-            PgConnectOptions::from_str(url.as_str())?
-        }
-        _ => bail!("Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena")
-    };
-
-    match env::var("DATABASE_PASSWORD_FILE") {
-        Ok(file) => {
-            let password = fs::read_to_string(file)?;
-            options = options.password(password.as_str());
-        }
-        Err(VarError::NotUnicode(_)) => bail!("`DATABASE_PASSWORD_FILE` environment variable is not valid unicode"),
-        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */ }
-    }
-
-    Ok(options)
 }
 
 fn read_magic_database() -> Result<Cookie> {
