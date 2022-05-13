@@ -11,10 +11,22 @@ services:
       POSTGRES_DB: gitarena
     secrets:
       - db_password
+  workhorse:
+    build: Dockerfile.workhorse
+    depends_on:
+      - database
+    volumes:
+      - repo_data:repositories
+    environment:
+      DATABASE_URL: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
   gitarena:
     build: Dockerfile
     depends_on:
       - database
+      - workhorse
     ports:
       - "8080:8080"
     volumes:
