@@ -1,18 +1,20 @@
 use anyhow::Result;
+use futures::TryStreamExt;
 use gitarena_common::database::Database;
 use gitarena_common::database::models::KeyType;
 use gitarena_common::prelude::*;
-use sqlx::Executor;
+use sqlx::{Executor, Row};
 
 pub(crate) async fn print_all<'e, E: Executor<'e, Database = Database>>(executor: E) -> Result<()> {
-    let keys: Vec<(KeyType, Vec<u8>)> = sqlx::query_as("select algorithm, key from ssh_keys where expires_at is null or expires_at < now()")
-        .fetch_all(executor)
-        .await?;
+    let mut stream = sqlx::query(
+        "select algorithm, key from ssh_keys where expires_at is null or expires_at < now()"
+    ).fetch(executor);
 
-    for (key_type, key) in keys {
-        let encoded = base64::encode(key.as_slice());
+    while let Some(row) = stream.try_next().await? {
+        let algorithm: KeyType = row.try_get("algorithm")?;
+        let key: &[u8] = row.try_get("key")?;
 
-        println!("{} {}", key_type, encoded);
+        println!("{} {}", algorithm, base64::encode(key));
     }
 
     Ok(())
