@@ -9,8 +9,8 @@ use std::sync::Arc;
 use actix_identity::Identity;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
-use actix_web::{FromRequest, HttpRequest, Result as ActixResult};
-use anyhow::{anyhow, bail, Error, Result as AnyhowResult};
+use actix_web::{FromRequest, HttpRequest};
+use anyhow::{anyhow, Error, Result};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
@@ -102,7 +102,7 @@ impl WebUser {
         }
     }
 
-    pub(crate) fn into_user(self) -> AnyhowResult<User> {
+    pub(crate) fn into_user(self) -> Result<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
             WebUser::Anonymous => die!(UNAUTHORIZED, "Not authenticated")
@@ -141,7 +141,7 @@ impl FromRequest for WebUser {
     }
 }
 
-async fn extract_from_request<F: Future<Output = ActixResult<Identity>>>(db_pool: Data<PgPool>, id_future: F, ip_network: IpNetwork, user_agent: String) -> AnyhowResult<WebUser> {
+async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(db_pool: Data<PgPool>, id_future: F, ip_network: IpNetwork, user_agent: String) -> Result<WebUser> {
     let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
 
     match id.identity() {
