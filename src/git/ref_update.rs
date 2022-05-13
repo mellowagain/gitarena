@@ -11,13 +11,13 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
         c.is_whitespace() || c == '\x00'
     }).filter(|s| !s.is_empty());
 
-    let old_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected old ref, got: {}", line.clone()).into())?;
-    let new_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected new ref, got: {}", line.clone()).into())?;
+    let old_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected old ref, got: {}", line.clone()))?;
+    let new_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected new ref, got: {}", line.clone()))?;
 
     ref_update.old = oid::normalize_str(Some(old_ref)).map(|o| o.to_owned());
     ref_update.new = oid::normalize_str(Some(new_ref)).map(|o| o.to_owned());
 
-    let target_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected target ref, got: {}", line.clone()).into())?;
+    let target_ref = split.next().ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected target ref, got: {}", line.clone()))?;
 
     if !target_ref.starts_with("refs/") {
         bail!("Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {}", target_ref);
@@ -25,7 +25,7 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
 
     ref_update.target_ref = target_ref.to_owned();
 
-    while let Some(option) = split.next() {
+    for option in split.by_ref() {
         match option {
             "report-status" => ref_update.report_status = true,
             "report-status-v2" => ref_update.report_status_v2 = true,
@@ -34,9 +34,7 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
                 match ref_update.push_options {
                     Some(ref mut options) => options.push(option.to_owned()),
                     None => {
-                        let mut vec = Vec::<String>::new();
-                        vec.push(option.to_owned());
-
+                        let mut vec = vec![option.to_owned()];
                         ref_update.push_options = Some(vec);
                     }
                 }
@@ -58,7 +56,7 @@ pub(crate) async fn is_only_deletions(updates: &[RefUpdate]) -> Result<bool> {
     Ok(true)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct RefUpdate {
     pub(crate) old: Option<String>,
     pub(crate) new: Option<String>,
@@ -67,20 +65,6 @@ pub(crate) struct RefUpdate {
     pub(crate) report_status_v2: bool,
     pub(crate) side_band_64k: bool,
     pub(crate) push_options: Option<Vec<String>>
-}
-
-impl Default for RefUpdate {
-    fn default() -> RefUpdate {
-        RefUpdate {
-            old: None,
-            new: None,
-            target_ref: String::new(),
-            report_status: false,
-            report_status_v2: false,
-            side_band_64k: false,
-            push_options: None
-        }
-    }
 }
 
 pub(crate) enum RefUpdateType {

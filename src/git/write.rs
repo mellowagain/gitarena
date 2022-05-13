@@ -15,7 +15,7 @@ pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&
         .ok_or_else(|| err!(BAD_REQUEST, "User has no commit email"))?;
     let author_signature = Signature::now(user.username.as_str(), author_email.email.as_str())?;
 
-    let root_email = mail::get_root_email(&db_pool).await?;
+    let root_email = mail::get_root_email(db_pool).await?;
     let root_signature = Signature::now("GitArena", root_email.as_str())?;
 
     let blob = repo.blob(content).context("Failed to create blob")?;

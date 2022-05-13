@@ -24,7 +24,7 @@ use tera::Context;
 use tracing_unwrap::OptionExt;
 
 async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web_user: WebUser, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
-    let tree_name = tree_option.unwrap_or_else(|| repo.default_branch.as_str());
+    let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
 
     if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
         die!(NOT_FOUND, "Not found");

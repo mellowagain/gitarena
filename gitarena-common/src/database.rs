@@ -25,7 +25,7 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
     static ONCE: OnceCell<String> = OnceCell::new();
 
     Ok(PoolOptions::new()
-        .max_connections(max_conns.ok_or_else(|| ()).or_else(|_| get_max_connections())?)
+        .max_connections(max_conns.ok_or(()).or_else(|_| get_max_connections())?)
         .connect_timeout(Duration::from_secs(10))
         .after_connect(move |connection| {
             Box::pin(async move {

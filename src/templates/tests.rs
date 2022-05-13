@@ -2,7 +2,7 @@ use tera::{Result, Value, Error};
 
 pub(crate) fn empty(value: Option<&Value>, _: &[Value]) -> Result<bool> {
     match value {
-        Some(value) => Ok(value.as_str().ok_or(Error::msg("Can only check if String is empty"))?.is_empty()),
+        Some(value) => Ok(value.as_str().ok_or_else(|| Error::msg("Can only check if String is empty"))?.is_empty()),
         None => Ok(false)
     }
 }

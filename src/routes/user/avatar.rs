@@ -36,7 +36,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
 
         // User has set an avatar, return it
         if path.is_file() {
-            return Ok(send_image(path, &request).await.context("Failed to read local image file")?);
+            return send_image(path, &request).await.context("Failed to read local image file");
         }
     }
 
@@ -53,7 +53,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
                 .email
         };
 
-        return Ok(send_gravatar(email.as_str(), &request).await.context("Failed to request Gravatar image")?);
+        return send_gravatar(email.as_str(), &request).await.context("Failed to request Gravatar image");
     }
 
     // Gravatar integration is not enabled, return fallback icon

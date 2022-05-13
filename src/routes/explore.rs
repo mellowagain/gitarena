@@ -160,7 +160,7 @@ enum Order {
 
 impl Order {
     fn parse(input: &str) -> Option<(&str, Order)> {
-        let (method, order_str) = input.split_once("_")?;
+        let (method, order_str) = input.split_once('_')?;
         let order = match order_str {
             "asc" => Order::Ascending,
             "desc" => Order::Descending,

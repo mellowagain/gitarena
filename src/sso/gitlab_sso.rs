@@ -79,11 +79,10 @@ impl SSOProvider for GitLabSSO {
         let profile_data: SerdeMap = GitLabSSO::request_data("user", token).await?;
 
         profile_data.get("id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))
     }
 
@@ -93,11 +92,10 @@ impl SSOProvider for GitLabSSO {
         let profile_data: SerdeMap = GitLabSSO::request_data("user", token).await?;
 
         let mut username = profile_data.get("username")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::String(s) => Some(s),
                 _ => None
             })
-            .flatten()
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitLab API json response"))?;
 
@@ -112,11 +110,10 @@ impl SSOProvider for GitLabSSO {
             .await?;
 
         let gitlab_id = profile_data.get("id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))?;
 
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")

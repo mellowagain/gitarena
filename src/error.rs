@@ -187,7 +187,7 @@ impl Display for GitArenaError {
 
 impl ResponseError for GitArenaError {
     fn status_code(&self) -> StatusCode {
-        GitArenaError::status_code(&self)
+        GitArenaError::status_code(self)
     }
 
     fn error_response(&self) -> HttpResponse {

@@ -64,7 +64,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     repo.create_fs(&mut transaction).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
-    if let Some(readme) = &body.readme {
+    if body.readme.is_some() {
         create_readme(&repo, &user, &db_pool).await?;
     }
 

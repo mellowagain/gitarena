@@ -149,7 +149,7 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
         .body(body)
         .context("Unable to build email.")?;
 
-    Ok(send_mail(message, db_pool).await?)
+    send_mail(message, db_pool).await
 }
 
 async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {

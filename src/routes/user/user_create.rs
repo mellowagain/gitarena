@@ -61,7 +61,7 @@ pub(crate) async fn post_register(body: web::Json<RegisterJsonRequest>, id: Iden
 
     // This is not according to the spec of the IETF but trying to implement that is honestly out-of-bounds for this project
     // Thus a best effort naive implementation. Checks for the presence of "@" and a "." in the domain name (after the last @)
-    if !email.contains('@') || !email.rsplit_once("@").map(|(_, x)| x).unwrap_or_default().contains('.') {
+    if !email.contains('@') || !email.rsplit_once('@').map(|(_, x)| x).unwrap_or_default().contains('.') {
         die!(BAD_REQUEST, "Invalid email address");
     }
 

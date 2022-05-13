@@ -82,8 +82,7 @@ impl SSOProvider for GitHubSSO {
             Some(granted_scopes) => {
                 granted_scopes
                     .iter()
-                    .map(|scope| scope.split(','))
-                    .flatten()
+                    .flat_map(|scope| scope.split(','))
                     .collect::<Vec<_>>()
             }
             None => return true // If not provided it is identical to our asked scopes
@@ -97,11 +96,10 @@ impl SSOProvider for GitHubSSO {
         let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
 
         profile_data.get("id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitHub API json response"))
     }
 
@@ -111,11 +109,10 @@ impl SSOProvider for GitHubSSO {
         let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
 
         let mut username = profile_data.get("login")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::String(s) => Some(s),
                 _ => None
             })
-            .flatten()
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitHub API json response"))?;
 
@@ -130,11 +127,10 @@ impl SSOProvider for GitHubSSO {
             .await?;
 
         let github_id = profile_data.get("id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitHub API json response"))?;
 
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")

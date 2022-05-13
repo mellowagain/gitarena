@@ -37,10 +37,8 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
 
         for line in lines {
             if let Ok(log_line) = serde_json::from_str::<LogLine>(line) {
-                if let Some(message) = log_line.fields.get("message") {
-                    if let Value::String(message) = message {
-                        log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
-                    }
+                if let Some(Value::String(message)) = log_line.fields.get("message") {
+                    log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
                 }
             }
         }

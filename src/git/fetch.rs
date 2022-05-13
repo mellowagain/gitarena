@@ -33,12 +33,12 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
             options.ofs_delta = true;
         }
 
-        if line.starts_with("have ") {
-            options.have.push(line[5..].to_owned());
+        if let Some(stripped) = line.strip_prefix("have ") {
+            options.have.push(stripped.to_owned());
         }
 
-        if line.starts_with("want ") {
-            options.want.push(line[5..].to_owned());
+        if let Some(stripped) = line.strip_prefix("want ") {
+            options.want.push(stripped.to_owned());
         }
 
         /*if line.starts_with("shallow ") {
@@ -67,9 +67,9 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }
     }
 
-    if let Some(acknowledgments) = process_haves(&repo, &options).await? {
+    if let Some(acknowledgments) = process_haves(repo, &options).await? {
         writer.append(acknowledgments).await?;
-    } else if let Some(wants) = process_wants(&repo, &options).await? {
+    } else if let Some(wants) = process_wants(repo, &options).await? {
         writer.append(wants).await?;
     }
 
@@ -78,8 +78,7 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
     }*/
 
     writer.flush().await?;
-
-    Ok(writer.serialize().await?)
+    writer.serialize().await
 }
 
 #[instrument(err, skip(repo))]
@@ -136,7 +135,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
                             ObjectType::Commit => {
                                 // Can be simplified with if let guards: https://github.com/rust-lang/rust/issues/51114
                                 if let Some(commit) = object.as_commit() {
-                                    insert_commit_with_parents(&commit, &mut pack_builder).await?;
+                                    insert_commit_with_parents(commit, &mut pack_builder).await?;
                                 }
                             },
                             ObjectType::Tree => pack_builder.insert_tree(object.id())?,
@@ -206,7 +205,7 @@ async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut Pack
     Ok(Some(writer))
 }*/
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Fetch {
     pub(crate) thin_pack: bool,
     pub(crate) no_progress: bool,
@@ -219,22 +218,4 @@ pub(crate) struct Fetch {
     pub(crate) deepen_relative: bool,
     pub(crate) deepen_since: Option<DateTime<Utc>>,
     pub(crate) deepen_not: Option<String>*/
-}
-
-impl Default for Fetch {
-    fn default() -> Fetch {
-        Fetch {
-            thin_pack: false,
-            no_progress: false,
-            include_tag: false,
-            ofs_delta: false,
-            have: Vec::<String>::new(),
-            want: Vec::<String>::new(),
-            /*shallow: Vec::<String>::new(),
-            deepen: None,
-            deepen_relative: false,
-            deepen_since: None,
-            deepen_not: None*/
-        }
-    }
 }

@@ -78,11 +78,10 @@ impl SSOProvider for BitBucketSSO {
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;
 
         profile_data.get("account_id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::String(val) => Some(val.to_owned()),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))
     }
 
@@ -92,11 +91,10 @@ impl SSOProvider for BitBucketSSO {
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;
 
         let mut username = profile_data.get("username")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::String(s) => Some(s),
                 _ => None
             })
-            .flatten()
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from BitBucket API json response"))?;
 
@@ -111,11 +109,10 @@ impl SSOProvider for BitBucketSSO {
             .await?;
 
         let bitbucket_id = profile_data.get("account_id")
-            .map(|v| match v {
+            .and_then(|v| match v {
                 Value::String(val) => Some(val.to_owned()),
                 _ => None
             })
-            .flatten()
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))?;
 
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")

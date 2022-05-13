@@ -28,8 +28,8 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
             options.symrefs = true;
         }
 
-        if line.starts_with("ref-prefix ") {
-            options.prefixes.push(line[11..].to_owned());
+        if let Some(stripped) = line.strip_prefix("ref-prefix ") {
+            options.prefixes.push(stripped.to_owned());
         }
 
         if line == "unborn" {
@@ -60,8 +60,7 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
     }
 
     writer.flush().await?;
-
-    Ok(writer.serialize().await?)
+    writer.serialize().await
 }
 
 pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
@@ -161,29 +160,17 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
     }
 
     writer.flush().await?;
-
-    Ok(writer.serialize().await?)
+    writer.serialize().await
 }
 
 const fn receive_pack_capabilities() -> &'static str {
     concat!("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-", env!("CARGO_PKG_VERSION"))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct LsRefs {
     pub(crate) peel: bool,
     pub(crate) symrefs: bool,
     pub(crate) prefixes: Vec<String>,
     pub(crate) unborn: bool
-}
-
-impl Default for LsRefs {
-    fn default() -> LsRefs {
-        LsRefs {
-            peel: false,
-            symrefs: false,
-            prefixes: Vec::<String>::new(),
-            unborn: false
-        }
-    }
 }
