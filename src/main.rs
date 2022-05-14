@@ -138,7 +138,6 @@ async fn main() -> Result<()> {
         if serve_static {
             app = app.service(
                 Files::new("/static", "./static")
-                    .show_files_listing()
                     .use_etag(!debug_mode)
                     .use_last_modified(!debug_mode)
                     .use_hidden_files()
