@@ -34,7 +34,7 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
                 match ref_update.push_options {
                     Some(ref mut options) => options.push(option.to_owned()),
                     None => {
-                        let mut vec = vec![option.to_owned()];
+                        let vec = vec![option.to_owned()];
                         ref_update.push_options = Some(vec);
                     }
                 }

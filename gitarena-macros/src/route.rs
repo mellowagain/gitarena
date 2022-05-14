@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
@@ -98,6 +100,25 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
             _ => unimplemented!()
         };
         idents_vec.push(ident_ts);
+    }
+
+    let func_args = &mut sig.inputs;
+
+    for arg in func_args {
+        match arg {
+            FnArg::Typed(typed_arg) => {
+                let boxed = &mut typed_arg.pat;
+                let pattern = boxed.deref_mut();
+
+                match pattern {
+                    Pat::Ident(ident) if ident.mutability.is_some() => {
+                        ident.mutability = None;
+                    }
+                    _ => { /* ignored */ }
+                }
+            }
+            _ => { /* ignored */ }
+        }
     }
 
     // Change from `anyhow::Result` to `actix_web::Result`
