@@ -105,19 +105,15 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let func_args = &mut sig.inputs;
 
     for arg in func_args {
-        match arg {
-            FnArg::Typed(typed_arg) => {
-                let boxed = &mut typed_arg.pat;
-                let pattern = boxed.deref_mut();
+        if let FnArg::Typed(typed_arg) = arg {
+            let boxed = &mut typed_arg.pat;
+            let pattern = boxed.deref_mut();
 
-                match pattern {
-                    Pat::Ident(ident) if ident.mutability.is_some() => {
-                        ident.mutability = None;
-                    }
-                    _ => { /* ignored */ }
+            if let Pat::Ident(ident) = pattern {
+                if ident.mutability.is_some() {
+                    ident.mutability = None;
                 }
             }
-            _ => { /* ignored */ }
         }
     }
 
