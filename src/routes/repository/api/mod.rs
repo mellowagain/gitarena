@@ -2,6 +2,7 @@ use actix_web::web::ServiceConfig;
 use serde::Serialize;
 
 mod create_repo;
+mod fork_repo;
 mod import_repo;
 mod repo_meta;
 mod repo_readme;
@@ -13,6 +14,9 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(create_repo::create);
     config.service(repo_meta::meta);
     config.service(repo_readme::readme);
+
+    config.service(fork_repo::get_fork_amount);
+    config.service(fork_repo::create_fork);
 
     config.service(star::get_star);
     config.service(star::post_star);

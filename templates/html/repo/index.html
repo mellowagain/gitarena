@@ -103,7 +103,13 @@
                         </b>
                     </a> &middot;
 
-                    Forks <b>{{ 0 }}</b>
+                    <a class="pointer" data-hx-post="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/fork" data-hx-target="#fork-amount">
+                        Forks
+
+                        <b id="fork-amount" data-hx-get="/api/repo/{{ repo_owner_name | urlencode }}/{{ repo.name | urlencode }}/fork" data-hx-trigger="load">
+                            <div class="ui active tiny inline loader"></div>
+                        </b>
+                    </a>
                 </h5>
             </div>
         </div>
