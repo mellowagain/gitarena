@@ -15,7 +15,10 @@ Create repository
                     <h2>Create new repository</h2>
                     <div class="content font-normal">
                         Create a new blank repository now to hold all your files, track issues and collaborate on your code.
-                        Already have an existing repository somewhere else? <a href="/new/import">Import it.</a>
+
+                        {% if ipc_enabled %}
+                            Already have an existing repository somewhere else? <a href="/new/import">Import it.</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
