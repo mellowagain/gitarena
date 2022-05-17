@@ -101,4 +101,9 @@ Admin panel:
 
 ![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)
 
+## Sponsors
+
+[![Jetbrains](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)][jetbrains]
+
 [postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6
+[jetbrains]: https://jb.gg/OpenSourceSupport
