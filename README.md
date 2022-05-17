@@ -101,9 +101,11 @@ Admin panel:
 
 ![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)
 
-## Sponsors
+## Thank you
 
-[![Jetbrains](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)][jetbrains]
+[![Copyright © 2000-2022 JetBrains s.r.o. JetBrains and the JetBrains logo are registered trademarks of JetBrains s.r.o.](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)][jetbrains]
+
+Product subscriptions provided by JetBrains
 
 [postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6
 [jetbrains]: https://jb.gg/OpenSourceSupport
