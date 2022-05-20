@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}
+Bad Request
+{% endblock %}
+
+{% block content %}
+<div class="ui center aligned icon header">
+    <i class="exclamation triangle icon"></i>
+    <div class="content">
+        Bad Request
+
+        <div class="sub header">
+            {% if user is undefined or not user.admin %}
+                Please contact your GitArena administrator if you believe this is a mistake.
+            {% else %}
+                Please open an issue if you believe this is a mistake.
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
