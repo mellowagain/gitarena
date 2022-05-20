@@ -1,4 +1,4 @@
-use crate::{crypto, die};
+use crate::{crypto, die, err};
 use crate::git::basic_auth;
 use crate::prelude::*;
 use crate::privileges::repo_visibility::RepoVisibility;
@@ -40,11 +40,11 @@ pub(crate) async fn validate_repo_access<'e, E>(repo: Option<Repository>, conten
 pub(crate) async fn login_flow<'e, E>(request: &HttpRequest, executor: E, content_type: &str) -> Result<Either<User, HttpResponse>>
     where E: Executor<'e, Database = Postgres>
 {
-    if !basic_auth::is_present(request).await {
+    if !is_present(request).await {
         return Ok(Either::Right(prompt(content_type).await));
     }
 
-    Ok(Either::Left(basic_auth::authenticate(request, executor).await?))
+    Ok(Either::Left(authenticate(request, executor).await?))
 }
 
 #[instrument]
@@ -101,25 +101,15 @@ pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -
 
 #[instrument(skip(auth_header), err)]
 pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, String)> {
-    let mut split = auth_header.splitn(2, ' ');
-    let auth_type = split.next().unwrap_or_default();
-    let base64_creds = split.next().unwrap_or_default();
+    let (auth_type, base64_credentials) = auth_header.split_once(' ').ok_or(|| err!(UNAUTHORIZED))?;
 
     if auth_type != "Basic" {
-        die!(UNAUTHORIZED);
+        die!(UNAUTHORIZED, "Unsupported authentication type, only Basic auth allowed");
     }
 
-    let creds = String::from_utf8(base64::decode(base64_creds)?)?;
-    let mut splitted_creds = creds.splitn(2, ':');
-
-    let username = splitted_creds.next().unwrap_or_default();
-    let password = splitted_creds.next().unwrap_or_default();
-
-    if username.is_empty() || password.is_empty() {
-        die!(UNAUTHORIZED, "Username and password cannot be empty");
-    }
-
-    Ok((username.to_owned(), password.to_owned()))
+    Ok(base64_credentials.split_once(':')
+        .map(|(username, password)| (username.to_owned(), password.to_owned()))
+        .ok_or(|| err!(UNAUTHORIZED, "Both username and password is required"))?)
 }
 
 pub(crate) async fn is_present(request: &HttpRequest) -> bool {
