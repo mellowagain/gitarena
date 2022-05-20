@@ -1,5 +1,4 @@
 use crate::{crypto, die, err};
-use crate::git::basic_auth;
 use crate::prelude::*;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
@@ -101,7 +100,7 @@ pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -
 
 #[instrument(skip(auth_header), err)]
 pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, String)> {
-    let (auth_type, base64_credentials) = auth_header.split_once(' ').ok_or(|| err!(UNAUTHORIZED))?;
+    let (auth_type, base64_credentials) = auth_header.split_once(' ').ok_or_else(|| err!(BAD_REQUEST))?;
 
     if auth_type != "Basic" {
         die!(UNAUTHORIZED, "Unsupported authentication type, only Basic auth allowed");
@@ -111,7 +110,7 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
 
     Ok(credentials.split_once(':')
         .map(|(username, password)| (username.to_owned(), password.to_owned()))
-        .ok_or(|| err!(UNAUTHORIZED, "Both username and password is required"))?)
+        .ok_or_else(|| err!(UNAUTHORIZED, "Both username and password is required"))?)
 }
 
 pub(crate) async fn is_present(request: &HttpRequest) -> bool {
