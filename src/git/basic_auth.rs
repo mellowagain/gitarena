@@ -107,7 +107,9 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
         die!(UNAUTHORIZED, "Unsupported authentication type, only Basic auth allowed");
     }
 
-    Ok(base64_credentials.split_once(':')
+    let credentials = String::from_utf8(base64::decode(base64_credentials)?)?;
+
+    Ok(credentials.split_once(':')
         .map(|(username, password)| (username.to_owned(), password.to_owned()))
         .ok_or(|| err!(UNAUTHORIZED, "Both username and password is required"))?)
 }
