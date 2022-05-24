@@ -19,6 +19,7 @@ use actix_web::http::Method;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer};
+use actix_web_lab::middleware::from_fn;
 use anyhow::{anyhow, Context, Result};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
@@ -32,6 +33,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
 use tracing_unwrap::ResultExt;
+use middleware::repo_middleware::repo_middleware;
 
 mod captcha;
 mod config;
@@ -42,6 +44,7 @@ mod ipc;
 mod issue;
 mod licenses;
 mod mail;
+mod middleware;
 mod prelude;
 mod privileges;
 mod repository;
@@ -122,6 +125,7 @@ async fn main() -> Result<()> {
                 }
             })
             .wrap_fn(error_renderer_middleware)
+            .wrap(from_fn(repo_middleware))
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
             .configure(routes::init)
