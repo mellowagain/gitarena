@@ -10,9 +10,9 @@ use std::sync::Arc;
 
 use actix_web::dev::Payload;
 use actix_web::web::Data;
-use actix_web::{FromRequest, HttpRequest};
+use actix_web::{FromRequest, HttpMessage, HttpRequest};
 use anyhow::{anyhow, Result};
-use derive_more::Display;
+use derive_more::{Deref, Display};
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
@@ -115,6 +115,10 @@ impl FromRequest for Repository {
         let repository = match_info.get("repository").expect_or_log("from_request called on Repository despite not having repository argument").to_owned();
         //let tree = match_info.get("tree");
 
+        // Allows one to receive the repo owner name without having to manually search the database
+        // This .clone is most likely unnecessary as the previous value is only used as-ref below
+        req.extensions_mut().insert(RepoOwner(username.clone()));
+
         let web_user_future = WebUser::from_request(req, payload);
 
         match req.app_data::<Data<PgPool>>() {
@@ -155,6 +159,11 @@ async fn extract_repo_from_request(db_pool: Data<PgPool>, web_user: WebUser, use
 
     Ok(repo)
 }
+
+/// Will only be part of [Extensions](actix_web::) if [Repository] is in the handler arguments
+#[derive(Display, Debug, Deref)]
+#[display(fmt = "{}", .0)]
+pub(crate) struct RepoOwner(pub(crate) String);
 
 #[derive(Display, Debug)]
 #[display(fmt = "{}", tree)]
