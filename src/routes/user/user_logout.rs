@@ -29,7 +29,7 @@ pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Dat
 
     transaction.commit().await?;
 
-    Ok(if request.get_header("hx-request").is_some() {
+    Ok(if request.is_htmx() {
         HttpResponse::Ok().append_header(("hx-redirect", "/")).append_header(("hx-refresh", "true")).finish()
     } else {
         HttpResponse::Found().append_header((LOCATION, "/")).finish()

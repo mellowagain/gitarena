@@ -2,11 +2,10 @@ use crate::git::GIT_HASH_KIND;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
-use crate::privileges::privilege;
-use crate::repository::Repository;
+use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
-use crate::user::{User, WebUser};
+use crate::user::WebUser;
 use crate::{die, err, render_template};
 
 use std::cmp::Ordering;
@@ -20,7 +19,6 @@ use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
 use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::refs::file::loose::Reference;
 use git_repository::{ObjectId, Repository as GitoxideRepository};
 use gitarena_macros::route;
@@ -28,26 +26,13 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/{username}/{repository}/tree/{tree}/directory/{blob:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
-    }
-
-    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+    let gitoxide_repo = branch.gitoxide_repo;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
 
-    let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
-        Ok(loose_ref) => Ok(loose_ref),
-        Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
-    }?;
-
-    let full_tree_name = loose_ref.name.as_bstr().to_str()?;
+    let full_tree_name = branch.reference.name.as_bstr().to_str()?;
     let mut context = Context::new();
 
     let mut tree_ref_buffer = Vec::<u8>::new();
@@ -57,8 +42,8 @@ pub(crate) async fn view_dir(uri: web::Path<BlobRequest>, web_user: WebUser, db_
     let mut path = uri.blob.to_owned();
     path.push('/');
 
-    let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
-    let tree = recursively_visit_tree(&loose_ref, tree_ref, path.as_str(), &gitoxide_repo, store.clone(), &mut tree_buffer).await?;
+    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
+    let tree = recursively_visit_tree(&branch.reference, tree_ref, path.as_str(), &gitoxide_repo, store.clone(), &mut tree_buffer).await?;
 
     let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
         .bind(&repo.id)

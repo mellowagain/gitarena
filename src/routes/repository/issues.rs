@@ -1,30 +1,21 @@
 use crate::issue::Issue;
 use crate::prelude::ContextExtensions;
-use crate::privileges::privilege;
-use crate::repository::Repository;
-use crate::routes::repository::GitRequest;
-use crate::user::{User, WebUser};
-use crate::{die, err, render_template};
+use crate::render_template;
+use crate::repository::{RepoOwner, Repository};
+use crate::user::WebUser;
 
 use std::collections::HashMap;
 
-use actix_web::{Responder, web};
-use anyhow::Result;
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{anyhow, Result};
 use gitarena_macros::route;
 use itertools::Itertools;
 use sqlx::PgPool;
 use tera::Context;
 
 #[route("/{username}/{repository}/issues", method = "GET", err = "html")]
-pub(crate) async fn all_issues(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
-
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found")  )?;
-
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
-    }
 
     let confidential = if web_user.as_ref().map_or_else(|| false, |user| user.id == repo.owner) {
         "1 = 1"
@@ -70,7 +61,10 @@ pub(crate) async fn all_issues(uri: web::Path<GitRequest>, web_user: WebUser, db
     context.try_insert("usernames", &usernames)?;
 
     context.try_insert("repo", &repo)?;
-    context.try_insert("repo_owner_name", uri.username.as_str())?;
+
+    let extensions = request.extensions();
+    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    context.try_insert("repo_owner_name", &repo_owner.0)?;
 
     context.try_insert("issues", &issues)?;
     context.insert_web_user(&web_user)?;

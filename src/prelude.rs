@@ -52,6 +52,9 @@ pub(crate) trait HttpRequestExtensions {
     /// assert_eq!(query_string.get("v"), Some("BXB26PzV31k"));
     /// ```
     fn q_string(&self) -> QString;
+
+    /// Returns true if the request was made by a htmx.js handler
+    fn is_htmx(&self) -> bool;
 }
 
 impl HttpRequestExtensions for HttpRequest {
@@ -61,6 +64,10 @@ impl HttpRequestExtensions for HttpRequest {
 
     fn q_string(&self) -> QString {
         QString::from(self.query_string())
+    }
+
+    fn is_htmx(&self) -> bool {
+        self.get_header("hx-request").is_some()
     }
 }
 
@@ -209,7 +216,7 @@ impl ContextExtensions for Context {
     }
 }
 
-pub(crate) const USER_AGENT_STR: &str = concat!("GitArena ", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
+pub(crate) const USER_AGENT_STR: &str = concat!("GitArena v", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
 
 pub(crate) trait AwcExtensions {
     /// Returns a [Client](awc::client::Client) configured with GitArena's default user agent

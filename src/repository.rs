@@ -168,9 +168,9 @@ pub(crate) struct RepoOwner(pub(crate) String);
 #[derive(Display, Debug)]
 #[display(fmt = "{}", tree)]
 pub(crate) struct Branch {
-    gitoxide_repo: GitoxideRepository,
-    tree: String,
-    reference: Reference
+    pub(crate) gitoxide_repo: GitoxideRepository,
+    pub(crate) tree: String,
+    pub(crate) reference: Reference
 }
 
 impl FromRequest for Branch {

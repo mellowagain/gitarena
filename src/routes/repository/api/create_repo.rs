@@ -9,11 +9,11 @@ use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use sqlx::{PgPool, Pool, Postgres};
 use anyhow::Result;
 use gitarena_macros::route;
-use serde::Deserialize;
 use log::info;
+use serde::Deserialize;
+use sqlx::{PgPool, Pool, Postgres};
 
 // This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
 
@@ -75,7 +75,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     info!("New repository created: {}/{} (id {})", &user.username, &repo.name, &repo.id);
 
-    Ok(if request.get_header("hx-request").is_some() {
+    Ok(if request.is_htmx() {
         HttpResponse::Ok().append_header(("hx-redirect", path)).append_header(("hx-refresh", "true")).finish()
     } else {
         let url = format!("{}{}", domain, path);

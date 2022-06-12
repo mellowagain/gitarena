@@ -1,11 +1,10 @@
 use crate::git::history::{all_branches, all_tags, last_commit_for_blob};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
-use crate::privileges::privilege;
-use crate::repository::Repository;
+use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
-use crate::user::{User, WebUser};
+use crate::user::WebUser;
 use crate::utils::cookie_file::{CookieExtensions, FileType};
 use crate::{die, err, render_template};
 
@@ -20,7 +19,6 @@ use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
 use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::refs::file::loose::Reference;
 use git_repository::Repository as GitoxideRepository;
 use gitarena_macros::route;
@@ -30,34 +28,21 @@ use tera::Context;
 use tracing_unwrap::OptionExt;
 
 #[route("/{username}/{repository}/tree/{tree}/blob/{blob:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_blob(repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, web_user: WebUser, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
-    }
-
-    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+    let gitoxide_repo = branch.gitoxide_repo;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
 
-    let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
-        Ok(loose_ref) => Ok(loose_ref),
-        Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
-    }?;
-
-    let full_tree_name = loose_ref.name.as_bstr().to_str()?;
+    let full_tree_name = branch.reference.name.as_bstr().to_str()?;
 
     let mut buffer = Vec::<u8>::new();
     let mut blob_buffer = Vec::<u8>::new();
 
     let store = gitoxide_repo.objects.clone();
 
-    let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let (name, content, mode) = recursively_visit_blob_content(&loose_ref, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
+    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
+    let (name, content, mode) = recursively_visit_blob_content(&branch.reference, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
 
     let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, uri.blob.as_str()).await?.unwrap_or_log();
     let commit = libgit2_repo.find_commit(oid)?;
@@ -106,31 +91,18 @@ pub(crate) async fn view_blob(uri: web::Path<BlobRequest>, web_user: WebUser, co
 }
 
 #[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
-pub(crate) async fn view_raw_blob(uri: web::Path<BlobRequest>, web_user: WebUser, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
+pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
-    }
-
-    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
-
-    let loose_ref = match gitoxide_repo.refs.find_loose(uri.tree.as_str()) {
-        Ok(loose_ref) => Ok(loose_ref),
-        Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Not found")
-    }?;
+    let gitoxide_repo = branch.gitoxide_repo;
 
     let mut buffer = Vec::<u8>::new();
     let mut blob_buffer = Vec::<u8>::new();
 
     let store = gitoxide_repo.objects.clone();
 
-    let tree_ref = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let (_, content, _) = recursively_visit_blob_content(&loose_ref, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
+    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
+    let (_, content, _) = recursively_visit_blob_content(&branch.reference, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
 
     let mime = if let Some(file_type) = infer::get(content.as_bytes()) {
         file_type.mime_type()

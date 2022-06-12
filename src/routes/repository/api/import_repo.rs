@@ -93,7 +93,7 @@ pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>
 
     info!("New repository created for importing: {}/{} (id {}) (source: {})", &user.username, &repo.name, &repo.id, url);
 
-    Ok(if request.get_header("hx-request").is_some() {
+    Ok(if request.is_htmx() {
         HttpResponse::Ok().append_header(("hx-redirect", path)).append_header(("hx-refresh", "true")).finish()
     } else {
         let url = format!("{}{}", domain, path);

@@ -2,17 +2,16 @@ use crate::git::GIT_HASH_KIND;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
-use crate::privileges::privilege;
-use crate::repository::Repository;
-use crate::routes::repository::{GitRequest, GitTreeRequest};
+use crate::repository::{RepoOwner, Repository};
+use crate::routes::repository::GitTreeRequest;
 use crate::templates::web::{GitCommit, RepoFile};
-use crate::user::{User, WebUser};
+use crate::user::WebUser;
 use crate::{die, err, render_template};
 
 use std::cmp::Ordering;
 
-use actix_web::{Responder, web};
-use anyhow::Result;
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{anyhow, Result};
 use bstr::ByteSlice;
 use git_repository::hash::ObjectId;
 use git_repository::objs::tree::EntryMode;
@@ -25,10 +24,6 @@ use tracing_unwrap::OptionExt;
 
 async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web_user: WebUser, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
-
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
-    }
 
     let mut context = Context::new();
 
@@ -165,21 +160,17 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
 }
 
 #[route("/{username}/{repository}/tree/{tree:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_repo_tree(uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+pub(crate) async fn view_repo_tree(repo: Repository, uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let transaction = db_pool.begin().await?;
 
     render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
 
 #[route("/{username}/{repository}", method = "GET", err = "html")]
-pub(crate) async fn view_repo(uri: web::Path<GitRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
+pub(crate) async fn view_repo(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+    let transaction = db_pool.begin().await?;
 
-    let repo_owner = User::find_using_name(&uri.username, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(repo_owner, &uri.repository, &mut transaction).await.ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-
-    render(None, repo, &uri.username, web_user, transaction).await
+    let extensions = request.extensions();
+    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    render(None, repo, &repo_owner.0, web_user, transaction).await
 }

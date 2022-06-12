@@ -21,7 +21,7 @@ pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: we
 
     let sorting = query_string.get("sort").unwrap_or("stars_desc");
     let (sort_method, order) = Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
-    let htmx_request = request.get_header("hx-request").is_some();
+    let htmx_request = request.is_htmx();
     let options = ExploreOptions::parse(&query_string, &web_user, sort_method, order, htmx_request);
 
     let mut transaction = db_pool.begin().await?;
