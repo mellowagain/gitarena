@@ -2002,7 +2002,6 @@ dependencies = [
  "anyhow",
  "askalono",
  "async-compression",
- "async-process",
  "async-recursion",
  "async-trait",
  "awc",

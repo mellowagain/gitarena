@@ -12,17 +12,20 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use std::path::Path;
+use std::process::Stdio;
+use std::time::Duration;
 
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
-use async_process::{Command, Stdio};
 use futures::StreamExt;
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
 use log::warn;
 use memmem::{Searcher, TwoWaySearcher};
 use sqlx::PgPool;
+use tokio::process::Command;
+use tokio::time::timeout;
 
 #[route("/{username}/{repository}.git/git-receive-pack", method = "POST", err = "git")]
 pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
@@ -141,11 +144,20 @@ pub(crate) async fn git_receive_pack(uri: web::Path<GitRequest>, mut body: web::
     let repo_dir = Path::new(&repo_dir_str);
 
     // Let Git collect garbage to optimize repo size
-    match Command::new("git").args(&["gc", "--auto", "--quiet"]).current_dir(repo_dir).stdout(Stdio::null()).stderr(Stdio::null()).status().await {
-        Ok(status) => if !status.success() {
+    let command = Command::new("git")
+        .args(&["gc", "--auto", "--quiet"])
+        .current_dir(repo_dir)
+        .kill_on_drop(true)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+
+    match timeout(Duration::from_secs(10), command).await {
+        Ok(Ok(status)) => if !status.success() {
             warn!("Git garbage collector exited with non-zero status: {}", status);
         }
-        Err(err) => warn!("Failed to execute Git garbage collector: {}", err)
+        Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {}", err),
+        Err(_) => warn!("Git garbage collector failed to finish within 10 seconds")
     }
 
     output_writer.flush_sideband(Band::Data).await?;
