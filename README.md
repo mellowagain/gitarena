@@ -103,9 +103,11 @@ Admin panel:
 
 ## Thank you
 
-[![Copyright © 2000-2022 JetBrains s.r.o. JetBrains and the JetBrains logo are registered trademarks of JetBrains s.r.o.](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)][jetbrains]
-
-Product subscriptions provided by JetBrains
+| Jetbrains                                                                                                                                                                                                               | Instatus                                                                            |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [![Copyright © 2000-2022 JetBrains s.r.o. JetBrains and the JetBrains logo are registered trademarks of JetBrains s.r.o.](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)][jetbrains] | [![Instatus](https://avatars.githubusercontent.com/u/57594402?s=400&v=4)][instatus] |
+| Product subscriptions provided by JetBrains                                                                                                                                                                             | Status page provided by Instatus                                                    |
 
 [postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6
 [jetbrains]: https://jb.gg/OpenSourceSupport
+[instatus]: https://instatus.com/
