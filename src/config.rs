@@ -1,20 +1,16 @@
 use crate::error::{ErrorHolder, HoldsError};
 
-use std::convert::{Infallible, TryFrom, TryInto};
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::future::Future;
-use std::process::exit;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context, Result};
 use derive_more::Display;
-use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
-use sqlx::postgres::PgDatabaseError;
-use sqlx::{Executor, FromRow, Pool, Postgres, Type};
-use tracing_appender::non_blocking::WorkerGuard;
+use sqlx::{Executor, FromRow, Postgres, Type};
 use tracing_unwrap::OptionExt;
 
 /// Gets the value of a setting from the database.
@@ -84,51 +80,6 @@ pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E
 
         Ok(())
     }
-}
-
-pub(crate) async fn init(db_pool: &Pool<Postgres>, log_guards: Vec<WorkerGuard>) -> Result<Vec<WorkerGuard>> {
-    let mut transaction = db_pool.begin().await?;
-
-    if let Some(err) = sqlx::query("select exists(select 1 from settings limit 1)").execute(&mut transaction).await.err() {
-        if let Some(db_err) = err.as_database_error() {
-            let pg_err = db_err.downcast_ref::<PgDatabaseError>();
-
-            // 42P01: relation settings does not exist
-            // If we receive this error code we know the tables have not yet been generated,
-            // so we insert our schema and if that succeeds we're ready to go
-            if pg_err.code() == "42P01" {
-                transaction.commit().await?;
-
-                info!("Required database tables do not exist. Creating...");
-
-                create_tables(db_pool, log_guards).await?;
-            }
-        }
-
-        bail!(err);
-    }
-
-    Ok(log_guards)
-}
-
-// TODO: Use sqlx migrations
-pub(crate) async fn create_tables(db_pool: &Pool<Postgres>, log_guards: Vec<WorkerGuard>) -> Result<Infallible> {
-    const DATABASE_INIT_DATA: &str = include_str!("../schema.sql");
-    let mut connection = db_pool.acquire().await?;
-
-    connection.execute(DATABASE_INIT_DATA)
-        .await
-        .context("Failed to create initial database setup")?;
-
-    info!("Successfully created initial database tables");
-    info!("Please change the config values in the `settings` table and restart GitArena");
-
-    drop(connection); // Drop connection so when we close the pool below it doesn't hang
-    db_pool.close().await; // Close the pool so the database flushes
-    drop(log_guards); // Drop the vec of log guards (calls destructors of items as well) so the log files gets flushed
-
-    // We had to drop everything above manually as exit below does not call destructors
-    exit(0);
 }
 
 #[derive(FromRow, Debug, Deserialize, Serialize, Display)]

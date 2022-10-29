@@ -1,15 +1,12 @@
--- This file will be executed when GitArena detects an empty database without our schema (basically when GitArena runs for the first time)
--- It gets included into GitArena using the include_str! macro, so changes require a recompilation
 -- STYLE: SQL keywords are always lowercase. Names follow snake_case. Every statement needs to end in an semicolon.
--- TODO: Use sqlx migrations instead to replace this in the future
 
 -- Users
 
 create table if not exists users
 (
     id         serial                                                               not null
-        constraint users_pk
-            primary key,
+    constraint users_pk
+    primary key,
     username   varchar(32)                                                          not null,
     password   char(96)                                                             not null,
     disabled   boolean                  default false                               not null,
@@ -22,7 +19,7 @@ create unique index if not exists users_username_uindex
 
 -- Emails
 
-create table emails
+create table if not exists emails
 (
     id              serial                                              not null
         constraint emails_pk
@@ -40,10 +37,10 @@ create table emails
     verified_at     timestamp with time zone
 );
 
-create unique index emails_email_uindex
+create unique index if not exists emails_email_uindex
     on emails (email);
 
-create index emails_owner_index
+create index if not exists emails_owner_index
     on emails (owner);
 
 -- User Verifications
@@ -51,12 +48,12 @@ create index emails_owner_index
 create table if not exists user_verifications
 (
     id      serial                   not null
-        constraint user_verifications_pk
-            primary key,
+    constraint user_verifications_pk
+    primary key,
     user_id integer                  not null,
     hash    char(32)                 not null,
     expires timestamp with time zone not null
-);
+                          );
 
 create unique index if not exists user_verifications_hash_uindex
     on user_verifications (hash);
@@ -66,17 +63,22 @@ create unique index if not exists user_verifications_user_id_uindex
 
 -- Repositories
 
-create type repo_visibility as enum ('public', 'internal', 'private');
+-- https://stackoverflow.com/a/48382296/11494565
+do $$ begin
+    create type repo_visibility as enum ('public', 'internal', 'private');
+exception
+      when duplicate_object then null;
+end $$;
 
 create table if not exists repositories
 (
     id             serial                                               not null
-        constraint repositories_pk
-            primary key,
+    constraint repositories_pk
+    primary key,
     owner          integer                                              not null
-        constraint repositories_users_id_fk
-            references users (id)
-            on delete cascade,
+    constraint repositories_users_id_fk
+    references users (id)
+    on delete cascade,
     name           varchar(32)                                          not null,
     description    varchar(256)                                         not null,
     visibility     repo_visibility default 'public'::repo_visibility    not null,
@@ -86,31 +88,36 @@ create table if not exists repositories
     mirrored_from  varchar(256) default NULL::character varying,
     archived       boolean default false                                not null,
     disabled       boolean default false                                not null
-);
+    );
 
 -- Privileges
 
-create type access_level as enum ('viewer', 'supporter', 'coder', 'manager', 'admin');
+-- https://stackoverflow.com/a/48382296/11494565
+do $$ begin
+    create type access_level as enum ('viewer', 'supporter', 'coder', 'manager', 'admin');
+exception
+    when duplicate_object then null;
+end $$;
 
 create table if not exists privileges
 (
     id           serial
-        constraint privileges_pk
-            primary key,
+    constraint privileges_pk
+    primary key,
     user_id      integer                                     not null
-        constraint privileges_users_id_fk
-            references users
-            on delete cascade,
+    constraint privileges_users_id_fk
+    references users
+    on delete cascade,
     repo_id      integer                                     not null
-        constraint privileges_repositories_id_fk
-            references repositories
-            on delete cascade,
+    constraint privileges_repositories_id_fk
+    references repositories
+    on delete cascade,
     access_level access_level default 'viewer'::access_level not null
 );
 
 -- Sessions
 
-create table sessions
+create table if not exists sessions
 (
     user_id             integer                                             not null
         constraint sessions_users_id_fk
@@ -123,18 +130,18 @@ create table sessions
     updated_at          timestamp with time zone default current_timestamp  not null
 );
 
-create unique index sessions_hash_uindex
+create unique index if not exists sessions_hash_uindex
     on sessions (hash);
 
-create index sessions_user_id_index
+create index if not exists sessions_user_id_index
     on sessions (user_id);
 
-create index sessions_hash_index
+create index if not exists sessions_hash_index
     on sessions (hash);
 
 -- Stars
 
-create table stars
+create table if not exists stars
 (
     id          serial         not null
         constraint stars_pk
@@ -149,17 +156,22 @@ create table stars
             on delete cascade
 );
 
-create index stars_repo_index
+create index if not exists stars_repo_index
     on stars (repo);
 
-create index stars_stargazer_index
+create index if not exists stars_stargazer_index
     on stars (stargazer);
 
 -- SSO
 
-create type sso_provider as enum ('github', 'gitlab', 'bitbucket');
+-- https://stackoverflow.com/a/48382296/11494565
+do $$ begin
+    create type sso_provider as enum ('github', 'gitlab', 'bitbucket');
+exception
+    when duplicate_object then null;
+end $$;
 
-create table sso
+create table if not exists sso
 (
     user_id     integer      not null
         constraint sso_users_id_fk
@@ -169,18 +181,18 @@ create table sso
     provider_id varchar(64)  not null
 );
 
-create index sso_provider_id_index
+create index if not exists sso_provider_id_index
     on sso (provider_id);
 
-create index sso_provider_index
+create index if not exists sso_provider_index
     on sso (provider);
 
-create index sso_user_id_index
+create index if not exists sso_user_id_index
     on sso (user_id);
 
 -- Issues
 
-create table issues
+create table if not exists issues
 (
     id           serial
         constraint issues_pk
@@ -210,15 +222,20 @@ comment on column issues.index is 'Issue # per repository (not global instance)'
 
 -- SSH keys
 
-create type ssh_key_type as enum (
-    'ssh-rsa',
-    'ecdsa-sha2-nistp256',
-    'ecdsa-sha2-nistp384',
-    'ecdsa-sha2-nistp521',
-    'ssh-ed25519'
-);
+-- https://stackoverflow.com/a/48382296/11494565
+do $$ begin
+    create type ssh_key_type as enum (
+        'ssh-rsa',
+        'ecdsa-sha2-nistp256',
+        'ecdsa-sha2-nistp384',
+        'ecdsa-sha2-nistp521',
+        'ssh-ed25519'
+    );
+exception
+    when duplicate_object then null;
+end $$;
 
-create table ssh_keys
+create table if not exists ssh_keys
 (
     id          serial
         constraint ssh_keys_pk
@@ -235,18 +252,22 @@ create table ssh_keys
     expires_at  timestamp with time zone
 );
 
-create unique index ssh_keys_fingerprint_uindex
+create unique index if not exists ssh_keys_fingerprint_uindex
     on ssh_keys (fingerprint);
 
-create unique index ssh_keys_key_uindex
+create unique index if not exists ssh_keys_key_uindex
     on ssh_keys (key);
 
 -- Settings
--- CONTRIBUTING: This table always needs to be the last in this file. Please add new tables above this section.
 
-create type type_constraint as enum ('boolean', 'char', 'int', 'string', 'bytes');
+-- https://stackoverflow.com/a/48382296/11494565
+do $$ begin
+    create type type_constraint as enum ('boolean', 'char', 'int', 'string', 'bytes');
+exception
+    when duplicate_object then null;
+end $$;
 
-create table settings
+create table if not exists settings
 (
     key varchar(64) not null
         constraint settings_pk
@@ -255,38 +276,36 @@ create table settings
     type type_constraint not null
 );
 
-create unique index settings_key_uindex
+create unique index if not exists settings_key_uindex
     on settings (key);
 
--- CONTRIBUTING: If adding new settings, please add key, default value (or null) and type below
-
-insert into settings (key, value, type) values ('domain', null, 'string');
-insert into settings (key, value, type) values ('secret', md5((random())::text), 'string');
-insert into settings (key, value, type) values ('allow_registrations', null, 'boolean');
-insert into settings (key, value, type) values ('repositories.base_dir', null, 'string');
-insert into settings (key, value, type) values ('repositories.importing_enabled', true, 'boolean');
-insert into settings (key, value, type) values ('hcaptcha.enabled', null, 'boolean');
-insert into settings (key, value, type) values ('hcaptcha.site_key', null, 'string');
-insert into settings (key, value, type) values ('hcaptcha.secret', null, 'string');
-insert into settings (key, value, type) values ('smtp.enabled', null, 'boolean');
-insert into settings (key, value, type) values ('smtp.server', null, 'string');
-insert into settings (key, value, type) values ('smtp.port', null, 'int');
-insert into settings (key, value, type) values ('smtp.tls', null, 'boolean');
-insert into settings (key, value, type) values ('smtp.address', null, 'string');
-insert into settings (key, value, type) values ('smtp.username', null, 'string');
-insert into settings (key, value, type) values ('smtp.password', null, 'string');
-insert into settings (key, value, type) values ('integrations.sentry.enabled', 'false', 'boolean');
-insert into settings (key, value, type) values ('integrations.sentry.dsn', null, 'string');
-insert into settings (key, value, type) values ('sessions.log_ip', true, 'boolean');
-insert into settings (key, value, type) values ('sessions.log_user_agent', true, 'boolean');
-insert into settings (key, value, type) values ('avatars.gravatar', true, 'boolean');
-insert into settings (key, value, type) values ('avatars.dir', 'avatars', 'string');
-insert into settings (key, value, type) values ('sso.github.enabled', false, 'boolean');
-insert into settings (key, value, type) values ('sso.github.client_id', null, 'string');
-insert into settings (key, value, type) values ('sso.github.client_secret', null, 'string');
-insert into settings (key, value, type) values ('sso.gitlab.enabled', false, 'boolean');
-insert into settings (key, value, type) values ('sso.gitlab.app_id', null, 'string');
-insert into settings (key, value, type) values ('sso.gitlab.client_secret', null, 'string');
-insert into settings (key, value, type) values ('sso.bitbucket.enabled', false, 'boolean');
-insert into settings (key, value, type) values ('sso.bitbucket.key', null, 'string');
-insert into settings (key, value, type) values ('sso.bitbucket.secret', null, 'string');
+insert into settings (key, value, type) values ('domain', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('secret', md5((random())::text), 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('allow_registrations', null, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('repositories.base_dir', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('repositories.importing_enabled', true, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('hcaptcha.enabled', null, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('hcaptcha.site_key', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('hcaptcha.secret', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.enabled', null, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.server', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.port', null, 'int') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.tls', null, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.address', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.username', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('smtp.password', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('integrations.sentry.enabled', 'false', 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('integrations.sentry.dsn', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sessions.log_ip', true, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('sessions.log_user_agent', true, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('avatars.gravatar', true, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('avatars.dir', 'avatars', 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.github.enabled', false, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.github.client_id', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.github.client_secret', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.gitlab.enabled', false, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.gitlab.app_id', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.gitlab.client_secret', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.bitbucket.enabled', false, 'boolean') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.bitbucket.key', null, 'string') on conflict do nothing;
+insert into settings (key, value, type) values ('sso.bitbucket.secret', null, 'string') on conflict do nothing;
