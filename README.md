@@ -39,9 +39,8 @@ In order to run GitArena, the following environment variable needs to be set:
     * `DATABASE_URL_FILE`: Path to a file containing the [Postgres connection string][postgres]
     * `DATABASE_URL`: Raw [Postgres connection string][postgres]
 
-After start GitArena will automatically create the required table as defined
-in `schema.sql` and exit. Please edit the `settings` table to configure your
-GitArena instance and start GitArena again. In the future this will be do-able in the web ui.
+After start GitArena will automatically create the required tables. Please edit the `settings` table to configure your
+GitArena instance and restart GitArena. In the future this will be do-able in the web ui.
 
 Afterwards your GitArena instance will be fully set up and you can register
 your account. In order to access the admin panel (`/admin`), please set
