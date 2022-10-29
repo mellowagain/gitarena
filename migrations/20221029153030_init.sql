@@ -4,14 +4,14 @@
 
 create table if not exists users
 (
-    id         serial                                                               not null
-    constraint users_pk
-    primary key,
-    username   varchar(32)                                                          not null,
-    password   char(96)                                                             not null,
-    disabled   boolean                  default false                               not null,
-    admin      boolean                  default false                               not null,
-    created_at timestamp with time zone default current_timestamp                   not null
+    id         serial                                             not null
+        constraint users_pk
+            primary key,
+    username   varchar(32)                                        not null,
+    password   char(96)                                           not null,
+    disabled   boolean                  default false             not null,
+    admin      boolean                  default false             not null,
+    created_at timestamp with time zone default current_timestamp not null
 );
 
 create unique index if not exists users_username_uindex
@@ -21,20 +21,20 @@ create unique index if not exists users_username_uindex
 
 create table if not exists emails
 (
-    id              serial                                              not null
+    id           serial                                             not null
         constraint emails_pk
             primary key,
-    owner           integer                                             not null
+    owner        integer                                            not null
         constraint emails_users_id_fk
             references users
             on delete cascade,
-    email           varchar(256)                                        not null,
-    "primary"       boolean default false                               not null,
-    commit          boolean default false                               not null,
-    notification    boolean default false                               not null,
-    public          boolean default false                               not null,
-    created_at      timestamp with time zone default current_timestamp  not null,
-    verified_at     timestamp with time zone
+    email        varchar(256)                                       not null,
+    "primary"    boolean                  default false             not null,
+    commit       boolean                  default false             not null,
+    notification boolean                  default false             not null,
+    public       boolean                  default false             not null,
+    created_at   timestamp with time zone default current_timestamp not null,
+    verified_at  timestamp with time zone
 );
 
 create unique index if not exists emails_email_uindex
@@ -48,12 +48,12 @@ create index if not exists emails_owner_index
 create table if not exists user_verifications
 (
     id      serial                   not null
-    constraint user_verifications_pk
-    primary key,
+        constraint user_verifications_pk
+            primary key,
     user_id integer                  not null,
     hash    char(32)                 not null,
     expires timestamp with time zone not null
-                          );
+);
 
 create unique index if not exists user_verifications_hash_uindex
     on user_verifications (hash);
@@ -64,54 +64,60 @@ create unique index if not exists user_verifications_user_id_uindex
 -- Repositories
 
 -- https://stackoverflow.com/a/48382296/11494565
-do $$ begin
-    create type repo_visibility as enum ('public', 'internal', 'private');
-exception
-      when duplicate_object then null;
-end $$;
+do
+$$
+    begin
+        create type repo_visibility as enum ('public', 'internal', 'private');
+    exception
+        when duplicate_object then null;
+    end
+$$;
 
 create table if not exists repositories
 (
-    id             serial                                               not null
-    constraint repositories_pk
-    primary key,
-    owner          integer                                              not null
-    constraint repositories_users_id_fk
-    references users (id)
-    on delete cascade,
-    name           varchar(32)                                          not null,
-    description    varchar(256)                                         not null,
-    visibility     repo_visibility default 'public'::repo_visibility    not null,
-    default_branch varchar(256) default 'main'::character varying       not null,
-    license        varchar(256) default NULL::character varying,
+    id             serial                                            not null
+        constraint repositories_pk
+            primary key,
+    owner          integer                                           not null
+        constraint repositories_users_id_fk
+            references users (id)
+            on delete cascade,
+    name           varchar(32)                                       not null,
+    description    varchar(256)                                      not null,
+    visibility     repo_visibility default 'public'::repo_visibility not null,
+    default_branch varchar(256)    default 'main'::character varying not null,
+    license        varchar(256)    default NULL::character varying,
     forked_from    integer,
-    mirrored_from  varchar(256) default NULL::character varying,
-    archived       boolean default false                                not null,
-    disabled       boolean default false                                not null
-    );
+    mirrored_from  varchar(256)    default NULL::character varying,
+    archived       boolean         default false                     not null,
+    disabled       boolean         default false                     not null
+);
 
 -- Privileges
 
 -- https://stackoverflow.com/a/48382296/11494565
-do $$ begin
-    create type access_level as enum ('viewer', 'supporter', 'coder', 'manager', 'admin');
-exception
-    when duplicate_object then null;
-end $$;
+do
+$$
+    begin
+        create type access_level as enum ('viewer', 'supporter', 'coder', 'manager', 'admin');
+    exception
+        when duplicate_object then null;
+    end
+$$;
 
 create table if not exists privileges
 (
     id           serial
-    constraint privileges_pk
-    primary key,
+        constraint privileges_pk
+            primary key,
     user_id      integer                                     not null
-    constraint privileges_users_id_fk
-    references users
-    on delete cascade,
+        constraint privileges_users_id_fk
+            references users
+            on delete cascade,
     repo_id      integer                                     not null
-    constraint privileges_repositories_id_fk
-    references repositories
-    on delete cascade,
+        constraint privileges_repositories_id_fk
+            references repositories
+            on delete cascade,
     access_level access_level default 'viewer'::access_level not null
 );
 
@@ -119,15 +125,15 @@ create table if not exists privileges
 
 create table if not exists sessions
 (
-    user_id             integer                                             not null
+    user_id    integer                                                not null
         constraint sessions_users_id_fk
             references users
             on delete cascade,
-    hash                varchar(32) default md5((random())::text)           not null,
-    ip_address          inet                                                not null,
-    user_agent          varchar(256)                                        not null,
-    created_at          timestamp with time zone default current_timestamp  not null,
-    updated_at          timestamp with time zone default current_timestamp  not null
+    hash       varchar(32)              default md5((random())::text) not null,
+    ip_address inet                                                   not null,
+    user_agent varchar(256)                                           not null,
+    created_at timestamp with time zone default current_timestamp     not null,
+    updated_at timestamp with time zone default current_timestamp     not null
 );
 
 create unique index if not exists sessions_hash_uindex
@@ -143,14 +149,14 @@ create index if not exists sessions_hash_index
 
 create table if not exists stars
 (
-    id          serial         not null
+    id        serial  not null
         constraint stars_pk
             primary key,
-    stargazer   integer         not null
+    stargazer integer not null
         constraint stars_users_id_fk
             references users
             on delete cascade,
-    repo        integer         not null
+    repo      integer not null
         constraint stars_repositories_id_fk
             references repositories
             on delete cascade
@@ -165,11 +171,14 @@ create index if not exists stars_stargazer_index
 -- SSO
 
 -- https://stackoverflow.com/a/48382296/11494565
-do $$ begin
-    create type sso_provider as enum ('github', 'gitlab', 'bitbucket');
-exception
-    when duplicate_object then null;
-end $$;
+do
+$$
+    begin
+        create type sso_provider as enum ('github', 'gitlab', 'bitbucket');
+    exception
+        when duplicate_object then null;
+    end
+$$;
 
 create table if not exists sso
 (
@@ -223,17 +232,20 @@ comment on column issues.index is 'Issue # per repository (not global instance)'
 -- SSH keys
 
 -- https://stackoverflow.com/a/48382296/11494565
-do $$ begin
-    create type ssh_key_type as enum (
-        'ssh-rsa',
-        'ecdsa-sha2-nistp256',
-        'ecdsa-sha2-nistp384',
-        'ecdsa-sha2-nistp521',
-        'ssh-ed25519'
-    );
-exception
-    when duplicate_object then null;
-end $$;
+do
+$$
+    begin
+        create type ssh_key_type as enum (
+            'ssh-rsa',
+            'ecdsa-sha2-nistp256',
+            'ecdsa-sha2-nistp384',
+            'ecdsa-sha2-nistp521',
+            'ssh-ed25519'
+            );
+    exception
+        when duplicate_object then null;
+    end
+$$;
 
 create table if not exists ssh_keys
 (
@@ -261,19 +273,22 @@ create unique index if not exists ssh_keys_key_uindex
 -- Settings
 
 -- https://stackoverflow.com/a/48382296/11494565
-do $$ begin
-    create type type_constraint as enum ('boolean', 'char', 'int', 'string', 'bytes');
-exception
-    when duplicate_object then null;
-end $$;
+do
+$$
+    begin
+        create type type_constraint as enum ('boolean', 'char', 'int', 'string', 'bytes');
+    exception
+        when duplicate_object then null;
+    end
+$$;
 
 create table if not exists settings
 (
-    key varchar(64) not null
+    key   varchar(64)     not null
         constraint settings_pk
             primary key,
     value varchar(1024) default NULL::character varying,
-    type type_constraint not null
+    type  type_constraint not null
 );
 
 create unique index if not exists settings_key_uindex
