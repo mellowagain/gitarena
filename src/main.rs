@@ -61,8 +61,7 @@ async fn main() -> Result<()> {
     let mut _log_guards = init_logger(broadcaster.clone())?;
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
-
-    _log_guards = config::init(&db_pool, _log_guards).await.context("Unable to initialize config in database")?;
+    sqlx::migrate!().run(&db_pool).await?;
 
     licenses::init().await;
 
