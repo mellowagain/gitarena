@@ -1,7 +1,11 @@
 use crate::prelude::ContextExtensions;
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
+use crate::utils::system::SYSTEM_INFO;
 use crate::{die, render_template};
+
+use std::env::consts;
+use std::process;
 
 use actix_web::{Responder, web};
 use anyhow::Result;
@@ -9,9 +13,9 @@ use chrono::Duration;
 use chrono_humanize::{Accuracy, HumanTime, Tense};
 use git2::Version as LibGit2Version;
 use gitarena_macros::route;
-use heim::units::{Information, information, Time};
 use once_cell::sync::Lazy;
 use sqlx::PgPool;
+use sysinfo::SystemExt;
 use tera::Context;
 
 #[route("/", method = "GET", err = "html")]
@@ -91,36 +95,26 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
     context.try_insert("git2_rs_version", libgit2_version.crate_version())?;
 
     // System Info
+    // This is its own block to allow the lock to be dropped early
+    {
+        let system = SYSTEM_INFO.read().await;
 
-    if let Ok(platform) = heim::host::platform().await {
-        context.try_insert("os", platform.system())?;
-        context.try_insert("version", platform.release())?;
-        context.try_insert("architecture", platform.architecture().as_str())?;
+        context.try_insert("os", &system.long_os_version().unwrap_or_else(|| "Unknown".to_string()))?;
+        context.try_insert("uptime", &format_uptime(system.uptime()))?;
+
+        context.try_insert("memory_available", &system.available_memory())?;
+        context.try_insert("memory_total", &system.total_memory())?;
     }
 
-    if let Ok(uptime) = heim::host::uptime().await {
-        context.try_insert("uptime", format_heim_time(uptime).as_str())?;
-    }
-
-    if let Ok(memory) = heim::memory::memory().await {
-        context.try_insert("memory_available", &heim_size_to_bytes(memory.available()))?;
-        context.try_insert("memory_total", &heim_size_to_bytes(memory.total()))?;
-    }
-
-    if let Ok(process) = heim::process::current().await {
-        context.try_insert("pid", &process.pid())?;
-    }
+    context.try_insert("architecture", consts::ARCH)?;
+    context.try_insert("pid", &process::id())?;
 
     render_template!("admin/dashboard.html", context, transaction)
 }
 
-fn format_heim_time(time: Time) -> String {
-    let duration = Duration::seconds(time.get::<heim::units::time::second>() as i64);
+fn format_uptime(seconds: u64) -> String {
+    let duration = Duration::seconds(seconds as i64);
     let human_time = HumanTime::from(duration);
 
     human_time.to_text_en(Accuracy::Rough, Tense::Present)
-}
-
-fn heim_size_to_bytes(info: Information) -> usize {
-    info.get::<information::byte>() as usize
 }

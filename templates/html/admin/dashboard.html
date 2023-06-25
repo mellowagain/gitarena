@@ -114,10 +114,14 @@ Admin Dashboard
     </div>
     <div class="five wide centered column">
         <div class="ui segment">
-            <h1 class="ui header">System Info</h1>
+            <h1 class="ui header">
+                System Info
+                <a class="popup" data-content="Refreshed every 5 minutes">
+                    <i class="question circle icon"></i>
+                </a>
+            </h1>
             <div class="ui grid">
-                {% set operating_system = os ~ " " ~ version %}
-                {{ macros::component(key="OS", value=operating_system, popup="") }}
+                {{ macros::component(key="OS", value=os, popup="") }}
                 {{ macros::component(key="Architecture", value=architecture, popup="") }}
                 {{ macros::component(key="Uptime", value=uptime, popup="") }}
 

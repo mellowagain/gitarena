@@ -6,6 +6,7 @@ pub(crate) mod cookie_file;
 pub(crate) mod filesystem;
 pub(crate) mod identifiers;
 pub(crate) mod oid;
+pub(crate) mod system;
 
 /// Counts the amount of seconds the provided [Future][future] took to execute.
 /// The [Future][future] _should_ not return a output, as it will be discarded and not returned.

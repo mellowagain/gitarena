@@ -4,6 +4,7 @@ use crate::error::error_renderer_middleware;
 use crate::ipc::Ipc;
 use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
+use crate::utils::system::SYSTEM_INFO;
 
 use std::env::VarError;
 use std::env;
@@ -65,6 +66,8 @@ async fn main() -> Result<()> {
 
     licenses::init().await;
 
+    // read the `Lazy` to initialize it but immediately drop the returned guard to prevent a deadlock
+    let _ = SYSTEM_INFO.read().await;
     let _watcher = templates::init().await?;
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
