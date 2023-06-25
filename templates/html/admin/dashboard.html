@@ -114,22 +114,17 @@ Admin Dashboard
     </div>
     <div class="five wide centered column">
         <div class="ui segment">
-            <h1 class="ui header">
-                System Info
-                <a class="popup" data-content="Refreshed every 5 minutes">
-                    <i class="question circle icon"></i>
-                </a>
-            </h1>
+            <h1 class="ui header">System Info</h1>
             <div class="ui grid">
                 {{ macros::component(key="OS", value=os, popup="") }}
-                {{ macros::component(key="Architecture", value=architecture, popup="") }}
+                {{ macros::component(key="Architecture", value=architecture, popup="Architecture GitArena was built for at compile time. May be inaccurate if translation layer such as Rosetta or QEMU are used") }}
                 {{ macros::component(key="Uptime", value=uptime, popup="") }}
 
                 {% set memory_available_file_size = memory_available | filesizeformat %}
                 {% set memory_total_file_size = memory_total | filesizeformat %}
                 {% set memory = memory_available_file_size ~ " / " ~ memory_total_file_size %}
 
-                {{ macros::component(key="Memory", value=memory, popup="") }}
+                {{ macros::component(key="Memory", value=memory, popup="Refreshed every five minutes") }}
 
                 {{ macros::component(key="GitArena PID", value=pid, popup="Process ID (PID) of this GitArena instance") }}
             </div>
