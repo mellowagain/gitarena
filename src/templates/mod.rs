@@ -47,8 +47,8 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
         use actix_web::rt::Runtime;
         use log::error;
         use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
-
-        let mut watcher = RecommendedWatcher::new(|result: std::result::Result<Event, NotifyError>| {
+        
+        let mut watcher = notify::recommended_watcher(|result: std::result::Result<Event, NotifyError>| {
             let event = match result {
                 Ok(event) => event,
                 Err(err) => {
