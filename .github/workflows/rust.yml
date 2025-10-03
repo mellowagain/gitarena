@@ -16,6 +16,8 @@ jobs:
       run: sudo apt install libmagic-dev
     - name: Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
     - name: Cache
       uses: Swatinem/rust-cache@v2
     - name: Build
