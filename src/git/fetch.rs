@@ -82,7 +82,10 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
 }
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
+pub(crate) async fn process_haves(
+    repo: &Git2Repository,
+    options: &Fetch,
+) -> Result<Option<GitWriter>> {
     if options.have.is_empty() {
         return Ok(None);
     }
@@ -113,11 +116,19 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
 }
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
+pub(crate) async fn process_wants(
+    repo: &Git2Repository,
+    options: &Fetch,
+) -> Result<Option<GitWriter>> {
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
-    writer.write_text_sideband(Band::Progress, format!("Enumerating objects: {}, done.", options.want.len())).await?;
+    writer
+        .write_text_sideband(
+            Band::Progress,
+            format!("Enumerating objects: {}, done.", options.want.len()),
+        )
+        .await?;
 
     let mut progress_writer = ProgressWriter::new();
 
@@ -137,9 +148,10 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
                                 if let Some(commit) = object.as_commit() {
                                     insert_commit_with_parents(commit, &mut pack_builder).await?;
                                 }
-                            },
+                            }
                             ObjectType::Tree => pack_builder.insert_tree(object.id())?,
-                            _ => pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?
+                            _ => pack_builder
+                                .insert_object(object.id(), Some(wanted_obj.as_str()))?,
                         }
                     } else {
                         pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
@@ -159,7 +171,9 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
 
     writer.append(progress_writer.to_writer().await?).await?;
 
-    writer.write_binary_sideband(Band::Data, buffer.as_ref()).await?;
+    writer
+        .write_binary_sideband(Band::Data, buffer.as_ref())
+        .await?;
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
@@ -172,17 +186,25 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let _obj_pack_reused = 0 /*reused_delta - reused*/;
     let pack_reused = 0 /*obj_pack_total + obj_pack_reused*/;
 
-    writer.write_text_sideband(Band::Progress, format!(
-        "Total {} (delta {}), reused {} (delta {}), pack-reused {}",
-        total, total_delta, reused, reused_delta, pack_reused
-    )).await?;
+    writer
+        .write_text_sideband(
+            Band::Progress,
+            format!(
+                "Total {} (delta {}), reused {} (delta {}), pack-reused {}",
+                total, total_delta, reused, reused_delta, pack_reused
+            ),
+        )
+        .await?;
 
     Ok(Some(writer))
 }
 
 #[instrument(err, skip(pack_builder))]
 #[async_recursion(?Send)]
-async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut PackBuilder<'_>) -> Result<()> {
+async fn insert_commit_with_parents(
+    commit: &Commit<'_>,
+    pack_builder: &mut PackBuilder<'_>,
+) -> Result<()> {
     pack_builder.insert_commit(commit.id())?;
 
     for parent in commit.parents() {

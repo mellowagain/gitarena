@@ -1,6 +1,8 @@
-use crate::git::GIT_HASH_KIND;
-use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
+use crate::git::history::{
+    all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref,
+};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
+use crate::git::GIT_HASH_KIND;
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
@@ -11,7 +13,7 @@ use crate::{die, err, render_template};
 use std::cmp::Ordering;
 use std::sync::Arc;
 
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
@@ -25,8 +27,18 @@ use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
 
-#[route("/{username}/{repository}/tree/{tree}/directory/{blob:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/{username}/{repository}/tree/{tree}/directory/{blob:.*}",
+    method = "GET",
+    err = "html"
+)]
+pub(crate) async fn view_dir(
+    repo: Repository,
+    branch: Branch,
+    uri: web::Path<BlobRequest>,
+    web_user: WebUser,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;
@@ -42,13 +54,29 @@ pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<Bl
     let mut path = uri.blob.to_owned();
     path.push('/');
 
-    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
-    let tree = recursively_visit_tree(&branch.reference, tree_ref, path.as_str(), &gitoxide_repo, store.clone(), &mut tree_buffer).await?;
+    let tree_ref = repo_files_at_ref(
+        &branch.reference,
+        store.clone(),
+        &gitoxide_repo,
+        &mut tree_ref_buffer,
+    )
+    .await?;
+    let tree = recursively_visit_tree(
+        &branch.reference,
+        tree_ref,
+        path.as_str(),
+        &gitoxide_repo,
+        store.clone(),
+        &mut tree_buffer,
+    )
+    .await?;
 
-    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
-        .bind(&repo.id)
-        .fetch_one(&mut transaction)
-        .await?;
+    let (issues_count,): (i64,) = sqlx::query_as(
+        "select count(*) from issues where repo = $1 and closed = false and confidential = false",
+    )
+    .bind(&repo.id)
+    .fetch_one(&mut transaction)
+    .await?;
 
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", uri.username.as_str())?;
@@ -71,11 +99,22 @@ pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<Bl
         let name = entry.filename.to_str().unwrap_or("Invalid file name");
         let file_path = format!("{}/{}", uri.blob.as_str(), name);
 
-        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, file_path.as_str()).await?.ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob (this should never happen)"))?;
+        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, file_path.as_str())
+            .await?
+            .ok_or_else(|| {
+                err!(
+                    INTERNAL_SERVER_ERROR,
+                    "No last commit found for blob (this should never happen)"
+                )
+            })?;
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
-            Some(read_blob_content(entry.oid.as_ref(), store.clone()).await.unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()))
+            Some(
+                read_blob_content(entry.oid.as_ref(), store.clone())
+                    .await
+                    .unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()),
+            )
         } else {
             None
         };
@@ -89,10 +128,10 @@ pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<Bl
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
                 date: None,
-                author_name: String::new(), // Unused for file listing
-                author_uid: None, // Unused for file listing
-                author_email: String::new() // Unused for file listing
-            }
+                author_name: String::new(),  // Unused for file listing
+                author_uid: None,            // Unused for file listing
+                author_email: String::new(), // Unused for file listing
+            },
         });
     }
 
@@ -103,13 +142,19 @@ pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<Bl
 
         if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type != EntryMode::Tree as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
+        {
             Ordering::Greater
-        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
+        {
             lhs.file_name.cmp(rhs.file_name)
-        } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
+        } else if lhs.file_type == EntryMode::Commit as u16
+            && rhs.file_type != EntryMode::Commit as u16
+        {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
+        } else if lhs.file_type != EntryMode::Commit as u16
+            && rhs.file_type == EntryMode::Commit as u16
+        {
             Ordering::Greater
         } else {
             lhs.file_name.cmp(rhs.file_name)
@@ -117,34 +162,51 @@ pub(crate) async fn view_dir(repo: Repository, branch: Branch, uri: web::Path<Bl
     });
 
     context.try_insert("files", &files)?;
-    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
+    context.try_insert(
+        "commits_count",
+        &all_commits(&libgit2_repo, full_tree_name, 0).await?.len(),
+    )?;
 
-    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
+    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name)
+        .await?
+        .ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     // TODO: Additionally show last_commit.committer and if doesn't match with author
-    let (author_name, author_uid, author_email) = last_commit.author().try_disassemble(&mut transaction).await;
+    let (author_name, author_uid, author_email) =
+        last_commit.author().try_disassemble(&mut transaction).await;
 
-    context.try_insert("last_commit", &GitCommit {
-        oid: format!("{}", last_commit_oid),
-        message: last_commit.message().unwrap_or_default().to_owned(),
-        time: last_commit.time().seconds(),
-        date: None,
-        author_name,
-        author_uid,
-        author_email
-    })?;
+    context.try_insert(
+        "last_commit",
+        &GitCommit {
+            oid: format!("{}", last_commit_oid),
+            message: last_commit.message().unwrap_or_default().to_owned(),
+            time: last_commit.time().seconds(),
+            date: None,
+            author_name,
+            author_uid,
+            author_email,
+        },
+    )?;
 
     render_template!("repo/blob/directory.html", context, transaction)
 }
 
 #[async_recursion(?Send)]
-async fn recursively_visit_tree<'a>(reference: &Reference, tree_ref: TreeRef<'a>, path: &str, repo: &'a GitoxideRepository, store: Arc<Store>, buffer: &'a mut Vec<u8>) -> Result<Tree> {
+async fn recursively_visit_tree<'a>(
+    reference: &Reference,
+    tree_ref: TreeRef<'a>,
+    path: &str,
+    repo: &'a GitoxideRepository,
+    store: Arc<Store>,
+    buffer: &'a mut Vec<u8>,
+) -> Result<Tree> {
     let tree = Tree::from(tree_ref);
 
     match path.split_once('/') {
         Some((search, remaining)) => {
-            let entry = tree.entries
+            let entry = tree
+                .entries
                 .iter()
                 .find(|e| e.filename == search)
                 .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
@@ -153,11 +215,14 @@ async fn recursively_visit_tree<'a>(reference: &Reference, tree_ref: TreeRef<'a>
                 die!(BAD_REQUEST, "Only trees can be viewed in tree view");
             }
 
-            let tree_ref = store.to_handle_arc().find_tree(entry.oid.as_ref(), buffer).map(|(tree, _)| tree)?;
+            let tree_ref = store
+                .to_handle_arc()
+                .find_tree(entry.oid.as_ref(), buffer)
+                .map(|(tree, _)| tree)?;
             let mut buffer = Vec::<u8>::new();
 
             recursively_visit_tree(reference, tree_ref, remaining, repo, store, &mut buffer).await
         }
-        None => Ok(tree)
+        None => Ok(tree),
     }
 }

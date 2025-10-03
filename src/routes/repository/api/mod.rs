@@ -27,5 +27,5 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 #[derive(Serialize)]
 pub(crate) struct CreateJsonResponse {
     pub(crate) id: i32,
-    pub(crate) url: String
+    pub(crate) url: String,
 }

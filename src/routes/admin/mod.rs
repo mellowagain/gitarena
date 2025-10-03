@@ -1,5 +1,5 @@
-use actix_web::Scope;
 use actix_web::web::scope;
+use actix_web::Scope;
 
 mod dashboard;
 mod log;

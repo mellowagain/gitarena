@@ -12,7 +12,7 @@ pub(crate) struct RepoFile<'a> {
 #[derive(Serialize)]
 pub(crate) struct RepoReadme<'a> {
     pub(crate) file_name: &'a str,
-    pub(crate) content: &'a str
+    pub(crate) content: &'a str,
 }
 
 #[derive(Serialize)]
@@ -26,5 +26,5 @@ pub(crate) struct GitCommit {
 
     pub(crate) author_name: String,
     pub(crate) author_uid: Option<i32>,
-    pub(crate) author_email: String
+    pub(crate) author_email: String,
 }

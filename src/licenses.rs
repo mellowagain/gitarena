@@ -16,7 +16,8 @@ pub(crate) async fn init() {
 }
 
 fn init_askalono() -> Store {
-    let file = File::open("askalono-cache.bin.zstd").expect_or_log("Failed to open askalono cache file");
+    let file =
+        File::open("askalono-cache.bin.zstd").expect_or_log("Failed to open askalono cache file");
 
     Store::from_cache(file).expect_or_log("Failed to parse askalono cache file")
 }
@@ -27,7 +28,23 @@ pub(crate) fn store() -> &'static Store {
 
 pub(crate) const fn license_file_names() -> [&'static [u8]; 18] {
     [
-        b"copying", b"copyright", b"eula", b"license", b"notice", b"patents", b"unlicense", b"agpl", b"gpl",
-        b"lgpl", b"apache-", b"bsd-", b"cc-by-", b"gfdl-", b"gnu-", b"mit-", b"mpl-", b"ofl-"
+        b"copying",
+        b"copyright",
+        b"eula",
+        b"license",
+        b"notice",
+        b"patents",
+        b"unlicense",
+        b"agpl",
+        b"gpl",
+        b"lgpl",
+        b"apache-",
+        b"bsd-",
+        b"cc-by-",
+        b"gfdl-",
+        b"gnu-",
+        b"mit-",
+        b"mpl-",
+        b"ofl-",
     ]
 }

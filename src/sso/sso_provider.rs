@@ -10,7 +10,9 @@ use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::url::Url;
-use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
+use oauth2::{
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl,
+};
 use qstring::QString;
 use sqlx::{Executor, PgPool, Postgres};
 use tracing_unwrap::OptionExt;
@@ -22,36 +24,67 @@ pub(crate) trait SSOProvider {
     fn get_auth_url(&self) -> AuthUrl;
     fn get_token_url(&self) -> Option<TokenUrl>;
 
-    async fn build_client(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicClient> {
+    async fn build_client(
+        &self,
+        provider: &SSOProviderType,
+        db_pool: &PgPool,
+    ) -> Result<BasicClient> {
         let mut transaction = db_pool.begin().await?;
 
         let (client_id, client_secret) = match provider {
             SSOProviderType::BitBucket => (
-                DatabaseSSOProvider::get_client_id(&BitBucketSSO, &mut transaction).await.context("Failed to get client id")?,
-                DatabaseSSOProvider::get_client_secret(&BitBucketSSO, &mut transaction).await.context("Failed to get client secret")?
+                DatabaseSSOProvider::get_client_id(&BitBucketSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client id")?,
+                DatabaseSSOProvider::get_client_secret(&BitBucketSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client secret")?,
             ),
             SSOProviderType::GitHub => (
-                DatabaseSSOProvider::get_client_id(&GitHubSSO, &mut transaction).await.context("Failed to get client id")?,
-                DatabaseSSOProvider::get_client_secret(&GitHubSSO, &mut transaction).await.context("Failed to get client secret")?
+                DatabaseSSOProvider::get_client_id(&GitHubSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client id")?,
+                DatabaseSSOProvider::get_client_secret(&GitHubSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client secret")?,
             ),
             SSOProviderType::GitLab => (
-                DatabaseSSOProvider::get_client_id(&GitLabSSO, &mut transaction).await.context("Failed to get client id")?,
-                DatabaseSSOProvider::get_client_secret(&GitLabSSO, &mut transaction).await.context("Failed to get client secret")?
-            )
+                DatabaseSSOProvider::get_client_id(&GitLabSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client id")?,
+                DatabaseSSOProvider::get_client_secret(&GitLabSSO, &mut transaction)
+                    .await
+                    .context("Failed to get client secret")?,
+            ),
         };
 
         let auth_url = self.get_auth_url();
         let token_url = self.get_token_url();
 
         let redirect_url = match provider {
-            SSOProviderType::BitBucket => DatabaseSSOProvider::get_redirect_url(&BitBucketSSO, &mut transaction).await.context("Failed to get redirect url")?,
-            SSOProviderType::GitHub => DatabaseSSOProvider::get_redirect_url(&GitHubSSO, &mut transaction).await.context("Failed to get redirect url")?,
-            SSOProviderType::GitLab => DatabaseSSOProvider::get_redirect_url(&GitLabSSO, &mut transaction).await.context("Failed to get redirect url")?,
+            SSOProviderType::BitBucket => {
+                DatabaseSSOProvider::get_redirect_url(&BitBucketSSO, &mut transaction)
+                    .await
+                    .context("Failed to get redirect url")?
+            }
+            SSOProviderType::GitHub => {
+                DatabaseSSOProvider::get_redirect_url(&GitHubSSO, &mut transaction)
+                    .await
+                    .context("Failed to get redirect url")?
+            }
+            SSOProviderType::GitLab => {
+                DatabaseSSOProvider::get_redirect_url(&GitLabSSO, &mut transaction)
+                    .await
+                    .context("Failed to get redirect url")?
+            }
         };
 
         transaction.commit().await?;
 
-        Ok(BasicClient::new(client_id, client_secret, auth_url, token_url).set_redirect_uri(redirect_url))
+        Ok(
+            BasicClient::new(client_id, client_secret, auth_url, token_url)
+                .set_redirect_uri(redirect_url),
+        )
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str>;
@@ -63,7 +96,11 @@ pub(crate) trait SSOProvider {
             .collect()
     }
 
-    async fn generate_auth_url(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<(Url, CsrfToken)> {
+    async fn generate_auth_url(
+        &self,
+        provider: &SSOProviderType,
+        db_pool: &PgPool,
+    ) -> Result<(Url, CsrfToken)> {
         let client = self.build_client(provider, db_pool).await?;
         let mut request = client.authorize_url(CsrfToken::new_random);
 
@@ -75,7 +112,12 @@ pub(crate) trait SSOProvider {
     }
 
     /// Exchanges a response (provide by `state` and `code` in `query_string`) into an oauth access token
-    async fn exchange_response(&self, query_string: &QString, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicTokenResponse> {
+    async fn exchange_response(
+        &self,
+        query_string: &QString,
+        provider: &SSOProviderType,
+        db_pool: &PgPool,
+    ) -> Result<BasicTokenResponse> {
         let code_option = query_string.get("code");
         let state_option = query_string.get("state");
 
@@ -91,21 +133,32 @@ pub(crate) trait SSOProvider {
 
         let client = self.build_client(provider, db_pool).await?;
 
-        Ok(client.exchange_code(code)
+        Ok(client
+            .exchange_code(code)
             .request_async(async_http_client)
             .await
-            .with_context(|| format!("Failed to contact {} in order to exchange oauth token", &self.get_name()))?)
+            .with_context(|| {
+                format!(
+                    "Failed to contact {} in order to exchange oauth token",
+                    &self.get_name()
+                )
+            })?)
     }
 
     /// Returns true if the granted scopes are OK or not
     fn validate_scopes(&self, scopes_option: Option<&Vec<Scope>>) -> bool {
         let granted_scopes = match scopes_option {
-            Some(scopes) => scopes.iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
-            None => return true // If not provided it is identical to our asked scopes
+            Some(scopes) => scopes
+                .iter()
+                .map(|scope| scope.as_str())
+                .collect::<Vec<_>>(),
+            None => return true, // If not provided it is identical to our asked scopes
         };
 
         let requested_scopes = self.get_scopes_as_str();
-        granted_scopes.iter().all(|item| requested_scopes.contains(item))
+        granted_scopes
+            .iter()
+            .all(|item| requested_scopes.contains(item))
     }
 
     async fn get_provider_id(&self, token: &str) -> Result<String>;
@@ -115,13 +168,22 @@ pub(crate) trait SSOProvider {
 
 #[async_trait]
 pub(crate) trait DatabaseSSOProvider: SSOProvider {
-    async fn get_redirect_url<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<RedirectUrl> {
+    async fn get_redirect_url<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<RedirectUrl> {
         let domain = config::get_setting::<String, _>("domain", executor).await?;
         let url = format!("{}/sso/{}/callback", domain, self.get_name());
 
         Ok(RedirectUrl::new(url)?)
     }
 
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<ClientId>;
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<Option<ClientSecret>>;
+    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<ClientId>;
+    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<Option<ClientSecret>>;
 }

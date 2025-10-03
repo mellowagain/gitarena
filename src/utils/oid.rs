@@ -26,7 +26,7 @@ use git_repository::hash::ObjectId;
 pub(crate) fn normalize_str(option: Option<&str>) -> Option<&str> {
     match option {
         Some("0000000000000000000000000000000000000000") => None,
-        _ => option
+        _ => option,
     }
 }
 
@@ -52,11 +52,13 @@ pub(crate) fn normalize_str(option: Option<&str>) -> Option<&str> {
 /// [oid]: git_hash::ObjectId
 pub(crate) fn from_hex_str(option: Option<&str>) -> Result<ObjectId> {
     match option {
-        Some(oid) => if oid.chars().all(|c| c.is_ascii_hexdigit()) {
-            Ok(ObjectId::from_hex(oid.as_bytes())?)
-        } else {
-            Err(anyhow!("Input string is not hexadecimal: {}", oid))
+        Some(oid) => {
+            if oid.chars().all(|c| c.is_ascii_hexdigit()) {
+                Ok(ObjectId::from_hex(oid.as_bytes())?)
+            } else {
+                Err(anyhow!("Input string is not hexadecimal: {}", oid))
+            }
         }
-        None => Ok(ObjectId::null(GIT_HASH_KIND))
+        None => Ok(ObjectId::null(GIT_HASH_KIND)),
     }
 }

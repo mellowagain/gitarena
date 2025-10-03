@@ -1,10 +1,10 @@
-use crate::{die, err};
 use crate::prelude::{AwcExtensions, HttpRequestExtensions};
+use crate::{die, err};
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
-use awc::Client;
 use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
+use awc::Client;
 use gitarena_macros::route;
 use log::debug;
 use serde::Deserialize;
@@ -15,7 +15,7 @@ const PASSTHROUGH_HEADERS: [&str; 6] = [
     "etag",
     "expires",
     "last-modified",
-    "transfer-encoding"
+    "transfer-encoding",
 ];
 
 // Source: https://github.com/atmos/camo/blob/master/mime-types.json
@@ -62,11 +62,14 @@ const ACCEPTED_MIME_TYPES: [&str; 43] = [
     "image/x-rgb",
     "image/x-xbitmap",
     "image/x-xpixmap",
-    "image/x-xwindowdump"
+    "image/x-xwindowdump",
 ];
 
 #[route("/api/proxy/{url}", method = "GET", err = "text")]
-pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) -> Result<impl Responder> {
+pub(crate) async fn proxy(
+    uri: web::Path<ProxyRequest>,
+    request: HttpRequest,
+) -> Result<impl Responder> {
     let url = &uri.url;
 
     if url.is_empty() {
@@ -92,7 +95,10 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
     debug!("Image proxy request for {}", &url);
 
-    let gateway_response = client.send().await.map_err(|err| err!(BAD_GATEWAY, "Failed to send request to gateway: {}", err))?;
+    let gateway_response = client
+        .send()
+        .await
+        .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to gateway: {}", err))?;
     let mut response = HttpResponse::build(gateway_response.status());
 
     /*if length > 5242880 {
@@ -117,5 +123,5 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 
 #[derive(Deserialize)]
 pub(crate) struct ProxyRequest {
-    pub(crate) url: String // Hex Digest
+    pub(crate) url: String, // Hex Digest
 }

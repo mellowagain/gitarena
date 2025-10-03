@@ -27,7 +27,10 @@ pub(crate) fn parse(template_path: String) -> Result<Template> {
         let value = splitter.next().unwrap_or_default();
 
         if key.is_empty() || value.is_empty() {
-            return Err(anyhow!("Template `{}` meta data contains empty values", template_path));
+            return Err(anyhow!(
+                "Template `{}` meta data contains empty values",
+                template_path
+            ));
         }
 
         tags.insert(key.to_owned(), value.to_owned());

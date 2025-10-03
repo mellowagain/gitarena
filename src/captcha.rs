@@ -8,20 +8,35 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Postgres};
 
-pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(token: &String, executor: E) -> Result<bool> {
+pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(
+    token: &String,
+    executor: E,
+) -> Result<bool> {
     let api_key = match get_optional_setting::<String, _>("hcaptcha.site_key", executor).await? {
         Some(api_key) => api_key,
-        None => return Ok(true)
+        None => return Ok(true),
     };
 
     let response: HCaptchaResponse = Client::gitarena()
         .post("https://hcaptcha.com/siteverify")
         .send_form(&[("response", token), ("secret", &api_key)])
         .await
-        .map_err(|err| err!(BAD_GATEWAY, "Unable to verify hCaptcha captcha token: {}", err))?
+        .map_err(|err| {
+            err!(
+                BAD_GATEWAY,
+                "Unable to verify hCaptcha captcha token: {}",
+                err
+            )
+        })?
         .json()
         .await
-        .map_err(|err| err!(BAD_GATEWAY, "Unable to convert hCaptcha response into Json structure: {}", err))?;
+        .map_err(|err| {
+            err!(
+                BAD_GATEWAY,
+                "Unable to convert hCaptcha response into Json structure: {}",
+                err
+            )
+        })?;
 
     if let Some(errors) = response.errors {
         let errors_str = errors.join(", ");
@@ -44,5 +59,5 @@ struct HCaptchaResponse {
     hostname: Option<String>,
     credit: Option<bool>,
     #[serde(rename(deserialize = "error-codes"))]
-    errors: Option<Vec<String>>
+    errors: Option<Vec<String>>,
 }

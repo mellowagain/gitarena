@@ -14,7 +14,12 @@ use tracing::instrument;
 
 #[instrument(err, skip(store, repo))]
 #[async_recursion(?Send)]
-pub(crate) async fn repo_files_at_ref<'a>(reference: &Reference, store: Arc<Store>, repo: &'a Repository, buffer: &'a mut Vec<u8>) -> Result<TreeRef<'a>> {
+pub(crate) async fn repo_files_at_ref<'a>(
+    reference: &Reference,
+    store: Arc<Store>,
+    repo: &'a Repository,
+    buffer: &'a mut Vec<u8>,
+) -> Result<TreeRef<'a>> {
     match &reference.target {
         Target::Peeled(object_id) => {
             let cache = store.to_cache_arc();
@@ -32,7 +37,11 @@ pub(crate) async fn repo_files_at_ref<'a>(reference: &Reference, store: Arc<Stor
     }
 }
 
-pub(crate) async fn repo_files_at_head<'a>(store: Arc<Store>, repo: &'a Repository, buffer: &'a mut Vec<u8>) -> Result<TreeRef<'a>> {
+pub(crate) async fn repo_files_at_head<'a>(
+    store: Arc<Store>,
+    repo: &'a Repository,
+    buffer: &'a mut Vec<u8>,
+) -> Result<TreeRef<'a>> {
     let reference = repo.refs.find_loose("HEAD")?;
 
     repo_files_at_ref(&reference, store, repo, buffer).await

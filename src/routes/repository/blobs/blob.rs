@@ -11,7 +11,7 @@ use crate::{die, err, render_template};
 use std::sync::Arc;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{web, HttpResponse, Responder};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
@@ -27,8 +27,19 @@ use sqlx::PgPool;
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
-#[route("/{username}/{repository}/tree/{tree}/blob/{blob:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_blob(repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, web_user: WebUser, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/{username}/{repository}/tree/{tree}/blob/{blob:.*}",
+    method = "GET",
+    err = "html"
+)]
+pub(crate) async fn view_blob(
+    repo: Repository,
+    branch: Branch,
+    uri: web::Path<BlobRequest>,
+    web_user: WebUser,
+    cookie: web::Data<Arc<Cookie>>,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;
@@ -41,29 +52,49 @@ pub(crate) async fn view_blob(repo: Repository, branch: Branch, uri: web::Path<B
 
     let store = gitoxide_repo.objects.clone();
 
-    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let (name, content, mode) = recursively_visit_blob_content(&branch.reference, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
+    let tree_ref = repo_files_at_ref(
+        &branch.reference,
+        store.clone(),
+        &gitoxide_repo,
+        &mut buffer,
+    )
+    .await?;
+    let (name, content, mode) = recursively_visit_blob_content(
+        &branch.reference,
+        tree_ref,
+        uri.blob.as_str(),
+        &gitoxide_repo,
+        store.clone(),
+        &mut blob_buffer,
+    )
+    .await?;
 
-    let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, uri.blob.as_str()).await?.unwrap_or_log();
+    let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, uri.blob.as_str())
+        .await?
+        .unwrap_or_log();
     let commit = libgit2_repo.find_commit(oid)?;
-    let (author_name, author_uid, author_email) = commit.author().try_disassemble(&mut transaction).await;
+    let (author_name, author_uid, author_email) =
+        commit.author().try_disassemble(&mut transaction).await;
 
     let mut context = Context::new();
 
-    context.try_insert("file", &RepoFile {
-        file_type: mode as u16,
-        file_name: name.as_str(),
-        submodule_target_oid: None,
-        commit: GitCommit {
-            oid: format!("{}", oid),
-            message: commit.message().unwrap_or_default().to_owned(),
-            time: commit.time().seconds(),
-            date: None,
-            author_name,
-            author_uid,
-            author_email
-        }
-    })?;
+    context.try_insert(
+        "file",
+        &RepoFile {
+            file_type: mode as u16,
+            file_name: name.as_str(),
+            submodule_target_oid: None,
+            commit: GitCommit {
+                oid: format!("{}", oid),
+                message: commit.message().unwrap_or_default().to_owned(),
+                time: commit.time().seconds(),
+                date: None,
+                author_name,
+                author_uid,
+                author_email,
+            },
+        },
+    )?;
 
     let size = content.len();
     let file_type = cookie.probe(content.as_bytes())?;
@@ -90,8 +121,18 @@ pub(crate) async fn view_blob(repo: Repository, branch: Branch, uri: web::Path<B
     render_template!("repo/blob/blob.html", context, transaction)
 }
 
-#[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
-pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, cookie: web::Data<Arc<Cookie>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/{username}/{repository}/tree/{tree}/~blob/{blob:.*}",
+    method = "GET",
+    err = "text"
+)]
+pub(crate) async fn view_raw_blob(
+    _repo: Repository,
+    branch: Branch,
+    uri: web::Path<BlobRequest>,
+    cookie: web::Data<Arc<Cookie>>,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;
@@ -101,29 +142,55 @@ pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::P
 
     let store = gitoxide_repo.objects.clone();
 
-    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let (_, content, _) = recursively_visit_blob_content(&branch.reference, tree_ref, uri.blob.as_str(), &gitoxide_repo, store.clone(), &mut blob_buffer).await?;
+    let tree_ref = repo_files_at_ref(
+        &branch.reference,
+        store.clone(),
+        &gitoxide_repo,
+        &mut buffer,
+    )
+    .await?;
+    let (_, content, _) = recursively_visit_blob_content(
+        &branch.reference,
+        tree_ref,
+        uri.blob.as_str(),
+        &gitoxide_repo,
+        store.clone(),
+        &mut blob_buffer,
+    )
+    .await?;
 
     let mime = if let Some(file_type) = infer::get(content.as_bytes()) {
         file_type.mime_type()
     } else {
         match cookie.probe(content.as_bytes())? {
             FileType::Text => "text/plain",
-            _ => "application/octet-stream"
+            _ => "application/octet-stream",
         }
     };
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::Ok().insert_header((CONTENT_TYPE, mime)).body(content))
+    Ok(HttpResponse::Ok()
+        .insert_header((CONTENT_TYPE, mime))
+        .body(content))
 }
 
 #[async_recursion(?Send)]
-async fn recursively_visit_blob_content<'a>(reference: &Reference, tree_ref: TreeRef<'a>, path: &str, repo: &'a GitoxideRepository, store: Arc<Store>, buffer: &'a mut Vec<u8>) -> Result<(String, String, EntryMode)> {
+async fn recursively_visit_blob_content<'a>(
+    reference: &Reference,
+    tree_ref: TreeRef<'a>,
+    path: &str,
+    repo: &'a GitoxideRepository,
+    store: Arc<Store>,
+    buffer: &'a mut Vec<u8>,
+) -> Result<(String, String, EntryMode)> {
     let tree = Tree::from(tree_ref);
-    let (search, remaining) = path.split_once('/').map_or_else(|| (path, None), |(a, b)| (a, Some(b)));
+    let (search, remaining) = path
+        .split_once('/')
+        .map_or_else(|| (path, None), |(a, b)| (a, Some(b)));
 
-    let entry = tree.entries
+    let entry = tree
+        .entries
         .iter()
         .find(|e| e.filename == search)
         .ok_or_else(|| err!(NOT_FOUND))?;
@@ -134,19 +201,27 @@ async fn recursively_visit_blob_content<'a>(reference: &Reference, tree_ref: Tre
                 die!(NOT_FOUND);
             }
 
-            let tree_ref = store.to_handle_arc().find_tree(entry.oid.as_ref(), buffer).map(|(tree, _)| tree)?;
+            let tree_ref = store
+                .to_handle_arc()
+                .find_tree(entry.oid.as_ref(), buffer)
+                .map(|(tree, _)| tree)?;
             let mut buffer = Vec::<u8>::new();
 
-            recursively_visit_blob_content(reference, tree_ref, remaining, repo, store, &mut buffer).await
+            recursively_visit_blob_content(reference, tree_ref, remaining, repo, store, &mut buffer)
+                .await
         }
         None => {
-            if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable  {
+            if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable {
                 die!(BAD_REQUEST, "Only blobs can be viewed in blob view");
             }
 
             let file_name = entry.filename.to_str().unwrap_or("Invalid file name");
 
-            Ok((file_name.to_owned(), read_blob_content(entry.oid.as_ref(), store).await?, entry.mode))
+            Ok((
+                file_name.to_owned(),
+                read_blob_content(entry.oid.as_ref(), store).await?,
+                entry.mode,
+            ))
         }
     }
 }

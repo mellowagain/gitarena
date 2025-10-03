@@ -6,7 +6,7 @@ use crate::{config, die, err, render_template};
 use std::collections::HashMap;
 use std::sync::Once;
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use anyhow::{Context as _, Result};
 use gitarena_macros::route;
 use multimap::MultiMap;
@@ -14,7 +14,10 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/settings", method = "GET", err = "html")]
-pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_settings(
+    web_user: WebUser,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -32,7 +35,10 @@ pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) 
         .into_iter()
         .map(|setting| {
             let key = setting.key.as_str();
-            let parent_key = key.split_once('.').map_or_else(|| key, |(key, _)| key).to_owned();
+            let parent_key = key
+                .split_once('.')
+                .map_or_else(|| key, |(key, _)| key)
+                .to_owned();
 
             (parent_key, setting)
         })
@@ -44,7 +50,12 @@ pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) 
 }
 
 #[route("/settings", method = "PATCH", err = "htmx+text")]
-pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn patch_settings(
+    data: web::Form<HashMap<String, String>>,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -65,11 +76,15 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
             TypeConstraint::Boolean => value.parse::<bool>().is_ok(),
             TypeConstraint::Char => value.parse::<char>().is_ok(),
             TypeConstraint::Int => value.parse::<i32>().is_ok(),
-            TypeConstraint::String | TypeConstraint::Bytes => true
+            TypeConstraint::String | TypeConstraint::Bytes => true,
         };
 
         if !valid {
-            die!(BAD_REQUEST, "Value for {} does not follow type constraint", key);
+            die!(
+                BAD_REQUEST,
+                "Value for {} does not follow type constraint",
+                key
+            );
         }
 
         // This does on purpose not use config::set_setting as that method requires a key: &'static str
@@ -88,7 +103,7 @@ pub(crate) async fn patch_settings(data: web::Form<HashMap<String, String>>, web
     if !once.is_completed() {
         let setting = match request.get_header("hx-trigger-name") {
             Some(setting) => setting,
-            None => die!(BAD_REQUEST, "Setting not found")
+            None => die!(BAD_REQUEST, "Setting not found"),
         };
 
         sqlx::query("update settings set value = false where key = $1")

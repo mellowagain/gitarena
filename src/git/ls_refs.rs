@@ -44,7 +44,9 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 
         // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
         if prefix == "HEAD" {
-            if let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await {
+            if let Some(output_line) =
+                build_ref_line(repo.find_reference("HEAD"), repo, &options).await
+            {
                 writer.write_text(output_line).await?;
             }
         }
@@ -63,7 +65,11 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
     writer.serialize().await
 }
 
-pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
+pub(crate) async fn build_ref_list(
+    prefix: &str,
+    repo: &Git2Repository,
+    options: &LsRefs,
+) -> Result<Vec<String>> {
     let mut output = Vec::<String>::new();
 
     for result in repo.references_glob(format!("{}*", prefix).as_str())? {
@@ -76,7 +82,11 @@ pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options:
 }
 
 #[instrument(skip(ref_result, repo))]
-pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Error>, repo: &Git2Repository, options: &LsRefs) -> Option<String> {
+pub(crate) async fn build_ref_line(
+    ref_result: CoreResult<Reference<'_>, Git2Error>,
+    repo: &Git2Repository,
+    options: &LsRefs,
+) -> Option<String> {
     return match ref_result {
         Ok(reference) => {
             let name = reference.name().unwrap_or_default();
@@ -89,14 +99,23 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
                 match repo.find_reference(sym_target).ok() {
                     Some(sym_target_ref) => {
                         if let Some(sym_target_oid) = sym_target_ref.target() {
-                            line = format!("{} {} symref-target:{}", sym_target_oid, name, sym_target_ref.name().unwrap_or_default());
+                            line = format!(
+                                "{} {} symref-target:{}",
+                                sym_target_oid,
+                                name,
+                                sym_target_ref.name().unwrap_or_default()
+                            );
                         } else if options.unborn {
-                            line = format!("unborn {} symref-target:{}", name, sym_target_ref.name().unwrap_or_default());
+                            line = format!(
+                                "unborn {} symref-target:{}",
+                                name,
+                                sym_target_ref.name().unwrap_or_default()
+                            );
                         } else {
                             return None;
                         }
                     }
-                    None => return None // Reference points to a symbolic target that doesn't exist?
+                    None => return None, // Reference points to a symbolic target that doesn't exist?
                 }
             } else if options.unborn {
                 line = format!("unborn {}", name);
@@ -111,7 +130,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
             }
 
             Some(line)
-        },
+        }
         Err(e) => {
             if e.code() != ErrorCode::NotFound {
                 error!("Failed to find reference asked for by Git client: {}", e);
@@ -119,7 +138,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
 
             None
         }
-    }
+    };
 }
 
 // Used by git-receive-pack ref discovery
@@ -149,14 +168,23 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
                 }
             }
             Err(e) => {
-                warn!("Failed to grab repository references for {}: {}", repo.path().display(), e);
+                warn!(
+                    "Failed to grab repository references for {}: {}",
+                    repo.path().display(),
+                    e
+                );
             }
         }
     }
 
     // If we didn't tell the client our capabilities in the previous ref list, send a null ref with them
     if !once.is_completed() {
-        writer.write_text(format!("0000000000000000000000000000000000000000 capabilities^{{}}{}", receive_pack_capabilities())).await?;
+        writer
+            .write_text(format!(
+                "0000000000000000000000000000000000000000 capabilities^{{}}{}",
+                receive_pack_capabilities()
+            ))
+            .await?;
     }
 
     writer.flush().await?;
@@ -172,5 +200,5 @@ pub(crate) struct LsRefs {
     pub(crate) peel: bool,
     pub(crate) symrefs: bool,
     pub(crate) prefixes: Vec<String>,
-    pub(crate) unborn: bool
+    pub(crate) unborn: bool,
 }

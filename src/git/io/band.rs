@@ -4,7 +4,7 @@ use derive_more::Display;
 pub(crate) enum Band {
     Data,
     Progress,
-    Error
+    Error,
 }
 
 impl Band {
@@ -12,7 +12,7 @@ impl Band {
         match self {
             Band::Data => b"\x01",
             Band::Progress => b"\x02",
-            Band::Error => b"\x03"
+            Band::Error => b"\x03",
         }
     }
 }

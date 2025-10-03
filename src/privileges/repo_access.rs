@@ -10,7 +10,7 @@ pub(crate) enum AccessLevel {
     Supporter,
     Coder,
     Manager,
-    Admin
+    Admin,
 }
 
 // Currently all these methods are hard coded but in the future they will be configurable on a per repo/org basis
@@ -22,14 +22,14 @@ impl AccessLevel {
     pub(crate) fn can_manage_issues(&self) -> bool {
         match self {
             AccessLevel::Viewer | AccessLevel::Coder => false,
-            AccessLevel::Supporter | AccessLevel::Manager | AccessLevel::Admin => true
+            AccessLevel::Supporter | AccessLevel::Manager | AccessLevel::Admin => true,
         }
     }
 
     pub(crate) fn can_push(&self) -> bool {
         match self {
             AccessLevel::Viewer | AccessLevel::Supporter => false,
-            AccessLevel::Coder | AccessLevel::Manager | AccessLevel::Admin => true
+            AccessLevel::Coder | AccessLevel::Manager | AccessLevel::Admin => true,
         }
     }
 

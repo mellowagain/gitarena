@@ -30,7 +30,12 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
         .after_connect(move |connection| {
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
-                let _ = connection.execute(ONCE.get_or_init(|| format!("set application_name = '{}';", module)).as_str()).await;
+                let _ = connection
+                    .execute(
+                        ONCE.get_or_init(|| format!("set application_name = '{}';", module))
+                            .as_str(),
+                    )
+                    .await;
                 Ok(())
             })
         })
@@ -57,8 +62,11 @@ async fn read_database_config() -> Result<ConnectOptions> {
             let password = fs::read_to_string(file).await?;
             options = options.password(password.as_str());
         }
-        Err(VarError::NotUnicode(_)) => bail!("`DATABASE_PASSWORD_FILE` environment variable is not valid unicode"),
-        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */ }
+        Err(VarError::NotUnicode(_)) => {
+            bail!("`DATABASE_PASSWORD_FILE` environment variable is not valid unicode")
+        }
+        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */
+        }
     }
 
     Ok(options)
@@ -66,8 +74,12 @@ async fn read_database_config() -> Result<ConnectOptions> {
 
 fn get_max_connections() -> Result<u32> {
     Ok(match env::var("MAX_POOL_CONNECTIONS") {
-        Ok(env_str) => env_str.parse::<u32>().context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
+        Ok(env_str) => env_str
+            .parse::<u32>()
+            .context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
         Err(VarError::NotPresent) => num_cpus::get() as u32,
-        Err(VarError::NotUnicode(_)) => bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
+        Err(VarError::NotUnicode(_)) => {
+            bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
+        }
     })
 }

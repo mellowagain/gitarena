@@ -1,11 +1,11 @@
 use std::ops::DerefMut;
 
-use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
 use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
-use syn::{AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, parse_macro_input, Pat};
+use syn::{parse_macro_input, AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, Pat};
 
 pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut args = parse_macro_input!(args as AttributeArgs);
@@ -17,20 +17,22 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
 
     for (index, meta) in args.iter().enumerate() {
         match meta {
-            NestedMeta::Meta(meta) => if let Meta::NameValue(name_value) = meta {
-                if let Some(segment) = name_value.path.segments.first() {
-                    let lowered = segment.ident.to_string().to_lowercase();
+            NestedMeta::Meta(meta) => {
+                if let Meta::NameValue(name_value) = meta {
+                    if let Some(segment) = name_value.path.segments.first() {
+                        let lowered = segment.ident.to_string().to_lowercase();
 
-                    if lowered.as_str() == "err" {
-                        if let Some(parsed_error_type) = match_error_type(&name_value.lit) {
-                            error_type = parsed_error_type;
-                            error_type_index = index;
+                        if lowered.as_str() == "err" {
+                            if let Some(parsed_error_type) = match_error_type(&name_value.lit) {
+                                error_type = parsed_error_type;
+                                error_type_index = index;
+                            }
                         }
-                    }
-                } else {
-                    emit_error! {
-                        meta.span(),
-                        "meta name cannot be empty"
+                    } else {
+                        emit_error! {
+                            meta.span(),
+                            "meta name cannot be empty"
+                        }
                     }
                 }
             }
@@ -91,13 +93,11 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
             FnArg::Typed(pat_type) => {
                 let pat = &*pat_type.pat;
                 match pat {
-                    Pat::Ident(pat_ident) => {
-                        pat_ident.ident.to_token_stream()
-                    },
-                    _ => unimplemented!()
+                    Pat::Ident(pat_ident) => pat_ident.ident.to_token_stream(),
+                    _ => unimplemented!(),
                 }
-            },
-            _ => unimplemented!()
+            }
+            _ => unimplemented!(),
         };
         idents_vec.push(ident_ts);
     }
@@ -158,7 +158,7 @@ enum ErrorDisplayType {
     Plain,
 
     #[doc(hidden)]
-    Unset
+    Unset,
 }
 
 impl ToTokens for ErrorDisplayType {
@@ -170,11 +170,11 @@ impl ToTokens for ErrorDisplayType {
 
                 let ts = unboxed.to_token_stream();
                 quote! { Htmx(Box::new(crate::error::ErrorDisplayType::#ts)) }
-            },
+            }
             ErrorDisplayType::Json => quote! { Json },
             ErrorDisplayType::Git => quote! { Git },
             ErrorDisplayType::Plain => quote! { Plain },
-            ErrorDisplayType::Unset => unimplemented!("unset is not mapped to a GitArena type yet")
+            ErrorDisplayType::Unset => unimplemented!("unset is not mapped to a GitArena type yet"),
         })
     }
 }
@@ -192,7 +192,9 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
             "htmx+html" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Html))),
             "htmx+json" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Json))),
             "htmx+git" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Git))),
-            "htmx+text" | "htmx+plain" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Plain))),
+            "htmx+text" | "htmx+plain" => {
+                Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Plain)))
+            }
             "htmx" => {
                 emit_error! {
                     input.span(),

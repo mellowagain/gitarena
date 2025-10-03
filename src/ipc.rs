@@ -10,7 +10,7 @@ use tokio::io::AsyncWriteExt;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct Ipc {
-    connection: Option<Connection>
+    connection: Option<Connection>,
 }
 
 impl Ipc {
@@ -30,9 +30,7 @@ impl Ipc {
             }
         };
 
-        Ok(Self {
-            connection
-        })
+        Ok(Self { connection })
     }
 
     pub(crate) async fn connect() -> Result<Connection> {
@@ -45,7 +43,8 @@ impl Ipc {
         let packet = IpcPacket::new(packet);
         let bytes = packet.serialize().context("Failed to serialize packet")?;
 
-        self.connection.as_mut()
+        self.connection
+            .as_mut()
             .ok_or_else(|| anyhow!("Not connected to workhorse"))?
             .write_all(bytes.as_slice())
             .await
@@ -76,7 +75,10 @@ pub(crate) fn spawn_connection_task(data: RwLock<Ipc>) {
                     info!("Successfully connected to workhorse at {}", ipc_path);
                     break;
                 }
-                Err(err) => debug!("Failed to re-establish connection to workhorse, retrying in 60 seconds: {}", err)
+                Err(err) => debug!(
+                    "Failed to re-establish connection to workhorse, retrying in 60 seconds: {}",
+                    err
+                ),
             }
         }
     });

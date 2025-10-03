@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use clap::{Subcommand, Parser};
+use clap::{Parser, Subcommand};
 use gitarena_common::database::create_postgres_pool;
 use gitarena_common::prelude::*;
 
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     match &args.command {
         Some(AuthorizedKeys) => keys::print_all(&mut transaction).await?,
-        _ => bail!("GitArena does currently not provide SSH access")
+        _ => bail!("GitArena does currently not provide SSH access"),
     }
 
     transaction.commit().await?;
@@ -28,14 +28,19 @@ async fn main() -> Result<()> {
 enum Command {
     /// Prints out all non-expired SSH keys added by all GitArena users.
     /// This command should be invoked by the OpenSSH server via [`AuthorizedKeysCommand`](https://man.openbsd.org/sshd_config#AuthorizedKeysCommand)
-    AuthorizedKeys
+    AuthorizedKeys,
 }
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about = "SSH component for GitArena", long_about = "SSH component for GitArena: a software development platform with built-in vcs, issue tracking and code review")]
+#[clap(
+    author,
+    version,
+    about = "SSH component for GitArena",
+    long_about = "SSH component for GitArena: a software development platform with built-in vcs, issue tracking and code review"
+)]
 struct Args {
     user: Option<String>,
 
     #[clap(subcommand)]
-    command: Option<Command>
+    command: Option<Command>,
 }

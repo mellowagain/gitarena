@@ -10,8 +10,8 @@ use std::sync::Once;
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use awc::Client;
 use awc::http::header::{AUTHORIZATION, USER_AGENT};
+use awc::Client;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,8 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::gitarena();
 
-        Ok(client.get(format!("https://gitlab.com/api/v4/{}", endpoint).as_str())
+        Ok(client
+            .get(format!("https://gitlab.com/api/v4/{}", endpoint).as_str())
             .append_header((AUTHORIZATION, format!("Bearer {}", token)))
             .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
             .send()
@@ -34,20 +35,33 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitLab api: {}", err))?
             .json::<T>()
             .await
-            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse GitLab response as JSON: {}", err))?)
+            .map_err(|err| {
+                err!(
+                    BAD_GATEWAY,
+                    "Failed to parse GitLab response as JSON: {}",
+                    err
+                )
+            })?)
     }
 }
 
 #[async_trait]
 impl DatabaseSSOProvider for GitLabSSO {
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<ClientId> {
+    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<ClientId> {
         let client_id = config::get_setting::<String, _>("sso.gitlab.app_id", executor).await?;
 
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<Option<ClientSecret>> {
-        let client_secret = config::get_setting::<String, _>("sso.gitlab.client_secret", executor).await?;
+    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<Option<ClientSecret>> {
+        let client_secret =
+            config::get_setting::<String, _>("sso.gitlab.client_secret", executor).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
     }
@@ -70,18 +84,17 @@ impl SSOProvider for GitLabSSO {
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str> {
-        vec![
-            "read_user"
-        ]
+        vec!["read_user"]
     }
 
     async fn get_provider_id(&self, token: &str) -> Result<String> {
         let profile_data: SerdeMap = GitLabSSO::request_data("user", token).await?;
 
-        profile_data.get("id")
+        profile_data
+            .get("id")
             .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
-                _ => None
+                _ => None,
             })
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))
     }
@@ -91,28 +104,34 @@ impl SSOProvider for GitLabSSO {
 
         let profile_data: SerdeMap = GitLabSSO::request_data("user", token).await?;
 
-        let mut username = profile_data.get("username")
+        let mut username = profile_data
+            .get("username")
             .and_then(|v| match v {
                 Value::String(s) => Some(s),
-                _ => None
+                _ => None,
             })
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitLab API json response"))?;
 
-        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
+        while validate_username(username.as_str()).is_err()
+            || is_username_taken(username.as_str(), &mut transaction).await?
+        {
             username = crypto::random_numeric_ascii_string(16);
         }
 
-        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
-            .bind(username.as_str())
-            .bind("sso-login")
-            .fetch_one(&mut transaction)
-            .await?;
+        let user: User = sqlx::query_as::<_, User>(
+            "insert into users (username, password) values ($1, $2) returning *",
+        )
+        .bind(username.as_str())
+        .bind("sso-login")
+        .fetch_one(&mut transaction)
+        .await?;
 
-        let gitlab_id = profile_data.get("id")
+        let gitlab_id = profile_data
+            .get("id")
             .and_then(|v| match v {
                 Value::Number(val) => val.as_i64().map_or_else(|| None, |v| Some(v.to_string())),
-                _ => None
+                _ => None,
             })
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))?;
 
@@ -131,14 +150,18 @@ impl SSOProvider for GitLabSSO {
         // For some reason GitLab does not currently always provide the `verified_at` field even for verified email addresses
         // TODO: Reactivate check once GitLab fixed their endpoint
         // Once their endpoint has been fixed, we can also mark all email addresses as verified
-        for gitlab_email in emails.iter()/*.skip_while(|e| e.verified_at.is_none())*/ {
+        for gitlab_email in emails.iter()
+        /*.skip_while(|e| e.verified_at.is_none())*/
+        {
             let email = gitlab_email.email.as_str();
 
             // Email exists
-            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
-                .bind(email)
-                .fetch_one(&mut transaction)
-                .await?;
+            let (email_exists,): (bool,) = sqlx::query_as(
+                "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
+            )
+            .bind(email)
+            .fetch_one(&mut transaction)
+            .await?;
 
             if email_exists {
                 continue;
@@ -163,7 +186,9 @@ impl SSOProvider for GitLabSSO {
         }
 
         if !once.is_completed() {
-            bail!("All verified GitLab email addresses are already assigned to a different account");
+            bail!(
+                "All verified GitLab email addresses are already assigned to a different account"
+            );
         }
 
         transaction.commit().await?;
@@ -178,5 +203,5 @@ impl SSOProvider for GitLabSSO {
 struct GitLabEmail {
     id: i32,
     email: String,
-    verified_at: Option<String>
+    verified_at: Option<String>,
 }

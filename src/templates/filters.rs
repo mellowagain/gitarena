@@ -12,7 +12,7 @@ pub(crate) fn human_prefix(value: &Value, _: &HashMap<String, Value>) -> Result<
         i @ 1_000..=999_999 => {
             let str = i.to_string();
             format!("{}K", &str[..str.len() - 3])
-        },
+        }
         _ => "1M+".to_owned(),
     }))
 }

@@ -8,15 +8,24 @@ use crate::utils::filesystem::copy_dir_all;
 
 use std::path::Path;
 
-use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use anyhow::{anyhow, Context, Result};
 use gitarena_macros::route;
 use log::info;
 use serde_json::json;
 use sqlx::PgPool;
 
-#[route("/api/repo/{username}/{repository}/fork", method = "GET", err = "htmx+json")]
-pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/api/repo/{username}/{repository}/fork",
+    method = "GET",
+    err = "htmx+json"
+)]
+pub(crate) async fn get_fork_amount(
+    repo: Repository,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let additional_query = if matches!(web_user, WebUser::Authenticated(_)) {
@@ -27,7 +36,10 @@ pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request
         "visibility = 'public'"
     };
 
-    let query = format!("select count(*) from repositories where forked_from = $1 and disabled = false and {}", additional_query);
+    let query = format!(
+        "select count(*) from repositories where forked_from = $1 and disabled = false and {}",
+        additional_query
+    );
 
     let (count,): (i64,) = sqlx::query_as(query.as_str())
         .bind(repo.id)
@@ -46,8 +58,17 @@ pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request
     }
 }
 
-#[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "htmx+text")]
-pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/api/repo/{username}/{repository}/fork",
+    method = "POST",
+    err = "htmx+text"
+)]
+pub(crate) async fn create_fork(
+    repo: Repository,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -78,25 +99,37 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
     let old_path = repo.get_fs_path(&mut transaction).await?;
     let new_path = new_repo.get_fs_path(&mut transaction).await?;
 
-    copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str())).await.context("Failed to copy repository")?;
+    copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
+        .await
+        .context("Failed to copy repository")?;
 
-    let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
+    let domain = get_optional_setting::<String, _>("domain", &mut transaction)
+        .await?
+        .unwrap_or_default();
     let url = format!("{}/{}/{}", domain, user.username, new_repo.name);
 
     transaction.commit().await?;
 
     let extensions = request.extensions();
-    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    let repo_owner = extensions
+        .get::<RepoOwner>()
+        .ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
 
-    info!("New repository forked: {}/{} (id {}, from {}/{})", &user.username, &new_repo.name, &repo.id, repo_owner, &repo.name);
+    info!(
+        "New repository forked: {}/{} (id {}, from {}/{})",
+        &user.username, &new_repo.name, &repo.id, repo_owner, &repo.name
+    );
 
     Ok(if request.is_htmx() {
-        HttpResponse::Ok().append_header(("hx-redirect", url)).append_header(("hx-refresh", "true")).finish()
+        HttpResponse::Ok()
+            .append_header(("hx-redirect", url))
+            .append_header(("hx-refresh", "true"))
+            .finish()
     } else {
         // TODO: Move CreateJsonResponse into mod.rs so it's no longer living inside of create_repo.rs
         HttpResponse::Ok().json(CreateJsonResponse {
             id: new_repo.id,
-            url
+            url,
         })
     })
 }

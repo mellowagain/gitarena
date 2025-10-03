@@ -10,10 +10,10 @@ use std::time::SystemTime;
 
 use actix_multipart::Multipart;
 use actix_web::http::header::{CACHE_CONTROL, LAST_MODIFIED};
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use anyhow::{Context, Result};
-use awc::Client;
 use awc::http::header::IF_MODIFIED_SINCE;
+use awc::Client;
 use chrono::{Duration, NaiveDateTime};
 use futures::TryStreamExt;
 use gitarena_macros::{from_config, route};
@@ -22,7 +22,11 @@ use serde::Deserialize;
 use sqlx::PgPool;
 
 #[route("/api/avatar/{user_id}", method = "GET", err = "text")]
-pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_avatar(
+    avatar_request: web::Path<AvatarRequest>,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let (gravatar_enabled, avatars_dir): (bool, String) = from_config!(
         "avatars.gravatar" => bool,
         "avatars.dir" => String
@@ -36,7 +40,9 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
 
         // User has set an avatar, return it
         if path.is_file() {
-            return send_image(path, &request).await.context("Failed to read local image file");
+            return send_image(path, &request)
+                .await
+                .context("Failed to read local image file");
         }
     }
 
@@ -53,7 +59,9 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
                 .email
         };
 
-        return send_gravatar(email.as_str(), &request).await.context("Failed to request Gravatar image");
+        return send_gravatar(email.as_str(), &request)
+            .await
+            .context("Failed to request Gravatar image");
     }
 
     // Gravatar integration is not enabled, return fallback icon
@@ -62,11 +70,17 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
     let path_str = format!("{}/default.jpg", avatars_dir);
     let path = Path::new(path_str.as_str());
 
-    Ok(send_image(path, &request).await.context("Failed to read default avatar file")?)
+    Ok(send_image(path, &request)
+        .await
+        .context("Failed to read default avatar file")?)
 }
 
 #[route("/api/avatar", method = "PUT", err = "text")]
-pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn put_avatar(
+    web_user: WebUser,
+    mut payload: Multipart,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Anonymous) {
         die!(UNAUTHORIZED, "No logged in");
     }
@@ -82,25 +96,33 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     let mut field = match payload.try_next().await {
         Ok(Some(field)) => field,
         Ok(None) => die!(BAD_REQUEST, "No multipart field found"),
-        Err(err) => return Err(err.into())
+        Err(err) => return Err(err.into()),
     };
 
     let content_disposition = field.content_disposition();
-    let file_name = content_disposition.get_filename().ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
-    let extension = file_name.rsplit_once('.')
+    let file_name = content_disposition
+        .get_filename()
+        .ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
+    let extension = file_name
+        .rsplit_once('.')
         .map(|(_, ext)| ext.to_owned())
         .ok_or_else(|| err!(BAD_REQUEST, "Invalid file name"))?;
 
     let mut bytes = web::BytesMut::new();
 
-    while let Some(chunk) = field.try_next().await.context("Failed to read multipart data chunk")? {
+    while let Some(chunk) = field
+        .try_next()
+        .await
+        .context("Failed to read multipart data chunk")?
+    {
         bytes.extend_from_slice(chunk.as_ref());
     }
 
     let frozen_bytes = bytes.freeze();
 
     web::block(move || -> Result<()> {
-        let format = ImageFormat::from_extension(extension).ok_or_else(|| err!(BAD_REQUEST, "Unsupported image format"))?;
+        let format = ImageFormat::from_extension(extension)
+            .ok_or_else(|| err!(BAD_REQUEST, "Unsupported image format"))?;
 
         let mut cursor = Cursor::new(frozen_bytes.as_ref());
 
@@ -113,7 +135,10 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
         img.save_with_format(path, ImageFormat::Jpeg)?;
 
         Ok(())
-    }).await.context("Failed to save image")?.context("Failed to save image")?;
+    })
+    .await
+    .context("Failed to save image")?
+    .context("Failed to save image")?;
 
     Ok(HttpResponse::Created().finish())
 }
@@ -128,19 +153,27 @@ async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<Ht
 
     if let Ok(modified_system_time) = meta_data.modified() {
         let modified_unix_time = modified_system_time.duration_since(SystemTime::UNIX_EPOCH)?;
-        let naive_date_time = NaiveDateTime::from_timestamp(modified_unix_time.as_secs() as i64, modified_unix_time.subsec_nanos());
+        let naive_date_time = NaiveDateTime::from_timestamp(
+            modified_unix_time.as_secs() as i64,
+            modified_unix_time.subsec_nanos(),
+        );
 
         // TODO: Convert time zone from local machine to GMT properly
-        let format = naive_date_time.format("%a, %d %b %Y %H:%M:%S GMT").to_string();
+        let format = naive_date_time
+            .format("%a, %d %b %Y %H:%M:%S GMT")
+            .to_string();
 
         if let Some(if_modified_since) = request.get_header("if-modified-since") {
-            let request_date_time = NaiveDateTime::parse_from_str(if_modified_since, "%a, %d %b %Y %H:%M:%S %Z")?;
+            let request_date_time =
+                NaiveDateTime::parse_from_str(if_modified_since, "%a, %d %b %Y %H:%M:%S %Z")?;
 
             let duration = naive_date_time.signed_duration_since(request_date_time);
 
             // Image is still OK on client side cache
             if duration > Duration::seconds(0) {
-                return Ok(HttpResponse::NotModified().append_header((LAST_MODIFIED, format)).finish());
+                return Ok(HttpResponse::NotModified()
+                    .append_header((LAST_MODIFIED, format))
+                    .finish());
             }
         }
 
@@ -156,7 +189,10 @@ async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<Ht
 async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpResponse> {
     let md5hash = md5::compute(email);
 
-    let url = format!("https://www.gravatar.com/avatar/{:x}?s=500&r=pg&d=identicon", md5hash);
+    let url = format!(
+        "https://www.gravatar.com/avatar/{:x}?s=500&r=pg&d=identicon",
+        md5hash
+    );
 
     let mut client = Client::gitarena().get(url);
 
@@ -164,7 +200,10 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
         client = client.append_header((IF_MODIFIED_SINCE, header_value));
     }
 
-    let gateway_response = client.send().await.map_err(|err| err!(BAD_GATEWAY, "Failed to send request to Gravatar: {}", err))?;
+    let gateway_response = client
+        .send()
+        .await
+        .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to Gravatar: {}", err))?;
     let mut response = HttpResponse::build(gateway_response.status());
 
     let headers = gateway_response.headers();
@@ -182,5 +221,5 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
 
 #[derive(Deserialize)]
 pub(crate) struct AvatarRequest {
-    user_id: i32
+    user_id: i32,
 }

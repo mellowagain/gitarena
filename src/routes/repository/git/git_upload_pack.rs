@@ -9,19 +9,30 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, Either, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use futures::StreamExt;
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
 use sqlx::PgPool;
 
-#[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
-pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::Payload, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/{username}/{repository}.git/git-upload-pack",
+    method = "POST",
+    err = "git"
+)]
+pub(crate) async fn git_upload_pack(
+    uri: web::Path<GitRequest>,
+    mut body: web::Payload,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
 
-    if content_type != "application/x-git-upload-pack-request" || accept_header != "application/x-git-upload-pack-result" {
+    if content_type != "application/x-git-upload-pack-request"
+        || accept_header != "application/x-git-upload-pack-result"
+    {
         die!(BAD_REQUEST);
     }
 
@@ -33,25 +44,35 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
-        .bind(&uri.username)
-        .fetch_optional(&mut transaction)
-        .await?;
+    let user_option: Option<(i32,)> =
+        sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
+            .bind(&uri.username)
+            .fetch_optional(&mut transaction)
+            .await?;
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
-        None => die!(NOT_FOUND)
+        None => die!(NOT_FOUND),
     };
 
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
-        .bind(user_id)
-        .bind(&uri.repository)
-        .fetch_optional(&mut transaction)
-        .await?;
+    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(
+        "select * from repositories where owner = $1 and lower(name) = lower($2) limit 1",
+    )
+    .bind(user_id)
+    .bind(&uri.repository)
+    .fetch_optional(&mut transaction)
+    .await?;
 
-    let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
+    let (user, repo) = match basic_auth::validate_repo_access(
+        repo_option,
+        "application/x-git-upload-pack-advertisement",
+        &request,
+        &mut transaction,
+    )
+    .await?
+    {
         Either::Left(tuple) => tuple,
-        Either::Right(response) => return Ok(response)
+        Either::Right(response) => return Ok(response),
     };
 
     if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
@@ -91,9 +112,11 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, mut body: web::P
                 .append_header((CONTENT_TYPE, accept_header))
                 .body(output)
         }
-        _ => HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
+        _ => {
+            HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
                 .append_header((CONTENT_TYPE, accept_header))
                 .finish()
+        }
     };
 
     transaction.commit().await?;

@@ -5,7 +5,7 @@ use crate::{err, render_template};
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use actix_web::{HttpRequest, Responder, web};
+use actix_web::{web, HttpRequest, Responder};
 use anyhow::Result;
 use derive_more::Display;
 use gitarena_macros::route;
@@ -16,11 +16,16 @@ use sqlx::{Executor, PgPool, Postgres};
 use tera::Context;
 
 #[route("/explore", method = "GET", err = "htmx+html")]
-pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn explore(
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let sorting = query_string.get("sort").unwrap_or("stars_desc");
-    let (sort_method, order) = Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
+    let (sort_method, order) =
+        Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
     let htmx_request = request.is_htmx();
     let options = ExploreOptions::parse(&query_string, &web_user, sort_method, order, htmx_request);
 
@@ -29,9 +34,15 @@ pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: we
 
     context.insert_web_user(&web_user)?;
 
-    context.try_insert("repositories", &get_repositories(&options, &mut transaction).await?)?;
+    context.try_insert(
+        "repositories",
+        &get_repositories(&options, &mut transaction).await?,
+    )?;
     context.try_insert("options", &options)?;
-    context.try_insert("query_string", query_string_without_offset(&query_string).as_str())?;
+    context.try_insert(
+        "query_string",
+        query_string_without_offset(&query_string).as_str(),
+    )?;
 
     // Only send a partial result (only the component) if it's a request by htmx
     if options.htmx_request {
@@ -41,7 +52,10 @@ pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: we
     render_template!("explore.html", context, transaction)
 }
 
-async fn get_repositories<'e, E: Executor<'e, Database = Postgres>>(options: &ExploreOptions<'_>, executor: E) -> Result<Vec<ExploreRepo>> {
+async fn get_repositories<'e, E: Executor<'e, Database = Postgres>>(
+    options: &ExploreOptions<'_>,
+    executor: E,
+) -> Result<Vec<ExploreRepo>> {
     let query = format!("select repositories.id, \
         repositories.name, \
         repositories.description, \
@@ -89,23 +103,39 @@ struct ExploreOptions<'a> {
     sort: &'a str,
     order: Order,
     offset: u32,
-    htmx_request: bool
+    htmx_request: bool,
 }
 
 impl ExploreOptions<'_> {
-    fn parse<'a>(query_string: &'a QString, web_user: &WebUser, sort: &'a str, order: Order, htmx_request: bool) -> ExploreOptions<'a> {
-        let (internal, disabled) = web_user.as_ref().map_or_else(|| (false, false), |user| (true, user.admin));
+    fn parse<'a>(
+        query_string: &'a QString,
+        web_user: &WebUser,
+        sort: &'a str,
+        order: Order,
+        htmx_request: bool,
+    ) -> ExploreOptions<'a> {
+        let (internal, disabled) = web_user
+            .as_ref()
+            .map_or_else(|| (false, false), |user| (true, user.admin));
 
         ExploreOptions {
-            archived: query_string.get("archived").map_or_else(|| true, |value| value == "1"),
-            forked: query_string.get("fork").map_or_else(|| true, |value| value == "1"),
-            mirrored: query_string.get("mirror").map_or_else(|| true, |value| value == "1"),
+            archived: query_string
+                .get("archived")
+                .map_or_else(|| true, |value| value == "1"),
+            forked: query_string
+                .get("fork")
+                .map_or_else(|| true, |value| value == "1"),
+            mirrored: query_string
+                .get("mirror")
+                .map_or_else(|| true, |value| value == "1"),
             internal,
             disabled,
             sort,
             order,
-            offset: query_string.get("offset").map_or_else(|| 0, |value| value.parse::<u32>().unwrap_or(0)),
-            htmx_request
+            offset: query_string
+                .get("offset")
+                .map_or_else(|| 0, |value| value.parse::<u32>().unwrap_or(0)),
+            htmx_request,
         }
     }
 }
@@ -136,12 +166,14 @@ impl Display for ExploreOptions<'_> {
 
         // Private repositories are hidden in the public explore page
         // TODO: Display them if the logged in user has permission to view them
-        f.write_str("repositories.visibility != 'private' group by repositories.id, users.id order by ")?;
+        f.write_str(
+            "repositories.visibility != 'private' group by repositories.id, users.id order by ",
+        )?;
 
         match self.sort {
             "stars" => write!(f, "stars {}, id ", self.order)?,
             "name" => write!(f, "lower(name) {}, id ", self.order)?,
-            _ => write!(f, "id {} ", self.order)? // Default is repository id (creation date)
+            _ => write!(f, "id {} ", self.order)?, // Default is repository id (creation date)
         }
 
         write!(f, "offset {} limit 20", self.offset)
@@ -155,7 +187,7 @@ enum Order {
     Ascending,
     #[display(fmt = "desc")]
     #[serde(rename(serialize = "desc"))]
-    Descending
+    Descending,
 }
 
 impl Order {
@@ -164,7 +196,7 @@ impl Order {
         let order = match order_str {
             "asc" => Order::Ascending,
             "desc" => Order::Descending,
-            _ => return None
+            _ => return None,
         };
 
         Some((method, order))
@@ -172,7 +204,8 @@ impl Order {
 }
 
 fn query_string_without_offset(input: &QString) -> String {
-    input.to_pairs()
+    input
+        .to_pairs()
         .iter()
         .filter(|(key, _)| key != &"offset")
         .map(|(key, value)| format!("{}={}", key, value))

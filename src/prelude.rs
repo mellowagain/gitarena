@@ -111,18 +111,27 @@ impl LibGit2TimeExtensions for LibGit2Time {
         let abs_offset_seconds = abs_offset_minutes * 60;
 
         let offset = match self.sign() {
-            '+' => FixedOffset::east_opt(abs_offset_seconds).ok_or_else(|| anyhow!("Offset out of bounds"))?,
-            '-' => FixedOffset::west_opt(abs_offset_seconds).ok_or_else(|| anyhow!("Offset out of bounds"))?,
-            _ => unreachable!("unexpected sign: {}", self.sign())
+            '+' => FixedOffset::east_opt(abs_offset_seconds)
+                .ok_or_else(|| anyhow!("Offset out of bounds"))?,
+            '-' => FixedOffset::west_opt(abs_offset_seconds)
+                .ok_or_else(|| anyhow!("Offset out of bounds"))?,
+            _ => unreachable!("unexpected sign: {}", self.sign()),
         };
 
         match offset.timestamp_opt(self.seconds(), 0) {
             LocalResult::Single(date_time) => Ok(date_time),
             LocalResult::Ambiguous(min, max) => {
-                warn!("Received ambiguous result for commit: {} and {}", &min, &max);
+                warn!(
+                    "Received ambiguous result for commit: {} and {}",
+                    &min, &max
+                );
                 Ok(min)
-            },
-            LocalResult::None => bail!("Cannot convert to UNIX time {} to DateTime<{}>", self.seconds(), offset)
+            }
+            LocalResult::None => bail!(
+                "Cannot convert to UNIX time {} to DateTime<{}>",
+                self.seconds(),
+                offset
+            ),
         }
     }
 }
@@ -153,20 +162,30 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// ```
     ///
     /// [signature]: git2::Signature
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>, String);
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> (String, Option<i32>, String);
 }
 
 #[async_trait(?Send)]
 impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> (String, Option<i32>, String) {
+    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> (String, Option<i32>, String) {
         let email = self.email().unwrap_or("Invalid email address");
 
-        User::find_using_email(email, executor)
-            .await
-            .map_or_else(
-                || (self.name().unwrap_or("Ghost").to_owned(), None, email.to_owned()),
-                |user| (user.username, Some(user.id), email.to_owned())
-            )
+        User::find_using_email(email, executor).await.map_or_else(
+            || {
+                (
+                    self.name().unwrap_or("Ghost").to_owned(),
+                    None,
+                    email.to_owned(),
+                )
+            },
+            |user| (user.username, Some(user.id), email.to_owned()),
+        )
     }
 }
 
@@ -187,8 +206,8 @@ impl GitoxideSignatureExtensions for GitoxideSignature {
             time: GitoxideTime {
                 time: naive.timestamp() as u32,
                 offset: 0,
-                sign: Sign::Plus
-            }
+                sign: Sign::Plus,
+            },
         }
     }
 }
@@ -216,7 +235,11 @@ impl ContextExtensions for Context {
     }
 }
 
-pub(crate) const USER_AGENT_STR: &str = concat!("GitArena v", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
+pub(crate) const USER_AGENT_STR: &str = concat!(
+    "GitArena v",
+    env!("CARGO_PKG_VERSION"),
+    " (https://github.com/mellowagain/gitarena/)"
+);
 
 pub(crate) trait AwcExtensions {
     /// Returns a [Client](awc::client::Client) configured with GitArena's default user agent

@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 use anyhow::{bail, Error};
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ pub enum KeyType {
     EcdsaSha2Nistp256,
     EcdsaSha2Nistp384,
     EcdsaSha2Nistp521,
-    SshEd25519
+    SshEd25519,
 }
 
 impl Display for KeyType {
@@ -24,7 +24,7 @@ impl Display for KeyType {
             EcdsaSha2Nistp256 => "ecdsa-sha2-nistp256",
             EcdsaSha2Nistp384 => "ecdsa-sha2-nistp384",
             EcdsaSha2Nistp521 => "ecdsa-sha2-nistp521",
-            SshEd25519 => "ssh-ed25519"
+            SshEd25519 => "ssh-ed25519",
         })
     }
 }
@@ -41,7 +41,7 @@ impl TryFrom<&str> for KeyType {
             "ecdsa-sha2-nistp384" => EcdsaSha2Nistp384,
             "ecdsa-sha2-nistp521" => EcdsaSha2Nistp521,
             "ssh-ed25519" => SshEd25519,
-            _ => bail!("Unknown key type: {}", value)
+            _ => bail!("Unknown key type: {}", value),
         })
     }
 }
