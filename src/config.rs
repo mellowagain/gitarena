@@ -20,10 +20,14 @@ use tracing_unwrap::OptionExt;
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
-pub(crate) async fn get_optional_setting<'e, T, E>(key: &'static str, executor: E) -> Result<Option<T>>
-    where T: TryFrom<Setting> + Send,
-          E: Executor<'e, Database = Postgres>,
-          <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static
+pub(crate) async fn get_optional_setting<'e, T, E>(
+    key: &'static str,
+    executor: E,
+) -> Result<Option<T>>
+where
+    T: TryFrom<Setting> + Send,
+    E: Executor<'e, Database = Postgres>,
+    <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
 {
     let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
@@ -32,7 +36,9 @@ pub(crate) async fn get_optional_setting<'e, T, E>(key: &'static str, executor: 
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
     if setting.is_set() {
-        let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
+        let result: T = setting
+            .try_into()
+            .map_err(|err: T::Error| err.into_inner())?;
         Ok(Some(result))
     } else {
         Ok(None)
@@ -47,9 +53,10 @@ pub(crate) async fn get_optional_setting<'e, T, E>(key: &'static str, executor: 
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
 pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Result<T>
-    where T: TryFrom<Setting> + Send,
-          E: Executor<'e, Database = Postgres>,
-          <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static
+where
+    T: TryFrom<Setting> + Send,
+    E: Executor<'e, Database = Postgres>,
+    <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
 {
     let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
@@ -57,19 +64,32 @@ pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Res
         .await
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
-    let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
+    let result: T = setting
+        .try_into()
+        .map_err(|err: T::Error| err.into_inner())?;
     Ok(result)
 }
 
-pub(crate) async fn get_all_settings<'e, E: Executor<'e, Database = Postgres>>(executor: E) -> Result<Vec<Setting>> {
-    Ok(sqlx::query_as::<_, Setting>("select * from settings order by key").fetch_all(executor).await?)
+pub(crate) async fn get_all_settings<'e, E: Executor<'e, Database = Postgres>>(
+    executor: E,
+) -> Result<Vec<Setting>> {
+    Ok(
+        sqlx::query_as::<_, Setting>("select * from settings order by key")
+            .fetch_all(executor)
+            .await?,
+    )
 }
 
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
 // Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
-pub(crate) fn set_setting<'e, 'q, T, E>(key: &'static str, value: T, executor: E) -> impl Future<Output = Result<()>> + 'q
-    where T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Send + 'q,
-          E: Executor<'e, Database = Postgres> + 'q
+pub(crate) fn set_setting<'e, 'q, T, E>(
+    key: &'static str,
+    value: T,
+    executor: E,
+) -> impl Future<Output = Result<()>> + 'q
+where
+    T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Send + 'q,
+    E: Executor<'e, Database = Postgres> + 'q,
 {
     async move {
         sqlx::query("update settings set value = $1 where key = $2")
@@ -88,7 +108,7 @@ pub(crate) struct Setting {
     pub(crate) key: String,
     pub(crate) value: Option<String>,
     #[sqlx(rename = "type")]
-    pub(crate) type_constraint: TypeConstraint
+    pub(crate) type_constraint: TypeConstraint,
 }
 
 impl Setting {
@@ -153,9 +173,19 @@ impl TryFrom<Setting> for String {
 
     fn try_from(setting: Setting) -> StdResult<Self, Self::Error> {
         (|| match setting.type_constraint {
-            TypeConstraint::String => Ok(setting.value.ok_or_else(|| anyhow!("Value for String setting `{}` is not set", setting.key.as_str()))?),
-            _ => bail!("Tried to cast setting `{}` into string despite it being {}", setting.key.as_str(), setting.type_constraint)
-        })().map_err(ErrorHolder)
+            TypeConstraint::String => Ok(setting.value.ok_or_else(|| {
+                anyhow!(
+                    "Value for String setting `{}` is not set",
+                    setting.key.as_str()
+                )
+            })?),
+            _ => bail!(
+                "Tried to cast setting `{}` into string despite it being {}",
+                setting.key.as_str(),
+                setting.type_constraint
+            ),
+        })()
+        .map_err(ErrorHolder)
     }
 }
 
@@ -167,9 +197,9 @@ generate_try_from!(Int, i64);
 #[sqlx(type_name = "type_constraint", rename_all = "lowercase")]
 #[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
 pub(crate) enum TypeConstraint {
-    Boolean,    // bool, bool
-    Char,       // i8, char
-    Int,        // i32/i64, int/bigint
-    String,     // &str, varchar, char, text
-    Bytes       // &[u8], bytea // TODO: Implement Bytes when needed
+    Boolean, // bool, bool
+    Char,    // i8, char
+    Int,     // i32/i64, int/bigint
+    String,  // &str, varchar, char, text
+    Bytes,   // &[u8], bytea // TODO: Implement Bytes when needed
 }

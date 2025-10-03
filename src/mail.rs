@@ -37,7 +37,7 @@ pub(crate) struct Email {
     pub(crate) public: bool,
 
     pub(crate) created_at: DateTime<Local>,
-    pub(crate) verified_at: Option<DateTime<Local>>
+    pub(crate) verified_at: Option<DateTime<Local>>,
 }
 
 impl Email {
@@ -51,18 +51,30 @@ impl Email {
 
         match self.verified_at {
             Some(_) => true,
-            None => self.created_at.signed_duration_since(Local::now()).num_hours() < 24
+            None => {
+                self.created_at
+                    .signed_duration_since(Local::now())
+                    .num_hours()
+                    < 24
+            }
         }
     }
 }
 
 macro_rules! generate_find {
     ($method_name:ident, $field:literal) => {
-        pub(crate) async fn $method_name<'e, E: Executor<'e, Database = Postgres>, U: Into<i32>>(user: U, executor: E) -> Result<Option<Email>> {
-            let query = concat!("select * from emails where owner = $1 and ", $field, " = true limit 1");
+        pub(crate) async fn $method_name<'e, E: Executor<'e, Database = Postgres>, U: Into<i32>>(
+            user: U,
+            executor: E,
+        ) -> Result<Option<Email>> {
+            let query = concat!(
+                "select * from emails where owner = $1 and ",
+                $field,
+                " = true limit 1"
+            );
             Email::find_specific_email(user, query, executor).await
         }
-    }
+    };
 }
 
 impl Email {
@@ -72,9 +84,14 @@ impl Email {
     generate_find!(find_public_email, "public");
 
     // Private helper called by the functions defined using the `generate_find!` macro
-    async fn find_specific_email<'e, E, U>(user: U, query: &'static str, executor: E) -> Result<Option<Email>>
-        where E: Executor<'e, Database = Postgres>,
-              U: Into<i32>
+    async fn find_specific_email<'e, E, U>(
+        user: U,
+        query: &'static str,
+        executor: E,
+    ) -> Result<Option<Email>>
+    where
+        E: Executor<'e, Database = Postgres>,
+        U: Into<i32>,
     {
         let email: Option<Email> = sqlx::query_as(query)
             .bind(user.into())
@@ -107,7 +124,7 @@ impl Debug for Email {
 
         f.write_str(match self.verified_at {
             Some(_) => ", verified",
-            None => ", NOT verified"
+            None => ", NOT verified",
         })?;
 
         f.write_char(')')
@@ -127,7 +144,12 @@ pub(crate) async fn get_root_mailbox(db_pool: &Pool<Postgres>) -> Result<Mailbox
     Ok(Mailbox::new(Some("GitArena".to_owned()), address.parse()?))
 }
 
-pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_pool: &Pool<Postgres>) -> Result<()> {
+pub(crate) async fn send_user_mail(
+    user: &User,
+    subject: &str,
+    body: String,
+    db_pool: &Pool<Postgres>,
+) -> Result<()> {
     // This is in an extra block so `transaction` gets dropped early
     let email = {
         let mut transaction = db_pool.begin().await?;
@@ -176,7 +198,10 @@ async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {
             .build()
     };
 
-    transporter.send(message).await.context("Unable to send email")?;
+    transporter
+        .send(message)
+        .await
+        .context("Unable to send email")?;
 
     Ok(())
 }

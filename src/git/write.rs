@@ -7,7 +7,14 @@ use git2::{Repository as LibGit2Repo, Signature};
 use sqlx::{Pool, Postgres};
 
 /// Writes and commits a file into the repository
-pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&str>, file_name: &str, content: &[u8], db_pool: &Pool<Postgres>) -> Result<()> {
+pub(crate) async fn write_file(
+    repo: &LibGit2Repo,
+    user: &User,
+    branch: Option<&str>,
+    file_name: &str,
+    content: &[u8],
+    db_pool: &Pool<Postgres>,
+) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
 
     let author_email = Email::find_commit_email(user, &mut transaction)
@@ -20,8 +27,12 @@ pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&
 
     let blob = repo.blob(content).context("Failed to create blob")?;
 
-    let mut tree_builder = repo.treebuilder(None).context("Failed to acquire tree builder")?;
-    tree_builder.insert(file_name, blob, 0o100644).context("Failed to create blob")?;
+    let mut tree_builder = repo
+        .treebuilder(None)
+        .context("Failed to acquire tree builder")?;
+    tree_builder
+        .insert(file_name, blob, 0o100644)
+        .context("Failed to create blob")?;
 
     let tree_oid = tree_builder.write().context("Failed to write tree")?;
     let tree = repo.find_tree(tree_oid)?;
@@ -32,8 +43,9 @@ pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&
         &root_signature,
         "Initial commit",
         &tree,
-        &[]
-    ).context("Failed to commit")?;
+        &[],
+    )
+    .context("Failed to commit")?;
 
     transaction.commit().await?;
 

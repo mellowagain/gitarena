@@ -23,7 +23,7 @@ pub(crate) struct Session {
     pub(crate) ip_address: IpNetwork,
     pub(crate) user_agent: String, // TODO: Move this to a dedicated table to prevent duplicates
     created_at: DateTime<Local>,
-    pub(crate) updated_at: DateTime<Local>
+    pub(crate) updated_at: DateTime<Local>,
 }
 
 impl Display for Session {
@@ -33,7 +33,11 @@ impl Display for Session {
 }
 
 impl Session {
-    pub(crate) async fn new<'e, E: Executor<'e, Database = Postgres>>(request: &HttpRequest, user: &User, executor: E) -> Result<Session> {
+    pub(crate) async fn new<'e, E: Executor<'e, Database = Postgres>>(
+        request: &HttpRequest,
+        user: &User,
+        executor: E,
+    ) -> Result<Session> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
@@ -50,25 +54,37 @@ impl Session {
     }
 
     /// Finds existing session from Identity (Display of Session)
-    pub(crate) async fn from_identity<'e, E: Executor<'e, Database = Postgres>>(identity: Option<String>, executor: E) -> Result<Option<Session>> {
+    pub(crate) async fn from_identity<'e, E: Executor<'e, Database = Postgres>>(
+        identity: Option<String>,
+        executor: E,
+    ) -> Result<Option<Session>> {
         match identity {
             Some(identity) => {
-                let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
+                let (user_id_str, hash) = identity
+                    .split_once('$')
+                    .ok_or_else(|| anyhow!("Unable to parse identity"))?;
                 let user_id = user_id_str.parse::<i32>()?;
 
-                let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
-                    .bind(user_id)
-                    .bind(hash)
-                    .fetch_optional(executor)
-                    .await?;
+                let option: Option<Session> = sqlx::query_as::<_, Session>(
+                    "select * from sessions where user_id = $1 and hash = $2 limit 1",
+                )
+                .bind(user_id)
+                .bind(hash)
+                .fetch_optional(executor)
+                .await?;
 
                 Ok(option)
             }
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
-    pub(crate) async fn update_explicit<'e, E: Executor<'e, Database = Postgres>>(&self, ip_address: &IpNetwork, user_agent: &str, executor: E) -> Result<()> {
+    pub(crate) async fn update_explicit<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        ip_address: &IpNetwork,
+        user_agent: &str,
+        executor: E,
+    ) -> Result<()> {
         let now = Local::now();
 
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
@@ -87,14 +103,22 @@ impl Session {
     }
 
     #[allow(dead_code)]
-    pub(crate) async fn update_from_request<'e, E: Executor<'e, Database = Postgres>>(&self, request: &HttpRequest, executor: E) -> Result<()> {
+    pub(crate) async fn update_from_request<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        request: &HttpRequest,
+        executor: E,
+    ) -> Result<()> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
-        self.update_explicit(&ip_address, user_agent, executor).await
+        self.update_explicit(&ip_address, user_agent, executor)
+            .await
     }
 
     /// Consumes the current session and destroys it
-    pub(crate) async fn destroy<'e, E: Executor<'e, Database = Postgres>>(self, executor: E) -> Result<()> {
+    pub(crate) async fn destroy<'e, E: Executor<'e, Database = Postgres>>(
+        self,
+        executor: E,
+    ) -> Result<()> {
         sqlx::query("delete from sessions where user_id = $1 and hash = $2")
             .bind(&self.user_id)
             .bind(self.hash.as_str())
@@ -114,14 +138,18 @@ pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> (IpNetwork, &str) {
 
 pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> (IpNetwork, String) {
     let ip_address = extract_ip(&request);
-    let user_agent = request.get_header("user-agent").unwrap_or("No user agent sent");
+    let user_agent = request
+        .get_header("user-agent")
+        .unwrap_or("No user agent sent");
 
     (ip_address, user_agent.to_owned())
 }
 
 fn extract_ip(request: &HttpRequest) -> IpNetwork {
     let connection_info = request.connection_info();
-    let ip_str = connection_info.realip_remote_addr().unwrap_or("No user agent sent");
+    let ip_str = connection_info
+        .realip_remote_addr()
+        .unwrap_or("No user agent sent");
 
     match IpNetwork::from_str(ip_str) {
         Ok(ip_network) => ip_network,

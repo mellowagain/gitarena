@@ -1,32 +1,43 @@
+use std::fmt::{Debug, Display, Formatter};
 use std::io::{Read, Write};
 use std::{fmt, fs, mem};
-use std::fmt::{Debug, Display, Formatter};
 
 use anyhow::{Context, Result};
-use bincode::config::{AllowTrailing, Bounded, LittleEndian, VarintEncoding, WithOtherEndian, WithOtherIntEncoding, WithOtherLimit, WithOtherTrailing};
+use bincode::config::{
+    AllowTrailing, Bounded, LittleEndian, VarintEncoding, WithOtherEndian, WithOtherIntEncoding,
+    WithOtherLimit, WithOtherTrailing,
+};
 use bincode::{DefaultOptions, Options as _};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 // World's longest type, thank you
-pub type BincodeType = WithOtherTrailing<WithOtherIntEncoding<WithOtherEndian<WithOtherLimit<DefaultOptions, Bounded>, LittleEndian>, VarintEncoding>, AllowTrailing>;
+pub type BincodeType = WithOtherTrailing<
+    WithOtherIntEncoding<
+        WithOtherEndian<WithOtherLimit<DefaultOptions, Bounded>, LittleEndian>,
+        VarintEncoding,
+    >,
+    AllowTrailing,
+>;
 
 /// [Type-length-value](https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value) packet to be used for GitArena IPC
 #[derive(Deserialize, Serialize)]
 pub struct IpcPacket<T: ?Sized> {
     id: u64,
     length: u64,
-    data: T
+    data: T,
 }
 
 impl<T: Serialize + Sized + PacketId> IpcPacket<T> {
     pub fn new(data: T) -> Self {
-        let size = Self::bincode().serialized_size(&data).unwrap_or(mem::size_of::<T>() as u64);
+        let size = Self::bincode()
+            .serialized_size(&data)
+            .unwrap_or(mem::size_of::<T>() as u64);
 
         IpcPacket {
             id: data.id(),
             length: size,
-            data
+            data,
         }
     }
 }

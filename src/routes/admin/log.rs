@@ -28,23 +28,30 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
 
     static LOG_FILE: Lazy<String> = Lazy::new(get_log_file_path);
 
-    let lines = fs::read_to_string(LOG_FILE.as_str()).map(|content| {
-        let index = content.rfind("Successfully loaded 415 licenses from cache").map_or_else(|| 0, |i| i - 72);
-        let new_log_file = &content[index..];
+    let lines = fs::read_to_string(LOG_FILE.as_str())
+        .map(|content| {
+            let index = content
+                .rfind("Successfully loaded 415 licenses from cache")
+                .map_or_else(|| 0, |i| i - 72);
+            let new_log_file = &content[index..];
 
-        let lines = new_log_file.lines();
-        let mut log_lines = Vec::with_capacity(lines.size_hint().0);
+            let lines = new_log_file.lines();
+            let mut log_lines = Vec::with_capacity(lines.size_hint().0);
 
-        for line in lines {
-            if let Ok(log_line) = serde_json::from_str::<LogLine>(line) {
-                if let Some(Value::String(message)) = log_line.fields.get("message") {
-                    log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
+            for line in lines {
+                if let Ok(log_line) = serde_json::from_str::<LogLine>(line) {
+                    if let Some(Value::String(message)) = log_line.fields.get("message") {
+                        log_lines.push(format!(
+                            "{} [{}] {}",
+                            log_line.timestamp, log_line.level, message
+                        ));
+                    }
                 }
             }
-        }
 
-        log_lines
-    }).unwrap_or_default();
+            log_lines
+        })
+        .unwrap_or_default();
 
     let mut context = Context::new();
 
@@ -55,14 +62,21 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
 }
 
 #[route("/log/sse", method = "GET", err = "html")]
-pub(crate) async fn log_sse(web_user: WebUser, broadcaster: Data<RwLock<Broadcaster>>) -> Result<impl Responder> {
+pub(crate) async fn log_sse(
+    web_user: WebUser,
+    broadcaster: Data<RwLock<Broadcaster>>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
         die!(FORBIDDEN, "Not allowed");
     }
 
-    let tx = broadcaster.write().await.new_client(Category::AdminLog).await?;
+    let tx = broadcaster
+        .write()
+        .await
+        .new_client(Category::AdminLog)
+        .await?;
 
     Ok(HttpResponse::Ok()
         .insert_header((CONTENT_TYPE, "text/event-stream"))
@@ -74,7 +88,7 @@ struct LogLine<'a> {
     timestamp: &'a str,
     level: &'a str,
     #[serde(borrow = "'a")]
-    fields: HashMap<&'a str, Value>
+    fields: HashMap<&'a str, Value>,
 }
 
 fn get_log_file_path() -> String {

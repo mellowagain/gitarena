@@ -1,8 +1,8 @@
 use actix_web::web::ServiceConfig;
 
+pub(crate) mod admin;
 mod api;
 mod explore;
-pub(crate) mod admin;
 pub(crate) mod not_found;
 pub(crate) mod proxy;
 pub(crate) mod repository;

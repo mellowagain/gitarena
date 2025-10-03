@@ -14,7 +14,9 @@ pub(crate) async fn capabilities(service: &str) -> Result<Bytes> {
     writer.flush().await?;
     writer.write_text("version 2").await?;
 
-    writer.write_text(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION"))).await?;
+    writer
+        .write_text(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION")))
+        .await?;
     writer.write_text("ls-refs").await?;
     writer.write_text("unborn").await?;
     writer.write_text("fetch").await?;

@@ -27,5 +27,5 @@ pub(crate) struct Issue {
     #[serde(with = "ts_seconds")]
     created_at: DateTime<Utc>,
     #[serde(with = "ts_seconds")]
-    updated_at: DateTime<Utc>
+    updated_at: DateTime<Utc>,
 }

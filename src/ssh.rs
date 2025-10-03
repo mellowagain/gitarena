@@ -14,5 +14,5 @@ pub(crate) struct SshKey {
     pub(crate) algorithm: KeyType,
     key: Vec<u8>,
     pub(crate) created_at: DateTime<Utc>,
-    pub(crate) expires_at: Option<DateTime<Utc>>
+    pub(crate) expires_at: Option<DateTime<Utc>>,
 }

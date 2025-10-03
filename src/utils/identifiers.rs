@@ -41,13 +41,7 @@ pub(crate) fn is_valid(c: &char) -> bool {
 /// ```
 pub(crate) fn is_reserved_username(input: &str) -> bool {
     const ILLEGAL_USERNAMES: [&str; 7] = [
-        "admin",
-        "api",
-        "login",
-        "logout",
-        "new",
-        "register",
-        "static"
+        "admin", "api", "login", "logout", "new", "register", "static",
     ];
 
     let lower_case = input.to_lowercase();
@@ -93,11 +87,16 @@ pub(crate) fn validate_username(input: &str) -> Result<()> {
 ///
 /// assert!(!is_username_taken("mellowagain"));
 /// ```
-pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(input: &str, executor: E) -> Result<bool> {
-    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1) limit 1)")
-        .bind(input)
-        .fetch_one(executor)
-        .await?;
+pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(
+    input: &str,
+    executor: E,
+) -> Result<bool> {
+    let (username_exists,): (bool,) = sqlx::query_as(
+        "select exists(select 1 from users where lower(username) = lower($1) limit 1)",
+    )
+    .bind(input)
+    .fetch_one(executor)
+    .await?;
 
     Ok(username_exists)
 }
@@ -119,9 +118,7 @@ pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(
 /// assert!(!is_reserved_repo_name("repositories")); // Invalid
 /// ```
 pub(crate) fn is_reserved_repo_name(input: &str) -> bool {
-    const ILLEGAL_REPO_NAMES: [&str; 1] = [
-        "repositories"
-    ];
+    const ILLEGAL_REPO_NAMES: [&str; 1] = ["repositories"];
 
     let lower_case = input.to_lowercase();
     ILLEGAL_REPO_NAMES.contains(&lower_case.as_str())
@@ -148,9 +145,9 @@ pub(crate) fn is_fs_legal(input: &str) -> bool {
 #[cfg(windows)]
 fn internal_is_fs_legal(input: &str) -> bool {
     const ILLEGAL_FILENAMES: [&str; 25] = [
-        "con", "prn", "aux", "nul", "lst",
-        "com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
-        "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+        "con", "prn", "aux", "nul", "lst", "com0", "com1", "com2", "com3", "com4", "com5", "com6",
+        "com7", "com8", "com9", "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7",
+        "lpt8", "lpt9",
     ];
 
     // Strip the extension if one exists (as Windows ignores them as well)
@@ -158,7 +155,8 @@ fn internal_is_fs_legal(input: &str) -> bool {
         file_name
     } else {
         input
-    }.to_lowercase(); // These invalid file names are valid for both cases
+    }
+    .to_lowercase(); // These invalid file names are valid for both cases
 
     !ILLEGAL_FILENAMES.contains(&lowercase.as_str())
 }

@@ -12,7 +12,11 @@ use sqlx::{Executor, Postgres};
 // prefered: https://www.reddit.com/r/rust/comments/fddf6y/handling_longrunning_background_tasks_in_actixweb/
 // https://stackoverflow.com/a/66181410
 
-pub(crate) async fn run<'e, E: Executor<'e, Database = Postgres>>(store: Arc<Store>, repo: &mut Repository, executor: E) -> Result<()> {
+pub(crate) async fn run<'e, E: Executor<'e, Database = Postgres>>(
+    store: Arc<Store>,
+    repo: &mut Repository,
+    executor: E,
+) -> Result<()> {
     let gitoxide_repo = repo.gitoxide(executor).await?;
 
     if let Err(err) = detect_license(store, &gitoxide_repo, repo).await {

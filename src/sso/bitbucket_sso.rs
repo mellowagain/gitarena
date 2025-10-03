@@ -8,8 +8,8 @@ use crate::{config, crypto, err};
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use awc::Client;
 use awc::http::header::ACCEPT;
+use awc::Client;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,8 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::gitarena();
 
-        Ok(client.get(format!("https://api.bitbucket.org/2.0/{}", endpoint).as_str())
+        Ok(client
+            .get(format!("https://api.bitbucket.org/2.0/{}", endpoint).as_str())
             .append_header((ACCEPT, "application/json"))
             .bearer_auth(token)
             .send()
@@ -32,20 +33,33 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to BitBucket api: {}", err))?
             .json::<T>()
             .await
-            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse BitBucket response as JSON: {}", err))?)
+            .map_err(|err| {
+                err!(
+                    BAD_GATEWAY,
+                    "Failed to parse BitBucket response as JSON: {}",
+                    err
+                )
+            })?)
     }
 }
 
 #[async_trait]
 impl DatabaseSSOProvider for BitBucketSSO {
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<ClientId> {
+    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<ClientId> {
         let client_id = config::get_setting::<String, _>("sso.bitbucket.key", executor).await?;
 
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(&self, executor: E) -> Result<Option<ClientSecret>> {
-        let client_secret = config::get_setting::<String, _>("sso.bitbucket.secret", executor).await?;
+    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<Option<ClientSecret>> {
+        let client_secret =
+            config::get_setting::<String, _>("sso.bitbucket.secret", executor).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
     }
@@ -64,23 +78,24 @@ impl SSOProvider for BitBucketSSO {
 
     fn get_token_url(&self) -> Option<TokenUrl> {
         // unwrap_or_log() is safe as we can guarantee that this is a valid url
-        Some(TokenUrl::new("https://bitbucket.org/site/oauth2/access_token".to_owned()).unwrap_or_log())
+        Some(
+            TokenUrl::new("https://bitbucket.org/site/oauth2/access_token".to_owned())
+                .unwrap_or_log(),
+        )
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str> {
-        vec![
-            "account",
-            "email"
-        ]
+        vec!["account", "email"]
     }
 
     async fn get_provider_id(&self, token: &str) -> Result<String> {
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;
 
-        profile_data.get("account_id")
+        profile_data
+            .get("account_id")
             .and_then(|v| match v {
                 Value::String(val) => Some(val.to_owned()),
-                _ => None
+                _ => None,
             })
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))
     }
@@ -90,28 +105,36 @@ impl SSOProvider for BitBucketSSO {
 
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;
 
-        let mut username = profile_data.get("username")
+        let mut username = profile_data
+            .get("username")
             .and_then(|v| match v {
                 Value::String(s) => Some(s),
-                _ => None
+                _ => None,
             })
             .cloned()
-            .ok_or_else(|| anyhow!("Failed to retrieve username from BitBucket API json response"))?;
+            .ok_or_else(|| {
+                anyhow!("Failed to retrieve username from BitBucket API json response")
+            })?;
 
-        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
+        while validate_username(username.as_str()).is_err()
+            || is_username_taken(username.as_str(), &mut transaction).await?
+        {
             username = crypto::random_numeric_ascii_string(16);
         }
 
-        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
-            .bind(username.as_str())
-            .bind("sso-login")
-            .fetch_one(&mut transaction)
-            .await?;
+        let user: User = sqlx::query_as::<_, User>(
+            "insert into users (username, password) values ($1, $2) returning *",
+        )
+        .bind(username.as_str())
+        .bind("sso-login")
+        .fetch_one(&mut transaction)
+        .await?;
 
-        let bitbucket_id = profile_data.get("account_id")
+        let bitbucket_id = profile_data
+            .get("account_id")
             .and_then(|v| match v {
                 Value::String(val) => Some(val.to_owned()),
-                _ => None
+                _ => None,
             })
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))?;
 
@@ -126,14 +149,20 @@ impl SSOProvider for BitBucketSSO {
 
         let emails: BitBucketEmailList = BitBucketSSO::request_data("user/emails", token).await?;
 
-        for bitbucket_email in emails.values.iter().skip_while(|e| !e.is_confirmed || e.email_type != "email") {
+        for bitbucket_email in emails
+            .values
+            .iter()
+            .skip_while(|e| !e.is_confirmed || e.email_type != "email")
+        {
             let email = bitbucket_email.email.as_str();
 
             // Email exists
-            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
-                .bind(email)
-                .fetch_one(&mut transaction)
-                .await?;
+            let (email_exists,): (bool,) = sqlx::query_as(
+                "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
+            )
+            .bind(email)
+            .fetch_one(&mut transaction)
+            .await?;
 
             let primary = bitbucket_email.is_primary;
 
@@ -168,7 +197,7 @@ struct BitBucketEmailList {
     page_length: usize,
     values: Vec<BitBucketEmail>,
     page: usize,
-    size: usize
+    size: usize,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -179,5 +208,5 @@ struct BitBucketEmail {
     email_type: String,
     email: String,
     #[serde(skip_deserializing)]
-    links: Option<Value>
+    links: Option<Value>,
 }

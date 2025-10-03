@@ -1,12 +1,12 @@
-use proc_macro2::{Ident, Span};
 use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span};
 use proc_macro_error::{emit_call_site_error, emit_error};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{DeriveInput, Lit, Meta, NestedMeta, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput, Lit, Meta, NestedMeta};
 
 pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
-    let mut input  = parse_macro_input!(input as DeriveInput);
+    let mut input = parse_macro_input!(input as DeriveInput);
     let identifier = input.ident;
 
     let mut category = None;
@@ -14,7 +14,12 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
 
     input.attrs.retain(|attribute| {
         if let Ok(Meta::List(list)) = attribute.parse_meta() {
-            let ipc = list.path.segments.first().map(|segment| segment.ident == "ipc").unwrap_or_default();
+            let ipc = list
+                .path
+                .segments
+                .first()
+                .map(|segment| segment.ident == "ipc")
+                .unwrap_or_default();
 
             if ipc {
                 for args in list.nested {
@@ -57,7 +62,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                                 _ => emit_error! {
                                     segment.span(),
                                     "unknown identifier, expected `packet` or `id`"
-                                }
+                                },
                             }
                         }
                     }
@@ -78,7 +83,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
 
                 match chars.next() {
                     Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
-                    None => String::new()
+                    None => String::new(),
                 }
             };
 

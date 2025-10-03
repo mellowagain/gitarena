@@ -7,7 +7,7 @@ use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err, Ipc};
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use anyhow::{Context, Result};
 use futures_locks::RwLock;
 use gitarena_common::packets::git::GitImport;
@@ -20,11 +20,18 @@ use url::Url;
 // This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[route("/api/repo/import", method = "POST", err = "json")]
-pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>, request: HttpRequest, ipc: web::Data<RwLock<Ipc>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn import(
+    web_user: WebUser,
+    body: web::Json<ImportJsonRequest>,
+    request: HttpRequest,
+    ipc: web::Data<RwLock<Ipc>>,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
-    let enabled = get_setting::<bool, _>("repositories.importing_enabled", &mut transaction).await?;
+    let enabled =
+        get_setting::<bool, _>("repositories.importing_enabled", &mut transaction).await?;
 
     if !enabled || !ipc.read().await.is_connected() {
         die!(NOT_IMPLEMENTED, "Importing is disabled on this instance");
@@ -47,10 +54,14 @@ pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>
     let description = &body.description;
 
     if description.len() > 256 {
-        die!(BAD_REQUEST, "Description may only be up to 256 characters long");
+        die!(
+            BAD_REQUEST,
+            "Description may only be up to 256 characters long"
+        );
     }
 
-    let url = Url::parse(body.import_url.as_str()).map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
+    let url = Url::parse(body.import_url.as_str())
+        .map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
 
     if body.mirror.is_some() {
         die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");
@@ -81,27 +92,36 @@ pub(crate) async fn import(web_user: WebUser, body: web::Json<ImportJsonRequest>
     let packet = GitImport {
         url: url.to_string(),
         username: body.username.clone(),
-        password: body.password.clone()
+        password: body.password.clone(),
     };
 
-    ipc.write().await.send(packet).await.context("Failed to send import packet to workhorse")?;
+    ipc.write()
+        .await
+        .send(packet)
+        .await
+        .context("Failed to send import packet to workhorse")?;
 
-    let domain = get_optional_setting::<String, _>("domain", &mut transaction).await?.unwrap_or_default();
+    let domain = get_optional_setting::<String, _>("domain", &mut transaction)
+        .await?
+        .unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
 
     transaction.commit().await?;
 
-    info!("New repository created for importing: {}/{} (id {}) (source: {})", &user.username, &repo.name, &repo.id, url);
+    info!(
+        "New repository created for importing: {}/{} (id {}) (source: {})",
+        &user.username, &repo.name, &repo.id, url
+    );
 
     Ok(if request.is_htmx() {
-        HttpResponse::Ok().append_header(("hx-redirect", path)).append_header(("hx-refresh", "true")).finish()
+        HttpResponse::Ok()
+            .append_header(("hx-redirect", path))
+            .append_header(("hx-refresh", "true"))
+            .finish()
     } else {
         let url = format!("{}{}", domain, path);
 
-        HttpResponse::Ok().json(CreateJsonResponse {
-            id: repo.id,
-            url
-        })
+        HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url })
     })
 }
 

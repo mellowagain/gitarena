@@ -14,14 +14,15 @@ use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, layer, Registry};
+use tracing_subscriber::{layer, EnvFilter, Registry};
 use tracing_unwrap::ResultExt;
 
 // Keep in sync with `gitarena::init_logger`
 pub fn init_logger(module: &str, directives: &'static [&str]) -> Result<Vec<WorkerGuard>> {
     let mut guards = Vec::new();
 
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(err, directives));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(err, directives));
 
     let stdout_layer = stdout().map(|(layer, guard)| {
         guards.push(guard);
@@ -49,21 +50,22 @@ pub fn init_logger(module: &str, directives: &'static [&str]) -> Result<Vec<Work
     Ok(guards)
 }
 
-pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>() -> Option<(impl layer::Layer<S>, WorkerGuard)> {
+pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>(
+) -> Option<(impl layer::Layer<S>, WorkerGuard)> {
     if env::var_os("NO_STDOUT_LOG").is_some() {
         return None;
     }
 
     let (writer, guard) = tracing_appender::non_blocking(io::stdout());
 
-    let layer = Layer::new()
-        .with_thread_ids(true)
-        .with_writer(writer);
+    let layer = Layer::new().with_thread_ids(true).with_writer(writer);
 
     Some((layer, guard))
 }
 
-pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>(module: &str) -> Result<Option<(impl layer::Layer<S>, WorkerGuard)>> {
+pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>(
+    module: &str,
+) -> Result<Option<(impl layer::Layer<S>, WorkerGuard)>> {
     if cfg!(debug_assertions) || env::var_os("DEBUG_FILE_LOG").is_none() {
         return Ok(None);
     }
@@ -85,7 +87,9 @@ pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>(module: &str) -> Result<
     Ok(Some((layer, guard)))
 }
 
-pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(filter: EnvFilter) -> (EnvFilter, Option<impl layer::Layer<S>>) {
+pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(
+    filter: EnvFilter,
+) -> (EnvFilter, Option<impl layer::Layer<S>>) {
     if !cfg!(tokio_unstable) {
         return (filter, None);
     }
@@ -100,12 +104,20 @@ pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(filter: EnvFilter) 
 }
 
 pub fn default_env(err: FromEnvError, directives: &[&str]) -> EnvFilter {
-    let not_found = err.source()
-        .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
+    let not_found = err
+        .source()
+        .map(|o| {
+            o.downcast_ref::<VarError>()
+                .map_or_else(|| false, |err| matches!(err, VarError::NotPresent))
+        })
         .unwrap_or(false);
 
     if !not_found {
-        eprintln!("Warning: Unable to parse `{}` environment variable, using default values: {}", EnvFilter::DEFAULT_ENV, err);
+        eprintln!(
+            "Warning: Unable to parse `{}` environment variable, using default values: {}",
+            EnvFilter::DEFAULT_ENV,
+            err
+        );
     }
 
     let level = if cfg!(debug_assertions) {

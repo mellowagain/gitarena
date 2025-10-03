@@ -14,21 +14,24 @@ const ARGON_CONFIG: Config = Config {
     thread_mode: ThreadMode::Parallel,
     time_cost: 3,
     variant: Variant::Argon2id,
-    version: Version::Version13
+    version: Version::Version13,
 };
 
 pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> String {
     let mut rng = rand::thread_rng();
     let uniform = Uniform::new(0, charset.len());
 
-    (0..length).map(|_| {
-        let index = uniform.sample(&mut rng);
-        charset[index] as char
-    }).collect()
+    (0..length)
+        .map(|_| {
+            let index = uniform.sample(&mut rng);
+            charset[index] as char
+        })
+        .collect()
 }
 
 pub(crate) fn random_string(length: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+    const CHARSET: &[u8] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 
     random_string_charset(length, CHARSET)
 }
@@ -48,13 +51,11 @@ pub(crate) fn random_hex_string(length: usize) -> String {
 pub(crate) fn hash_password(password: &str) -> Result<String> {
     let salt = random_string(16);
 
-    argon2::hash_encoded(
-        password.as_bytes(), salt.as_bytes(), &ARGON_CONFIG
-    ).context("Failed to hash password")
+    argon2::hash_encoded(password.as_bytes(), salt.as_bytes(), &ARGON_CONFIG)
+        .context("Failed to hash password")
 }
 
 pub(crate) fn check_password(user: &User, password: &str) -> Result<bool> {
-    argon2::verify_encoded(
-        user.password.as_str(), password.as_bytes()
-    ).with_context(|| format!("Failed to check password for user #{}", user.id))
+    argon2::verify_encoded(user.password.as_str(), password.as_bytes())
+        .with_context(|| format!("Failed to check password for user #{}", user.id))
 }

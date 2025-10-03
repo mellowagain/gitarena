@@ -16,7 +16,7 @@ use sqlx::Type;
 pub(crate) enum SSOProviderType {
     BitBucket,
     GitHub,
-    GitLab
+    GitLab,
 }
 
 impl SSOProviderType {
@@ -24,7 +24,7 @@ impl SSOProviderType {
         match self {
             SSOProviderType::BitBucket => Box::new(BitBucketSSO),
             SSOProviderType::GitHub => Box::new(GitHubSSO),
-            SSOProviderType::GitLab => Box::new(GitLabSSO)
+            SSOProviderType::GitLab => Box::new(GitLabSSO),
         }
     }
 }
@@ -39,7 +39,7 @@ impl FromStr for SSOProviderType {
             "bitbucket" => Ok(SSOProviderType::BitBucket),
             "github" => Ok(SSOProviderType::GitHub),
             "gitlab" => Ok(SSOProviderType::GitLab),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

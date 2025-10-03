@@ -1,11 +1,11 @@
 use std::fmt::{Debug, Formatter};
 
-use proc_macro2::TokenStream;
 use proc_macro::TokenStream as ProcMacroTS;
+use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{Ident, LitStr, parse_macro_input, Token, Type};
+use syn::{parse_macro_input, Ident, LitStr, Token, Type};
 
 pub(crate) fn from_config(input: ProcMacroTS) -> ProcMacroTS {
     let settings = parse_macro_input!(input as SettingsList);
@@ -42,7 +42,7 @@ pub(crate) fn from_optional_config(input: ProcMacroTS) -> ProcMacroTS {
 
 #[derive(Debug)]
 struct SettingsList {
-    settings: Vec<Setting>
+    settings: Vec<Setting>,
 }
 
 impl SettingsList {
@@ -52,7 +52,12 @@ impl SettingsList {
 
     fn as_optional(&self) -> OptionalSettingsList {
         OptionalSettingsList {
-            settings: self.settings.iter().cloned().map(|s| s.as_optional()).collect()
+            settings: self
+                .settings
+                .iter()
+                .cloned()
+                .map(|s| s.as_optional())
+                .collect(),
         }
     }
 }
@@ -62,7 +67,7 @@ impl Parse for SettingsList {
         let punctuated = Punctuated::<Setting, Token![,]>::parse_terminated(input)?;
 
         Ok(SettingsList {
-            settings: punctuated.iter().cloned().collect::<Vec<Setting>>()
+            settings: punctuated.iter().cloned().collect::<Vec<Setting>>(),
         })
     }
 }
@@ -83,7 +88,7 @@ impl ToTokens for SettingsList {
 struct Setting {
     identifier: Ident,
     key: String,
-    ty: Type
+    ty: Type,
 }
 
 impl Debug for Setting {
@@ -98,7 +103,7 @@ impl Debug for Setting {
 impl Setting {
     fn as_optional(&self) -> OptionalSetting {
         OptionalSetting {
-            original: self.clone()
+            original: self.clone(),
         }
     }
 }
@@ -114,7 +119,7 @@ impl Parse for Setting {
         Ok(Setting {
             identifier: ident,
             key: key_str,
-            ty
+            ty,
         })
     }
 }
@@ -137,7 +142,7 @@ impl ToTokens for Setting {
 
 #[derive(Debug)]
 struct OptionalSettingsList {
-    settings: Vec<OptionalSetting>
+    settings: Vec<OptionalSetting>,
 }
 
 impl ToTokens for OptionalSettingsList {
@@ -154,7 +159,7 @@ impl ToTokens for OptionalSettingsList {
 
 #[derive(Debug)]
 struct OptionalSetting {
-    original: Setting
+    original: Setting,
 }
 
 impl ToTokens for OptionalSetting {

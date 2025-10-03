@@ -13,24 +13,24 @@ use std::time::Duration;
 
 use actix_web::web::{Bytes, Data};
 use anyhow::Result;
-use tracing::instrument;
 use derive_more::{Deref, Display};
 use futures::Stream;
 use futures_locks::RwLock;
 use log::debug;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tracing::instrument;
 
 pub(crate) const SSE_BUFFER_SIZE: usize = 512;
 
 #[derive(Default)]
 pub(crate) struct Broadcaster {
-    clients: Vec<(Sender<Bytes>, Category)>
+    clients: Vec<(Sender<Bytes>, Category)>,
 }
 
 #[derive(Clone, Copy, Debug, Display, PartialEq, Eq, Hash)]
 pub(crate) enum Category {
     #[display(fmt = "log")]
-    AdminLog
+    AdminLog,
 }
 
 impl Broadcaster {
@@ -75,10 +75,15 @@ impl Broadcaster {
         self.clients.retain(|(client, category)| {
             // This will fail if the buffer is full or the client is disconnected
             // If the buffer is full the client has not recv'd for a while which means it probably disconnected
-            client.try_send(Bytes::from("event: ping\ndata: pong!\n\n")).map_or_else(|err| {
-                debug!("Disconnecting a client subscribed to {}: {}", category, err);
-                false
-            }, |_| true)
+            client
+                .try_send(Bytes::from("event: ping\ndata: pong!\n\n"))
+                .map_or_else(
+                    |err| {
+                        debug!("Disconnecting a client subscribed to {}: {}", category, err);
+                        false
+                    },
+                    |_| true,
+                )
         });
     }
 

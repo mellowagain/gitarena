@@ -27,29 +27,33 @@ pub(crate) struct User {
     pub(crate) password: String,
     pub(crate) disabled: bool,
     pub(crate) admin: bool,
-    pub(crate) created_at: DateTime<Utc>
+    pub(crate) created_at: DateTime<Utc>,
 }
 
 impl User {
     pub(crate) async fn find_using_name<'e, E, S>(name: S, executor: E) -> Option<User>
-        where E: Executor<'e, Database = Postgres>,
-              S: AsRef<str>
+    where
+        E: Executor<'e, Database = Postgres>,
+        S: AsRef<str>,
     {
         let username = name.as_ref();
 
-        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1) limit 1")
-            .bind(username)
-            .fetch_optional(executor)
-            .await
-            .ok()
-            .flatten();
+        let user = sqlx::query_as::<_, User>(
+            "select * from users where lower(username) = lower($1) limit 1",
+        )
+        .bind(username)
+        .fetch_optional(executor)
+        .await
+        .ok()
+        .flatten();
 
         user
     }
 
     pub(crate) async fn find_using_email<'e, E, S>(email: S, executor: E) -> Option<User>
-        where E: Executor<'e, Database = Postgres>,
-              S: AsRef<str>
+    where
+        E: Executor<'e, Database = Postgres>,
+        S: AsRef<str>,
     {
         let email = email.as_ref();
 
@@ -87,7 +91,7 @@ impl TryFrom<WebUser> for User {
 #[derive(Debug, Display)]
 pub(crate) enum WebUser {
     Anonymous,
-    Authenticated(User)
+    Authenticated(User),
 }
 
 impl WebUser {
@@ -98,14 +102,14 @@ impl WebUser {
     pub(crate) fn as_ref(&self) -> Option<&User> {
         match self {
             WebUser::Authenticated(user) => Some(user),
-            WebUser::Anonymous => None
+            WebUser::Anonymous => None,
         }
     }
 
     pub(crate) fn into_user(self) -> Result<User> {
         match self {
             WebUser::Authenticated(user) => Ok(user),
-            WebUser::Anonymous => die!(UNAUTHORIZED, "Not authenticated")
+            WebUser::Anonymous => die!(UNAUTHORIZED, "Not authenticated"),
         }
     }
 }
@@ -125,24 +129,33 @@ impl FromRequest for WebUser {
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
-                    extract_from_request(db_pool, id_future, ip_network, user_agent).await.map_err(|err| GitArenaError {
-                        source: Arc::new(err),
-                        display_type: ErrorDisplayType::Html // TODO: Check whenever route is err = "html|json|git" etc...
-                    })
+                    extract_from_request(db_pool, id_future, ip_network, user_agent)
+                        .await
+                        .map_err(|err| GitArenaError {
+                            source: Arc::new(err),
+                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                        })
                 })
             }
             None => Box::pin(async {
                 Err(GitArenaError {
                     source: Arc::new(anyhow!("No PgPool in application data")),
-                    display_type: ErrorDisplayType::Html // TODO: Check whenever route is err = "html|json|git" etc...
+                    display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
                 })
-            })
+            }),
         }
     }
 }
 
-async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(db_pool: Data<PgPool>, id_future: F, ip_network: IpNetwork, user_agent: String) -> Result<WebUser> {
-    let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
+async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(
+    db_pool: Data<PgPool>,
+    id_future: F,
+    ip_network: IpNetwork,
+    user_agent: String,
+) -> Result<WebUser> {
+    let id = id_future
+        .await
+        .map_err(|_| anyhow!("Failed to build identity"))?;
 
     match id.identity() {
         Some(identity) => {
@@ -150,12 +163,15 @@ async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(d
 
             let result = match Session::from_identity(Some(identity), &mut transaction).await? {
                 Some(session) => {
-                    session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
-
-                    let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                        .bind(&session.user_id)
-                        .fetch_optional(&mut transaction)
+                    session
+                        .update_explicit(&ip_network, user_agent.as_str(), &mut transaction)
                         .await?;
+
+                    let user: Option<User> =
+                        sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
+                            .bind(&session.user_id)
+                            .fetch_optional(&mut transaction)
+                            .await?;
 
                     user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
                 }
@@ -170,6 +186,6 @@ async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(d
 
             Ok(result)
         }
-        None => Ok(WebUser::Anonymous)
+        None => Ok(WebUser::Anonymous),
     }
 }

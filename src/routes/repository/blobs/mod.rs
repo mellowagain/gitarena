@@ -19,5 +19,5 @@ pub(crate) struct BlobRequest {
     pub(crate) repository: String,
 
     pub(crate) tree: String,
-    pub(crate) blob: String
+    pub(crate) blob: String,
 }

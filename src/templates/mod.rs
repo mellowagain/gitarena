@@ -32,11 +32,15 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
     info!("Loading templates. This may take a few seconds.");
 
     let elapsed = time_function(|| async {
-        VERIFY_EMAIL.set(parse_template("email/user/verify_email.txt".to_owned())).expect_or_log("Verify email template should only be initialized once");
+        VERIFY_EMAIL
+            .set(parse_template("email/user/verify_email.txt".to_owned()))
+            .expect_or_log("Verify email template should only be initialized once");
 
         // This additionally checks the templates for errors
-        TERA.set(init_tera()).expect_or_log("Tera should only be initialized once");
-    }).await;
+        TERA.set(init_tera())
+            .expect_or_log("Tera should only be initialized once");
+    })
+    .await;
 
     info!("Successfully loaded templates. Took {} seconds.", elapsed);
 
@@ -47,47 +51,50 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
         use actix_web::rt::Runtime;
         use log::error;
         use notify::{Error as NotifyError, Event, RecommendedWatcher, RecursiveMode, Watcher};
-        
-        let mut watcher = notify::recommended_watcher(|result: std::result::Result<Event, NotifyError>| {
-            let event = match result {
-                Ok(event) => event,
-                Err(err) => {
-                    error!("Failed to unwrap file system notify event: {}", err);
-                    return;
-                }
-            };
 
-            if !event.kind.is_modify() {
-                return;
-            }
+        let mut watcher =
+            notify::recommended_watcher(|result: std::result::Result<Event, NotifyError>| {
+                let event = match result {
+                    Ok(event) => event,
+                    Err(err) => {
+                        error!("Failed to unwrap file system notify event: {}", err);
+                        return;
+                    }
+                };
 
-            for path in &event.paths {
-                if path.is_dir() {
+                if !event.kind.is_modify() {
                     return;
                 }
 
-                match path.file_name() {
-                    Some(file_name) => match file_name.to_str() {
-                        Some(file_name) => if !file_name.ends_with(".html") {
-                            return
+                for path in &event.paths {
+                    if path.is_dir() {
+                        return;
+                    }
+
+                    match path.file_name() {
+                        Some(file_name) => match file_name.to_str() {
+                            Some(file_name) => {
+                                if !file_name.ends_with(".html") {
+                                    return;
+                                }
+                            }
+                            None => return,
+                        },
+                        None => return,
+                    }
+                }
+
+                if let Ok(runtime) = Runtime::new() {
+                    info!("Detected modification in templates directory, reloading...");
+
+                    runtime.block_on(async {
+                        match tera().write().await.full_reload() {
+                            Ok(_) => info!("Successfully reloaded templates."),
+                            Err(err) => error!("Failed to reload templates: {}", err),
                         }
-                        None => return
-                    }
-                    None => return
+                    });
                 }
-            }
-
-            if let Ok(runtime) = Runtime::new() {
-                info!("Detected modification in templates directory, reloading...");
-
-                runtime.block_on(async {
-                    match tera().write().await.full_reload() {
-                        Ok(_) => info!("Successfully reloaded templates."),
-                        Err(err) => error!("Failed to reload templates: {}", err)
-                    }
-                });
-            }
-        })?;
+            })?;
 
         watcher.watch(Path::new("templates/html"), RecursiveMode::Recursive)?;
 
@@ -103,7 +110,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
 fn parse_template(template_path: String) -> Template {
     match plain::parse(template_path) {
         Ok(template) => template,
-        Err(err) => panic!("Failed to parse template: {}", err)
+        Err(err) => panic!("Failed to parse template: {}", err),
     }
 }
 
@@ -118,7 +125,7 @@ pub(crate) async fn render(template: &str, context: &Context) -> Result<String> 
 fn init_tera() -> GlobalTera {
     let mut tera = match Tera::new("templates/html/**/*") {
         Ok(tera) => tera,
-        Err(err) => panic!("{}", err)
+        Err(err) => panic!("{}", err),
     };
 
     tera.register_filter("human_prefix", filters::human_prefix);
@@ -143,7 +150,7 @@ pub(crate) fn tera() -> &'static GlobalTera {
 macro_rules! template_context {
     ($input:expr) => {
         Some($input.iter().cloned().collect())
-    }
+    };
 }
 
 /// Renders a template and returns `Ok(HttpResponse)`. If an error occurs, returns `Err`.
@@ -156,7 +163,12 @@ macro_rules! render_template {
         render_template!(actix_web::http::StatusCode::OK, $template_name, $context)
     }};
     ($template_name:literal, $context:expr, $transaction:expr) => {{
-        render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction)
+        render_template!(
+            actix_web::http::StatusCode::OK,
+            $template_name,
+            $context,
+            $transaction
+        )
     }};
     ($status:expr, $template_name:literal, $context:expr) => {{
         if cfg!(debug_assertions) {
@@ -167,7 +179,9 @@ macro_rules! render_template {
         Ok(actix_web::HttpResponseBuilder::new($status).body(template))
     }};
     ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
-        let domain = $crate::config::get_optional_setting::<String, _>("domain", &mut $transaction).await?.unwrap_or_default();
+        let domain = $crate::config::get_optional_setting::<String, _>("domain", &mut $transaction)
+            .await?
+            .unwrap_or_default();
         $context.try_insert("domain", &domain)?;
 
         if cfg!(debug_assertions) {

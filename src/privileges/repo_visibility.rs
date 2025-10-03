@@ -8,5 +8,5 @@ use sqlx::Type;
 pub(crate) enum RepoVisibility {
     Public,
     Internal,
-    Private
+    Private,
 }

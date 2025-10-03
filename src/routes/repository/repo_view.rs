@@ -1,6 +1,8 @@
-use crate::git::GIT_HASH_KIND;
-use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
+use crate::git::history::{
+    all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref,
+};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
+use crate::git::GIT_HASH_KIND;
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::GitTreeRequest;
@@ -10,7 +12,7 @@ use crate::{die, err, render_template};
 
 use std::cmp::Ordering;
 
-use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use actix_web::{web, HttpMessage, HttpRequest, Responder};
 use anyhow::{anyhow, Result};
 use bstr::ByteSlice;
 use git_repository::hash::ObjectId;
@@ -22,7 +24,13 @@ use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
-async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web_user: WebUser, mut transaction: Transaction<'_, Postgres>) -> Result<impl Responder> {
+async fn render(
+    tree_option: Option<&str>,
+    repo: Repository,
+    username: &str,
+    web_user: WebUser,
+    mut transaction: Transaction<'_, Postgres>,
+) -> Result<impl Responder> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
 
     let mut context = Context::new();
@@ -30,10 +38,12 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
 
-    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
-        .bind(&repo.id)
-        .fetch_one(&mut transaction)
-        .await?;
+    let (issues_count,): (i64,) = sqlx::query_as(
+        "select count(*) from issues where repo = $1 and closed = false and confidential = false",
+    )
+    .bind(&repo.id)
+    .fetch_one(&mut transaction)
+    .await?;
 
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", &username)?;
@@ -76,11 +86,17 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     for entry in tree.entries.iter().take(1000) {
         let name = entry.filename.to_str().unwrap_or("Invalid file name");
 
-        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap_or_log();
+        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name)
+            .await?
+            .unwrap_or_log();
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
-            Some(read_blob_content(entry.oid.as_ref(), store.clone()).await.unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()))
+            Some(
+                read_blob_content(entry.oid.as_ref(), store.clone())
+                    .await
+                    .unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()),
+            )
         } else {
             None
         };
@@ -94,10 +110,10 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
                 date: None,
-                author_name: String::new(), // Unused for file listing
-                author_uid: None, // Unused for file listing
-                author_email: String::new() // Unused for file listing
-            }
+                author_name: String::new(),  // Unused for file listing
+                author_uid: None,            // Unused for file listing
+                author_email: String::new(), // Unused for file listing
+            },
         });
     }
 
@@ -108,13 +124,19 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
 
         if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type != EntryMode::Tree as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
+        {
             Ordering::Greater
-        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
+        {
             lhs.file_name.cmp(rhs.file_name)
-        } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
+        } else if lhs.file_type == EntryMode::Commit as u16
+            && rhs.file_type != EntryMode::Commit as u16
+        {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
+        } else if lhs.file_type != EntryMode::Commit as u16
+            && rhs.file_type == EntryMode::Commit as u16
+        {
             Ordering::Greater
         } else {
             lhs.file_name.cmp(rhs.file_name)
@@ -138,39 +160,71 @@ async fn render(tree_option: Option<&str>, repo: Repository, username: &str, web
     }
 
     context.try_insert("files", &files)?;
-    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
+    context.try_insert(
+        "commits_count",
+        &all_commits(&libgit2_repo, full_tree_name, 0).await?.len(),
+    )?;
 
-    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name).await?.ok_or_else(|| err!(OK, "Repository is empty"))?;
+    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name)
+        .await?
+        .ok_or_else(|| err!(OK, "Repository is empty"))?;
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     // TODO: Additionally show last_commit.committer and if doesn't match with author
-    let (author_name, author_uid, author_email) = last_commit.author().try_disassemble(&mut transaction).await;
+    let (author_name, author_uid, author_email) =
+        last_commit.author().try_disassemble(&mut transaction).await;
 
-    context.try_insert("last_commit", &GitCommit {
-        oid: format!("{}", last_commit_oid),
-        message: last_commit.message().unwrap_or_default().to_owned(),
-        time: last_commit.time().seconds(),
-        date: None,
-        author_name,
-        author_uid,
-        author_email
-    })?;
+    context.try_insert(
+        "last_commit",
+        &GitCommit {
+            oid: format!("{}", last_commit_oid),
+            message: last_commit.message().unwrap_or_default().to_owned(),
+            time: last_commit.time().seconds(),
+            date: None,
+            author_name,
+            author_uid,
+            author_email,
+        },
+    )?;
 
     render_template!("repo/index.html", context, transaction)
 }
 
-#[route("/{username}/{repository}/tree/{tree:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_repo_tree(repo: Repository, uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+#[route(
+    "/{username}/{repository}/tree/{tree:.*}",
+    method = "GET",
+    err = "html"
+)]
+pub(crate) async fn view_repo_tree(
+    repo: Repository,
+    uri: web::Path<GitTreeRequest>,
+    web_user: WebUser,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
-    render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
+    render(
+        Some(uri.tree.as_str()),
+        repo,
+        &uri.username,
+        web_user,
+        transaction,
+    )
+    .await
 }
 
 #[route("/{username}/{repository}", method = "GET", err = "html")]
-pub(crate) async fn view_repo(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo(
+    repo: Repository,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<PgPool>,
+) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
     let extensions = request.extensions();
-    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    let repo_owner = extensions
+        .get::<RepoOwner>()
+        .ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
     render(None, repo, &repo_owner.0, web_user, transaction).await
 }

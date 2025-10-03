@@ -5,8 +5,8 @@ mod api;
 mod archive;
 mod blobs;
 mod commits;
-mod import;
 mod git;
+mod import;
 mod issues;
 mod repo_create;
 mod repo_view;
@@ -29,12 +29,12 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 #[derive(Deserialize)]
 pub(crate) struct GitRequest {
     pub(crate) username: String,
-    pub(crate) repository: String
+    pub(crate) repository: String,
 }
 
 #[derive(Deserialize)]
 pub(crate) struct GitTreeRequest {
     pub(crate) username: String,
     pub(crate) repository: String,
-    pub(crate) tree: String
+    pub(crate) tree: String,
 }

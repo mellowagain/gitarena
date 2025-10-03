@@ -14,5 +14,5 @@ pub(crate) mod sso_provider_type;
 pub(crate) struct SSO {
     pub(crate) user_id: i32, // User id on our end
     pub(crate) provider: SSOProviderType,
-    pub(crate) provider_id: String // User id on the provider end
+    pub(crate) provider_id: String, // User id on the provider end
 }
