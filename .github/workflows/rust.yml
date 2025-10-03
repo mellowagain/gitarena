@@ -12,6 +12,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+    - name: Install libmagic
+      run: apt install libmagic-dev
     - name: Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
     - name: Cache
