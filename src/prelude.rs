@@ -204,7 +204,7 @@ impl GitoxideSignatureExtensions for GitoxideSignature {
             name: BString::from("GitArena"), // TODO: Allow administrators to edit this
             email: BString::from("git@gitarena.com"), // as well as this
             time: GitoxideTime {
-                time: naive.timestamp() as u32,
+                time: naive.and_utc().timestamp() as u32,
                 offset: 0,
                 sign: Sign::Plus,
             },

@@ -44,8 +44,8 @@ impl Session {
         let user_agent = user_agent.chars().take(256).collect::<String>();
 
         let repo: Session = sqlx::query_as::<_, Session>("insert into sessions (user_id, ip_address, user_agent) values ($1, $2, $3) returning *")
-            .bind(&user.id)
-            .bind(&ip_address)
+            .bind(user.id)
+            .bind(ip_address)
             .bind(&user_agent)
             .fetch_one(executor)
             .await?;
@@ -91,10 +91,10 @@ impl Session {
         let user_agent = user_agent.chars().take(256).collect::<String>();
 
         sqlx::query("update sessions set ip_address = $1, user_agent = $2, updated_at = $3 where user_id = $4 and hash = $5")
-            .bind(&ip_address)
+            .bind(ip_address)
             .bind(&user_agent)
-            .bind(&now)
-            .bind(&self.user_id)
+            .bind(now)
+            .bind(self.user_id)
             .bind(self.hash.as_str())
             .execute(executor)
             .await?;
@@ -120,7 +120,7 @@ impl Session {
         executor: E,
     ) -> Result<()> {
         sqlx::query("delete from sessions where user_id = $1 and hash = $2")
-            .bind(&self.user_id)
+            .bind(self.user_id)
             .bind(self.hash.as_str())
             .execute(executor)
             .await?;

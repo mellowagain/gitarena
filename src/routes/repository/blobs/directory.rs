@@ -21,8 +21,7 @@ use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
 use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::refs::file::loose::Reference;
-use git_repository::{ObjectId, Repository as GitoxideRepository};
+use git_repository::ObjectId;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
@@ -61,20 +60,13 @@ pub(crate) async fn view_dir(
         &mut tree_ref_buffer,
     )
     .await?;
-    let tree = recursively_visit_tree(
-        &branch.reference,
-        tree_ref,
-        path.as_str(),
-        &gitoxide_repo,
-        store.clone(),
-        &mut tree_buffer,
-    )
-    .await?;
+    let tree =
+        recursively_visit_tree(tree_ref, path.as_str(), store.clone(), &mut tree_buffer).await?;
 
     let (issues_count,): (i64,) = sqlx::query_as(
         "select count(*) from issues where repo = $1 and closed = false and confidential = false",
     )
-    .bind(&repo.id)
+    .bind(repo.id)
     .fetch_one(&mut transaction)
     .await?;
 
@@ -92,8 +84,7 @@ pub(crate) async fn view_dir(
 
     // Should be generalized so we don't have this code twice but can re-use it in repo_view and here in directory
 
-    let mut files = Vec::<RepoFile>::new();
-    files.reserve(tree.entries.len().min(1000));
+    let mut files = Vec::<RepoFile>::with_capacity(tree.entries.len().min(1000));
 
     for entry in tree.entries.iter().take(1000) {
         let name = entry.filename.to_str().unwrap_or("Invalid file name");
@@ -194,10 +185,8 @@ pub(crate) async fn view_dir(
 
 #[async_recursion(?Send)]
 async fn recursively_visit_tree<'a>(
-    reference: &Reference,
     tree_ref: TreeRef<'a>,
     path: &str,
-    repo: &'a GitoxideRepository,
     store: Arc<Store>,
     buffer: &'a mut Vec<u8>,
 ) -> Result<Tree> {
@@ -221,7 +210,7 @@ async fn recursively_visit_tree<'a>(
                 .map(|(tree, _)| tree)?;
             let mut buffer = Vec::<u8>::new();
 
-            recursively_visit_tree(reference, tree_ref, remaining, repo, store, &mut buffer).await
+            recursively_visit_tree(tree_ref, remaining, store, &mut buffer).await
         }
         None => Ok(tree),
     }

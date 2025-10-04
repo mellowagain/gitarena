@@ -60,7 +60,7 @@ impl Repository {
         let repo: Option<Repository> = sqlx::query_as::<_, Repository>(
             "select * from repositories where owner = $1 and lower(name) = lower($2) limit 1",
         )
-        .bind(&user_id)
+        .bind(user_id)
         .bind(repo_name)
         .fetch_optional(executor)
         .await
@@ -111,7 +111,7 @@ impl Repository {
             cross join \
             (select username from users where id = $1 limit 1) B",
         )
-        .bind(&self.owner)
+        .bind(self.owner)
         .fetch_one(executor)
         .await?;
 

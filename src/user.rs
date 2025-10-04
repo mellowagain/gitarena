@@ -169,7 +169,7 @@ async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(
 
                     let user: Option<User> =
                         sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                            .bind(&session.user_id)
+                            .bind(session.user_id)
                             .fetch_optional(&mut transaction)
                             .await?;
 

@@ -136,7 +136,7 @@ impl SSOProvider for GitLabSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))?;
 
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")
-            .bind(&user.id)
+            .bind(user.id)
             .bind(&SSOProviderType::GitLab)
             .bind(gitlab_id.as_str())
             .execute(&mut transaction)
@@ -176,9 +176,9 @@ impl SSOProvider for GitLabSSO {
             });
 
             sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $3, $3, $3)")
-                .bind(&user.id)
+                .bind(user.id)
                 .bind(email)
-                .bind(&primary)
+                .bind(primary)
                 .execute(&mut transaction)
                 .await?;
 

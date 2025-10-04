@@ -41,7 +41,7 @@ async fn render(
     let (issues_count,): (i64,) = sqlx::query_as(
         "select count(*) from issues where repo = $1 and closed = false and confidential = false",
     )
-    .bind(&repo.id)
+    .bind(repo.id)
     .fetch_one(&mut transaction)
     .await?;
 
@@ -80,8 +80,7 @@ async fn render(
     let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
 
-    let mut files = Vec::<RepoFile>::new();
-    files.reserve(tree.entries.len().min(1000));
+    let mut files = Vec::<RepoFile>::with_capacity(tree.entries.len().min(1000));
 
     for entry in tree.entries.iter().take(1000) {
         let name = entry.filename.to_str().unwrap_or("Invalid file name");

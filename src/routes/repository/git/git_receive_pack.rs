@@ -184,7 +184,7 @@ pub(crate) async fn git_receive_pack(
 
     // Let Git collect garbage to optimize repo size
     let command = Command::new("git")
-        .args(&["gc", "--auto", "--quiet"])
+        .args(["gc", "--auto", "--quiet"])
         .current_dir(repo_dir)
         .kill_on_drop(true)
         .stdout(Stdio::null())
@@ -219,7 +219,7 @@ pub(crate) async fn git_receive_pack(
 
     sqlx::query("update repositories set license = $1 where id = $2")
         .bind(&repo.license)
-        .bind(&repo.id)
+        .bind(repo.id)
         .execute(&mut transaction)
         .await?;
 

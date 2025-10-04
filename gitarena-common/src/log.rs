@@ -9,12 +9,12 @@ use tracing::metadata::LevelFilter;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
-use tracing_subscriber::filter::{FilterExt, FromEnvError};
+use tracing_subscriber::filter::FromEnvError;
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{layer, EnvFilter, Layer as RootLayer, Registry};
+use tracing_subscriber::{layer, EnvFilter, Registry};
 use tracing_unwrap::ResultExt;
 
 pub fn init_logger(

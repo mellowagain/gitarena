@@ -19,8 +19,6 @@ use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
 use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::refs::file::loose::Reference;
-use git_repository::Repository as GitoxideRepository;
 use gitarena_macros::route;
 use magic::Cookie;
 use sqlx::PgPool;
@@ -60,10 +58,8 @@ pub(crate) async fn view_blob(
     )
     .await?;
     let (name, content, mode) = recursively_visit_blob_content(
-        &branch.reference,
         tree_ref,
         uri.blob.as_str(),
-        &gitoxide_repo,
         store.clone(),
         &mut blob_buffer,
     )
@@ -150,10 +146,8 @@ pub(crate) async fn view_raw_blob(
     )
     .await?;
     let (_, content, _) = recursively_visit_blob_content(
-        &branch.reference,
         tree_ref,
         uri.blob.as_str(),
-        &gitoxide_repo,
         store.clone(),
         &mut blob_buffer,
     )
@@ -177,10 +171,8 @@ pub(crate) async fn view_raw_blob(
 
 #[async_recursion(?Send)]
 async fn recursively_visit_blob_content<'a>(
-    reference: &Reference,
     tree_ref: TreeRef<'a>,
     path: &str,
-    repo: &'a GitoxideRepository,
     store: Arc<Store>,
     buffer: &'a mut Vec<u8>,
 ) -> Result<(String, String, EntryMode)> {
@@ -207,8 +199,7 @@ async fn recursively_visit_blob_content<'a>(
                 .map(|(tree, _)| tree)?;
             let mut buffer = Vec::<u8>::new();
 
-            recursively_visit_blob_content(reference, tree_ref, remaining, repo, store, &mut buffer)
-                .await
+            recursively_visit_blob_content(tree_ref, remaining, store, &mut buffer).await
         }
         None => {
             if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable {

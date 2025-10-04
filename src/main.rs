@@ -23,15 +23,12 @@ use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
-use gitarena_common::log::{default_env, init_logger, log_file, stdout, tokio_console};
+use gitarena_common::log::init_logger;
 use gitarena_macros::from_optional_config;
 use log::info;
 use magic::{Cookie, CookieFlags};
 use time::Duration as TimeDuration;
-use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Layer, Registry};
+use tracing_subscriber::Layer;
 use tracing_unwrap::ResultExt;
 
 mod captcha;

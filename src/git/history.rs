@@ -11,7 +11,7 @@ pub(crate) async fn last_commit_for_blob(
 ) -> Result<Option<Oid>> {
     let commits = commits_for_blob(repo, reference_name, file_name, Some(1)).await?;
 
-    Ok(commits.get(0).copied())
+    Ok(commits.first().copied())
 }
 
 #[instrument(err, skip(repo))]

@@ -88,8 +88,8 @@ async fn get_repo_privilege<'e, E: Executor<'e, Database = Postgres>>(
     Ok(sqlx::query_as::<_, Privilege>(
         "select * from privileges where user_id = $1 and repo_id = $2 limit 1",
     )
-    .bind(&user.id)
-    .bind(&repo.id)
+    .bind(user.id)
+    .bind(repo.id)
     .fetch_optional(executor)
     .await?)
 }

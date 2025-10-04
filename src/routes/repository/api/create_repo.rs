@@ -52,8 +52,8 @@ pub(crate) async fn create(
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(&user.id)
-        .bind(&name)
+        .bind(user.id)
+        .bind(name)
         .fetch_one(&mut transaction)
         .await?;
 
@@ -62,7 +62,7 @@ pub(crate) async fn create(
     }
 
     let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(name)
         .bind(description)
         .bind(&body.visibility)

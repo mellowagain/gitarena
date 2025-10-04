@@ -25,7 +25,7 @@ pub(crate) async fn verify(
     let option: Option<(i32, i32)> = sqlx::query_as(
         "select id, user_id from user_verifications where hash = $1 and expires > now() limit 1",
     )
-    .bind(&token)
+    .bind(token)
     .fetch_optional(&mut transaction)
     .await?;
 
@@ -36,12 +36,12 @@ pub(crate) async fn verify(
     let (row_id, user_id) = option.unwrap_or_log();
 
     sqlx::query("update emails set verified_at = current_timestamp where owner = $1")
-        .bind(&user_id)
+        .bind(user_id)
         .execute(&mut transaction)
         .await?;
 
     sqlx::query("delete from user_verifications where id = $1")
-        .bind(&row_id)
+        .bind(row_id)
         .execute(&mut transaction)
         .await?;
 

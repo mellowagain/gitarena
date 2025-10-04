@@ -70,9 +70,9 @@ pub(crate) async fn get_avatar(
     let path_str = format!("{}/default.jpg", avatars_dir);
     let path = Path::new(path_str.as_str());
 
-    Ok(send_image(path, &request)
+    send_image(path, &request)
         .await
-        .context("Failed to read default avatar file")?)
+        .context("Failed to read default avatar file")
 }
 
 #[route("/api/avatar", method = "PUT", err = "text")]
