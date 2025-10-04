@@ -17,6 +17,7 @@ use futures::Future;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
 use sqlx::{Executor, FromRow, PgPool, Postgres};
+use tracing_unwrap::OptionExt;
 
 #[derive(FromRow, Display, Debug, Serialize)]
 #[display(fmt = "{}", username)]
@@ -88,6 +89,57 @@ impl TryFrom<WebUser> for User {
     }
 }
 
+impl FromRequest for User {
+    type Error = GitArenaError;
+    type Future = Pin<Box<dyn Future<Output = Result<User, Self::Error>>>>;
+
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        let match_info = req.match_info();
+
+        // If this method gets called from a handler that does not have username or repository in the match info
+        // it is safe to assume the programmer made a mistake, thus .expect_or_log is OK
+        let username = match_info
+            .get("user")
+            .or_else(|| match_info.get("username"))
+            .expect_or_log("from_request called on User despite not having user/username argument")
+            .to_owned();
+
+        match req.app_data::<Data<PgPool>>() {
+            Some(db_pool) => {
+                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
+                let db_pool = db_pool.clone();
+
+                Box::pin(async move {
+                    extract_user_from_request(db_pool, username.as_str())
+                        .await
+                        .map_err(|err| GitArenaError {
+                            source: Arc::new(err),
+                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                        })
+                })
+            }
+            None => Box::pin(async {
+                Err(GitArenaError {
+                    source: Arc::new(anyhow!("No PgPool in application data")),
+                    display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                })
+            }),
+        }
+    }
+}
+
+async fn extract_user_from_request(db_pool: Data<PgPool>, username: &str) -> Result<User> {
+    let mut transaction = db_pool.begin().await?;
+
+    let user = User::find_using_name(username, &mut transaction)
+        .await
+        .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
+
+    transaction.commit().await?;
+
+    Ok(user)
+}
+
 #[derive(Debug, Display)]
 pub(crate) enum WebUser {
     Anonymous,
@@ -129,7 +181,7 @@ impl FromRequest for WebUser {
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
-                    extract_from_request(db_pool, id_future, ip_network, user_agent)
+                    extract_webuser_from_request(db_pool, id_future, ip_network, user_agent)
                         .await
                         .map_err(|err| GitArenaError {
                             source: Arc::new(err),
@@ -147,7 +199,7 @@ impl FromRequest for WebUser {
     }
 }
 
-async fn extract_from_request<F: Future<Output = actix_web::Result<Identity>>>(
+async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Identity>>>(
     db_pool: Data<PgPool>,
     id_future: F,
     ip_network: IpNetwork,
