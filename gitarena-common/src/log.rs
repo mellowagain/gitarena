@@ -9,16 +9,19 @@ use tracing::metadata::LevelFilter;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
-use tracing_subscriber::filter::FromEnvError;
+use tracing_subscriber::filter::{FilterExt, FromEnvError};
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{layer, EnvFilter, Registry};
+use tracing_subscriber::{layer, EnvFilter, Layer as RootLayer, Registry};
 use tracing_unwrap::ResultExt;
 
-// Keep in sync with `gitarena::init_logger`
-pub fn init_logger(module: &str, directives: &'static [&str]) -> Result<Vec<WorkerGuard>> {
+pub fn init_logger(
+    module: &str,
+    directives: &'static [&str],
+    additional: Option<Box<dyn layer::Layer<Registry> + Send + Sync + 'static>>,
+) -> Result<Vec<WorkerGuard>> {
     let mut guards = Vec::new();
 
     let env_filter =
@@ -38,6 +41,7 @@ pub fn init_logger(module: &str, directives: &'static [&str]) -> Result<Vec<Work
 
     // https://stackoverflow.com/a/66138267
     Registry::default()
+        .with(additional)
         .with(env_filter)
         .with(stdout_layer)
         .with(file_layer)
