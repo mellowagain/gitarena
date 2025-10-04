@@ -14,7 +14,7 @@ pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool<Postgres>
     let mut transaction = db_pool.begin().await?;
 
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(&hash)
         .execute(&mut transaction)
         .await?;

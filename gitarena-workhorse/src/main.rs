@@ -15,7 +15,7 @@ use tracing_unwrap::ResultExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _log_guards = init_logger("gitarena-workhorse", &[])?;
+    let _log_guards = init_logger("gitarena-workhorse", &[], None)?;
 
     Endpoint::new(ipc_path()?.to_owned())
         .incoming()

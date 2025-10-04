@@ -38,7 +38,7 @@ pub(crate) async fn all_issues(
         )
         .as_str(),
     )
-    .bind(&repo.id)
+    .bind(repo.id)
     .fetch_all(&mut transaction)
     .await?;
 
@@ -49,7 +49,7 @@ pub(crate) async fn all_issues(
     for issue in issues.iter() {
         let (username,): (String,) =
             sqlx::query_as("select username from users where id = $1 limit 1")
-                .bind(&issue.author)
+                .bind(issue.author)
                 .fetch_one(&mut transaction)
                 .await?;
 

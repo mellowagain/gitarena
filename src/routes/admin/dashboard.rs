@@ -73,7 +73,7 @@ pub(crate) async fn dashboard(
 
         let (latest_repo_username_option,): (String,) =
             sqlx::query_as("select username from users where id = $1 limit 1")
-                .bind(&latest_repo.owner)
+                .bind(latest_repo.owner)
                 .fetch_one(&mut transaction)
                 .await?;
 

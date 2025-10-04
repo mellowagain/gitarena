@@ -86,7 +86,7 @@ pub(crate) async fn sso_callback(
         Some(sso) => {
             // User link already exists -> Login user
             sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                .bind(&sso.user_id)
+                .bind(sso.user_id)
                 .fetch_one(&mut transaction)
                 .await?
         }

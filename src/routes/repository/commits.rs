@@ -59,13 +59,13 @@ pub(crate) async fn commits(
 
         let chrono_time = commit.time().try_as_chrono()?;
         let chrono_date = chrono_time.date();
-        let chrono_time_only_date = chrono_date.and_hms(0, 0, 0);
+        let chrono_time_only_date = chrono_date.and_hms_opt(0, 0, 0);
 
         commits.push(GitCommit {
             oid: format!("{}", commit.id()),
             message: commit.message().unwrap_or_default().to_owned(),
             time: commit.time().seconds(),
-            date: Some(chrono_time_only_date),
+            date: chrono_time_only_date,
             author_name: name,
             author_uid: uid,
             author_email: email,

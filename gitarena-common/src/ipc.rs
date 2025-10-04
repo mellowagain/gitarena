@@ -80,7 +80,7 @@ impl<'a, T: Deserialize<'a>> IpcPacket<T> {
     }
 }
 
-impl<T: DeserializeOwned + ?Sized> IpcPacket<T> {
+impl<T: DeserializeOwned> IpcPacket<T> {
     pub fn deserialize_from<R: Read>(input: R) -> bincode::Result<Self> {
         Self::bincode().deserialize_from::<_, Self>(input)
     }

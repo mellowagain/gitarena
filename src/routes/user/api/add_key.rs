@@ -65,12 +65,12 @@ pub(crate) async fn put_ssh_key(
     }
 
     let key = sqlx::query_as::<_, SshKey>("insert into ssh_keys (owner, title, fingerprint, algorithm, key, expires_at) values ($1, $2, $3, $4, $5, $6) returning *")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(key_title)
         .bind(fingerprint.as_str())
         .bind(algorithm)
         .bind(public_key.data().as_slice())
-        .bind(&body.expiration_date)
+        .bind(body.expiration_date)
         .fetch_one(&mut transaction)
         .await?;
 

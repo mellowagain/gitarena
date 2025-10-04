@@ -127,7 +127,7 @@ pub(crate) async fn post_register(
     .await?;
 
     sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true)")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(email)
         .execute(&mut transaction)
         .await?;

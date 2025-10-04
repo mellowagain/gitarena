@@ -78,7 +78,7 @@ pub(crate) async fn create_fork(
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(&repo.name)
         .fetch_one(&mut transaction)
         .await?;
@@ -88,11 +88,11 @@ pub(crate) async fn create_fork(
     }
 
     let new_repo = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5) returning *")
-        .bind(&user.id)
+        .bind(user.id)
         .bind(&repo.name)
         .bind(&repo.description)
         .bind(&repo.visibility)
-        .bind(&repo.id)
+        .bind(repo.id)
         .fetch_one(&mut transaction)
         .await?;
 

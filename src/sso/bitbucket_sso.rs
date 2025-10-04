@@ -139,7 +139,7 @@ impl SSOProvider for BitBucketSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))?;
 
         sqlx::query("insert into sso (user_id, provider, provider_id) values ($1, $2, $3)")
-            .bind(&user.id)
+            .bind(user.id)
             .bind(&SSOProviderType::BitBucket)
             .bind(bitbucket_id.as_str())
             .execute(&mut transaction)
@@ -176,9 +176,9 @@ impl SSOProvider for BitBucketSSO {
 
             // All email addresses have already been verified by Bitbucket, so we also mark them as verified
             sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $3, $3, $3, current_timestamp)")
-                .bind(&user.id)
+                .bind(user.id)
                 .bind(email)
-                .bind(&primary)
+                .bind(primary)
                 .execute(&mut transaction)
                 .await?;
         }

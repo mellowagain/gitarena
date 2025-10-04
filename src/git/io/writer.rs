@@ -182,6 +182,6 @@ impl GitWriter {
 
 fn u16_to_hex(value: u16) -> [u8; 4] {
     let mut buffer = [0u8; 4];
-    hex::encode_to_slice((value as u16).to_be_bytes(), &mut buffer).unwrap_or_log();
+    hex::encode_to_slice(value.to_be_bytes(), &mut buffer).unwrap_or_log();
     buffer
 }

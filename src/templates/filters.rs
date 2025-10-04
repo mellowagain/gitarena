@@ -21,7 +21,7 @@ pub(crate) fn human_time(value: &Value, _: &HashMap<String, Value>) -> Result<Va
     let input = value.as_i64().ok_or("Value needs to be i64")?;
 
     let naive = NaiveDateTime::from_timestamp(input, 0);
-    let date_time: DateTime<Utc> = DateTime::from_utc(naive, Utc);
+    let date_time: DateTime<Utc> = DateTime::from_naive_utc_and_offset(naive, Utc);
 
     let human_time = HumanTime::from(date_time);
 
