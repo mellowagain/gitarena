@@ -4,6 +4,7 @@ mod api;
 mod avatar;
 mod sso;
 mod user_create;
+mod user_keys;
 mod user_login;
 mod user_logout;
 mod user_verify;
@@ -25,4 +26,6 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 
     config.service(sso::initiate_sso);
     config.service(sso::sso_callback);
+
+    config.service(user_keys::get_keys);
 }
