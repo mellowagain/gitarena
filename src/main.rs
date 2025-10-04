@@ -23,7 +23,7 @@ use actix_web::{App, HttpResponse, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
-use gitarena_common::log::{default_env, log_file, stdout, tokio_console};
+use gitarena_common::log::{default_env, init_logger, log_file, stdout, tokio_console};
 use gitarena_macros::from_optional_config;
 use log::info;
 use magic::{Cookie, CookieFlags};
@@ -31,7 +31,7 @@ use time::Duration as TimeDuration;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Layer, Registry};
 use tracing_unwrap::ResultExt;
 
 mod captcha;
@@ -59,7 +59,21 @@ mod verification;
 #[tokio::main]
 async fn main() -> Result<()> {
     let broadcaster = Broadcaster::new();
-    let mut _log_guards = init_logger(broadcaster.clone())?;
+    let _log_guards = init_logger(
+        "gitarena",
+        &[
+            "actix_http=info",
+            "actix_server=info",
+            "askalono=warn",
+            "globset=info",
+            "h2=info",
+            "hyper=info",
+            "reqwest=info",
+            "rustls=info",
+            "sqlx=warn",
+        ],
+        Some(AdminPanelLayer::new(broadcaster.clone()).boxed()),
+    )?;
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
     sqlx::migrate!().run(&db_pool).await?;
@@ -170,53 +184,6 @@ async fn main() -> Result<()> {
     info!("Thank you and goodbye.");
 
     Ok(())
-}
-
-// This method is basically the same as `gitarena_common::log::init_logger` except it additionally adds the AdminPanelLayer at the end
-// Please keep this in sync with it
-fn init_logger(broadcaster: Data<RwLock<Broadcaster>>) -> Result<Vec<WorkerGuard>> {
-    let mut guards = Vec::new();
-
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| {
-        default_env(
-            err,
-            &[
-                "actix_http=info",
-                "actix_server=info",
-                "askalono=warn",
-                "globset=info",
-                "h2=info",
-                "hyper=info",
-                "reqwest=info",
-                "rustls=info",
-                "sqlx=warn",
-            ],
-        )
-    });
-
-    let stdout_layer = stdout().map(|(layer, guard)| {
-        guards.push(guard);
-        layer
-    });
-
-    let file_layer = log_file("gitarena")?.map(|(layer, guard)| {
-        guards.push(guard);
-        layer
-    });
-
-    let (env_filter, tokio_console_layer) = tokio_console(env_filter);
-
-    // https://stackoverflow.com/a/66138267
-    Registry::default()
-        .with(env_filter)
-        .with(stdout_layer)
-        .with(file_layer)
-        .with(tokio_console_layer)
-        .with(AdminPanelLayer::new(broadcaster))
-        .try_init()
-        .context("Failed to initialize logger")?;
-
-    Ok(guards)
 }
 
 fn read_magic_database() -> Result<Cookie> {
