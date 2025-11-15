@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::TryStreamExt;
-use gitarena_common::database::models::KeyType;
 use gitarena_common::database::Database;
+use gitarena_common::database::models::KeyType;
 use gitarena_common::prelude::*;
 use sqlx::{Executor, Row};
 

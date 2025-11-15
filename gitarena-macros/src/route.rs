@@ -1,11 +1,11 @@
 use std::ops::DerefMut;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
-use quote::{quote, ToTokens};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use quote::{ToTokens, quote};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, Pat};
+use syn::{AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, Pat, parse_macro_input};
 
 pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut args = parse_macro_input!(args as AttributeArgs);

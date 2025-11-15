@@ -2,10 +2,10 @@ use std::fmt::{Debug, Formatter};
 
 use proc_macro::TokenStream as ProcMacroTS;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, Ident, LitStr, Token, Type};
+use syn::{Ident, LitStr, Token, Type, parse_macro_input};
 
 pub(crate) fn from_config(input: ProcMacroTS) -> ProcMacroTS {
     let settings = parse_macro_input!(input as SettingsList);

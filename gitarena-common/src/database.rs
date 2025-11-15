@@ -3,7 +3,7 @@ use std::env::VarError;
 use std::str::FromStr;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use once_cell::sync::OnceCell;
 use sqlx::{Executor, Postgres};
 use tokio::fs;
@@ -44,16 +44,23 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
 }
 
 async fn read_database_config() -> Result<ConnectOptions> {
-    let mut options = match (env::var_os("DATABASE_URL"), env::var_os("DATABASE_URL_FILE")) {
+    let mut options = match (
+        env::var_os("DATABASE_URL"),
+        env::var_os("DATABASE_URL_FILE"),
+    ) {
         (Some(url), None) => {
-            let str = url.into_string().map_err(|_| anyhow!("`DATABASE_URL` environment variable is not valid unicode"))?;
+            let str = url
+                .into_string()
+                .map_err(|_| anyhow!("`DATABASE_URL` environment variable is not valid unicode"))?;
             ConnectOptions::from_str(str.as_str())?
         }
         (None, Some(file)) => {
             let url = fs::read_to_string(file).await?;
             ConnectOptions::from_str(url.as_str())?
         }
-        _ => bail!("Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena")
+        _ => bail!(
+            "Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena"
+        ),
     };
 
     // Docker secrets compatibility

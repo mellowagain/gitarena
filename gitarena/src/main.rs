@@ -8,7 +8,6 @@ use crate::utils::system::SYSTEM_INFO;
 
 use std::env;
 use std::env::VarError;
-use std::sync::Arc;
 
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
@@ -27,9 +26,7 @@ use gitarena_common::log::init_logger;
 use gitarena_macros::from_optional_config;
 use log::info;
 use time::Duration as TimeDuration;
-use tokio::sync::Mutex;
 use tracing_subscriber::Layer;
-use tracing_unwrap::ResultExt;
 
 mod captcha;
 mod config;

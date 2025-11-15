@@ -1,9 +1,9 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
 use proc_macro_error::{emit_call_site_error, emit_error};
+use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, DeriveInput, Lit, Meta, NestedMeta};
+use syn::{DeriveInput, Lit, Meta, NestedMeta, parse_macro_input};
 
 pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as DeriveInput);

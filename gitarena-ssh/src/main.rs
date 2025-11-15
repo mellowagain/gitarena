@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use gitarena_common::database::create_postgres_pool;
 use gitarena_common::prelude::*;

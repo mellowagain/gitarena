@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use anyhow::{bail, Error};
+use anyhow::{Error, bail};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 

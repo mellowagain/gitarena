@@ -2,10 +2,10 @@ use std::io;
 
 use anyhow::{Context, Result};
 use futures::stream::StreamExt;
-use gitarena_common::ipc::{ipc_path, IpcPacket};
+use gitarena_common::ipc::{IpcPacket, ipc_path};
 use gitarena_common::log::init_logger;
-use gitarena_common::packets::git::GitImport;
 use gitarena_common::packets::PacketId;
+use gitarena_common::packets::git::GitImport;
 use gitarena_common::prelude::*;
 use log::{debug, error, info, warn};
 use num_traits::cast::FromPrimitive;

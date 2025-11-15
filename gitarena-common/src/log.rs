@@ -5,8 +5,8 @@ use std::{env, fs, io};
 
 use anyhow::{Context, Result};
 use log::debug;
-use tracing::metadata::LevelFilter;
 use tracing::Subscriber;
+use tracing::metadata::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::filter::FromEnvError;
@@ -14,7 +14,7 @@ use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{layer, EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Registry, layer};
 use tracing_unwrap::ResultExt;
 
 pub fn init_logger(
@@ -54,8 +54,8 @@ pub fn init_logger(
     Ok(guards)
 }
 
-pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>(
-) -> Option<(impl layer::Layer<S>, WorkerGuard)> {
+pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>()
+-> Option<(impl layer::Layer<S>, WorkerGuard)> {
     if env::var_os("NO_STDOUT_LOG").is_some() {
         return None;
     }
