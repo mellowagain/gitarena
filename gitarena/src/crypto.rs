@@ -2,20 +2,21 @@ use crate::user::User;
 
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
+use once_cell::sync::Lazy;
 use rand::distributions::Distribution;
 use rand::distributions::Uniform;
 
-const ARGON_CONFIG: Config = Config {
+static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     ad: &[],
     hash_length: 32,
-    lanes: 4,
-    mem_cost: 4096,
+    lanes: num_cpus::get() as u32,
+    mem_cost: 65536,
     secret: &[],
     thread_mode: ThreadMode::Parallel,
-    time_cost: 3,
+    time_cost: 10,
     variant: Variant::Argon2id,
     version: Version::Version13,
-};
+});
 
 pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> String {
     let mut rng = rand::thread_rng();
@@ -56,6 +57,10 @@ pub(crate) fn hash_password(password: &str) -> Result<String> {
 }
 
 pub(crate) fn check_password(user: &User, password: &str) -> Result<bool> {
-    argon2::verify_encoded(user.password.as_str(), password.as_bytes())
-        .with_context(|| format!("Failed to check password for user #{}", user.id))
+    argon2::verify_encoded(user.password.as_str(), password.as_bytes()).with_context(|| {
+        format!(
+            "Failed to check password for user {} (#{})",
+            user.username, user.id
+        )
+    })
 }
