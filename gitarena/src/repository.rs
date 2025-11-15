@@ -208,7 +208,7 @@ async fn extract_repo_from_request(
     Ok(repo)
 }
 
-/// Will only be part of [Extensions](actix_web::) if [Repository] is in the handler arguments
+/// Will only be part of [Extensions](actix_web::Extensions) if [Repository] is in the handler arguments
 #[derive(Display, Debug, Deref)]
 #[display(fmt = "{}", .0)]
 pub(crate) struct RepoOwner(pub(crate) String);

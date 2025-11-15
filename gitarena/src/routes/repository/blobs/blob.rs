@@ -5,7 +5,6 @@ use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
 use crate::user::WebUser;
-use crate::utils::cookie_file::{CookieExtensions, FileType};
 use crate::{die, err, render_template};
 
 use std::sync::Arc;
@@ -20,7 +19,7 @@ use git_repository::objs::{Tree, TreeRef};
 use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
 use gitarena_macros::route;
-use magic::Cookie;
+use infer::MatcherType;
 use sqlx::PgPool;
 use tera::Context;
 use tracing_unwrap::OptionExt;
@@ -35,7 +34,6 @@ pub(crate) async fn view_blob(
     branch: Branch,
     uri: web::Path<BlobRequest>,
     web_user: WebUser,
-    cookie: web::Data<Arc<Cookie>>,
     db_pool: web::Data<PgPool>,
 ) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
@@ -93,15 +91,20 @@ pub(crate) async fn view_blob(
     )?;
 
     let size = content.len();
-    let file_type = cookie.probe(content.as_bytes())?;
 
-    context.try_insert("type", &file_type)?;
-    context.try_insert("size", &size)?;
+    let file_ty = match infer::get(content.as_bytes()) {
+        Some(ty) if matches!(ty.matcher_type(), MatcherType::Text | MatcherType::Doc) => {
+            // We only display text files which are less than 2 MB
+            if size < 2_000_000 {
+                context.try_insert("content", content.as_str())?;
+            }
 
-    // We only display text files which are less than 2 MB
-    if matches!(file_type, FileType::Text) && size < 2_000_000 {
-        context.try_insert("content", content.as_str())?;
-    }
+            "text"
+        }
+        Some(_) => "binary",
+        None => "error",
+    };
+    context.try_insert("type", file_ty)?;
 
     context.insert_web_user(&web_user)?;
     context.try_insert("repo_owner_name", uri.username.as_str())?;
@@ -126,7 +129,6 @@ pub(crate) async fn view_raw_blob(
     _repo: Repository,
     branch: Branch,
     uri: web::Path<BlobRequest>,
-    cookie: web::Data<Arc<Cookie>>,
     db_pool: web::Data<PgPool>,
 ) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
@@ -153,14 +155,8 @@ pub(crate) async fn view_raw_blob(
     )
     .await?;
 
-    let mime = if let Some(file_type) = infer::get(content.as_bytes()) {
-        file_type.mime_type()
-    } else {
-        match cookie.probe(content.as_bytes())? {
-            FileType::Text => "text/plain",
-            _ => "application/octet-stream",
-        }
-    };
+    let mime = infer::get(content.as_bytes())
+        .map_or_else(|| "application/octet-stream", |ty| ty.mime_type());
 
     transaction.commit().await?;
 

@@ -2,7 +2,6 @@ use std::future::Future;
 use std::time::Instant;
 
 pub(crate) mod admin_panel_layer;
-pub(crate) mod cookie_file;
 pub(crate) mod filesystem;
 pub(crate) mod identifiers;
 pub(crate) mod oid;
