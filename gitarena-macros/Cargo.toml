@@ -1,11 +1,10 @@
 [package]
 name = "gitarena-macros"
-version = "0.0.0"
-authors = ["mellowagain <me@cutegirl.tech>"]
-edition = "2018"
-license = "MIT"
-repository = "https://github.com/mellowagain/gitarena"
+version = { workspace = true }
+authors = { workspace = true }
 description = "Helper macros for GitArena"
+edition = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 proc-macro = true

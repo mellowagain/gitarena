@@ -1,8 +1,10 @@
 [package]
 name = "gitarena-ssh"
-version = "0.0.0"
-authors = ["mellowagain <me@cutegirl.tech>"]
-edition = "2021"
+version = { workspace = true }
+authors = { workspace = true }
+description = "SSH component for GitArena"
+edition = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 clap = { version = "3.1.17", features = ["derive", "unicode", "wrap_help"] }
