@@ -4,7 +4,8 @@ use crate::repository::Repository;
 use crate::user::User;
 
 use anyhow::{Context, Result};
-use sqlx::{Executor, FromRow, Postgres};
+use gitarena_common::database::Database;
+use sqlx::{FromRow, Transaction};
 
 #[derive(FromRow)]
 pub(crate) struct Privilege {
@@ -16,14 +17,14 @@ pub(crate) struct Privilege {
 
 macro_rules! generate_check {
     ($name:ident, $target:ident) => {
-        pub(crate) async fn $name<'e, E: Executor<'e, Database = Postgres>>(
+        pub(crate) async fn $name(
             repo: &Repository,
             user: Option<&User>,
-            executor: E,
+            tx: &mut Transaction<'_, Database>,
         ) -> Result<bool> {
             Ok(if let Some(user) = user {
                 if &user.id != &repo.owner && !user.admin {
-                    get_repo_privilege(repo, user, executor)
+                    get_repo_privilege(repo, user, tx)
                         .await
                         .with_context(|| {
                             format!(
@@ -42,10 +43,10 @@ macro_rules! generate_check {
     };
 }
 
-pub(crate) async fn check_access<'e, E: Executor<'e, Database = Postgres>>(
+pub(crate) async fn check_access(
     repo: &Repository,
     user: Option<&User>,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<bool> {
     if repo.disabled {
         return Ok(user.map_or_else(|| false, |user| user.admin));
@@ -55,7 +56,7 @@ pub(crate) async fn check_access<'e, E: Executor<'e, Database = Postgres>>(
         RepoVisibility::Private => {
             if let Some(user) = user {
                 if user.id != repo.owner && !user.admin {
-                    get_repo_privilege(repo, user, executor)
+                    get_repo_privilege(repo, user, tx)
                         .await
                         .with_context(|| {
                             format!(
@@ -80,16 +81,16 @@ generate_check!(check_manage_issues, can_manage_issues);
 generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
 
-async fn get_repo_privilege<'e, E: Executor<'e, Database = Postgres>>(
+async fn get_repo_privilege(
     repo: &Repository,
     user: &User,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<Option<Privilege>> {
     Ok(sqlx::query_as::<_, Privilege>(
         "select * from privileges where user_id = $1 and repo_id = $2 limit 1",
     )
     .bind(user.id)
     .bind(repo.id)
-    .fetch_optional(executor)
+    .fetch_optional(&mut **tx)
     .await?)
 }

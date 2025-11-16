@@ -42,7 +42,7 @@ async fn render(
         "select count(*) from issues where repo = $1 and closed = false and confidential = false",
     )
     .bind(repo.id)
-    .fetch_one(&mut transaction)
+    .fetch_one(&mut *transaction)
     .await?;
 
     context.try_insert("repo", &repo)?;
@@ -149,7 +149,7 @@ async fn render(
 
         let option: Option<(String, String)> = sqlx::query_as(QUERY)
             .bind(fork_repo_id)
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
         if let Some((username, repo_name)) = option {

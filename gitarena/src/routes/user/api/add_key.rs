@@ -57,7 +57,7 @@ pub(crate) async fn put_ssh_key(
     let (exists,): (bool,) =
         sqlx::query_as("select exists(select 1 from ssh_keys where fingerprint = $1 limit 1)")
             .bind(fingerprint.as_str())
-            .fetch_one(&mut transaction)
+            .fetch_one(&mut *transaction)
             .await?;
 
     if exists {
@@ -71,7 +71,7 @@ pub(crate) async fn put_ssh_key(
         .bind(algorithm)
         .bind(public_key.data().as_slice())
         .bind(body.expiration_date)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     transaction.commit().await?;

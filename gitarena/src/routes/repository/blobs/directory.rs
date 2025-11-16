@@ -67,7 +67,7 @@ pub(crate) async fn view_dir(
         "select count(*) from issues where repo = $1 and closed = false and confidential = false",
     )
     .bind(repo.id)
-    .fetch_one(&mut transaction)
+    .fetch_one(&mut *transaction)
     .await?;
 
     context.try_insert("repo", &repo)?;

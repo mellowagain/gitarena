@@ -9,10 +9,11 @@ use std::str::FromStr;
 use actix_web::HttpRequest;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local};
+use gitarena_common::database::Database;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use log::warn;
 use serde::Serialize;
-use sqlx::{Executor, FromRow, Postgres};
+use sqlx::{FromRow, Transaction};
 use tracing_unwrap::ResultExt;
 
 #[derive(FromRow, Debug, Serialize)]
@@ -33,10 +34,10 @@ impl Display for Session {
 }
 
 impl Session {
-    pub(crate) async fn new<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn new(
         request: &HttpRequest,
         user: &User,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Session> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
@@ -47,16 +48,16 @@ impl Session {
             .bind(user.id)
             .bind(ip_address)
             .bind(&user_agent)
-            .fetch_one(executor)
+            .fetch_one(&mut **tx)
             .await?;
 
         Ok(repo)
     }
 
     /// Finds existing session from Identity (Display of Session)
-    pub(crate) async fn from_identity<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn from_identity(
         identity: Option<String>,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Option<Session>> {
         match identity {
             Some(identity) => {
@@ -70,7 +71,7 @@ impl Session {
                 )
                 .bind(user_id)
                 .bind(hash)
-                .fetch_optional(executor)
+                .fetch_optional(&mut **tx)
                 .await?;
 
                 Ok(option)
@@ -79,11 +80,11 @@ impl Session {
         }
     }
 
-    pub(crate) async fn update_explicit<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn update_explicit(
         &self,
         ip_address: &IpNetwork,
         user_agent: &str,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<()> {
         let now = Local::now();
 
@@ -96,33 +97,29 @@ impl Session {
             .bind(now)
             .bind(self.user_id)
             .bind(self.hash.as_str())
-            .execute(executor)
+            .execute(&mut **tx)
             .await?;
 
         Ok(())
     }
 
     #[allow(dead_code)]
-    pub(crate) async fn update_from_request<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn update_from_request(
         &self,
         request: &HttpRequest,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<()> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
-        self.update_explicit(&ip_address, user_agent, executor)
-            .await
+        self.update_explicit(&ip_address, user_agent, tx).await
     }
 
     /// Consumes the current session and destroys it
-    pub(crate) async fn destroy<'e, E: Executor<'e, Database = Postgres>>(
-        self,
-        executor: E,
-    ) -> Result<()> {
+    pub(crate) async fn destroy(self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         sqlx::query("delete from sessions where user_id = $1 and hash = $2")
             .bind(self.user_id)
             .bind(self.hash.as_str())
-            .execute(executor)
+            .execute(&mut **tx)
             .await?;
 
         Ok(())

@@ -68,7 +68,7 @@ pub(crate) async fn patch_settings(
     for (key, value) in data.iter() {
         let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
             .bind(key.as_str())
-            .fetch_one(&mut transaction)
+            .fetch_one(&mut *transaction)
             .await
             .map_err(|_| err!(BAD_REQUEST, "Setting not found"))?;
 
@@ -92,7 +92,7 @@ pub(crate) async fn patch_settings(
         sqlx::query("update settings set value = $1 where key = $2")
             .bind(value)
             .bind(key)
-            .execute(&mut transaction)
+            .execute(&mut *transaction)
             .await?;
 
         once.call_once(|| {});
@@ -108,7 +108,7 @@ pub(crate) async fn patch_settings(
 
         sqlx::query("update settings set value = false where key = $1")
             .bind(setting)
-            .execute(&mut transaction)
+            .execute(&mut *transaction)
             .await?;
 
         once.call_once(|| {});

@@ -8,9 +8,10 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context, Result};
 use derive_more::Display;
+use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
-use sqlx::{Executor, FromRow, Postgres, Type};
+use sqlx::{FromRow, Postgres, Transaction, Type};
 use tracing_unwrap::OptionExt;
 
 /// Gets the value of a setting from the database.
@@ -20,18 +21,17 @@ use tracing_unwrap::OptionExt;
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
-pub(crate) async fn get_optional_setting<'e, T, E>(
+pub(crate) async fn get_optional_setting<T>(
     key: &'static str,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<Option<T>>
 where
     T: TryFrom<Setting> + Send,
-    E: Executor<'e, Database = Postgres>,
     <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
 {
     let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
-        .fetch_one(executor)
+        .fetch_one(&mut **tx)
         .await
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
@@ -52,15 +52,17 @@ where
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
-pub(crate) async fn get_setting<'e, T, E>(key: &'static str, executor: E) -> Result<T>
+pub(crate) async fn get_setting<T>(
+    key: &'static str,
+    tx: &mut Transaction<'_, Database>,
+) -> Result<T>
 where
     T: TryFrom<Setting> + Send,
-    E: Executor<'e, Database = Postgres>,
     <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
 {
     let setting = sqlx::query_as::<_, Setting>("select * from settings where key = $1 limit 1")
         .bind(key)
-        .fetch_one(executor)
+        .fetch_one(&mut **tx)
         .await
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
@@ -70,32 +72,29 @@ where
     Ok(result)
 }
 
-pub(crate) async fn get_all_settings<'e, E: Executor<'e, Database = Postgres>>(
-    executor: E,
-) -> Result<Vec<Setting>> {
+pub(crate) async fn get_all_settings(tx: &mut Transaction<'_, Database>) -> Result<Vec<Setting>> {
     Ok(
         sqlx::query_as::<_, Setting>("select * from settings order by key")
-            .fetch_all(executor)
+            .fetch_all(&mut **tx)
             .await?,
     )
 }
 
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
 // Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
-pub(crate) fn set_setting<'e, 'q, T, E>(
+pub(crate) fn set_setting<'q, 'tx, T>(
     key: &'static str,
     value: T,
-    executor: E,
-) -> impl Future<Output = Result<()>> + 'q
+    tx: &'q mut Transaction<'tx, Database>,
+) -> impl Future<Output = Result<()>> + 'q + use<'q, 'tx, T>
 where
     T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Send + 'q,
-    E: Executor<'e, Database = Postgres> + 'q,
 {
     async move {
         sqlx::query("update settings set value = $1 where key = $2")
             .bind(value)
             .bind(key)
-            .execute(executor)
+            .execute(&mut **tx)
             .await?;
 
         Ok(())

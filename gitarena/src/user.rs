@@ -14,9 +14,10 @@ use anyhow::{anyhow, Error, Result};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
+use gitarena_common::database::Database;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
-use sqlx::{Executor, FromRow, PgPool, Postgres};
+use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
 
 #[derive(FromRow, Display, Debug, Serialize)]
@@ -32,9 +33,11 @@ pub(crate) struct User {
 }
 
 impl User {
-    pub(crate) async fn find_using_name<'e, E, S>(name: S, executor: E) -> Option<User>
+    pub(crate) async fn find_using_name<S>(
+        name: S,
+        tx: &mut Transaction<'_, Database>,
+    ) -> Option<User>
     where
-        E: Executor<'e, Database = Postgres>,
         S: AsRef<str>,
     {
         let username = name.as_ref();
@@ -43,7 +46,7 @@ impl User {
             "select * from users where lower(username) = lower($1) limit 1",
         )
         .bind(username)
-        .fetch_optional(executor)
+        .fetch_optional(&mut **tx)
         .await
         .ok()
         .flatten();
@@ -51,16 +54,15 @@ impl User {
         user
     }
 
-    pub(crate) async fn find_using_email<'e, E, S>(email: S, executor: E) -> Option<User>
-    where
-        E: Executor<'e, Database = Postgres>,
-        S: AsRef<str>,
-    {
+    pub(crate) async fn find_using_email(
+        email: impl AsRef<str>,
+        tx: &mut Transaction<'_, Database>,
+    ) -> Option<User> {
         let email = email.as_ref();
 
         let user = sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
             .bind(email)
-            .fetch_optional(executor)
+            .fetch_optional(&mut **tx)
             .await
             .ok()
             .flatten();
@@ -222,7 +224,7 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
                     let user: Option<User> =
                         sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
                             .bind(session.user_id)
-                            .fetch_optional(&mut transaction)
+                            .fetch_optional(&mut *transaction)
                             .await?;
 
                     user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)

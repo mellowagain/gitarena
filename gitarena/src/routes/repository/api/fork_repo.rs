@@ -43,7 +43,7 @@ pub(crate) async fn get_fork_amount(
 
     let (count,): (i64,) = sqlx::query_as(query.as_str())
         .bind(repo.id)
-        .fetch_optional(&mut transaction)
+        .fetch_optional(&mut *transaction)
         .await?
         .unwrap_or((0,));
 
@@ -80,7 +80,7 @@ pub(crate) async fn create_fork(
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(user.id)
         .bind(&repo.name)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     if exists {
@@ -93,7 +93,7 @@ pub(crate) async fn create_fork(
         .bind(&repo.description)
         .bind(&repo.visibility)
         .bind(repo.id)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     let old_path = repo.get_fs_path(&mut transaction).await?;
@@ -103,7 +103,7 @@ pub(crate) async fn create_fork(
         .await
         .context("Failed to copy repository")?;
 
-    let domain = get_optional_setting::<String, _>("domain", &mut transaction)
+    let domain: String = get_optional_setting("domain", &mut transaction)
         .await?
         .unwrap_or_default();
     let url = format!("{}/{}/{}", domain, user.username, new_repo.name);

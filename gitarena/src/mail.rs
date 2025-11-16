@@ -13,12 +13,13 @@ use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Local};
 use derive_more::Display;
+use gitarena_common::database::Database;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
-use sqlx::{Executor, FromRow, Pool, Postgres};
+use sqlx::{FromRow, Pool, Postgres, Transaction};
 
 #[derive(FromRow, Display, Serialize)]
 #[display(fmt = "{}", email)]
@@ -63,16 +64,16 @@ impl Email {
 
 macro_rules! generate_find {
     ($method_name:ident, $field:literal) => {
-        pub(crate) async fn $method_name<'e, E: Executor<'e, Database = Postgres>, U: Into<i32>>(
-            user: U,
-            executor: E,
+        pub(crate) async fn $method_name(
+            user: impl Into<i32>,
+            tx: &mut Transaction<'_, Database>,
         ) -> Result<Option<Email>> {
             let query = concat!(
                 "select * from emails where owner = $1 and ",
                 $field,
                 " = true limit 1"
             );
-            Email::find_specific_email(user, query, executor).await
+            Email::find_specific_email(user, query, tx).await
         }
     };
 }
@@ -84,18 +85,14 @@ impl Email {
     generate_find!(find_public_email, "public");
 
     // Private helper called by the functions defined using the `generate_find!` macro
-    async fn find_specific_email<'e, E, U>(
-        user: U,
+    async fn find_specific_email(
+        user: impl Into<i32>,
         query: &'static str,
-        executor: E,
-    ) -> Result<Option<Email>>
-    where
-        E: Executor<'e, Database = Postgres>,
-        U: Into<i32>,
-    {
+        tx: &mut Transaction<'_, Database>,
+    ) -> Result<Option<Email>> {
         let email: Option<Email> = sqlx::query_as(query)
             .bind(user.into())
-            .fetch_optional(executor)
+            .fetch_optional(&mut **tx)
             .await?;
 
         Ok(email)

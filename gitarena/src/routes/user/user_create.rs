@@ -28,12 +28,12 @@ pub(crate) async fn get_register(
 
     let mut context = Context::new();
 
-    if !get_setting::<bool, _>("allow_registrations", &mut transaction).await? {
+    if !get_setting::<bool>("allow_registrations", &mut transaction).await? {
         die!(FORBIDDEN, "User registrations are disabled");
     }
 
     if let Some(site_key) =
-        get_optional_setting::<String, _>("hcaptcha.site_key", &mut transaction).await?
+        get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await?
     {
         context.try_insert("hcaptcha_site_key", &site_key)?;
     }
@@ -55,7 +55,7 @@ pub(crate) async fn post_register(
 
     let mut transaction = db_pool.begin().await?;
 
-    if !get_setting::<bool, _>("allow_registrations", &mut transaction).await? {
+    if !get_setting::<bool>("allow_registrations", &mut transaction).await? {
         die!(FORBIDDEN, "User registrations are disabled");
     }
 
@@ -85,7 +85,7 @@ pub(crate) async fn post_register(
         "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
     )
     .bind(email)
-    .fetch_one(&mut transaction)
+    .fetch_one(&mut *transaction)
     .await?;
 
     if email_exists {
@@ -102,7 +102,7 @@ pub(crate) async fn post_register(
 
     let password = crypto::hash_password(raw_password)?;
 
-    if get_optional_setting::<String, _>("hcaptcha.site_key", &mut transaction)
+    if get_optional_setting::<String>("hcaptcha.site_key", &mut transaction)
         .await?
         .is_some()
     {
@@ -123,13 +123,13 @@ pub(crate) async fn post_register(
     )
     .bind(username)
     .bind(&password)
-    .fetch_one(&mut transaction)
+    .fetch_one(&mut *transaction)
     .await?;
 
     sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true)")
         .bind(user.id)
         .bind(email)
-        .execute(&mut transaction)
+        .execute(&mut *transaction)
         .await?;
 
     // Close the transaction so the email gets committed (above) and then immediatly start a new one for `session` below

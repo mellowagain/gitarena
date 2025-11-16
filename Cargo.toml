@@ -11,6 +11,10 @@ license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 readme = "README.md"
 
+[workspace.dependencies]
+sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki"] }
+ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
+
 [profile.release]
 lto = true
 

@@ -5,10 +5,11 @@ use crate::user::{User, WebUser};
 
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use anyhow::{anyhow, Result};
+use gitarena_common::database::Database;
 use gitarena_macros::route;
 use log::debug;
 use serde_json::json;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{PgPool, Transaction};
 
 #[route(
     "/api/repo/{username}/{repository}/star",
@@ -126,28 +127,25 @@ pub(crate) async fn put_star(
     Ok(response.body(count.to_string()))
 }
 
-async fn get_star_count<'e, E: Executor<'e, Database = Postgres>>(
-    repo: &Repository,
-    executor: E,
-) -> Result<i64> {
+async fn get_star_count(repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<i64> {
     let (count,): (i64,) = sqlx::query_as("select count(*) from stars where repo = $1")
         .bind(repo.id)
-        .fetch_optional(executor)
+        .fetch_optional(&mut **tx)
         .await?
         .unwrap_or((0,));
 
     Ok(count)
 }
 
-async fn add_star<'e, E: Executor<'e, Database = Postgres>>(
+async fn add_star(
     user: &User,
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<()> {
     sqlx::query("insert into stars (stargazer, repo) values ($1, $2)")
         .bind(user.id)
         .bind(repo.id)
-        .execute(executor)
+        .execute(&mut **tx)
         .await?;
 
     debug!(
@@ -158,15 +156,15 @@ async fn add_star<'e, E: Executor<'e, Database = Postgres>>(
     Ok(())
 }
 
-async fn remove_star<'e, E: Executor<'e, Database = Postgres>>(
+async fn remove_star(
     user: &User,
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<()> {
     sqlx::query("delete from stars where stargazer = $1 and repo = $2")
         .bind(user.id)
         .bind(repo.id)
-        .execute(executor)
+        .execute(&mut **tx)
         .await?;
 
     debug!(
@@ -177,17 +175,17 @@ async fn remove_star<'e, E: Executor<'e, Database = Postgres>>(
     Ok(())
 }
 
-async fn has_star<'e, E: Executor<'e, Database = Postgres>>(
+async fn has_star(
     user: &User,
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<bool> {
     let (exists,): (bool,) = sqlx::query_as(
         "select exists(select 1 from stars where stargazer = $1 and repo = $2 limit 1)",
     )
     .bind(user.id)
     .bind(repo.id)
-    .fetch_one(executor)
+    .fetch_one(&mut **tx)
     .await?;
 
     Ok(exists)

@@ -9,8 +9,9 @@ use crate::routes::repository::GitRequest;
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{web, Either, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
+use gitarena_common::database::Database;
 use gitarena_macros::route;
-use sqlx::{Executor, PgPool, Pool, Postgres};
+use sqlx::{PgPool, Pool, Postgres, Transaction};
 
 #[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
 pub(crate) async fn info_refs(
@@ -30,7 +31,7 @@ pub(crate) async fn info_refs(
     let user_option: Option<(i32,)> =
         sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
             .bind(&uri.username)
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     let (user_id,) = match user_option {
@@ -43,7 +44,7 @@ pub(crate) async fn info_refs(
     )
     .bind(user_id)
     .bind(&uri.repository)
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
 
     match service {
@@ -64,15 +65,12 @@ pub(crate) async fn info_refs(
     }
 }
 
-async fn upload_pack_info_refs<'e, E>(
+async fn upload_pack_info_refs(
     repo_option: Option<Repository>,
     service: &str,
     request: &HttpRequest,
-    executor: E,
-) -> Result<HttpResponse>
-where
-    E: Executor<'e, Database = Postgres>,
-{
+    tx: &mut Transaction<'_, Database>,
+) -> Result<HttpResponse> {
     let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
     if git_protocol != "version=2" {
@@ -83,7 +81,7 @@ where
         repo_option,
         "application/x-git-upload-pack-advertisement",
         request,
-        executor,
+        tx,
     )
     .await?
     {

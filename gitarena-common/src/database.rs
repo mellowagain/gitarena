@@ -26,8 +26,8 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
 
     Ok(PoolOptions::new()
         .max_connections(max_conns.ok_or(()).or_else(|_| get_max_connections())?)
-        .connect_timeout(Duration::from_secs(10))
-        .after_connect(move |connection| {
+        .acquire_timeout(Duration::from_secs(10))
+        .after_connect(move |connection, _meta| {
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
                 let _ = connection

@@ -18,8 +18,9 @@ use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use git_repository::refs::file::loose::Reference;
 use git_repository::Repository as GitoxideRepository;
+use gitarena_common::database::Database;
 use serde::Serialize;
-use sqlx::{Executor, FromRow, PgPool, Postgres};
+use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
 
 #[derive(FromRow, Display, Debug, Serialize)]
@@ -44,16 +45,11 @@ pub(crate) struct Repository {
 }
 
 impl Repository {
-    pub(crate) async fn open<'e, E, I, S>(
-        user_id: I,
-        repo_name: S,
-        executor: E,
-    ) -> Option<Repository>
-    where
-        E: Executor<'e, Database = Postgres>,
-        I: Into<i32>,
-        S: AsRef<str>,
-    {
+    pub(crate) async fn open(
+        user_id: impl Into<i32>,
+        repo_name: impl AsRef<str>,
+        tx: &mut Transaction<'_, Database>,
+    ) -> Option<Repository> {
         let user_id = user_id.into();
         let repo_name = repo_name.as_ref();
 
@@ -62,7 +58,7 @@ impl Repository {
         )
         .bind(user_id)
         .bind(repo_name)
-        .fetch_optional(executor)
+        .fetch_optional(&mut **tx)
         .await
         .ok()
         .flatten();
@@ -70,39 +66,31 @@ impl Repository {
         repo
     }
 
-    pub(crate) async fn create_fs<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<()> {
+    pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head(self.default_branch.as_str());
         init_ops.bare(true);
 
-        Git2Repository::init_opts(self.get_fs_path(executor).await?, &init_ops)?;
+        Git2Repository::init_opts(self.get_fs_path(tx).await?, &init_ops)?;
 
         Ok(())
     }
 
-    pub(crate) async fn libgit2<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn libgit2(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Git2Repository> {
-        Ok(Git2Repository::open(self.get_fs_path(executor).await?)?)
+        Ok(Git2Repository::open(self.get_fs_path(tx).await?)?)
     }
 
-    pub(crate) async fn gitoxide<'e, E: Executor<'e, Database = Postgres>>(
+    pub(crate) async fn gitoxide(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<GitoxideRepository> {
-        Ok(GitoxideRepository::discover(
-            self.get_fs_path(executor).await?,
-        )?)
+        Ok(GitoxideRepository::discover(self.get_fs_path(tx).await?)?)
     }
 
-    pub(crate) async fn get_fs_path<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<String> {
+    pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
         // Instead of using `config::get_optional_setting`, we run our own query to get both username and repo base dir in one query
         // https://stackoverflow.com/a/16364390
         let (base_dir, username): (String, String) = sqlx::query_as(
@@ -112,17 +100,14 @@ impl Repository {
             (select username from users where id = $1 limit 1) B",
         )
         .bind(self.owner)
-        .fetch_one(executor)
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(format!("{}/{}/{}", base_dir, username, &self.name))
     }
 
-    pub(crate) async fn repo_size<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<u64> {
-        Ok(dir::get_size(self.get_fs_path(executor).await?)?)
+    pub(crate) async fn repo_size(&self, tx: &mut Transaction<'_, Database>) -> Result<u64> {
+        Ok(dir::get_size(self.get_fs_path(tx).await?)?)
     }
 }
 

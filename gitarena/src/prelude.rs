@@ -9,9 +9,10 @@ use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use git_repository::actor::{Sign, Signature as GitoxideSignature, Time as GitoxideTime};
+use gitarena_common::database::Database;
 use log::warn;
 use qstring::QString;
-use sqlx::{Executor, Postgres};
+use sqlx::Transaction;
 use tera::Context;
 
 pub(crate) trait HttpRequestExtensions {
@@ -162,21 +163,21 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// ```
     ///
     /// [signature]: git2::Signature
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(
+    async fn try_disassemble(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> (String, Option<i32>, String);
 }
 
 #[async_trait(?Send)]
 impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
-    async fn try_disassemble<'e, E: Executor<'e, Database = Postgres>>(
+    async fn try_disassemble(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> (String, Option<i32>, String) {
         let email = self.email().unwrap_or("Invalid email address");
 
-        User::find_using_email(email, executor).await.map_or_else(
+        User::find_using_email(email, tx).await.map_or_else(
             || {
                 (
                     self.name().unwrap_or("Ghost").to_owned(),

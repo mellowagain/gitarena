@@ -47,7 +47,7 @@ pub(crate) async fn git_upload_pack(
     let user_option: Option<(i32,)> =
         sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
             .bind(&uri.username)
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     let (user_id,) = match user_option {
@@ -60,7 +60,7 @@ pub(crate) async fn git_upload_pack(
     )
     .bind(user_id)
     .bind(&uri.repository)
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
 
     let (user, repo) = match basic_auth::validate_repo_access(

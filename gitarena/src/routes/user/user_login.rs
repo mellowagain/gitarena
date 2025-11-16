@@ -91,7 +91,7 @@ pub(crate) async fn post_login(
     let option: Option<User> =
         sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
             .bind(username)
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     if option.is_none() {

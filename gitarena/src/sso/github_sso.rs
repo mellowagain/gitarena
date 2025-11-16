@@ -10,11 +10,12 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use awc::Client;
+use gitarena_common::database::Database;
 use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{PgPool, Transaction};
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitHubSSO;
@@ -46,21 +47,17 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
 
 #[async_trait]
 impl DatabaseSSOProvider for GitHubSSO {
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<ClientId> {
-        let client_id = config::get_setting::<String, _>("sso.github.client_id", executor).await?;
+    async fn get_client_id(&self, tx: &mut Transaction<'_, Database>) -> Result<ClientId> {
+        let client_id: String = config::get_setting("sso.github.client_id", tx).await?;
 
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
+    async fn get_client_secret(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Option<ClientSecret>> {
-        let client_secret =
-            config::get_setting::<String, _>("sso.github.client_secret", executor).await?;
+        let client_secret: String = config::get_setting("sso.github.client_secret", tx).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
     }
@@ -145,7 +142,7 @@ impl SSOProvider for GitHubSSO {
         )
         .bind(username.as_str())
         .bind("sso-login")
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
         let github_id = profile_data
@@ -160,7 +157,7 @@ impl SSOProvider for GitHubSSO {
             .bind(user.id)
             .bind(&SSOProviderType::GitHub)
             .bind(github_id.as_str())
-            .execute(&mut transaction)
+            .execute(&mut *transaction)
             .await?;
 
         // TODO: Save avatar (profile data "avatar_url")
@@ -176,7 +173,7 @@ impl SSOProvider for GitHubSSO {
                 "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
             )
             .bind(email)
-            .fetch_one(&mut transaction)
+            .fetch_one(&mut *transaction)
             .await?;
 
             let primary = github_email.primary;
@@ -200,7 +197,7 @@ impl SSOProvider for GitHubSSO {
                 .bind(email)
                 .bind(primary)
                 .bind(public)
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await?;
         }
 

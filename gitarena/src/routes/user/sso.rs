@@ -79,7 +79,7 @@ pub(crate) async fn sso_callback(
     )
     .bind(&provider)
     .bind(provider_id.as_str())
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
 
     let user = match sso {
@@ -87,7 +87,7 @@ pub(crate) async fn sso_callback(
             // User link already exists -> Login user
             sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
                 .bind(sso.user_id)
-                .fetch_one(&mut transaction)
+                .fetch_one(&mut *transaction)
                 .await?
         }
         None => {

@@ -19,8 +19,7 @@ pub(crate) async fn import_repo(
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
-    let enabled =
-        get_setting::<bool, _>("repositories.importing_enabled", &mut transaction).await?;
+    let enabled: bool = get_setting("repositories.importing_enabled", &mut transaction).await?;
 
     if !enabled || !ipc.read().await.is_connected() {
         die!(NOT_IMPLEMENTED, "Importing is disabled on this instance");

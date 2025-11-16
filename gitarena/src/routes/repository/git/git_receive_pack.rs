@@ -52,7 +52,7 @@ pub(crate) async fn git_receive_pack(
     let user_option: Option<(i32,)> =
         sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
             .bind(&uri.username)
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     let (user_id,) = match user_option {
@@ -65,7 +65,7 @@ pub(crate) async fn git_receive_pack(
     )
     .bind(user_id)
     .bind(&uri.repository)
-    .fetch_optional(&mut transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
 
     let user = match basic_auth::login_flow(
@@ -220,7 +220,7 @@ pub(crate) async fn git_receive_pack(
     sqlx::query("update repositories set license = $1 where id = $2")
         .bind(&repo.license)
         .bind(repo.id)
-        .execute(&mut transaction)
+        .execute(&mut *transaction)
         .await?;
 
     transaction.commit().await?;

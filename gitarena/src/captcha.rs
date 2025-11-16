@@ -4,15 +4,16 @@ use crate::prelude::AwcExtensions;
 
 use anyhow::Result;
 use awc::Client;
+use gitarena_common::database::Database;
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Postgres};
+use sqlx::Transaction;
 
-pub(crate) async fn verify_captcha<'e, E: Executor<'e, Database = Postgres>>(
+pub(crate) async fn verify_captcha(
     token: &String,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<bool> {
-    let api_key = match get_optional_setting::<String, _>("hcaptcha.site_key", executor).await? {
+    let api_key = match get_optional_setting::<String>("hcaptcha.site_key", tx).await? {
         Some(api_key) => api_key,
         None => return Ok(true),
     };

@@ -16,10 +16,10 @@ pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool<Postgres>
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
         .bind(user.id)
         .bind(&hash)
-        .execute(&mut transaction)
+        .execute(&mut *transaction)
         .await?;
 
-    let domain = get_setting::<String, _>("domain", &mut transaction).await?;
+    let domain: String = get_setting("domain", &mut transaction).await?;
     let url = format!("{}/api/verify/{}", domain, hash);
 
     let template = &templates::VERIFY_EMAIL.get().unwrap_or_log();

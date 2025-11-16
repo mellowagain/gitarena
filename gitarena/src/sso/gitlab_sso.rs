@@ -12,11 +12,12 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use awc::http::header::{AUTHORIZATION, USER_AGENT};
 use awc::Client;
+use gitarena_common::database::Database;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{PgPool, Transaction};
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitLabSSO;
@@ -47,21 +48,17 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
 
 #[async_trait]
 impl DatabaseSSOProvider for GitLabSSO {
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<ClientId> {
-        let client_id = config::get_setting::<String, _>("sso.gitlab.app_id", executor).await?;
+    async fn get_client_id(&self, tx: &mut Transaction<'_, Database>) -> Result<ClientId> {
+        let client_id: String = config::get_setting("sso.gitlab.app_id", tx).await?;
 
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
+    async fn get_client_secret(
         &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Option<ClientSecret>> {
-        let client_secret =
-            config::get_setting::<String, _>("sso.gitlab.client_secret", executor).await?;
+        let client_secret: String = config::get_setting("sso.gitlab.client_secret", tx).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
     }
@@ -124,7 +121,7 @@ impl SSOProvider for GitLabSSO {
         )
         .bind(username.as_str())
         .bind("sso-login")
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
         let gitlab_id = profile_data
@@ -139,7 +136,7 @@ impl SSOProvider for GitLabSSO {
             .bind(user.id)
             .bind(&SSOProviderType::GitLab)
             .bind(gitlab_id.as_str())
-            .execute(&mut transaction)
+            .execute(&mut *transaction)
             .await?;
 
         // TODO: Save avatar (profile data "avatar_url")
@@ -160,7 +157,7 @@ impl SSOProvider for GitLabSSO {
                 "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
             )
             .bind(email)
-            .fetch_one(&mut transaction)
+            .fetch_one(&mut *transaction)
             .await?;
 
             if email_exists {
@@ -179,7 +176,7 @@ impl SSOProvider for GitLabSSO {
                 .bind(user.id)
                 .bind(email)
                 .bind(primary)
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await?;
 
             // TODO: Send verification emails to all listed email addresses

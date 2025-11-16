@@ -8,11 +8,12 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use actix_web::{web, HttpRequest, Responder};
 use anyhow::Result;
 use derive_more::Display;
+use gitarena_common::database::Database;
 use gitarena_macros::route;
 use qstring::QString;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::PgPool;
+use sqlx::{FromRow, Transaction};
 use tera::Context;
 
 #[route("/explore", method = "GET", err = "htmx+html")]
@@ -52,9 +53,9 @@ pub(crate) async fn explore(
     render_template!("explore.html", context, transaction)
 }
 
-async fn get_repositories<'e, E: Executor<'e, Database = Postgres>>(
+async fn get_repositories(
     options: &ExploreOptions<'_>,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<Vec<ExploreRepo>> {
     let query = format!("select repositories.id, \
         repositories.name, \
@@ -73,7 +74,7 @@ async fn get_repositories<'e, E: Executor<'e, Database = Postgres>>(
      {}", options);
 
     Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str())
-        .fetch_all(executor)
+        .fetch_all(&mut **tx)
         .await?)
 }
 

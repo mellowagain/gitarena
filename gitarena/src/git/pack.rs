@@ -12,22 +12,23 @@ use git_repository::odb::pack::data::input::Mode as PackIterationMode;
 use git_repository::odb::pack::index::Version as PackVersion;
 use git_repository::odb::pack::{Bundle, FindExt};
 use git_repository::progress;
-use sqlx::{Executor, Postgres};
+use gitarena_common::database::Database;
+use sqlx::Transaction;
 use tempfile::{Builder, TempDir};
 use tracing::instrument;
 
 /// Returns path to index file, pack file and temporary dir.
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
-#[instrument(err, skip(data, executor))]
-pub(crate) async fn read<'e, E: Executor<'e, Database = Postgres>>(
+#[instrument(err, skip(data, tx))]
+pub(crate) async fn read(
     data: &[u8],
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
-    match write_to_fs(data, &temp_dir, repo, executor).await {
+    match write_to_fs(data, &temp_dir, repo, tx).await {
         Ok((index_path, pack_path)) => Ok((Some(index_path), Some(pack_path), temp_dir)),
         Err(err) => match err.to_string().as_str() {
             // Gitoxide does not export the error enum so this is a whacky workaround
@@ -37,12 +38,12 @@ pub(crate) async fn read<'e, E: Executor<'e, Database = Postgres>>(
     }
 }
 
-#[instrument(err, skip(data, executor))]
-pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(
+#[instrument(err, skip(data, tx))]
+pub(crate) async fn write_to_fs(
     data: &[u8],
     temp_dir: &TempDir,
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<(PathBuf, PathBuf)> {
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),
@@ -51,7 +52,7 @@ pub(crate) async fn write_to_fs<'e, E: Executor<'e, Database = Postgres>>(
         object_hash: GIT_HASH_KIND,
     };
 
-    let repo = repo.gitoxide(executor).await?;
+    let repo = repo.gitoxide(tx).await?;
     let objects = Arc::new(repo.objects);
 
     let buf_reader = BufReader::new(data);

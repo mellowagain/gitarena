@@ -8,13 +8,14 @@ use crate::user::User;
 
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use gitarena_common::database::Database;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::url::Url;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl,
 };
 use qstring::QString;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{PgPool, Transaction};
 use tracing_unwrap::OptionExt;
 
 #[async_trait(?Send)]
@@ -168,22 +169,16 @@ pub(crate) trait SSOProvider {
 
 #[async_trait]
 pub(crate) trait DatabaseSSOProvider: SSOProvider {
-    async fn get_redirect_url<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
-    ) -> Result<RedirectUrl> {
-        let domain = config::get_setting::<String, _>("domain", executor).await?;
+    async fn get_redirect_url(&self, tx: &mut Transaction<'_, Database>) -> Result<RedirectUrl> {
+        let domain: String = config::get_setting("domain", tx).await?;
         let url = format!("{}/sso/{}/callback", domain, self.get_name());
 
         Ok(RedirectUrl::new(url)?)
     }
 
-    async fn get_client_id<'e, E: Executor<'e, Database = Postgres>>(
+    async fn get_client_id(&self, tx: &mut Transaction<'_, Database>) -> Result<ClientId>;
+    async fn get_client_secret(
         &self,
-        executor: E,
-    ) -> Result<ClientId>;
-    async fn get_client_secret<'e, E: Executor<'e, Database = Postgres>>(
-        &self,
-        executor: E,
+        tx: &mut Transaction<'_, Database>,
     ) -> Result<Option<ClientSecret>>;
 }

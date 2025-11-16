@@ -131,7 +131,7 @@ impl ToTokens for Setting {
         let key = &self.key;
 
         let stream = quote! {
-            let #ident = crate::config::get_setting::<#ty, _>(#key, &mut transaction).await?;
+            let #ident = crate::config::get_setting::<#ty>(#key, &mut transaction).await?;
         };
 
         tokens.extend(stream);
@@ -169,7 +169,7 @@ impl ToTokens for OptionalSetting {
         let key = &self.original.key;
 
         let stream = quote! {
-            let #ident = crate::config::get_optional_setting::<#ty, _>(#key, &mut transaction).await?;
+            let #ident = crate::config::get_optional_setting::<#ty>(#key, &mut transaction).await?;
         };
 
         tokens.extend(stream);

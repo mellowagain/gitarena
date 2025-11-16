@@ -39,7 +39,7 @@ pub(crate) async fn all_issues(
         .as_str(),
     )
     .bind(repo.id)
-    .fetch_all(&mut transaction)
+    .fetch_all(&mut *transaction)
     .await?;
 
     // This is really ugly and needs to be changed
@@ -50,7 +50,7 @@ pub(crate) async fn all_issues(
         let (username,): (String,) =
             sqlx::query_as("select username from users where id = $1 limit 1")
                 .bind(issue.author)
-                .fetch_one(&mut transaction)
+                .fetch_one(&mut *transaction)
                 .await?;
 
         usernames.insert(format!("u{}", issue.author), username);
@@ -62,7 +62,7 @@ pub(crate) async fn all_issues(
             let query = format!("select id, username from users where id in ({})", haystack);
 
             let db_usernames: Vec<(i32, String)> = sqlx::query_as(query.as_str())
-                .fetch_all(&mut transaction)
+                .fetch_all(&mut *transaction)
                 .await?;
 
             for (id, username) in db_usernames.into_iter() {

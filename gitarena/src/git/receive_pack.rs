@@ -23,7 +23,8 @@ use git_repository::odb::pack::{cache, FindExt};
 use git_repository::odb::Store;
 use git_repository::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use git_repository::refs::Target;
-use sqlx::{Executor, PgPool, Postgres};
+use gitarena_common::database::Database;
+use sqlx::{PgPool, Transaction};
 use tracing::instrument;
 
 #[instrument(err, skip(writer, store))]
@@ -152,17 +153,17 @@ pub(crate) async fn process_create_update(
     Ok(())
 }
 
-#[instrument(err, skip(writer))]
-pub(crate) async fn process_delete<'e, E: Executor<'e, Database = Postgres>>(
+#[instrument(err, skip(tx, writer))]
+pub(crate) async fn process_delete(
     ref_update: &RefUpdate,
     repo: &Repository,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
     writer: &mut GitWriter,
 ) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());
 
-    let gitoxide_repo = repo.gitoxide(executor).await?;
+    let gitoxide_repo = repo.gitoxide(tx).await?;
 
     let object_id = oid::from_hex_str(ref_update.old.as_deref())
         .map_err(|_| err!(NOT_FOUND, "Ref does not exist"))?;

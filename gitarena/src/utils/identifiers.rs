@@ -1,7 +1,8 @@
 use crate::die;
 
 use anyhow::Result;
-use sqlx::{Executor, Postgres};
+use gitarena_common::database::Database;
+use sqlx::Transaction;
 
 /// Checks if the character is a valid GitArena identifier.
 ///
@@ -87,15 +88,15 @@ pub(crate) fn validate_username(input: &str) -> Result<()> {
 ///
 /// assert!(!is_username_taken("mellowagain"));
 /// ```
-pub(crate) async fn is_username_taken<'e, E: Executor<'e, Database = Postgres>>(
+pub(crate) async fn is_username_taken(
     input: &str,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
 ) -> Result<bool> {
     let (username_exists,): (bool,) = sqlx::query_as(
         "select exists(select 1 from users where lower(username) = lower($1) limit 1)",
     )
     .bind(input)
-    .fetch_one(executor)
+    .fetch_one(&mut **tx)
     .await?;
 
     Ok(username_exists)

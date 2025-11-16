@@ -54,7 +54,7 @@ pub(crate) async fn create(
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(user.id)
         .bind(name)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     if exists {
@@ -66,7 +66,7 @@ pub(crate) async fn create(
         .bind(name)
         .bind(description)
         .bind(&body.visibility)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     repo.create_fs(&mut transaction).await?;
@@ -76,7 +76,7 @@ pub(crate) async fn create(
         create_readme(&repo, &user, &db_pool).await?;
     }
 
-    let domain = get_optional_setting::<String, _>("domain", &mut transaction)
+    let domain = get_optional_setting::<String>("domain", &mut transaction)
         .await?
         .unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);

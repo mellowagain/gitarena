@@ -7,24 +7,22 @@ use crate::{crypto, die, err};
 use actix_web::http::header::{CONTENT_TYPE, WWW_AUTHENTICATE};
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
-use sqlx::{Executor, Postgres};
+use gitarena_common::database::Database;
+use sqlx::Transaction;
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
-#[instrument(skip(request, executor), err)]
-pub(crate) async fn validate_repo_access<'e, E>(
+#[instrument(skip(request, tx), err)]
+pub(crate) async fn validate_repo_access(
     repo: Option<Repository>,
     content_type: &str,
     request: &HttpRequest,
-    executor: E,
-) -> Result<Either<(Option<User>, Repository), HttpResponse>>
-where
-    E: Executor<'e, Database = Postgres>,
-{
+    tx: &mut Transaction<'_, Database>,
+) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
     match repo {
         Some(repo) => {
             if repo.visibility != RepoVisibility::Public {
-                return match login_flow(request, executor, content_type).await? {
+                return match login_flow(request, tx, content_type).await? {
                     Either::Left(user) => Ok(Either::Left((Some(user), repo))),
                     Either::Right(response) => Ok(Either::Right(response)),
                 };
@@ -34,27 +32,24 @@ where
         }
         None => {
             // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
-            let _ = login_flow(request, executor, content_type).await?;
+            let _ = login_flow(request, tx, content_type).await?;
 
             die!(NOT_FOUND, "Repository not found");
         }
     }
 }
 
-#[instrument(skip(request, executor), err)]
-pub(crate) async fn login_flow<'e, E>(
+#[instrument(skip(request, tx), err)]
+pub(crate) async fn login_flow(
     request: &HttpRequest,
-    executor: E,
+    tx: &mut Transaction<'_, Database>,
     content_type: &str,
-) -> Result<Either<User, HttpResponse>>
-where
-    E: Executor<'e, Database = Postgres>,
-{
+) -> Result<Either<User, HttpResponse>> {
     if !is_present(request).await {
         return Ok(Either::Right(prompt(content_type).await));
     }
 
-    Ok(Either::Left(authenticate(request, executor).await?))
+    Ok(Either::Left(authenticate(request, tx).await?))
 }
 
 #[instrument]
@@ -69,10 +64,10 @@ pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
 }
 
 #[instrument(skip_all, err)]
-pub(crate) async fn authenticate<'e, E>(request: &HttpRequest, transaction: E) -> Result<User>
-where
-    E: Executor<'e, Database = Postgres>,
-{
+pub(crate) async fn authenticate(
+    request: &HttpRequest,
+    transaction: &mut Transaction<'_, Database>,
+) -> Result<User> {
     // TODO: Add more verbose logging to this function similar to frontend login (for usage by fail2ban)
 
     match request.get_header("authorization") {
@@ -86,7 +81,7 @@ where
             let option: Option<User> =
                 sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
                     .bind(&username)
-                    .fetch_optional(transaction)
+                    .fetch_optional(&mut **transaction)
                     .await?;
 
             if option.is_none() {

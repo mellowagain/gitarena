@@ -37,14 +37,14 @@ pub(crate) async fn dashboard(
     let mut transaction = db_pool.begin().await?;
 
     let (users_count,): (i64,) = sqlx::query_as("select count(*) from users")
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     context.try_insert("users_count", &users_count)?;
 
     let latest_user_option: Option<User> =
         sqlx::query_as::<_, User>("select * from users order by id desc limit 1")
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     if let Some(latest_user) = latest_user_option {
@@ -58,14 +58,14 @@ pub(crate) async fn dashboard(
     // Repos
 
     let (repos_count,): (i64,) = sqlx::query_as("select count(*) from repositories")
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     context.try_insert("repos_count", &repos_count)?;
 
     let latest_repo_option: Option<Repository> =
         sqlx::query_as::<_, Repository>("select * from repositories order by id desc limit 1")
-            .fetch_optional(&mut transaction)
+            .fetch_optional(&mut *transaction)
             .await?;
 
     if let Some(latest_repo) = latest_repo_option {
@@ -74,7 +74,7 @@ pub(crate) async fn dashboard(
         let (latest_repo_username_option,): (String,) =
             sqlx::query_as("select username from users where id = $1 limit 1")
                 .bind(latest_repo.owner)
-                .fetch_one(&mut transaction)
+                .fetch_one(&mut *transaction)
                 .await?;
 
         context.try_insert("latest_repo_username", &latest_repo_username_option)?;
@@ -84,7 +84,7 @@ pub(crate) async fn dashboard(
     context.try_insert("rustc_version", env!("VERGEN_RUSTC_SEMVER"))?;
 
     let (postgres_version,): (String,) = sqlx::query_as("show server_version")
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     context.try_insert("postgres_version", postgres_version.as_str())?;

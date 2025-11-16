@@ -30,8 +30,7 @@ pub(crate) async fn import(
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
-    let enabled =
-        get_setting::<bool, _>("repositories.importing_enabled", &mut transaction).await?;
+    let enabled: bool = get_setting("repositories.importing_enabled", &mut transaction).await?;
 
     if !enabled || !ipc.read().await.is_connected() {
         die!(NOT_IMPLEMENTED, "Importing is disabled on this instance");
@@ -70,7 +69,7 @@ pub(crate) async fn import(
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(user.id)
         .bind(name)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     if exists {
@@ -82,7 +81,7 @@ pub(crate) async fn import(
         .bind(name)
         .bind(description)
         .bind(&body.visibility)
-        .fetch_one(&mut transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     repo.create_fs(&mut transaction).await?;
@@ -101,7 +100,7 @@ pub(crate) async fn import(
         .await
         .context("Failed to send import packet to workhorse")?;
 
-    let domain = get_optional_setting::<String, _>("domain", &mut transaction)
+    let domain: String = get_optional_setting("domain", &mut transaction)
         .await?
         .unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
