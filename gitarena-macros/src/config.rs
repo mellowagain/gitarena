@@ -52,12 +52,7 @@ impl SettingsList {
 
     fn as_optional(&self) -> OptionalSettingsList {
         OptionalSettingsList {
-            settings: self
-                .settings
-                .iter()
-                .cloned()
-                .map(|s| s.as_optional())
-                .collect(),
+            settings: self.settings.iter().cloned().map(|s| s.as_optional()).collect(),
         }
     }
 }
@@ -93,18 +88,13 @@ struct Setting {
 
 impl Debug for Setting {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Setting")
-            .field("identifier", &self.identifier)
-            .field("key", &self.key)
-            .finish()
+        f.debug_struct("Setting").field("identifier", &self.identifier).field("key", &self.key).finish()
     }
 }
 
 impl Setting {
     fn as_optional(&self) -> OptionalSetting {
-        OptionalSetting {
-            original: self.clone(),
-        }
+        OptionalSetting { original: self.clone() }
     }
 }
 

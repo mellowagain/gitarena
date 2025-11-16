@@ -18,12 +18,7 @@ use sqlx::{PgPool, Pool, Postgres};
 // This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
 
 #[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(
-    web_user: WebUser,
-    body: web::Json<CreateJsonRequest>,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let user = web_user.into_user()?;
@@ -31,7 +26,10 @@ pub(crate) async fn create(
     let name = &body.name;
 
     if name.is_empty() || name.len() > 32 || !name.chars().all(|c| is_valid(&c)) {
-        die!(BAD_REQUEST, "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -");
+        die!(
+            BAD_REQUEST,
+            "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -"
+        );
     }
 
     if is_reserved_repo_name(name.as_str()) {
@@ -45,10 +43,7 @@ pub(crate) async fn create(
     let description = &body.description;
 
     if description.len() > 256 {
-        die!(
-            BAD_REQUEST,
-            "Description may only be up to 256 characters long"
-        );
+        die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
@@ -61,13 +56,14 @@ pub(crate) async fn create(
         die!(CONFLICT, "Repository name already in use for your account");
     }
 
-    let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
-        .bind(user.id)
-        .bind(name)
-        .bind(description)
-        .bind(&body.visibility)
-        .fetch_one(&mut *transaction)
-        .await?;
+    let repo: Repository =
+        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
+            .bind(user.id)
+            .bind(name)
+            .bind(description)
+            .bind(&body.visibility)
+            .fetch_one(&mut *transaction)
+            .await?;
 
     repo.create_fs(&mut transaction).await?;
 
@@ -76,17 +72,12 @@ pub(crate) async fn create(
         create_readme(&repo, &user, &db_pool).await?;
     }
 
-    let domain = get_optional_setting::<String>("domain", &mut transaction)
-        .await?
-        .unwrap_or_default();
+    let domain = get_optional_setting::<String>("domain", &mut transaction).await?.unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
 
     transaction.commit().await?;
 
-    info!(
-        "New repository created: {}/{} (id {})",
-        &user.username, &repo.name, &repo.id
-    );
+    info!("New repository created: {}/{} (id {})", &user.username, &repo.name, &repo.id);
 
     Ok(if request.is_htmx() {
         HttpResponse::Ok()
@@ -103,23 +94,11 @@ pub(crate) async fn create(
 async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool<Postgres>) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
-    let readme = format!(
-        "# {}\n\n{}\n",
-        repo.name.as_str(),
-        repo.description.as_str()
-    );
+    let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());
 
     transaction.commit().await?;
 
-    write::write_file(
-        &libgit2_repo,
-        user,
-        Some("HEAD"),
-        "README.md",
-        readme.as_bytes(),
-        db_pool,
-    )
-    .await
+    write::write_file(&libgit2_repo, user, Some("HEAD"), "README.md", readme.as_bytes(), db_pool).await
 }
 
 #[derive(Deserialize)]

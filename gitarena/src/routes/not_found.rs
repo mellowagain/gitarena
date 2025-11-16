@@ -22,40 +22,25 @@ async fn api_not_found() -> Result<HttpResponse> {
     })))
 }
 
-async fn web_not_found(
-    request: HttpRequest,
-    web_user: WebUser,
-    db_pool: web::Data<PgPool>,
-) -> Result<HttpResponse> {
+async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<HttpResponse> {
     let mut transaction = db_pool.begin().await?;
     let mut context = Context::new();
 
     context.insert_web_user(&web_user)?;
     context.try_insert("path", request.path())?;
 
-    render_template!(
-        StatusCode::NOT_FOUND,
-        "error/404.html",
-        context,
-        transaction
-    )
+    render_template!(StatusCode::NOT_FOUND, "error/404.html", context, transaction)
 }
 
 #[instrument(skip_all)]
-pub(crate) async fn default_handler(
-    request: HttpRequest,
-    web_user: WebUser,
-    db_pool: web::Data<PgPool>,
-) -> ActixResult<impl Responder> {
+pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_pool: web::Data<PgPool>) -> ActixResult<impl Responder> {
     debug!("Got request for non-existent resource: {}", request.path());
 
     Ok(if !request.path().starts_with("/api") {
-        web_not_found(request, web_user, db_pool)
-            .await
-            .map_err(|err| GitArenaError {
-                source: Arc::new(err),
-                display_type: ErrorDisplayType::Html,
-            })
+        web_not_found(request, web_user, db_pool).await.map_err(|err| GitArenaError {
+            source: Arc::new(err),
+            display_type: ErrorDisplayType::Html,
+        })
     } else {
         api_not_found().await.map_err(|err| GitArenaError {
             source: Arc::new(err),

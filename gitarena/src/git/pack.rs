@@ -21,11 +21,7 @@ use tracing::instrument;
 /// Ensure that the third tuple argument, the temporary dir, is alive for the whole duration of your usage.
 /// It being dropped results in the index and pack file to be deleted and thus the paths becoming invalid
 #[instrument(err, skip(data, tx))]
-pub(crate) async fn read(
-    data: &[u8],
-    repo: &Repository,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
+pub(crate) async fn read(data: &[u8], repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<(Option<PathBuf>, Option<PathBuf>, TempDir)> {
     let temp_dir = Builder::new().prefix("gitarena_").tempdir()?;
 
     match write_to_fs(data, &temp_dir, repo, tx).await {
@@ -39,12 +35,7 @@ pub(crate) async fn read(
 }
 
 #[instrument(err, skip(data, tx))]
-pub(crate) async fn write_to_fs(
-    data: &[u8],
-    temp_dir: &TempDir,
-    repo: &Repository,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<(PathBuf, PathBuf)> {
+pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir, repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<(PathBuf, PathBuf)> {
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),
         iteration_mode: PackIterationMode::Verify,
@@ -62,22 +53,12 @@ pub(crate) async fn write_to_fs(
         Some(&temp_dir),
         progress::Discard,
         &AtomicBool::new(false), // The Actix runtime (+ tokio) handles timeouts for us
-        Some(Box::new(move |oid, buffer| {
-            objects
-                .to_cache_arc()
-                .find(oid, buffer)
-                .ok()
-                .map(|(data, _)| data)
-        })),
+        Some(Box::new(move |oid, buffer| objects.to_cache_arc().find(oid, buffer).ok().map(|(data, _)| data))),
         options,
     )?;
 
-    let index_path = bundle
-        .index_path
-        .ok_or_else(|| anyhow!("Failed to unpack index file"))?;
-    let data_path = bundle
-        .data_path
-        .ok_or_else(|| anyhow!("Failed to unpack data file"))?;
+    let index_path = bundle.index_path.ok_or_else(|| anyhow!("Failed to unpack index file"))?;
+    let data_path = bundle.data_path.ok_or_else(|| anyhow!("Failed to unpack data file"))?;
 
     Ok((index_path, data_path))
 }

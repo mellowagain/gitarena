@@ -11,11 +11,7 @@ use log::debug;
 use sqlx::PgPool;
 
 #[route("/logout", method = "POST", err = "htmx+html")]
-pub(crate) async fn logout(
-    request: HttpRequest,
-    id: Identity,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?
         die!(UNAUTHORIZED, "Already logged out");
@@ -23,11 +19,7 @@ pub(crate) async fn logout(
 
     let mut transaction = db_pool.begin().await?;
 
-    if let Some(session) = Session::from_identity(id.identity(), &mut transaction)
-        .await
-        .ok()
-        .flatten()
-    {
+    if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await.ok().flatten() {
         debug!("Destroying a session for user id {}", &session.user_id);
 
         session.destroy(&mut transaction).await?;
@@ -43,8 +35,6 @@ pub(crate) async fn logout(
             .append_header(("hx-refresh", "true"))
             .finish()
     } else {
-        HttpResponse::Found()
-            .append_header((LOCATION, "/"))
-            .finish()
+        HttpResponse::Found().append_header((LOCATION, "/")).finish()
     })
 }

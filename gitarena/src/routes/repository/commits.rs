@@ -12,18 +12,8 @@ use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
 
-#[route(
-    "/{username}/{repository}/tree/{tree:.*}/commits",
-    method = "GET",
-    err = "htmx+html"
-)]
-pub(crate) async fn commits(
-    repo: Repository,
-    branch: Branch,
-    web_user: WebUser,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+#[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET", err = "htmx+html")]
+pub(crate) async fn commits(repo: Repository, branch: Branch, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let full_tree_name = branch.reference.name.as_bstr().to_str()?;
@@ -35,9 +25,7 @@ pub(crate) async fn commits(
     let mut context = Context::new();
 
     let extensions = request.extensions();
-    let repo_owner = extensions
-        .get::<RepoOwner>()
-        .ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
     context.try_insert("repo_owner_name", &repo_owner.0)?;
 
     context.try_insert("repo", &repo)?;

@@ -73,11 +73,9 @@ pub(crate) async fn process_create_update(
 
                             Some(ResolvedBase::InPack(entry))
                         } else {
-                            store.to_cache_arc().find(oid, vec).ok().map(|(data, _)| {
-                                ResolvedBase::OutOfPack {
-                                    kind: data.kind,
-                                    end: data.data.len(),
-                                }
+                            store.to_cache_arc().find(oid, vec).ok().map(|(data, _)| ResolvedBase::OutOfPack {
+                                kind: data.kind,
+                                end: data.data.len(),
                             })
                         }
                     },
@@ -92,10 +90,7 @@ pub(crate) async fn process_create_update(
             _ => {
                 // This is a force push to an existing repository
                 // TODO: Handle non existing refs as client errors instead of server errors
-                store
-                    .to_cache_arc()
-                    .find_commit(new_oid.as_ref(), &mut buffer)
-                    .map(|(data, _)| data)?
+                store.to_cache_arc().find_commit(new_oid.as_ref(), &mut buffer).map(|(data, _)| data)?
             }
         };
 
@@ -145,28 +140,20 @@ pub(crate) async fn process_create_update(
     }
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        writer
-            .write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref))
-            .await?;
+        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(())
 }
 
 #[instrument(err, skip(tx, writer))]
-pub(crate) async fn process_delete(
-    ref_update: &RefUpdate,
-    repo: &Repository,
-    tx: &mut Transaction<'_, Database>,
-    writer: &mut GitWriter,
-) -> Result<()> {
+pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx: &mut Transaction<'_, Database>, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());
 
     let gitoxide_repo = repo.gitoxide(tx).await?;
 
-    let object_id = oid::from_hex_str(ref_update.old.as_deref())
-        .map_err(|_| err!(NOT_FOUND, "Ref does not exist"))?;
+    let object_id = oid::from_hex_str(ref_update.old.as_deref()).map_err(|_| err!(NOT_FOUND, "Ref does not exist"))?;
 
     let edits = vec![RefEdit {
         change: Change::Delete {
@@ -181,19 +168,11 @@ pub(crate) async fn process_delete(
         .refs
         .transaction()
         .prepare(edits, Fail::Immediately)
-        .map_err(|err| {
-            err!(
-                INTERNAL_SERVER_ERROR,
-                "Failed to commit transaction: {}",
-                err
-            )
-        })?
+        .map_err(|err| err!(INTERNAL_SERVER_ERROR, "Failed to commit transaction: {}", err))?
         .commit(&Signature::gitarena_default())?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        writer
-            .write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref))
-            .await?;
+        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(())

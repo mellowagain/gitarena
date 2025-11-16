@@ -33,31 +33,23 @@ pub(crate) struct User {
 }
 
 impl User {
-    pub(crate) async fn find_using_name<S>(
-        name: S,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Option<User>
+    pub(crate) async fn find_using_name<S>(name: S, tx: &mut Transaction<'_, Database>) -> Option<User>
     where
         S: AsRef<str>,
     {
         let username = name.as_ref();
 
-        let user = sqlx::query_as::<_, User>(
-            "select * from users where lower(username) = lower($1) limit 1",
-        )
-        .bind(username)
-        .fetch_optional(&mut **tx)
-        .await
-        .ok()
-        .flatten();
+        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1) limit 1")
+            .bind(username)
+            .fetch_optional(&mut **tx)
+            .await
+            .ok()
+            .flatten();
 
         user
     }
 
-    pub(crate) async fn find_using_email(
-        email: impl AsRef<str>,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Option<User> {
+    pub(crate) async fn find_using_email(email: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<User> {
         let email = email.as_ref();
 
         let user = sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
@@ -112,12 +104,10 @@ impl FromRequest for User {
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
-                    extract_user_from_request(db_pool, username.as_str())
-                        .await
-                        .map_err(|err| GitArenaError {
-                            source: Arc::new(err),
-                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
-                        })
+                    extract_user_from_request(db_pool, username.as_str()).await.map_err(|err| GitArenaError {
+                        source: Arc::new(err),
+                        display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                    })
                 })
             }
             None => Box::pin(async {
@@ -207,9 +197,7 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
     ip_network: IpNetwork,
     user_agent: String,
 ) -> Result<WebUser> {
-    let id = id_future
-        .await
-        .map_err(|_| anyhow!("Failed to build identity"))?;
+    let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
 
     match id.identity() {
         Some(identity) => {
@@ -217,15 +205,12 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
 
             let result = match Session::from_identity(Some(identity), &mut transaction).await? {
                 Some(session) => {
-                    session
-                        .update_explicit(&ip_network, user_agent.as_str(), &mut transaction)
-                        .await?;
+                    session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
 
-                    let user: Option<User> =
-                        sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                            .bind(session.user_id)
-                            .fetch_optional(&mut *transaction)
-                            .await?;
+                    let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
+                        .bind(session.user_id)
+                        .fetch_optional(&mut *transaction)
+                        .await?;
 
                     user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
                 }

@@ -21,10 +21,7 @@ use tracing_unwrap::OptionExt;
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
-pub(crate) async fn get_optional_setting<T>(
-    key: &'static str,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<Option<T>>
+pub(crate) async fn get_optional_setting<T>(key: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<T>>
 where
     T: TryFrom<Setting> + Send,
     <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
@@ -36,9 +33,7 @@ where
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
     if setting.is_set() {
-        let result: T = setting
-            .try_into()
-            .map_err(|err: T::Error| err.into_inner())?;
+        let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
         Ok(Some(result))
     } else {
         Ok(None)
@@ -52,10 +47,7 @@ where
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
-pub(crate) async fn get_setting<T>(
-    key: &'static str,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<T>
+pub(crate) async fn get_setting<T>(key: &'static str, tx: &mut Transaction<'_, Database>) -> Result<T>
 where
     T: TryFrom<Setting> + Send,
     <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
@@ -66,18 +58,12 @@ where
         .await
         .with_context(|| format!("Unable to read setting {} from database", key))?;
 
-    let result: T = setting
-        .try_into()
-        .map_err(|err: T::Error| err.into_inner())?;
+    let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
     Ok(result)
 }
 
 pub(crate) async fn get_all_settings(tx: &mut Transaction<'_, Database>) -> Result<Vec<Setting>> {
-    Ok(
-        sqlx::query_as::<_, Setting>("select * from settings order by key")
-            .fetch_all(&mut **tx)
-            .await?,
-    )
+    Ok(sqlx::query_as::<_, Setting>("select * from settings order by key").fetch_all(&mut **tx).await?)
 }
 
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
@@ -138,14 +124,31 @@ macro_rules! generate_try_from {
             fn try_from(setting: Setting) -> StdResult<$type_, Self::Error> {
                 (|| match setting.type_constraint {
                     TypeConstraint::$type_constraint => {
-                        let str = setting.value.as_ref().ok_or_else(|| anyhow!("Value for {} setting `{}` is not set", stringify!($type_constraint), setting))?;
-                        <$type_>::from_str(str).map_err(|err| anyhow!("Expected valid value for {} on setting `{}` but instead received `{:?}`: {}", stringify!($type_constraint), setting.key.as_str(), setting.value, err))
-                    },
-                    _ => bail!("Tried to cast setting `{}` into {} despite it being {}", setting.key.as_str(), stringify!($type_constraint), setting.type_constraint)
-                })().map_err(|err| ErrorHolder(err))
+                        let str = setting
+                            .value
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("Value for {} setting `{}` is not set", stringify!($type_constraint), setting))?;
+                        <$type_>::from_str(str).map_err(|err| {
+                            anyhow!(
+                                "Expected valid value for {} on setting `{}` but instead received `{:?}`: {}",
+                                stringify!($type_constraint),
+                                setting.key.as_str(),
+                                setting.value,
+                                err
+                            )
+                        })
+                    }
+                    _ => bail!(
+                        "Tried to cast setting `{}` into {} despite it being {}",
+                        setting.key.as_str(),
+                        stringify!($type_constraint),
+                        setting.type_constraint
+                    ),
+                })()
+                .map_err(|err| ErrorHolder(err))
             }
         }
-    }
+    };
 }
 
 impl TryFrom<Setting> for bool {
@@ -154,16 +157,27 @@ impl TryFrom<Setting> for bool {
     fn try_from(setting: Setting) -> StdResult<bool, Self::Error> {
         (|| match setting.type_constraint {
             TypeConstraint::Boolean => {
-                let str = setting.value.ok_or_else(|| anyhow!("Value for Boolean setting `{}` is not set", setting.key.as_str()))?;
+                let str = setting
+                    .value
+                    .ok_or_else(|| anyhow!("Value for Boolean setting `{}` is not set", setting.key.as_str()))?;
 
                 match str.to_lowercase().as_str() {
                     "1" | "true" => Ok(true),
                     "0" | "false" => Ok(false),
-                    _ => bail!("Expected valid value for boolean on setting `{}` but instead received `{}`", setting.key.as_str(), str.as_str())
+                    _ => bail!(
+                        "Expected valid value for boolean on setting `{}` but instead received `{}`",
+                        setting.key.as_str(),
+                        str.as_str()
+                    ),
                 }
             }
-            _ => bail!("Tried to cast setting `{}` into boolean despite it being {}", setting.key.as_str(), setting.type_constraint)
-        })().map_err(ErrorHolder)
+            _ => bail!(
+                "Tried to cast setting `{}` into boolean despite it being {}",
+                setting.key.as_str(),
+                setting.type_constraint
+            ),
+        })()
+        .map_err(ErrorHolder)
     }
 }
 
@@ -172,12 +186,9 @@ impl TryFrom<Setting> for String {
 
     fn try_from(setting: Setting) -> StdResult<Self, Self::Error> {
         (|| match setting.type_constraint {
-            TypeConstraint::String => Ok(setting.value.ok_or_else(|| {
-                anyhow!(
-                    "Value for String setting `{}` is not set",
-                    setting.key.as_str()
-                )
-            })?),
+            TypeConstraint::String => Ok(setting
+                .value
+                .ok_or_else(|| anyhow!("Value for String setting `{}` is not set", setting.key.as_str()))?),
             _ => bail!(
                 "Tried to cast setting `{}` into string despite it being {}",
                 setting.key.as_str(),

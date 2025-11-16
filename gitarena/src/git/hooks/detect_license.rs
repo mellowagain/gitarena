@@ -13,11 +13,7 @@ use git_repository::odb::Store;
 use tracing::instrument;
 
 #[instrument(err, skip(store))]
-pub(crate) async fn detect_license(
-    store: Arc<Store>,
-    gitoxide_repo: &git_repository::Repository,
-    repo: &mut Repository,
-) -> Result<()> {
+pub(crate) async fn detect_license(store: Arc<Store>, gitoxide_repo: &git_repository::Repository, repo: &mut Repository) -> Result<()> {
     let mut buffer = Vec::<u8>::new();
 
     let tree = repo_files_at_head(store.clone(), gitoxide_repo, &mut buffer).await?;

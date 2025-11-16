@@ -75,15 +75,13 @@ impl Broadcaster {
         self.clients.retain(|(client, category)| {
             // This will fail if the buffer is full or the client is disconnected
             // If the buffer is full the client has not recv'd for a while which means it probably disconnected
-            client
-                .try_send(Bytes::from("event: ping\ndata: pong!\n\n"))
-                .map_or_else(
-                    |err| {
-                        debug!("Disconnecting a client subscribed to {}: {}", category, err);
-                        false
-                    },
-                    |_| true,
-                )
+            client.try_send(Bytes::from("event: ping\ndata: pong!\n\n")).map_or_else(
+                |err| {
+                    debug!("Disconnecting a client subscribed to {}: {}", category, err);
+                    false
+                },
+                |_| true,
+            )
         });
     }
 

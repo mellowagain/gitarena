@@ -8,9 +8,7 @@ use awc::http::header::USER_AGENT;
 use awc::ClientBuilder;
 use oauth2::{HttpRequest, HttpResponse};
 
-pub(crate) async fn async_http_client(
-    request: HttpRequest,
-) -> Result<HttpResponse, WithStatusCode> {
+pub(crate) async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, WithStatusCode> {
     let client = ClientBuilder::new()
         .disable_redirects() // Following redirects opens the client up to SSRF vulnerabilities
         .add_default_header((USER_AGENT, USER_AGENT_STR))

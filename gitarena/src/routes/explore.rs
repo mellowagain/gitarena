@@ -17,16 +17,11 @@ use sqlx::{FromRow, Transaction};
 use tera::Context;
 
 #[route("/explore", method = "GET", err = "htmx+html")]
-pub(crate) async fn explore(
-    web_user: WebUser,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let sorting = query_string.get("sort").unwrap_or("stars_desc");
-    let (sort_method, order) =
-        Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
+    let (sort_method, order) = Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
     let htmx_request = request.is_htmx();
     let options = ExploreOptions::parse(&query_string, &web_user, sort_method, order, htmx_request);
 
@@ -35,15 +30,9 @@ pub(crate) async fn explore(
 
     context.insert_web_user(&web_user)?;
 
-    context.try_insert(
-        "repositories",
-        &get_repositories(&options, &mut transaction).await?,
-    )?;
+    context.try_insert("repositories", &get_repositories(&options, &mut transaction).await?)?;
     context.try_insert("options", &options)?;
-    context.try_insert(
-        "query_string",
-        query_string_without_offset(&query_string).as_str(),
-    )?;
+    context.try_insert("query_string", query_string_without_offset(&query_string).as_str())?;
 
     // Only send a partial result (only the component) if it's a request by htmx
     if options.htmx_request {
@@ -53,11 +42,9 @@ pub(crate) async fn explore(
     render_template!("explore.html", context, transaction)
 }
 
-async fn get_repositories(
-    options: &ExploreOptions<'_>,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<Vec<ExploreRepo>> {
-    let query = format!("select repositories.id, \
+async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_, Database>) -> Result<Vec<ExploreRepo>> {
+    let query = format!(
+        "select repositories.id, \
         repositories.name, \
         repositories.description, \
         repositories.owner as owner_id, \
@@ -71,11 +58,11 @@ async fn get_repositories(
         left join stars on repositories.id = stars.repo \
         left join users on repositories.owner = users.id \
         left join issues on repositories.id = issues.repo \
-     {}", options);
+     {}",
+        options
+    );
 
-    Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str())
-        .fetch_all(&mut **tx)
-        .await?)
+    Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str()).fetch_all(&mut **tx).await?)
 }
 
 #[derive(FromRow, Serialize, Deserialize, Debug)]
@@ -108,34 +95,18 @@ struct ExploreOptions<'a> {
 }
 
 impl ExploreOptions<'_> {
-    fn parse<'a>(
-        query_string: &'a QString,
-        web_user: &WebUser,
-        sort: &'a str,
-        order: Order,
-        htmx_request: bool,
-    ) -> ExploreOptions<'a> {
-        let (internal, disabled) = web_user
-            .as_ref()
-            .map_or_else(|| (false, false), |user| (true, user.admin));
+    fn parse<'a>(query_string: &'a QString, web_user: &WebUser, sort: &'a str, order: Order, htmx_request: bool) -> ExploreOptions<'a> {
+        let (internal, disabled) = web_user.as_ref().map_or_else(|| (false, false), |user| (true, user.admin));
 
         ExploreOptions {
-            archived: query_string
-                .get("archived")
-                .map_or_else(|| true, |value| value == "1"),
-            forked: query_string
-                .get("fork")
-                .map_or_else(|| true, |value| value == "1"),
-            mirrored: query_string
-                .get("mirror")
-                .map_or_else(|| true, |value| value == "1"),
+            archived: query_string.get("archived").map_or_else(|| true, |value| value == "1"),
+            forked: query_string.get("fork").map_or_else(|| true, |value| value == "1"),
+            mirrored: query_string.get("mirror").map_or_else(|| true, |value| value == "1"),
             internal,
             disabled,
             sort,
             order,
-            offset: query_string
-                .get("offset")
-                .map_or_else(|| 0, |value| value.parse::<u32>().unwrap_or(0)),
+            offset: query_string.get("offset").map_or_else(|| 0, |value| value.parse::<u32>().unwrap_or(0)),
             htmx_request,
         }
     }
@@ -167,9 +138,7 @@ impl Display for ExploreOptions<'_> {
 
         // Private repositories are hidden in the public explore page
         // TODO: Display them if the logged in user has permission to view them
-        f.write_str(
-            "repositories.visibility != 'private' group by repositories.id, users.id order by ",
-        )?;
+        f.write_str("repositories.visibility != 'private' group by repositories.id, users.id order by ")?;
 
         match self.sort {
             "stars" => write!(f, "stars {}, id ", self.order)?,

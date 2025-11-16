@@ -17,21 +17,12 @@ pub(crate) struct Privilege {
 
 macro_rules! generate_check {
     ($name:ident, $target:ident) => {
-        pub(crate) async fn $name(
-            repo: &Repository,
-            user: Option<&User>,
-            tx: &mut Transaction<'_, Database>,
-        ) -> Result<bool> {
+        pub(crate) async fn $name(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<bool> {
             Ok(if let Some(user) = user {
                 if &user.id != &repo.owner && !user.admin {
                     get_repo_privilege(repo, user, tx)
                         .await
-                        .with_context(|| {
-                            format!(
-                                "Unable to get repo privileges for user {} in repo {}",
-                                &user.id, &repo.id
-                            )
-                        })?
+                        .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
                         .map_or_else(|| false, |privilege| privilege.access_level.$target())
                 } else {
                     true
@@ -43,11 +34,7 @@ macro_rules! generate_check {
     };
 }
 
-pub(crate) async fn check_access(
-    repo: &Repository,
-    user: Option<&User>,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<bool> {
+pub(crate) async fn check_access(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<bool> {
     if repo.disabled {
         return Ok(user.map_or_else(|| false, |user| user.admin));
     }
@@ -58,12 +45,7 @@ pub(crate) async fn check_access(
                 if user.id != repo.owner && !user.admin {
                     get_repo_privilege(repo, user, tx)
                         .await
-                        .with_context(|| {
-                            format!(
-                                "Unable to get repo privileges for user {} in repo {}",
-                                &user.id, &repo.id
-                            )
-                        })?
+                        .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
                         .map_or_else(|| false, |privilege| privilege.access_level.can_view())
                 } else {
                     true
@@ -81,16 +63,12 @@ generate_check!(check_manage_issues, can_manage_issues);
 generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
 
-async fn get_repo_privilege(
-    repo: &Repository,
-    user: &User,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<Option<Privilege>> {
-    Ok(sqlx::query_as::<_, Privilege>(
-        "select * from privileges where user_id = $1 and repo_id = $2 limit 1",
+async fn get_repo_privilege(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Option<Privilege>> {
+    Ok(
+        sqlx::query_as::<_, Privilege>("select * from privileges where user_id = $1 and repo_id = $2 limit 1")
+            .bind(user.id)
+            .bind(repo.id)
+            .fetch_optional(&mut **tx)
+            .await?,
     )
-    .bind(user.id)
-    .bind(repo.id)
-    .fetch_optional(&mut **tx)
-    .await?)
 }

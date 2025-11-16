@@ -9,14 +9,7 @@ use gitarena_macros::route;
 use log::debug;
 use serde::Deserialize;
 
-const PASSTHROUGH_HEADERS: [&str; 6] = [
-    "cache-control",
-    "content-encoding",
-    "etag",
-    "expires",
-    "last-modified",
-    "transfer-encoding",
-];
+const PASSTHROUGH_HEADERS: [&str; 6] = ["cache-control", "content-encoding", "etag", "expires", "last-modified", "transfer-encoding"];
 
 // Source: https://github.com/atmos/camo/blob/master/mime-types.json
 const ACCEPTED_MIME_TYPES: [&str; 43] = [
@@ -66,10 +59,7 @@ const ACCEPTED_MIME_TYPES: [&str; 43] = [
 ];
 
 #[route("/api/proxy/{url}", method = "GET", err = "text")]
-pub(crate) async fn proxy(
-    uri: web::Path<ProxyRequest>,
-    request: HttpRequest,
-) -> Result<impl Responder> {
+pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) -> Result<impl Responder> {
     let url = &uri.url;
 
     if url.is_empty() {

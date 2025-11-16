@@ -27,9 +27,7 @@ impl ProgressWriter {
     }
 
     #[instrument]
-    pub(crate) fn pack_builder_callback(
-        &mut self,
-    ) -> impl FnMut(PackBuilderStage, u32, u32) -> bool + '_ {
+    pub(crate) fn pack_builder_callback(&mut self) -> impl FnMut(PackBuilderStage, u32, u32) -> bool + '_ {
         let rc = Rc::new(RefCell::new(self));
 
         move |stage: PackBuilderStage, current: u32, total: u32| -> bool {
@@ -41,10 +39,9 @@ impl ProgressWriter {
             match stage {
                 PackBuilderStage::AddingObjects => {
                     let ref_cell = &mut rc.borrow_mut();
-                    ref_cell.lines.push(format!(
-                        "Counting objects: {:>3}% ({}/{}){}",
-                        percentage, current, total, ending
-                    ));
+                    ref_cell
+                        .lines
+                        .push(format!("Counting objects: {:>3}% ({}/{}){}", percentage, current, total, ending));
                 }
                 PackBuilderStage::Deltafication => {
                     let ref_cell = &mut rc.borrow_mut();
@@ -53,10 +50,9 @@ impl ProgressWriter {
                         ref_cell.delta_total = Some(total);
                     }
 
-                    ref_cell.lines.push(format!(
-                        "Compressing objects: {:>3}% ({}/{}){}",
-                        percentage, current, total, ending
-                    ));
+                    ref_cell
+                        .lines
+                        .push(format!("Compressing objects: {:>3}% ({}/{}){}", percentage, current, total, ending));
                 }
             }
 
@@ -68,9 +64,7 @@ impl ProgressWriter {
         let mut writer = GitWriter::new();
 
         for line in &self.lines {
-            writer
-                .write_binary_sideband(Band::Progress, line.as_bytes())
-                .await?;
+            writer.write_binary_sideband(Band::Progress, line.as_bytes()).await?;
         }
 
         Ok(writer)

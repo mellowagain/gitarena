@@ -75,10 +75,7 @@ pub(crate) fn spawn_connection_task(data: RwLock<Ipc>) {
                     info!("Successfully connected to workhorse at {}", ipc_path);
                     break;
                 }
-                Err(err) => debug!(
-                    "Failed to re-establish connection to workhorse, retrying in 60 seconds: {}",
-                    err
-                ),
+                Err(err) => debug!("Failed to re-establish connection to workhorse, retrying in 60 seconds: {}", err),
             }
         }
     });

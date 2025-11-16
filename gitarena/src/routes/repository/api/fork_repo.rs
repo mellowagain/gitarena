@@ -15,17 +15,8 @@ use log::info;
 use serde_json::json;
 use sqlx::PgPool;
 
-#[route(
-    "/api/repo/{username}/{repository}/fork",
-    method = "GET",
-    err = "htmx+json"
-)]
-pub(crate) async fn get_fork_amount(
-    repo: Repository,
-    web_user: WebUser,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+#[route("/api/repo/{username}/{repository}/fork", method = "GET", err = "htmx+json")]
+pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let additional_query = if matches!(web_user, WebUser::Authenticated(_)) {
@@ -58,17 +49,8 @@ pub(crate) async fn get_fork_amount(
     }
 }
 
-#[route(
-    "/api/repo/{username}/{repository}/fork",
-    method = "POST",
-    err = "htmx+text"
-)]
-pub(crate) async fn create_fork(
-    repo: Repository,
-    web_user: WebUser,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+#[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "htmx+text")]
+pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -87,14 +69,15 @@ pub(crate) async fn create_fork(
         die!(CONFLICT, "Repository name already in use for your account");
     }
 
-    let new_repo = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5) returning *")
-        .bind(user.id)
-        .bind(&repo.name)
-        .bind(&repo.description)
-        .bind(&repo.visibility)
-        .bind(repo.id)
-        .fetch_one(&mut *transaction)
-        .await?;
+    let new_repo =
+        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5) returning *")
+            .bind(user.id)
+            .bind(&repo.name)
+            .bind(&repo.description)
+            .bind(&repo.visibility)
+            .bind(repo.id)
+            .fetch_one(&mut *transaction)
+            .await?;
 
     let old_path = repo.get_fs_path(&mut transaction).await?;
     let new_path = new_repo.get_fs_path(&mut transaction).await?;
@@ -103,17 +86,13 @@ pub(crate) async fn create_fork(
         .await
         .context("Failed to copy repository")?;
 
-    let domain: String = get_optional_setting("domain", &mut transaction)
-        .await?
-        .unwrap_or_default();
+    let domain: String = get_optional_setting("domain", &mut transaction).await?.unwrap_or_default();
     let url = format!("{}/{}/{}", domain, user.username, new_repo.name);
 
     transaction.commit().await?;
 
     let extensions = request.extensions();
-    let repo_owner = extensions
-        .get::<RepoOwner>()
-        .ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
 
     info!(
         "New repository forked: {}/{} (id {}, from {}/{})",
@@ -127,9 +106,6 @@ pub(crate) async fn create_fork(
             .finish()
     } else {
         // TODO: Move CreateJsonResponse into mod.rs so it's no longer living inside of create_repo.rs
-        HttpResponse::Ok().json(CreateJsonResponse {
-            id: new_repo.id,
-            url,
-        })
+        HttpResponse::Ok().json(CreateJsonResponse { id: new_repo.id, url })
     })
 }

@@ -39,7 +39,10 @@ pub(crate) async fn import(
     let name = &body.name;
 
     if name.is_empty() || name.len() > 32 || !name.chars().all(|c| is_valid(&c)) {
-        die!(BAD_REQUEST, "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -");
+        die!(
+            BAD_REQUEST,
+            "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -"
+        );
     }
 
     if is_reserved_repo_name(name.as_str()) {
@@ -53,14 +56,10 @@ pub(crate) async fn import(
     let description = &body.description;
 
     if description.len() > 256 {
-        die!(
-            BAD_REQUEST,
-            "Description may only be up to 256 characters long"
-        );
+        die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
-    let url = Url::parse(body.import_url.as_str())
-        .map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
+    let url = Url::parse(body.import_url.as_str()).map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
 
     if body.mirror.is_some() {
         die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");
@@ -76,13 +75,14 @@ pub(crate) async fn import(
         die!(CONFLICT, "Repository name already in use for your account");
     }
 
-    let repo: Repository = sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
-        .bind(user.id)
-        .bind(name)
-        .bind(description)
-        .bind(&body.visibility)
-        .fetch_one(&mut *transaction)
-        .await?;
+    let repo: Repository =
+        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
+            .bind(user.id)
+            .bind(name)
+            .bind(description)
+            .bind(&body.visibility)
+            .fetch_one(&mut *transaction)
+            .await?;
 
     repo.create_fs(&mut transaction).await?;
 
@@ -94,15 +94,9 @@ pub(crate) async fn import(
         password: body.password.clone(),
     };
 
-    ipc.write()
-        .await
-        .send(packet)
-        .await
-        .context("Failed to send import packet to workhorse")?;
+    ipc.write().await.send(packet).await.context("Failed to send import packet to workhorse")?;
 
-    let domain: String = get_optional_setting("domain", &mut transaction)
-        .await?
-        .unwrap_or_default();
+    let domain: String = get_optional_setting("domain", &mut transaction).await?.unwrap_or_default();
     let path = format!("/{}/{}", &user.username, &repo.name);
 
     transaction.commit().await?;

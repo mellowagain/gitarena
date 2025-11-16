@@ -14,10 +14,7 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/settings", method = "GET", err = "html")]
-pub(crate) async fn get_settings(
-    web_user: WebUser,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -35,10 +32,7 @@ pub(crate) async fn get_settings(
         .into_iter()
         .map(|setting| {
             let key = setting.key.as_str();
-            let parent_key = key
-                .split_once('.')
-                .map_or_else(|| key, |(key, _)| key)
-                .to_owned();
+            let parent_key = key.split_once('.').map_or_else(|| key, |(key, _)| key).to_owned();
 
             (parent_key, setting)
         })
@@ -80,11 +74,7 @@ pub(crate) async fn patch_settings(
         };
 
         if !valid {
-            die!(
-                BAD_REQUEST,
-                "Value for {} does not follow type constraint",
-                key
-            );
+            die!(BAD_REQUEST, "Value for {} does not follow type constraint", key);
         }
 
         // This does on purpose not use config::set_setting as that method requires a key: &'static str

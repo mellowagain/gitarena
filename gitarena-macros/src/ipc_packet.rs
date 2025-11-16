@@ -14,12 +14,7 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
 
     input.attrs.retain(|attribute| {
         if let Ok(Meta::List(list)) = attribute.parse_meta() {
-            let ipc = list
-                .path
-                .segments
-                .first()
-                .map(|segment| segment.ident == "ipc")
-                .unwrap_or_default();
+            let ipc = list.path.segments.first().map(|segment| segment.ident == "ipc").unwrap_or_default();
 
             if ipc {
                 for args in list.nested {

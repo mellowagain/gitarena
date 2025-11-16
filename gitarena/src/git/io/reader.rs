@@ -33,9 +33,7 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
 }
 
 #[instrument(err, skip(iter))]
-pub(crate) async fn read_data_lines(
-    iter: &mut StreamingPeekableIter<&[u8]>,
-) -> Result<Vec<Vec<u8>>> {
+pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> Result<Vec<Vec<u8>>> {
     let mut body = Vec::<Vec<u8>>::new();
 
     while let Some(line_result) = iter.read_line().await {

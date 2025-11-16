@@ -31,10 +31,7 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
                 let _ = connection
-                    .execute(
-                        ONCE.get_or_init(|| format!("set application_name = '{}';", module))
-                            .as_str(),
-                    )
+                    .execute(ONCE.get_or_init(|| format!("set application_name = '{}';", module)).as_str())
                     .await;
                 Ok(())
             })
@@ -44,10 +41,7 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
 }
 
 async fn read_database_config() -> Result<ConnectOptions> {
-    let mut options = match (
-        env::var_os("DATABASE_URL"),
-        env::var_os("DATABASE_URL_FILE"),
-    ) {
+    let mut options = match (env::var_os("DATABASE_URL"), env::var_os("DATABASE_URL_FILE")) {
         (Some(url), None) => {
             let str = url
                 .into_string()
@@ -58,9 +52,7 @@ async fn read_database_config() -> Result<ConnectOptions> {
             let url = fs::read_to_string(file).await?;
             ConnectOptions::from_str(url.as_str())?
         }
-        _ => bail!(
-            "Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena"
-        ),
+        _ => bail!("Either environment variable `DATABASE_URL` or `DATABASE_URL_FILE` needs to be specified to before starting GitArena"),
     };
 
     // Docker secrets compatibility
@@ -72,8 +64,7 @@ async fn read_database_config() -> Result<ConnectOptions> {
         Err(VarError::NotUnicode(_)) => {
             bail!("`DATABASE_PASSWORD_FILE` environment variable is not valid unicode")
         }
-        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */
-        }
+        Err(VarError::NotPresent) => { /* No password auth required, or it was already set in the connection string; safe to ignore */ }
     }
 
     Ok(options)

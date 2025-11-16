@@ -1,6 +1,4 @@
-use crate::git::history::{
-    all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref,
-};
+use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::git::GIT_HASH_KIND;
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
@@ -26,11 +24,7 @@ use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;
 
-#[route(
-    "/{username}/{repository}/tree/{tree}/directory/{blob:.*}",
-    method = "GET",
-    err = "html"
-)]
+#[route("/{username}/{repository}/tree/{tree}/directory/{blob:.*}", method = "GET", err = "html")]
 pub(crate) async fn view_dir(
     repo: Repository,
     branch: Branch,
@@ -53,22 +47,13 @@ pub(crate) async fn view_dir(
     let mut path = uri.blob.to_owned();
     path.push('/');
 
-    let tree_ref = repo_files_at_ref(
-        &branch.reference,
-        store.clone(),
-        &gitoxide_repo,
-        &mut tree_ref_buffer,
-    )
-    .await?;
-    let tree =
-        recursively_visit_tree(tree_ref, path.as_str(), store.clone(), &mut tree_buffer).await?;
+    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
+    let tree = recursively_visit_tree(tree_ref, path.as_str(), store.clone(), &mut tree_buffer).await?;
 
-    let (issues_count,): (i64,) = sqlx::query_as(
-        "select count(*) from issues where repo = $1 and closed = false and confidential = false",
-    )
-    .bind(repo.id)
-    .fetch_one(&mut *transaction)
-    .await?;
+    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
+        .bind(repo.id)
+        .fetch_one(&mut *transaction)
+        .await?;
 
     context.try_insert("repo", &repo)?;
     context.try_insert("repo_owner_name", uri.username.as_str())?;
@@ -92,12 +77,7 @@ pub(crate) async fn view_dir(
 
         let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, file_path.as_str())
             .await?
-            .ok_or_else(|| {
-                err!(
-                    INTERNAL_SERVER_ERROR,
-                    "No last commit found for blob (this should never happen)"
-                )
-            })?;
+            .ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob (this should never happen)"))?;
         let commit = libgit2_repo.find_commit(oid)?;
 
         let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
@@ -133,19 +113,13 @@ pub(crate) async fn view_dir(
 
         if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type != EntryMode::Tree as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
-        {
+        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
             Ordering::Greater
-        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16
-        {
+        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
             lhs.file_name.cmp(rhs.file_name)
-        } else if lhs.file_type == EntryMode::Commit as u16
-            && rhs.file_type != EntryMode::Commit as u16
-        {
+        } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Commit as u16
-            && rhs.file_type == EntryMode::Commit as u16
-        {
+        } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
             Ordering::Greater
         } else {
             lhs.file_name.cmp(rhs.file_name)
@@ -153,10 +127,7 @@ pub(crate) async fn view_dir(
     });
 
     context.try_insert("files", &files)?;
-    context.try_insert(
-        "commits_count",
-        &all_commits(&libgit2_repo, full_tree_name, 0).await?.len(),
-    )?;
+    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
 
     let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name)
         .await?
@@ -164,8 +135,7 @@ pub(crate) async fn view_dir(
     let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
 
     // TODO: Additionally show last_commit.committer and if doesn't match with author
-    let (author_name, author_uid, author_email) =
-        last_commit.author().try_disassemble(&mut transaction).await;
+    let (author_name, author_uid, author_email) = last_commit.author().try_disassemble(&mut transaction).await;
 
     context.try_insert(
         "last_commit",
@@ -184,30 +154,18 @@ pub(crate) async fn view_dir(
 }
 
 #[async_recursion(?Send)]
-async fn recursively_visit_tree<'a>(
-    tree_ref: TreeRef<'a>,
-    path: &str,
-    store: Arc<Store>,
-    buffer: &'a mut Vec<u8>,
-) -> Result<Tree> {
+async fn recursively_visit_tree<'a>(tree_ref: TreeRef<'a>, path: &str, store: Arc<Store>, buffer: &'a mut Vec<u8>) -> Result<Tree> {
     let tree = Tree::from(tree_ref);
 
     match path.split_once('/') {
         Some((search, remaining)) => {
-            let entry = tree
-                .entries
-                .iter()
-                .find(|e| e.filename == search)
-                .ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
+            let entry = tree.entries.iter().find(|e| e.filename == search).ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
             if entry.mode != EntryMode::Tree {
                 die!(BAD_REQUEST, "Only trees can be viewed in tree view");
             }
 
-            let tree_ref = store
-                .to_handle_arc()
-                .find_tree(entry.oid.as_ref(), buffer)
-                .map(|(tree, _)| tree)?;
+            let tree_ref = store.to_handle_arc().find_tree(entry.oid.as_ref(), buffer).map(|(tree, _)| tree)?;
             let mut buffer = Vec::<u8>::new();
 
             recursively_visit_tree(tree_ref, remaining, store, &mut buffer).await

@@ -4,11 +4,7 @@ use git2::{DiffOptions, Oid, Repository as Git2Repository, Sort};
 use tracing::instrument;
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn last_commit_for_blob(
-    repo: &Git2Repository,
-    reference_name: &str,
-    file_name: &str,
-) -> Result<Option<Oid>> {
+pub(crate) async fn last_commit_for_blob(repo: &Git2Repository, reference_name: &str, file_name: &str) -> Result<Option<Oid>> {
     let commits = commits_for_blob(repo, reference_name, file_name, Some(1)).await?;
 
     Ok(commits.first().copied())
@@ -16,10 +12,7 @@ pub(crate) async fn last_commit_for_blob(
 
 #[instrument(err, skip(repo))]
 #[async_recursion(?Send)]
-pub(crate) async fn last_commit_for_ref(
-    repo: &Git2Repository,
-    reference_name: &str,
-) -> Result<Option<Oid>> {
+pub(crate) async fn last_commit_for_ref(repo: &Git2Repository, reference_name: &str) -> Result<Option<Oid>> {
     let reference = repo.find_reference(reference_name)?;
 
     if let Some(target) = reference.symbolic_target() {
@@ -30,12 +23,7 @@ pub(crate) async fn last_commit_for_ref(
 }
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn commits_for_blob(
-    repo: &Git2Repository,
-    reference: &str,
-    file_name: &str,
-    max_results: Option<usize>,
-) -> Result<Vec<Oid>> {
+pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, file_name: &str, max_results: Option<usize>) -> Result<Vec<Oid>> {
     let mut results = Vec::<Oid>::new();
 
     if let Some(max) = max_results {
@@ -65,8 +53,7 @@ pub(crate) async fn commits_for_blob(
         diff_options.skip_binary_check(true);
         diff_options.pathspec(file_name);
 
-        let diff =
-            repo.diff_tree_to_tree(previous_tree.as_ref(), Some(&tree), Some(&mut diff_options))?;
+        let diff = repo.diff_tree_to_tree(previous_tree.as_ref(), Some(&tree), Some(&mut diff_options))?;
 
         for _ in diff.deltas() {
             results.push(commit_oid);
@@ -85,11 +72,7 @@ pub(crate) async fn commits_for_blob(
 /// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
 /// Returns at most `limit` commits or all commits if `limit == 0`
 #[instrument(err, skip(repo))]
-pub(crate) async fn all_commits(
-    repo: &Git2Repository,
-    reference: &str,
-    limit: usize,
-) -> Result<Vec<Oid>> {
+pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str, limit: usize) -> Result<Vec<Oid>> {
     let mut results = Vec::<Oid>::with_capacity(limit);
 
     let mut rev_walk = repo.revwalk()?;
@@ -132,8 +115,5 @@ pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
 pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Result<Vec<String>> {
     let tags = repo.tag_names(prefix)?;
 
-    Ok(tags
-        .iter()
-        .filter_map(|o| o.map(|o| o.to_owned()))
-        .collect())
+    Ok(tags.iter().filter_map(|o| o.map(|o| o.to_owned())).collect())
 }

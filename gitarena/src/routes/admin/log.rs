@@ -30,9 +30,7 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
 
     let lines = fs::read_to_string(LOG_FILE.as_str())
         .map(|content| {
-            let index = content
-                .rfind("Successfully loaded 415 licenses from cache")
-                .map_or_else(|| 0, |i| i - 72);
+            let index = content.rfind("Successfully loaded 415 licenses from cache").map_or_else(|| 0, |i| i - 72);
             let new_log_file = &content[index..];
 
             let lines = new_log_file.lines();
@@ -41,10 +39,7 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
             for line in lines {
                 if let Ok(log_line) = serde_json::from_str::<LogLine>(line) {
                     if let Some(Value::String(message)) = log_line.fields.get("message") {
-                        log_lines.push(format!(
-                            "{} [{}] {}",
-                            log_line.timestamp, log_line.level, message
-                        ));
+                        log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
                     }
                 }
             }
@@ -62,25 +57,16 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
 }
 
 #[route("/log/sse", method = "GET", err = "html")]
-pub(crate) async fn log_sse(
-    web_user: WebUser,
-    broadcaster: Data<RwLock<Broadcaster>>,
-) -> Result<impl Responder> {
+pub(crate) async fn log_sse(web_user: WebUser, broadcaster: Data<RwLock<Broadcaster>>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
         die!(FORBIDDEN, "Not allowed");
     }
 
-    let tx = broadcaster
-        .write()
-        .await
-        .new_client(Category::AdminLog)
-        .await?;
+    let tx = broadcaster.write().await.new_client(Category::AdminLog).await?;
 
-    Ok(HttpResponse::Ok()
-        .insert_header((CONTENT_TYPE, "text/event-stream"))
-        .streaming(tx))
+    Ok(HttpResponse::Ok().insert_header((CONTENT_TYPE, "text/event-stream")).streaming(tx))
 }
 
 #[derive(Deserialize)]

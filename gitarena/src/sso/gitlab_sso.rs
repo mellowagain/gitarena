@@ -36,13 +36,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitLab api: {}", err))?
             .json::<T>()
             .await
-            .map_err(|err| {
-                err!(
-                    BAD_GATEWAY,
-                    "Failed to parse GitLab response as JSON: {}",
-                    err
-                )
-            })?)
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse GitLab response as JSON: {}", err))?)
     }
 }
 
@@ -54,10 +48,7 @@ impl DatabaseSSOProvider for GitLabSSO {
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret(
-        &self,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Option<ClientSecret>> {
+    async fn get_client_secret(&self, tx: &mut Transaction<'_, Database>) -> Result<Option<ClientSecret>> {
         let client_secret: String = config::get_setting("sso.gitlab.client_secret", tx).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
@@ -110,19 +101,15 @@ impl SSOProvider for GitLabSSO {
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitLab API json response"))?;
 
-        while validate_username(username.as_str()).is_err()
-            || is_username_taken(username.as_str(), &mut transaction).await?
-        {
+        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
             username = crypto::random_numeric_ascii_string(16);
         }
 
-        let user: User = sqlx::query_as::<_, User>(
-            "insert into users (username, password) values ($1, $2) returning *",
-        )
-        .bind(username.as_str())
-        .bind("sso-login")
-        .fetch_one(&mut *transaction)
-        .await?;
+        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+            .bind(username.as_str())
+            .bind("sso-login")
+            .fetch_one(&mut *transaction)
+            .await?;
 
         let gitlab_id = profile_data
             .get("id")
@@ -153,12 +140,10 @@ impl SSOProvider for GitLabSSO {
             let email = gitlab_email.email.as_str();
 
             // Email exists
-            let (email_exists,): (bool,) = sqlx::query_as(
-                "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
-            )
-            .bind(email)
-            .fetch_one(&mut *transaction)
-            .await?;
+            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
+                .bind(email)
+                .fetch_one(&mut *transaction)
+                .await?;
 
             if email_exists {
                 continue;
@@ -183,9 +168,7 @@ impl SSOProvider for GitLabSSO {
         }
 
         if !once.is_completed() {
-            bail!(
-                "All verified GitLab email addresses are already assigned to a different account"
-            );
+            bail!("All verified GitLab email addresses are already assigned to a different account");
         }
 
         transaction.commit().await?;

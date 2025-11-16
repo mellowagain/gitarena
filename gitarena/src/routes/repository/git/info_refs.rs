@@ -14,11 +14,7 @@ use gitarena_macros::route;
 use sqlx::{PgPool, Pool, Postgres, Transaction};
 
 #[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
-pub(crate) async fn info_refs(
-    uri: web::Path<GitRequest>,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let service = match query_string.get("service") {
@@ -28,29 +24,25 @@ pub(crate) async fn info_refs(
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> =
-        sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
-            .bind(&uri.username)
-            .fetch_optional(&mut *transaction)
-            .await?;
+    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
+        .bind(&uri.username)
+        .fetch_optional(&mut *transaction)
+        .await?;
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
         None => die!(NOT_FOUND),
     };
 
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(
-        "select * from repositories where owner = $1 and lower(name) = lower($2) limit 1",
-    )
-    .bind(user_id)
-    .bind(&uri.repository)
-    .fetch_optional(&mut *transaction)
-    .await?;
+    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
+        .bind(user_id)
+        .bind(&uri.repository)
+        .fetch_optional(&mut *transaction)
+        .await?;
 
     match service {
         "git-upload-pack" => {
-            let response =
-                upload_pack_info_refs(repo_option, service, &request, &mut transaction).await?;
+            let response = upload_pack_info_refs(repo_option, service, &request, &mut transaction).await?;
             transaction.commit().await?;
 
             Ok(response)
@@ -77,14 +69,7 @@ async fn upload_pack_info_refs(
         die!(BAD_REQUEST, "Unsupported Git protocol version");
     }
 
-    let (_, _) = match basic_auth::validate_repo_access(
-        repo_option,
-        "application/x-git-upload-pack-advertisement",
-        request,
-        tx,
-    )
-    .await?
-    {
+    let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, tx).await? {
         Either::Left(tuple) => tuple,
         Either::Right(response) => return Ok(response),
     };
@@ -94,20 +79,10 @@ async fn upload_pack_info_refs(
         .body(capabilities(service).await?))
 }
 
-async fn receive_pack_info_refs(
-    repo_option: Option<Repository>,
-    request: &HttpRequest,
-    db_pool: &Pool<Postgres>,
-) -> Result<HttpResponse> {
+async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpRequest, db_pool: &Pool<Postgres>) -> Result<HttpResponse> {
     let mut transaction = db_pool.begin().await?;
 
-    let _user = match basic_auth::login_flow(
-        request,
-        &mut transaction,
-        "application/x-git-receive-pack-advertisement",
-    )
-    .await?
-    {
+    let _user = match basic_auth::login_flow(request, &mut transaction, "application/x-git-receive-pack-advertisement").await? {
         Either::Left(user) => user,
         Either::Right(response) => return Ok(response),
     };

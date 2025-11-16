@@ -192,9 +192,7 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
             "htmx+html" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Html))),
             "htmx+json" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Json))),
             "htmx+git" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Git))),
-            "htmx+text" | "htmx+plain" => {
-                Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Plain)))
-            }
+            "htmx+text" | "htmx+plain" => Some(ErrorDisplayType::Htmx(Box::new(ErrorDisplayType::Plain))),
             "htmx" => {
                 emit_error! {
                     input.span(),

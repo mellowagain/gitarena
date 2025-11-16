@@ -13,11 +13,7 @@ use sqlx::Transaction;
 // prefered: https://www.reddit.com/r/rust/comments/fddf6y/handling_longrunning_background_tasks_in_actixweb/
 // https://stackoverflow.com/a/66181410
 
-pub(crate) async fn run(
-    store: Arc<Store>,
-    repo: &mut Repository,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<()> {
+pub(crate) async fn run(store: Arc<Store>, repo: &mut Repository, tx: &mut Transaction<'_, Database>) -> Result<()> {
     let gitoxide_repo = repo.gitoxide(tx).await?;
 
     if let Err(err) = detect_license(store, &gitoxide_repo, repo).await {

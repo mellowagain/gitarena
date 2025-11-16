@@ -45,23 +45,17 @@ pub(crate) struct Repository {
 }
 
 impl Repository {
-    pub(crate) async fn open(
-        user_id: impl Into<i32>,
-        repo_name: impl AsRef<str>,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Option<Repository> {
+    pub(crate) async fn open(user_id: impl Into<i32>, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
         let user_id = user_id.into();
         let repo_name = repo_name.as_ref();
 
-        let repo: Option<Repository> = sqlx::query_as::<_, Repository>(
-            "select * from repositories where owner = $1 and lower(name) = lower($2) limit 1",
-        )
-        .bind(user_id)
-        .bind(repo_name)
-        .fetch_optional(&mut **tx)
-        .await
-        .ok()
-        .flatten();
+        let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
+            .bind(user_id)
+            .bind(repo_name)
+            .fetch_optional(&mut **tx)
+            .await
+            .ok()
+            .flatten();
 
         repo
     }
@@ -76,17 +70,11 @@ impl Repository {
         Ok(())
     }
 
-    pub(crate) async fn libgit2(
-        &self,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Git2Repository> {
+    pub(crate) async fn libgit2(&self, tx: &mut Transaction<'_, Database>) -> Result<Git2Repository> {
         Ok(Git2Repository::open(self.get_fs_path(tx).await?)?)
     }
 
-    pub(crate) async fn gitoxide(
-        &self,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<GitoxideRepository> {
+    pub(crate) async fn gitoxide(&self, tx: &mut Transaction<'_, Database>) -> Result<GitoxideRepository> {
         Ok(GitoxideRepository::discover(self.get_fs_path(tx).await?)?)
     }
 
@@ -126,9 +114,7 @@ impl FromRequest for Repository {
             .to_owned();
         let repository = match_info
             .get("repository")
-            .expect_or_log(
-                "from_request called on Repository despite not having repository argument",
-            )
+            .expect_or_log("from_request called on Repository despite not having repository argument")
             .to_owned();
         //let tree = match_info.get("tree");
 
@@ -146,17 +132,12 @@ impl FromRequest for Repository {
                 Box::pin(async move {
                     let web_user = web_user_future.await?;
 
-                    extract_repo_from_request(
-                        db_pool,
-                        web_user,
-                        username.as_str(),
-                        repository.as_str(),
-                    )
-                    .await
-                    .map_err(|err| GitArenaError {
-                        source: Arc::new(err),
-                        display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
-                    })
+                    extract_repo_from_request(db_pool, web_user, username.as_str(), repository.as_str())
+                        .await
+                        .map_err(|err| GitArenaError {
+                            source: Arc::new(err),
+                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                        })
                 })
             }
             None => Box::pin(async {
@@ -169,12 +150,7 @@ impl FromRequest for Repository {
     }
 }
 
-async fn extract_repo_from_request(
-    db_pool: Data<PgPool>,
-    web_user: WebUser,
-    username: &str,
-    repository: &str,
-) -> Result<Repository> {
+async fn extract_repo_from_request(db_pool: Data<PgPool>, web_user: WebUser, username: &str, repository: &str) -> Result<Repository> {
     let mut transaction = db_pool.begin().await?;
 
     let user = User::find_using_name(username, &mut transaction)
@@ -231,12 +207,10 @@ impl FromRequest for Branch {
                     // This call exists early if access rights are insufficient, so we don't need to worry about them down the road
                     let repo = repo_future.await?;
 
-                    extract_branch_from_request(db_pool, repo, tree)
-                        .await
-                        .map_err(|err| GitArenaError {
-                            source: Arc::new(err),
-                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
-                        })
+                    extract_branch_from_request(db_pool, repo, tree).await.map_err(|err| GitArenaError {
+                        source: Arc::new(err),
+                        display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                    })
                 })
             }
             None => Box::pin(async {
@@ -249,11 +223,7 @@ impl FromRequest for Branch {
     }
 }
 
-async fn extract_branch_from_request(
-    db_pool: Data<PgPool>,
-    repo: Repository,
-    tree: String,
-) -> Result<Branch> {
+async fn extract_branch_from_request(db_pool: Data<PgPool>, repo: Repository, tree: String) -> Result<Branch> {
     let mut transaction = db_pool.begin().await?;
 
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;

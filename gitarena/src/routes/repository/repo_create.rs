@@ -10,11 +10,7 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/new", method = "GET", err = "html")]
-pub(crate) async fn new_repo(
-    web_user: WebUser,
-    ipc: web::Data<RwLock<Ipc>>,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn new_repo(web_user: WebUser, ipc: web::Data<RwLock<Ipc>>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 

@@ -20,10 +20,7 @@ pub(crate) struct SshKey {
 }
 
 impl SshKey {
-    pub(crate) async fn all_from_user(
-        user: &User,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Option<Vec<SshKey>> {
+    pub(crate) async fn all_from_user(user: &User, tx: &mut Transaction<'_, Database>) -> Option<Vec<SshKey>> {
         let keys = sqlx::query_as::<_, SshKey>("select * from ssh_keys where owner = $1")
             .bind(user.id)
             .fetch_all(&mut **tx)

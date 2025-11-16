@@ -117,12 +117,7 @@ impl Display for WithStatusCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match &self.source {
             Some(source) if self.display => write!(f, "{}", source),
-            _ => write!(
-                f,
-                "{} {}",
-                self.code.as_str(),
-                self.code.canonical_reason().unwrap_or_default()
-            ),
+            _ => write!(f, "{} {}", self.code.as_str(), self.code.canonical_reason().unwrap_or_default()),
         }
     }
 }
@@ -166,18 +161,14 @@ impl GitArenaError {
 
     /// Whenever this error should be displayed to the end user
     fn should_display_message(&self) -> bool {
-        self.source
-            .downcast_ref::<WithStatusCode>()
-            .map_or_else(|| false, |w| w.display)
+        self.source.downcast_ref::<WithStatusCode>().map_or_else(|| false, |w| w.display)
     }
 
     fn message(&self) -> String {
         if self.should_display_message() {
             self.source.to_string()
         } else {
-            self.status_code()
-                .canonical_reason()
-                .map_or_else(String::new, str::to_owned)
+            self.status_code().canonical_reason().map_or_else(String::new, str::to_owned)
         }
     }
 }
@@ -208,9 +199,7 @@ impl ResponseError for GitArenaError {
 
         match &self.display_type {
             ErrorDisplayType::Html | ErrorDisplayType::Git => {
-                builder
-                    .extensions_mut()
-                    .insert::<GitArenaError>(self.clone());
+                builder.extensions_mut().insert::<GitArenaError>(self.clone());
 
                 // This method is not async which means we can't call async renders such as HTML and Git
                 // As a workaround, we let a middleware (which is async) render these two error types
@@ -246,10 +235,7 @@ where
 
     async {
         let mut response = future.await?.map_into_boxed_body();
-        let gitarena_error = response
-            .response_mut()
-            .extensions_mut()
-            .remove::<GitArenaError>();
+        let gitarena_error = response.response_mut().extensions_mut().remove::<GitArenaError>();
 
         Ok(if let Some(error) = gitarena_error {
             match error.display_type {
@@ -257,10 +243,7 @@ where
                     let result = render_html_error(&error).await;
 
                     response.map_body(|head, _| {
-                        head.headers.insert(
-                            CONTENT_TYPE,
-                            HeaderValue::from_static("text/html; charset=utf-8"),
-                        );
+                        head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
 
                         result.unwrap_or_else(|err| error_render_error(err, &error, head))
                     })
@@ -273,10 +256,7 @@ where
                             Ok(body) => {
                                 // Git doesn't show client errors if the response isn't 200 for some reason
                                 head.status = StatusCode::OK;
-                                head.headers.insert(
-                                    CONTENT_TYPE,
-                                    HeaderValue::from_static("application/octet-stream"),
-                                );
+                                head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/octet-stream"));
 
                                 body
                             }
@@ -284,9 +264,7 @@ where
                         }
                     })
                 }
-                _ => unreachable!(
-                    "Only html and Git error responses are handled in the async middleware"
-                ),
+                _ => unreachable!("Only html and Git error responses are handled in the async middleware"),
             }
         } else {
             response
@@ -310,9 +288,7 @@ async fn render_html_error(renderer: &GitArenaError) -> Result<BoxBody> {
 
 async fn render_git_error(renderer: &GitArenaError) -> Result<BoxBody> {
     let mut writer = GitWriter::new();
-    writer
-        .write_text_sideband(Band::Error, format!("error: {}", renderer.message()))
-        .await?;
+    writer.write_text_sideband(Band::Error, format!("error: {}", renderer.message())).await?;
 
     Ok(BoxBody::new(writer.serialize().await?))
 }
@@ -326,8 +302,7 @@ fn error_render_error(err: Error, ga_error: &GitArenaError, head: &mut ResponseH
     error!("| Caused by: {:?}", ga_error);
 
     // Fall back to the generic actix response
-    let actix_response =
-        InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response();
+    let actix_response = InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response();
 
     head.status = StatusCode::INTERNAL_SERVER_ERROR;
     head.headers = actix_response.headers().clone();

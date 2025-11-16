@@ -27,11 +27,7 @@ use sqlx::PgPool;
 use tokio::process::Command;
 use tokio::time::timeout;
 
-#[route(
-    "/{username}/{repository}.git/git-receive-pack",
-    method = "POST",
-    err = "git"
-)]
+#[route("/{username}/{repository}.git/git-receive-pack", method = "POST", err = "git")]
 pub(crate) async fn git_receive_pack(
     uri: web::Path<GitRequest>,
     mut body: web::Payload,
@@ -41,40 +37,29 @@ pub(crate) async fn git_receive_pack(
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
 
-    if content_type != "application/x-git-receive-pack-request"
-        || accept_header != "application/x-git-receive-pack-result"
-    {
+    if content_type != "application/x-git-receive-pack-request" || accept_header != "application/x-git-receive-pack-result" {
         die!(BAD_REQUEST);
     }
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> =
-        sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
-            .bind(&uri.username)
-            .fetch_optional(&mut *transaction)
-            .await?;
+    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
+        .bind(&uri.username)
+        .fetch_optional(&mut *transaction)
+        .await?;
 
     let (user_id,) = match user_option {
         Some(user_id) => user_id,
         None => die!(NOT_FOUND),
     };
 
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>(
-        "select * from repositories where owner = $1 and lower(name) = lower($2) limit 1",
-    )
-    .bind(user_id)
-    .bind(&uri.repository)
-    .fetch_optional(&mut *transaction)
-    .await?;
+    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
+        .bind(user_id)
+        .bind(&uri.repository)
+        .fetch_optional(&mut *transaction)
+        .await?;
 
-    let user = match basic_auth::login_flow(
-        &request,
-        &mut transaction,
-        "application/x-git-receive-pack-result",
-    )
-    .await?
-    {
+    let user = match basic_auth::login_flow(&request, &mut transaction, "application/x-git-receive-pack-result").await? {
         Either::Left(user) => user,
         Either::Right(response) => return Ok(response),
     };
@@ -120,9 +105,7 @@ pub(crate) async fn git_receive_pack(
     if updates.is_empty() {
         warn!("Upload pack ref update list provided by client is empty");
 
-        return Ok(HttpResponse::NoContent()
-            .append_header((CONTENT_TYPE, accept_header))
-            .finish());
+        return Ok(HttpResponse::NoContent().append_header((CONTENT_TYPE, accept_header)).finish());
     }
 
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
@@ -134,12 +117,9 @@ pub(crate) async fn git_receive_pack(
 
     match searcher.search_in(vec) {
         Some(pos) => {
-            let (index_path, pack_path, _temp_dir) =
-                pack::read(&vec[pos..], &repo, &mut transaction).await?;
+            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &mut transaction).await?;
 
-            output_writer
-                .write_text_sideband_pktline(Band::Data, "unpack ok")
-                .await?;
+            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
@@ -156,9 +136,7 @@ pub(crate) async fn git_receive_pack(
                         )
                         .await?
                     }
-                    RefUpdateType::Delete => {
-                        process_delete(&update, &repo, &mut transaction, &mut output_writer).await?
-                    }
+                    RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?,
                 };
             }
         }
@@ -169,9 +147,7 @@ pub(crate) async fn git_receive_pack(
             }
 
             // There wasn't actually something to unpack
-            output_writer
-                .write_text_sideband_pktline(Band::Data, "unpack ok")
-                .await?;
+            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 process_delete(&update, &repo, &mut transaction, &mut output_writer).await?;
@@ -194,10 +170,7 @@ pub(crate) async fn git_receive_pack(
     match timeout(Duration::from_secs(10), command).await {
         Ok(Ok(status)) => {
             if !status.success() {
-                warn!(
-                    "Git garbage collector exited with non-zero status: {}",
-                    status
-                );
+                warn!("Git garbage collector exited with non-zero status: {}", status);
             }
         }
         Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {}", err),
@@ -210,12 +183,7 @@ pub(crate) async fn git_receive_pack(
     // Run post update hooks
     post_update::run(store, &mut repo, &mut transaction)
         .await
-        .with_context(|| {
-            format!(
-                "Failed to run post update hook for newest commit in {}/{}",
-                &uri.username, repo.name
-            )
-        })?;
+        .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 
     sqlx::query("update repositories set license = $1 where id = $2")
         .bind(&repo.license)

@@ -30,32 +30,19 @@ impl GitWriter {
     }
 
     // Example: [hexl]\x01text
-    pub(crate) async fn write_text_sideband<S: AsRef<str>>(
-        &mut self,
-        band: Band,
-        text: S,
-    ) -> Result<&mut GitWriter> {
+    pub(crate) async fn write_text_sideband<S: AsRef<str>>(&mut self, band: Band, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
         let with_band = [band.serialize(), str_ref.as_bytes()].concat();
 
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| {
-                format!(
-                    "Unable to write text to sideband {} in Git writer: `{}`",
-                    band, str_ref
-                )
-            })?;
+            .with_context(|| format!("Unable to write text to sideband {} in Git writer: `{}`", band, str_ref))?;
         Ok(self)
     }
 
     // Example: "[hexl]\x01[hexl]text"
-    pub(crate) async fn write_text_sideband_pktline<S: AsRef<str>>(
-        &mut self,
-        band: Band,
-        text: S,
-    ) -> Result<&mut GitWriter> {
+    pub(crate) async fn write_text_sideband_pktline<S: AsRef<str>>(&mut self, band: Band, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
         let hex_prefix = &u16_to_hex((str_ref.len() + 4 + 1) as u16); // 4 for length, 1 for newline
         let with_band = [band.serialize(), hex_prefix, str_ref.as_bytes()].concat();
@@ -63,12 +50,7 @@ impl GitWriter {
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| {
-                format!(
-                    "Unable to write text to sideband {} in Git writer: `{}`",
-                    band, str_ref
-                )
-            })?;
+            .with_context(|| format!("Unable to write text to sideband {} in Git writer: `{}`", band, str_ref))?;
         Ok(self)
     }
 
@@ -91,23 +73,14 @@ impl GitWriter {
         Ok(self)
     }
 
-    pub(crate) async fn write_binary_sideband(
-        &mut self,
-        band: Band,
-        binary: &[u8],
-    ) -> Result<&mut GitWriter> {
+    pub(crate) async fn write_binary_sideband(&mut self, band: Band, binary: &[u8]) -> Result<&mut GitWriter> {
         let with_band = [band.serialize(), binary].concat();
 
         self.inner.enable_binary_mode();
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| {
-                format!(
-                    "Unable to write binary to sideband {} in Git writer: {:?}",
-                    band, binary
-                )
-            })?;
+            .with_context(|| format!("Unable to write binary to sideband {} in Git writer: {:?}", band, binary))?;
 
         self.inner.enable_text_mode();
         Ok(self)
@@ -160,10 +133,7 @@ impl GitWriter {
     }
 
     pub(crate) async fn append(&mut self, other: GitWriter) -> Result<&mut GitWriter> {
-        let serialized = other
-            .serialize()
-            .await
-            .context("Unable to write deserialize Git writer")?;
+        let serialized = other.serialize().await.context("Unable to write deserialize Git writer")?;
         self.write_raw(serialized.to_vec().as_slice())
             .await
             .context("Unable to write other Git writer to Git writer")?;

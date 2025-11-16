@@ -44,9 +44,7 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 
         // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
         if prefix == "HEAD" {
-            if let Some(output_line) =
-                build_ref_line(repo.find_reference("HEAD"), repo, &options).await
-            {
+            if let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await {
                 writer.write_text(output_line).await?;
             }
         }
@@ -65,11 +63,7 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
     writer.serialize().await
 }
 
-pub(crate) async fn build_ref_list(
-    prefix: &str,
-    repo: &Git2Repository,
-    options: &LsRefs,
-) -> Result<Vec<String>> {
+pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
     let mut output = Vec::<String>::new();
 
     for result in repo.references_glob(format!("{}*", prefix).as_str())? {
@@ -82,11 +76,7 @@ pub(crate) async fn build_ref_list(
 }
 
 #[instrument(skip(ref_result, repo))]
-pub(crate) async fn build_ref_line(
-    ref_result: CoreResult<Reference<'_>, Git2Error>,
-    repo: &Git2Repository,
-    options: &LsRefs,
-) -> Option<String> {
+pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Error>, repo: &Git2Repository, options: &LsRefs) -> Option<String> {
     return match ref_result {
         Ok(reference) => {
             let name = reference.name().unwrap_or_default();
@@ -99,18 +89,9 @@ pub(crate) async fn build_ref_line(
                 match repo.find_reference(sym_target).ok() {
                     Some(sym_target_ref) => {
                         if let Some(sym_target_oid) = sym_target_ref.target() {
-                            line = format!(
-                                "{} {} symref-target:{}",
-                                sym_target_oid,
-                                name,
-                                sym_target_ref.name().unwrap_or_default()
-                            );
+                            line = format!("{} {} symref-target:{}", sym_target_oid, name, sym_target_ref.name().unwrap_or_default());
                         } else if options.unborn {
-                            line = format!(
-                                "unborn {} symref-target:{}",
-                                name,
-                                sym_target_ref.name().unwrap_or_default()
-                            );
+                            line = format!("unborn {} symref-target:{}", name, sym_target_ref.name().unwrap_or_default());
                         } else {
                             return None;
                         }
@@ -168,11 +149,7 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
                 }
             }
             Err(e) => {
-                warn!(
-                    "Failed to grab repository references for {}: {}",
-                    repo.path().display(),
-                    e
-                );
+                warn!("Failed to grab repository references for {}: {}", repo.path().display(), e);
             }
         }
     }
@@ -192,7 +169,10 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
 }
 
 const fn receive_pack_capabilities() -> &'static str {
-    concat!("\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-", env!("CARGO_PKG_VERSION"))
+    concat!(
+        "\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 #[derive(Debug, Default)]

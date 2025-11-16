@@ -21,47 +21,31 @@ use serde::Deserialize;
 use sqlx::PgPool;
 
 #[route("/sso/{service}", method = "GET", err = "html")]
-pub(crate) async fn initiate_sso(
-    sso_request: web::Path<SSORequest>,
-    web_user: WebUser,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let provider = SSOProviderType::from_str(sso_request.service.as_str())
-        .map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
+    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     // TODO: Save token in cache to check for CSRF
-    let (url, _token) =
-        SSOProvider::generate_auth_url(provider_impl.deref(), &provider, &db_pool).await?;
+    let (url, _token) = SSOProvider::generate_auth_url(provider_impl.deref(), &provider, &db_pool).await?;
 
-    Ok(HttpResponse::TemporaryRedirect()
-        .append_header((LOCATION, url.to_string()))
-        .finish())
+    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, url.to_string())).finish())
 }
 
 #[route("/sso/{service}/callback", method = "GET", err = "html")]
-pub(crate) async fn sso_callback(
-    sso_request: web::Path<SSORequest>,
-    id: Identity,
-    request: HttpRequest,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let provider = SSOProviderType::from_str(sso_request.service.as_str())
-        .map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
+    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     let query_string = request.q_string();
-    let token_response =
-        SSOProvider::exchange_response(provider_impl.deref(), &query_string, &provider, &db_pool)
-            .await?;
+    let token_response = SSOProvider::exchange_response(provider_impl.deref(), &query_string, &provider, &db_pool).await?;
 
     if !SSOProvider::validate_scopes(provider_impl.deref(), token_response.scopes()) {
         die!(CONFLICT, "Not all required scopes have been granted");
@@ -74,13 +58,11 @@ pub(crate) async fn sso_callback(
 
     let provider_id = SSOProvider::get_provider_id(provider_impl.deref(), token.as_str()).await?;
 
-    let sso: Option<SSO> = sqlx::query_as::<_, SSO>(
-        "select * from sso where provider = $1 and provider_id = $2 limit 1",
-    )
-    .bind(&provider)
-    .bind(provider_id.as_str())
-    .fetch_optional(&mut *transaction)
-    .await?;
+    let sso: Option<SSO> = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
+        .bind(&provider)
+        .bind(provider_id.as_str())
+        .fetch_optional(&mut *transaction)
+        .await?;
 
     let user = match sso {
         Some(sso) => {
@@ -108,10 +90,7 @@ pub(crate) async fn sso_callback(
             &provider, &user.username, &user.id
         );
 
-        die!(
-            FORBIDDEN,
-            "Account has been disabled. Please contact support."
-        );
+        die!(FORBIDDEN, "Account has been disabled. Please contact support.");
     }
 
     // We're now doing something *very* illegal: We're changing state in a GET request
@@ -121,16 +100,11 @@ pub(crate) async fn sso_callback(
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
 
-    debug!(
-        "{} (id {}) logged in successfully using {} sso",
-        &user.username, &user.id, &provider
-    );
+    debug!("{} (id {}) logged in successfully using {} sso", &user.username, &user.id, &provider);
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::Found()
-        .append_header((LOCATION, "/"))
-        .finish())
+    Ok(HttpResponse::Found().append_header((LOCATION, "/")).finish())
 }
 
 #[derive(Deserialize)]

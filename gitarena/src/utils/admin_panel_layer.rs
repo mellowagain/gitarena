@@ -30,10 +30,7 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let level = *event.metadata().level();
 
-        let sse = event
-            .metadata()
-            .module_path()
-            .map_or_else(|| false, |module| module == "gitarena::sse");
+        let sse = event.metadata().module_path().map_or_else(|| false, |module| module == "gitarena::sse");
         let valid = !sse || level != Level::DEBUG;
 
         if valid {
@@ -50,8 +47,7 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
                             // Short the rfc 3339 timestamp to be consistent with the default log format
                             let timestamp = Utc::now().to_rfc3339();
                             let shortened = &timestamp[..26];
-                            let formatted_message =
-                                format!("{}Z [{}] {}", shortened, level.as_str(), message.as_str());
+                            let formatted_message = format!("{}Z [{}] {}", shortened, level.as_str(), message.as_str());
 
                             broadcaster.send(Category::AdminLog, formatted_message.as_str());
                         }

@@ -16,8 +16,7 @@ pub(crate) async fn init() {
 }
 
 fn init_askalono() -> Store {
-    let file = File::open("../askalono-cache.bin.zstd")
-        .expect_or_log("Failed to open askalono cache file");
+    let file = File::open("../askalono-cache.bin.zstd").expect_or_log("Failed to open askalono cache file");
 
     Store::from_cache(file).expect_or_log("Failed to parse askalono cache file")
 }

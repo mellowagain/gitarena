@@ -40,11 +40,7 @@ pub(crate) async fn validate_repo_access(
 }
 
 #[instrument(skip(request, tx), err)]
-pub(crate) async fn login_flow(
-    request: &HttpRequest,
-    tx: &mut Transaction<'_, Database>,
-    content_type: &str,
-) -> Result<Either<User, HttpResponse>> {
+pub(crate) async fn login_flow(request: &HttpRequest, tx: &mut Transaction<'_, Database>, content_type: &str) -> Result<Either<User, HttpResponse>> {
     if !is_present(request).await {
         return Ok(Either::Right(prompt(content_type).await));
     }
@@ -56,18 +52,12 @@ pub(crate) async fn login_flow(
 pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
     HttpResponse::Unauthorized()
         .append_header((CONTENT_TYPE, content_type))
-        .append_header((
-            WWW_AUTHENTICATE,
-            "Basic realm=\"GitArena\", charset=\"UTF-8\"",
-        ))
+        .append_header((WWW_AUTHENTICATE, "Basic realm=\"GitArena\", charset=\"UTF-8\""))
         .finish()
 }
 
 #[instrument(skip_all, err)]
-pub(crate) async fn authenticate(
-    request: &HttpRequest,
-    transaction: &mut Transaction<'_, Database>,
-) -> Result<User> {
+pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transaction<'_, Database>) -> Result<User> {
     // TODO: Add more verbose logging to this function similar to frontend login (for usage by fail2ban)
 
     match request.get_header("authorization") {
@@ -78,11 +68,10 @@ pub(crate) async fn authenticate(
                 die!(UNAUTHORIZED, "Username and password cannot be empty");
             }
 
-            let option: Option<User> =
-                sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
-                    .bind(&username)
-                    .fetch_optional(&mut **transaction)
-                    .await?;
+            let option: Option<User> = sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
+                .bind(&username)
+                .fetch_optional(&mut **transaction)
+                .await?;
 
             if option.is_none() {
                 die!(UNAUTHORIZED, "User does not exist");
@@ -102,10 +91,7 @@ pub(crate) async fn authenticate(
             if user.disabled
             /* || !primary_email.is_allowed_login()*/
             {
-                die!(
-                    UNAUTHORIZED,
-                    "Account has been disabled. Please contact support."
-                );
+                die!(UNAUTHORIZED, "Account has been disabled. Please contact support.");
             }
 
             Ok(user)
@@ -116,15 +102,10 @@ pub(crate) async fn authenticate(
 
 #[instrument(skip(auth_header), err)]
 pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, String)> {
-    let (auth_type, base64_credentials) = auth_header
-        .split_once(' ')
-        .ok_or_else(|| err!(BAD_REQUEST))?;
+    let (auth_type, base64_credentials) = auth_header.split_once(' ').ok_or_else(|| err!(BAD_REQUEST))?;
 
     if auth_type != "Basic" {
-        die!(
-            UNAUTHORIZED,
-            "Unsupported authentication type, only Basic auth allowed"
-        );
+        die!(UNAUTHORIZED, "Unsupported authentication type, only Basic auth allowed");
     }
 
     let credentials = String::from_utf8(base64::decode(base64_credentials)?)?;

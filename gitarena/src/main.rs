@@ -78,11 +78,9 @@ async fn main() -> Result<()> {
     let _ = SYSTEM_INFO.read().await;
     let _watcher = templates::init().await?;
 
-    let bind_address = env::var("BIND_ADDRESS")
-        .context("Unable to read mandatory BIND_ADDRESS environment variable")?;
+    let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
-    let (secret, domain): (Option<String>, Option<String>) =
-        from_optional_config!("secret" => String, "domain" => String);
+    let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain" => String);
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.map_or_else(|| false, |d| d.starts_with("https"));
 
@@ -116,26 +114,19 @@ async fn main() -> Result<()> {
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response
                         // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
-                        res.headers_mut().insert(
-                            CACHE_CONTROL,
-                            HeaderValue::from_static("no-cache, max-age=0, must-revalidate"),
-                        );
+                        res.headers_mut()
+                            .insert(CACHE_CONTROL, HeaderValue::from_static("no-cache, max-age=0, must-revalidate"));
                     }
 
                     if res.request().path().starts_with("/api") {
-                        res.headers_mut()
-                            .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+                        res.headers_mut().insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
                     }
 
                     Ok(res)
                 }
             })
             .wrap_fn(error_renderer_middleware)
-            .default_service(
-                route()
-                    .method(Method::GET)
-                    .to(routes::not_found::default_handler),
-            )
+            .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
             .service(routes::admin::all())
             .configure(routes::init)
             .configure(routes::proxy::init)
@@ -143,18 +134,11 @@ async fn main() -> Result<()> {
             .configure(routes::repository::init) // Repository routes need to be always last
             .route(
                 "/favicon.ico",
-                to(|| async {
-                    HttpResponse::MovedPermanently()
-                        .append_header((LOCATION, "/static/img/favicon.ico"))
-                        .finish()
-                }),
+                to(|| async { HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish() }),
             );
 
         let debug_mode = cfg!(debug_assertions);
-        let serve_static = matches!(
-            env::var("SERVE_STATIC_FILES"),
-            Ok(_) | Err(VarError::NotUnicode(_))
-        ) || debug_mode;
+        let serve_static = matches!(env::var("SERVE_STATIC_FILES"), Ok(_) | Err(VarError::NotUnicode(_))) || debug_mode;
 
         if serve_static {
             app = app.service(

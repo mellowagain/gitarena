@@ -34,11 +34,7 @@ impl Display for Session {
 }
 
 impl Session {
-    pub(crate) async fn new(
-        request: &HttpRequest,
-        user: &User,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Session> {
+    pub(crate) async fn new(request: &HttpRequest, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Session> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
@@ -55,24 +51,17 @@ impl Session {
     }
 
     /// Finds existing session from Identity (Display of Session)
-    pub(crate) async fn from_identity(
-        identity: Option<String>,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Option<Session>> {
+    pub(crate) async fn from_identity(identity: Option<String>, tx: &mut Transaction<'_, Database>) -> Result<Option<Session>> {
         match identity {
             Some(identity) => {
-                let (user_id_str, hash) = identity
-                    .split_once('$')
-                    .ok_or_else(|| anyhow!("Unable to parse identity"))?;
+                let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
                 let user_id = user_id_str.parse::<i32>()?;
 
-                let option: Option<Session> = sqlx::query_as::<_, Session>(
-                    "select * from sessions where user_id = $1 and hash = $2 limit 1",
-                )
-                .bind(user_id)
-                .bind(hash)
-                .fetch_optional(&mut **tx)
-                .await?;
+                let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
+                    .bind(user_id)
+                    .bind(hash)
+                    .fetch_optional(&mut **tx)
+                    .await?;
 
                 Ok(option)
             }
@@ -80,12 +69,7 @@ impl Session {
         }
     }
 
-    pub(crate) async fn update_explicit(
-        &self,
-        ip_address: &IpNetwork,
-        user_agent: &str,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<()> {
+    pub(crate) async fn update_explicit(&self, ip_address: &IpNetwork, user_agent: &str, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let now = Local::now();
 
         // Limit user agent to 256 characters: https://stackoverflow.com/questions/654921/how-big-can-a-user-agent-string-get/654992#comment106798172_654992
@@ -104,11 +88,7 @@ impl Session {
     }
 
     #[allow(dead_code)]
-    pub(crate) async fn update_from_request(
-        &self,
-        request: &HttpRequest,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<()> {
+    pub(crate) async fn update_from_request(&self, request: &HttpRequest, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
         self.update_explicit(&ip_address, user_agent, tx).await
@@ -135,18 +115,14 @@ pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> (IpNetwork, &str) {
 
 pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> (IpNetwork, String) {
     let ip_address = extract_ip(&request);
-    let user_agent = request
-        .get_header("user-agent")
-        .unwrap_or("No user agent sent");
+    let user_agent = request.get_header("user-agent").unwrap_or("No user agent sent");
 
     (ip_address, user_agent.to_owned())
 }
 
 fn extract_ip(request: &HttpRequest) -> IpNetwork {
     let connection_info = request.connection_info();
-    let ip_str = connection_info
-        .realip_remote_addr()
-        .unwrap_or("No user agent sent");
+    let ip_str = connection_info.realip_remote_addr().unwrap_or("No user agent sent");
 
     match IpNetwork::from_str(ip_str) {
         Ok(ip_network) => ip_network,

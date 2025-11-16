@@ -9,10 +9,7 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::Transaction;
 
-pub(crate) async fn verify_captcha(
-    token: &String,
-    tx: &mut Transaction<'_, Database>,
-) -> Result<bool> {
+pub(crate) async fn verify_captcha(token: &String, tx: &mut Transaction<'_, Database>) -> Result<bool> {
     let api_key = match get_optional_setting::<String>("hcaptcha.site_key", tx).await? {
         Some(api_key) => api_key,
         None => return Ok(true),
@@ -22,22 +19,10 @@ pub(crate) async fn verify_captcha(
         .post("https://hcaptcha.com/siteverify")
         .send_form(&[("response", token), ("secret", &api_key)])
         .await
-        .map_err(|err| {
-            err!(
-                BAD_GATEWAY,
-                "Unable to verify hCaptcha captcha token: {}",
-                err
-            )
-        })?
+        .map_err(|err| err!(BAD_GATEWAY, "Unable to verify hCaptcha captcha token: {}", err))?
         .json()
         .await
-        .map_err(|err| {
-            err!(
-                BAD_GATEWAY,
-                "Unable to convert hCaptcha response into Json structure: {}",
-                err
-            )
-        })?;
+        .map_err(|err| err!(BAD_GATEWAY, "Unable to convert hCaptcha response into Json structure: {}", err))?;
 
     if let Some(errors) = response.errors {
         let errors_str = errors.join(", ");

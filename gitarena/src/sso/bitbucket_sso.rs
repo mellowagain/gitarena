@@ -34,13 +34,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to BitBucket api: {}", err))?
             .json::<T>()
             .await
-            .map_err(|err| {
-                err!(
-                    BAD_GATEWAY,
-                    "Failed to parse BitBucket response as JSON: {}",
-                    err
-                )
-            })?)
+            .map_err(|err| err!(BAD_GATEWAY, "Failed to parse BitBucket response as JSON: {}", err))?)
     }
 }
 
@@ -52,10 +46,7 @@ impl DatabaseSSOProvider for BitBucketSSO {
         Ok(ClientId::new(client_id))
     }
 
-    async fn get_client_secret(
-        &self,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Option<ClientSecret>> {
+    async fn get_client_secret(&self, tx: &mut Transaction<'_, Database>) -> Result<Option<ClientSecret>> {
         let client_secret: String = config::get_setting("sso.bitbucket.secret", tx).await?;
 
         Ok(Some(ClientSecret::new(client_secret)))
@@ -75,10 +66,7 @@ impl SSOProvider for BitBucketSSO {
 
     fn get_token_url(&self) -> Option<TokenUrl> {
         // unwrap_or_log() is safe as we can guarantee that this is a valid url
-        Some(
-            TokenUrl::new("https://bitbucket.org/site/oauth2/access_token".to_owned())
-                .unwrap_or_log(),
-        )
+        Some(TokenUrl::new("https://bitbucket.org/site/oauth2/access_token".to_owned()).unwrap_or_log())
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str> {
@@ -109,23 +97,17 @@ impl SSOProvider for BitBucketSSO {
                 _ => None,
             })
             .cloned()
-            .ok_or_else(|| {
-                anyhow!("Failed to retrieve username from BitBucket API json response")
-            })?;
+            .ok_or_else(|| anyhow!("Failed to retrieve username from BitBucket API json response"))?;
 
-        while validate_username(username.as_str()).is_err()
-            || is_username_taken(username.as_str(), &mut transaction).await?
-        {
+        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
             username = crypto::random_numeric_ascii_string(16);
         }
 
-        let user: User = sqlx::query_as::<_, User>(
-            "insert into users (username, password) values ($1, $2) returning *",
-        )
-        .bind(username.as_str())
-        .bind("sso-login")
-        .fetch_one(&mut *transaction)
-        .await?;
+        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+            .bind(username.as_str())
+            .bind("sso-login")
+            .fetch_one(&mut *transaction)
+            .await?;
 
         let bitbucket_id = profile_data
             .get("account_id")
@@ -146,20 +128,14 @@ impl SSOProvider for BitBucketSSO {
 
         let emails: BitBucketEmailList = BitBucketSSO::request_data("user/emails", token).await?;
 
-        for bitbucket_email in emails
-            .values
-            .iter()
-            .skip_while(|e| !e.is_confirmed || e.email_type != "email")
-        {
+        for bitbucket_email in emails.values.iter().skip_while(|e| !e.is_confirmed || e.email_type != "email") {
             let email = bitbucket_email.email.as_str();
 
             // Email exists
-            let (email_exists,): (bool,) = sqlx::query_as(
-                "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
-            )
-            .bind(email)
-            .fetch_one(&mut *transaction)
-            .await?;
+            let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
+                .bind(email)
+                .fetch_one(&mut *transaction)
+                .await?;
 
             let primary = bitbucket_email.is_primary;
 
@@ -172,12 +148,14 @@ impl SSOProvider for BitBucketSSO {
             }
 
             // All email addresses have already been verified by Bitbucket, so we also mark them as verified
-            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $3, $3, $3, current_timestamp)")
-                .bind(user.id)
-                .bind(email)
-                .bind(primary)
-                .execute(&mut *transaction)
-                .await?;
+            sqlx::query(
+                "insert into emails (owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $3, $3, $3, current_timestamp)",
+            )
+            .bind(user.id)
+            .bind(email)
+            .bind(primary)
+            .execute(&mut *transaction)
+            .await?;
         }
 
         transaction.commit().await?;

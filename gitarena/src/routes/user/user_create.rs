@@ -16,10 +16,7 @@ use sqlx::PgPool;
 use tera::Context;
 
 #[route("/register", method = "GET", err = "html")]
-pub(crate) async fn get_register(
-    web_user: WebUser,
-    db_pool: web::Data<PgPool>,
-) -> Result<impl Responder> {
+pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     if matches!(web_user, WebUser::Authenticated(_)) {
@@ -32,9 +29,7 @@ pub(crate) async fn get_register(
         die!(FORBIDDEN, "User registrations are disabled");
     }
 
-    if let Some(site_key) =
-        get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await?
-    {
+    if let Some(site_key) = get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await? {
         context.try_insert("hcaptcha_site_key", &site_key)?;
     }
 
@@ -71,22 +66,14 @@ pub(crate) async fn post_register(
 
     // This is not according to the spec of the IETF but trying to implement that is honestly out-of-bounds for this project
     // Thus a best effort naive implementation. Checks for the presence of "@" and a "." in the domain name (after the last @)
-    if !email.contains('@')
-        || !email
-            .rsplit_once('@')
-            .map(|(_, x)| x)
-            .unwrap_or_default()
-            .contains('.')
-    {
+    if !email.contains('@') || !email.rsplit_once('@').map(|(_, x)| x).unwrap_or_default().contains('.') {
         die!(BAD_REQUEST, "Invalid email address");
     }
 
-    let (email_exists,): (bool,) = sqlx::query_as(
-        "select exists(select 1 from emails where lower(email) = lower($1) limit 1)",
-    )
-    .bind(email)
-    .fetch_one(&mut *transaction)
-    .await?;
+    let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
+        .bind(email)
+        .fetch_one(&mut *transaction)
+        .await?;
 
     if email_exists {
         die!(CONFLICT, "Email already in use");
@@ -102,13 +89,9 @@ pub(crate) async fn post_register(
 
     let password = crypto::hash_password(raw_password)?;
 
-    if get_optional_setting::<String>("hcaptcha.site_key", &mut transaction)
-        .await?
-        .is_some()
-    {
+    if get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await?.is_some() {
         if let Some(h_captcha_response) = &body.h_captcha_response {
-            let captcha_success =
-                captcha::verify_captcha(h_captcha_response, &mut transaction).await?;
+            let captcha_success = captcha::verify_captcha(h_captcha_response, &mut transaction).await?;
 
             if !captcha_success {
                 die!(UNPROCESSABLE_ENTITY, "Captcha verification failed");
@@ -118,13 +101,11 @@ pub(crate) async fn post_register(
         }
     }
 
-    let user: User = sqlx::query_as::<_, User>(
-        "insert into users (username, password) values ($1, $2) returning *",
-    )
-    .bind(username)
-    .bind(&password)
-    .fetch_one(&mut *transaction)
-    .await?;
+    let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+        .bind(username)
+        .bind(&password)
+        .fetch_one(&mut *transaction)
+        .await?;
 
     sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true)")
         .bind(user.id)
@@ -151,10 +132,7 @@ pub(crate) async fn post_register(
             .append_header(("hx-refresh", "true"))
             .finish()
     } else {
-        HttpResponse::Ok().json(RegisterJsonResponse {
-            success: true,
-            id: user.id,
-        })
+        HttpResponse::Ok().json(RegisterJsonResponse { success: true, id: user.id })
     })
 }
 

@@ -11,9 +11,7 @@ use async_trait::async_trait;
 use gitarena_common::database::Database;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::url::Url;
-use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl,
-};
+use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use qstring::QString;
 use sqlx::{PgPool, Transaction};
 use tracing_unwrap::OptionExt;
@@ -25,11 +23,7 @@ pub(crate) trait SSOProvider {
     fn get_auth_url(&self) -> AuthUrl;
     fn get_token_url(&self) -> Option<TokenUrl>;
 
-    async fn build_client(
-        &self,
-        provider: &SSOProviderType,
-        db_pool: &PgPool,
-    ) -> Result<BasicClient> {
+    async fn build_client(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicClient> {
         let mut transaction = db_pool.begin().await?;
 
         let (client_id, client_secret) = match provider {
@@ -63,45 +57,29 @@ pub(crate) trait SSOProvider {
         let token_url = self.get_token_url();
 
         let redirect_url = match provider {
-            SSOProviderType::BitBucket => {
-                DatabaseSSOProvider::get_redirect_url(&BitBucketSSO, &mut transaction)
-                    .await
-                    .context("Failed to get redirect url")?
-            }
-            SSOProviderType::GitHub => {
-                DatabaseSSOProvider::get_redirect_url(&GitHubSSO, &mut transaction)
-                    .await
-                    .context("Failed to get redirect url")?
-            }
-            SSOProviderType::GitLab => {
-                DatabaseSSOProvider::get_redirect_url(&GitLabSSO, &mut transaction)
-                    .await
-                    .context("Failed to get redirect url")?
-            }
+            SSOProviderType::BitBucket => DatabaseSSOProvider::get_redirect_url(&BitBucketSSO, &mut transaction)
+                .await
+                .context("Failed to get redirect url")?,
+            SSOProviderType::GitHub => DatabaseSSOProvider::get_redirect_url(&GitHubSSO, &mut transaction)
+                .await
+                .context("Failed to get redirect url")?,
+            SSOProviderType::GitLab => DatabaseSSOProvider::get_redirect_url(&GitLabSSO, &mut transaction)
+                .await
+                .context("Failed to get redirect url")?,
         };
 
         transaction.commit().await?;
 
-        Ok(
-            BasicClient::new(client_id, client_secret, auth_url, token_url)
-                .set_redirect_uri(redirect_url),
-        )
+        Ok(BasicClient::new(client_id, client_secret, auth_url, token_url).set_redirect_uri(redirect_url))
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str>;
 
     fn get_scopes(&self) -> Vec<Scope> {
-        self.get_scopes_as_str()
-            .iter()
-            .map(|scope| Scope::new(scope.to_string()))
-            .collect()
+        self.get_scopes_as_str().iter().map(|scope| Scope::new(scope.to_string())).collect()
     }
 
-    async fn generate_auth_url(
-        &self,
-        provider: &SSOProviderType,
-        db_pool: &PgPool,
-    ) -> Result<(Url, CsrfToken)> {
+    async fn generate_auth_url(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<(Url, CsrfToken)> {
         let client = self.build_client(provider, db_pool).await?;
         let mut request = client.authorize_url(CsrfToken::new_random);
 
@@ -113,12 +91,7 @@ pub(crate) trait SSOProvider {
     }
 
     /// Exchanges a response (provide by `state` and `code` in `query_string`) into an oauth access token
-    async fn exchange_response(
-        &self,
-        query_string: &QString,
-        provider: &SSOProviderType,
-        db_pool: &PgPool,
-    ) -> Result<BasicTokenResponse> {
+    async fn exchange_response(&self, query_string: &QString, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicTokenResponse> {
         let code_option = query_string.get("code");
         let state_option = query_string.get("state");
 
@@ -138,28 +111,18 @@ pub(crate) trait SSOProvider {
             .exchange_code(code)
             .request_async(async_http_client)
             .await
-            .with_context(|| {
-                format!(
-                    "Failed to contact {} in order to exchange oauth token",
-                    &self.get_name()
-                )
-            })?)
+            .with_context(|| format!("Failed to contact {} in order to exchange oauth token", &self.get_name()))?)
     }
 
     /// Returns true if the granted scopes are OK or not
     fn validate_scopes(&self, scopes_option: Option<&Vec<Scope>>) -> bool {
         let granted_scopes = match scopes_option {
-            Some(scopes) => scopes
-                .iter()
-                .map(|scope| scope.as_str())
-                .collect::<Vec<_>>(),
+            Some(scopes) => scopes.iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
             None => return true, // If not provided it is identical to our asked scopes
         };
 
         let requested_scopes = self.get_scopes_as_str();
-        granted_scopes
-            .iter()
-            .all(|item| requested_scopes.contains(item))
+        granted_scopes.iter().all(|item| requested_scopes.contains(item))
     }
 
     async fn get_provider_id(&self, token: &str) -> Result<String>;
@@ -177,8 +140,5 @@ pub(crate) trait DatabaseSSOProvider: SSOProvider {
     }
 
     async fn get_client_id(&self, tx: &mut Transaction<'_, Database>) -> Result<ClientId>;
-    async fn get_client_secret(
-        &self,
-        tx: &mut Transaction<'_, Database>,
-    ) -> Result<Option<ClientSecret>>;
+    async fn get_client_secret(&self, tx: &mut Transaction<'_, Database>) -> Result<Option<ClientSecret>>;
 }
