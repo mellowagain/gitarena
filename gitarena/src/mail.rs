@@ -10,7 +10,7 @@ use crate::user::User;
 
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
 use gitarena_common::database::Database;

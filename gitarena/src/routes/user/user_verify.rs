@@ -1,6 +1,6 @@
 use crate::die;
 
-use actix_web::{web, Responder};
+use actix_web::{Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use log::info;

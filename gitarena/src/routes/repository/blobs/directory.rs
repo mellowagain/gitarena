@@ -1,6 +1,6 @@
+use crate::git::GIT_HASH_KIND;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::git::GIT_HASH_KIND;
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
@@ -11,15 +11,15 @@ use crate::{die, err, render_template};
 use std::cmp::Ordering;
 use std::sync::Arc;
 
-use actix_web::{web, Responder};
+use actix_web::{Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
+use git_repository::ObjectId;
 use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
-use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::ObjectId;
+use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
 use sqlx::PgPool;
 use tera::Context;

@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use log::warn;
 use tracing::instrument;

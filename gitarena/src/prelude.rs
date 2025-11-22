@@ -1,14 +1,14 @@
 use crate::user::{User, WebUser};
 
 use actix_web::HttpRequest;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use awc::http::header::USER_AGENT;
 use awc::{Client, ClientBuilder};
 use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
-use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use git_repository::actor::{Sign, Signature as GitoxideSignature, Time as GitoxideTime};
+use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use gitarena_common::database::Database;
 use log::warn;
 use qstring::QString;

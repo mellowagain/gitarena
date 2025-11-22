@@ -10,10 +10,10 @@ use std::time::SystemTime;
 
 use actix_multipart::Multipart;
 use actix_web::http::header::{CACHE_CONTROL, LAST_MODIFIED};
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
-use awc::http::header::IF_MODIFIED_SINCE;
 use awc::Client;
+use awc::http::header::IF_MODIFIED_SINCE;
 use chrono::{Duration, NaiveDateTime};
 use futures::TryStreamExt;
 use gitarena_macros::{from_config, route};

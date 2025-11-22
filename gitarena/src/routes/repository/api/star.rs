@@ -3,8 +3,8 @@ use crate::prelude::HttpRequestExtensions;
 use crate::repository::{RepoOwner, Repository};
 use crate::user::{User, WebUser};
 
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
-use anyhow::{anyhow, Result};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
+use anyhow::{Result, anyhow};
 use gitarena_common::database::Database;
 use gitarena_macros::route;
 use log::debug;

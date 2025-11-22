@@ -146,7 +146,7 @@ pub(crate) fn tera() -> &'static GlobalTera {
 
 #[macro_export]
 macro_rules! template_context {
-    ($input:expr) => {
+    ($input:expr_2021) => {
         Some($input.iter().cloned().collect())
     };
 }
@@ -157,13 +157,9 @@ macro_rules! template_context {
 /// - If `$transaction` is not passed, only `debug` (if in debug mode) gets inserted into the context additionally.
 #[macro_export]
 macro_rules! render_template {
-    ($template_name:literal, $context:expr) => {{
-        render_template!(actix_web::http::StatusCode::OK, $template_name, $context)
-    }};
-    ($template_name:literal, $context:expr, $transaction:expr) => {{
-        render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction)
-    }};
-    ($status:expr, $template_name:literal, $context:expr) => {{
+    ($template_name:literal, $context:expr_2021) => {{ render_template!(actix_web::http::StatusCode::OK, $template_name, $context) }};
+    ($template_name:literal, $context:expr_2021, $transaction:expr_2021) => {{ render_template!(actix_web::http::StatusCode::OK, $template_name, $context, $transaction) }};
+    ($status:expr_2021, $template_name:literal, $context:expr_2021) => {{
         if cfg!(debug_assertions) {
             $context.try_insert("debug", &true)?;
         }
@@ -171,7 +167,7 @@ macro_rules! render_template {
         let template = $crate::templates::render($template_name, &$context).await?;
         Ok(actix_web::HttpResponseBuilder::new($status).body(template))
     }};
-    ($status:expr, $template_name:literal, $context:expr, $transaction:expr) => {{
+    ($status:expr_2021, $template_name:literal, $context:expr_2021, $transaction:expr_2021) => {{
         let domain = $crate::config::get_optional_setting::<String>("domain", &mut $transaction)
             .await?
             .unwrap_or_default();

@@ -7,7 +7,7 @@ use crate::{die, render_template};
 use std::env::consts;
 use std::process;
 
-use actix_web::{web, Responder};
+use actix_web::{Responder, web};
 use anyhow::Result;
 use chrono::Duration;
 use chrono_humanize::{Accuracy, HumanTime, Tense};

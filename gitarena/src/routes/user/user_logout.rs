@@ -4,7 +4,7 @@ use crate::session::Session;
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use log::debug;

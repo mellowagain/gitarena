@@ -17,7 +17,7 @@ use derive_more::{Deref, Display};
 use futures::Stream;
 use futures_locks::RwLock;
 use log::debug;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tracing::instrument;
 
 pub(crate) const SSE_BUFFER_SIZE: usize = 512;

@@ -5,9 +5,9 @@ use crate::user::{User, WebUser};
 use crate::{crypto, die, err};
 
 use actix_identity::Identity;
-use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::http::header::LOCATION;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::{from_config, route};
 use log::debug;

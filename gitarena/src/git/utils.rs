@@ -3,13 +3,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
+use git_repository::Repository;
 use git_repository::hash::oid;
 use git_repository::objs::TreeRef;
-use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
-use git_repository::refs::file::loose::Reference;
+use git_repository::odb::pack::FindExt;
 use git_repository::refs::Target;
-use git_repository::Repository;
+use git_repository::refs::file::loose::Reference;
 use tracing::instrument;
 
 #[instrument(err, skip(store, repo))]

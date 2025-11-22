@@ -5,7 +5,7 @@ use crate::{err, render_template};
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use actix_web::{web, HttpRequest, Responder};
+use actix_web::{HttpRequest, Responder, web};
 use anyhow::Result;
 use derive_more::Display;
 use gitarena_common::database::Database;

@@ -5,9 +5,9 @@ use crate::user::WebUser;
 
 use std::sync::Arc;
 
-use actix_web::http::StatusCode;
 use actix_web::Result as ActixResult;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::http::StatusCode;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use log::debug;
 use serde_json::json;

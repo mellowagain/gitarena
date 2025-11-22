@@ -6,7 +6,7 @@ use crate::{config, die, err, render_template};
 use std::collections::HashMap;
 use std::sync::Once;
 
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context as _, Result};
 use gitarena_macros::route;
 use multimap::MultiMap;

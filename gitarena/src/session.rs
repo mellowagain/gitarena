@@ -7,7 +7,7 @@ use std::net::Ipv6Addr;
 use std::str::FromStr;
 
 use actix_web::HttpRequest;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Local};
 use gitarena_common::database::Database;
 use ipnetwork::{IpNetwork, Ipv6Network};

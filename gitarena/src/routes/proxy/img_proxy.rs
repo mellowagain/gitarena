@@ -1,10 +1,10 @@
 use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::{die, err};
 
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
 use awc::Client;
+use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
 use gitarena_macros::route;
 use log::debug;
 use serde::Deserialize;

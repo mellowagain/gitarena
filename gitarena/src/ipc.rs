@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use futures_locks::RwLock;
-use gitarena_common::ipc::{ipc_path, IpcPacket, PacketId};
+use gitarena_common::ipc::{IpcPacket, PacketId, ipc_path};
 use log::{debug, error, info, warn};
 use parity_tokio_ipc::{Connection, Endpoint};
 use serde::Serialize;

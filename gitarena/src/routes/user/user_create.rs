@@ -7,7 +7,7 @@ use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die, render_template};
 
 use actix_identity::Identity;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use log::info;

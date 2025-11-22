@@ -8,8 +8,8 @@ use crate::utils::filesystem::copy_dir_all;
 
 use std::path::Path;
 
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
-use anyhow::{anyhow, Context, Result};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
+use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
 use log::info;
 use serde_json::json;

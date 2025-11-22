@@ -2,7 +2,7 @@ use crate::ssh::SshKey;
 use crate::user::WebUser;
 use crate::{die, err};
 
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::Context;
 use anyhow::Result;
 use chrono::serde::ts_seconds_option;

@@ -6,8 +6,8 @@ use crate::user::WebUser;
 
 use std::collections::HashMap;
 
-use actix_web::{web, HttpMessage, HttpRequest, Responder};
-use anyhow::{anyhow, Result};
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{Result, anyhow};
 use gitarena_macros::route;
 use itertools::Itertools;
 use sqlx::PgPool;

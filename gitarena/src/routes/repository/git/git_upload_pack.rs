@@ -9,7 +9,7 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{web, Either, HttpRequest, HttpResponse, Responder};
+use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};

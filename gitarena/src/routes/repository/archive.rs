@@ -12,14 +12,14 @@ use anyhow::Result;
 use async_compression::tokio::write::GzipEncoder;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use git_repository::objs::tree::EntryMode;
 use git_repository::objs::Tree;
-use git_repository::odb::pack::FindExt;
+use git_repository::objs::tree::EntryMode;
 use git_repository::odb::Store;
+use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
-use zip::write::FileOptions as ZipFileOptions;
 use zip::ZipWriter;
+use zip::write::FileOptions as ZipFileOptions;
 
 #[route("/{username}/{repository}/tree/{tree:.*}/archive/targz", method = "GET", err = "html")]
 pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch) -> Result<impl Responder> {
@@ -137,7 +137,8 @@ async fn write_directory_zip(store: Arc<Store>, tree: Tree, path: &Path, writer:
                 let options = ZipFileOptions::default()
                     .unix_permissions(if matches!(entry.mode, EntryMode::BlobExecutable) { 0o775 } else { 0o664 })
                     .large_file(content.len() >= 4294967000); // 4 GiB
-                                                              //.last_modified_time(...) TODO: DateTime of last commit to this file
+                
+                //.last_modified_time(...) TODO: DateTime of last commit to this file
 
                 writer.start_file(format!("{}", path.display()), options)?;
                 writer.write_all(&content[..])?;

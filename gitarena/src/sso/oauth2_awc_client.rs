@@ -4,8 +4,8 @@ use crate::err;
 use crate::error::WithStatusCode;
 use crate::prelude::USER_AGENT_STR;
 
-use awc::http::header::USER_AGENT;
 use awc::ClientBuilder;
+use awc::http::header::USER_AGENT;
 use oauth2::{HttpRequest, HttpResponse};
 
 pub(crate) async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, WithStatusCode> {

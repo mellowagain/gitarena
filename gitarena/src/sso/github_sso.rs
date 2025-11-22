@@ -6,10 +6,10 @@ use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
 use crate::{config, crypto, err};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
-use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use awc::Client;
+use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use gitarena_common::database::Database;
 use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
 use serde::de::DeserializeOwned;

@@ -9,13 +9,13 @@ use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
+use actix_web::Error as ActixError;
+use actix_web::Result as ActixResult;
 use actix_web::body::{BoxBody, MessageBody};
 use actix_web::dev::{ResponseHead, Service, ServiceRequest, ServiceResponse};
 use actix_web::error::InternalError;
-use actix_web::http::header::{HeaderValue, CONTENT_TYPE};
 use actix_web::http::StatusCode;
-use actix_web::Error as ActixError;
-use actix_web::Result as ActixResult;
+use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use derive_more::{Display, Error};
@@ -89,7 +89,7 @@ macro_rules! err {
             display: true
         }
     };
-    ($err:expr $(,)?) => ({
+    ($err:expr_2021 $(,)?) => ({
         $crate::error::WithStatusCode {
             code: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
             source: Some(anyhow::anyhow!($err)),
@@ -225,7 +225,7 @@ impl ResponseError for GitArenaError {
 pub(crate) fn error_renderer_middleware<S, B>(
     request: ServiceRequest,
     service: &S,
-) -> impl Future<Output = ActixResult<ServiceResponse<impl MessageBody>>> + 'static
+) -> impl Future<Output = ActixResult<ServiceResponse<impl MessageBody + use<S, B>>>> + 'static + use<S, B>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixError>,
     S::Future: 'static,

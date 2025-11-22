@@ -6,7 +6,7 @@ use crate::sso::oauth2_awc_client::async_http_client;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use gitarena_common::database::Database;
 use oauth2::basic::{BasicClient, BasicTokenResponse};

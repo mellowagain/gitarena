@@ -1,5 +1,5 @@
-use crate::sse::Category;
 use crate::Broadcaster;
+use crate::sse::Category;
 
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -12,8 +12,8 @@ use futures_locks::RwLock;
 use log::warn;
 use tracing::field::{Field, Visit};
 use tracing::{Event, Level, Subscriber};
-use tracing_subscriber::layer::Context;
 use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 #[derive(Debug)]
 pub(crate) struct AdminPanelLayer {

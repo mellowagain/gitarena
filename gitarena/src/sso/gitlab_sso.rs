@@ -8,10 +8,10 @@ use crate::{config, crypto, err};
 
 use std::sync::Once;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
-use awc::http::header::{AUTHORIZATION, USER_AGENT};
 use awc::Client;
+use awc::http::header::{AUTHORIZATION, USER_AGENT};
 use gitarena_common::database::Database;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
 use serde::de::DeserializeOwned;

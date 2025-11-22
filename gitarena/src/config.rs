@@ -6,7 +6,7 @@ use std::future::Future;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use derive_more::Display;
 use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};

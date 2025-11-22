@@ -1,9 +1,9 @@
 use crate::mail::Email;
 use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
+use crate::sso::SSO;
 use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
-use crate::sso::SSO;
 use crate::user::{User, WebUser};
 use crate::{die, err};
 
@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use gitarena_macros::route;
 use log::debug;

@@ -2,7 +2,7 @@
 name = "gitarena"
 version = { workspace = true }
 authors = { workspace = true }
-edition = "2021"
+edition = "2024"
 readme = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }

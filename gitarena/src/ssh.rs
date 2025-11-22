@@ -1,8 +1,8 @@
 use crate::user::User;
 use chrono::{DateTime, Utc};
 use derive_more::Display;
-use gitarena_common::database::models::KeyType;
 use gitarena_common::database::Database;
+use gitarena_common::database::models::KeyType;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 

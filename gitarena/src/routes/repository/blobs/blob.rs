@@ -10,14 +10,14 @@ use crate::{die, err, render_template};
 use std::sync::Arc;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
 use git_repository::objs::tree::EntryMode;
 use git_repository::objs::{Tree, TreeRef};
-use git_repository::odb::pack::FindExt;
 use git_repository::odb::Store;
+use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
 use infer::MatcherType;
 use sqlx::PgPool;

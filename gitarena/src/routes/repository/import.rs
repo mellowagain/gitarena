@@ -1,9 +1,9 @@
 use crate::config::get_setting;
 use crate::prelude::ContextExtensions;
 use crate::user::WebUser;
-use crate::{die, render_template, Ipc};
+use crate::{Ipc, die, render_template};
 
-use actix_web::{web, Responder};
+use actix_web::{Responder, web};
 use anyhow::Result;
 use futures_locks::RwLock;
 use gitarena_macros::route;

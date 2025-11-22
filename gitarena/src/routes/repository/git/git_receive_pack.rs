@@ -16,7 +16,7 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{web, Either, HttpRequest, HttpResponse, Responder};
+use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};

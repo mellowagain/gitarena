@@ -1,6 +1,6 @@
+use crate::git::GIT_HASH_KIND;
 use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::git::GIT_HASH_KIND;
 use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::GitTreeRequest;
@@ -10,12 +10,12 @@ use crate::{die, err, render_template};
 
 use std::cmp::Ordering;
 
-use actix_web::{web, HttpMessage, HttpRequest, Responder};
-use anyhow::{anyhow, Result};
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
 use git_repository::hash::ObjectId;
-use git_repository::objs::tree::EntryMode;
 use git_repository::objs::Tree;
+use git_repository::objs::tree::EntryMode;
 use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -28,7 +28,7 @@ async fn render(
     username: &str,
     web_user: WebUser,
     mut transaction: Transaction<'_, Postgres>,
-) -> Result<impl Responder> {
+) -> Result<impl Responder + use<>> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
 
     let mut context = Context::new();

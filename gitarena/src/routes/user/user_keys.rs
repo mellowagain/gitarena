@@ -1,6 +1,6 @@
 use crate::ssh::SshKey;
 use crate::user::User;
-use actix_web::{web, Responder};
+use actix_web::{Responder, web};
 use gitarena_macros::route;
 use itertools::Itertools;
 use sqlx::PgPool;

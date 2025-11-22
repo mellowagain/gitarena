@@ -5,8 +5,8 @@ use crate::templates::web::GitCommit;
 use crate::user::WebUser;
 use crate::{die, render_template};
 
-use actix_web::{web, HttpMessage, HttpRequest, Responder};
-use anyhow::{anyhow, Result};
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
 use gitarena_macros::route;
 use sqlx::PgPool;

@@ -3,10 +3,10 @@ use crate::repository::Repository;
 
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use git_repository::odb::pack::bundle::write::Options as GitPackWriteOptions;
 use git_repository::odb::pack::data::input::Mode as PackIterationMode;
 use git_repository::odb::pack::index::Version as PackVersion;

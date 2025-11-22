@@ -10,7 +10,7 @@ use actix_identity::Identity;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpRequest};
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result, anyhow};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
