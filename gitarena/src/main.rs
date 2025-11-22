@@ -70,7 +70,6 @@ async fn main() -> Result<()> {
     )?;
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
-    sqlx::migrate!().run(&db_pool).await?;
 
     licenses::init().await;
 
@@ -142,7 +141,7 @@ async fn main() -> Result<()> {
 
         if serve_static {
             app = app.service(
-                Files::new("/static", "./static")
+                Files::new("/static", "./gitarena/static")
                     .use_etag(!debug_mode)
                     .use_last_modified(!debug_mode)
                     .use_hidden_files(),

@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow, bail};
+use log::info;
 use once_cell::sync::OnceCell;
 use sqlx::{Executor, Postgres};
 use tokio::fs;
@@ -24,20 +25,25 @@ pub type PoolOptions = sqlx::pool::PoolOptions<Database>;
 pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) -> Result<Pool> {
     static ONCE: OnceCell<String> = OnceCell::new();
 
-    Ok(PoolOptions::new()
+    let pool = PoolOptions::new()
         .max_connections(max_conns.ok_or(()).or_else(|_| get_max_connections())?)
         .acquire_timeout(Duration::from_secs(10))
         .after_connect(move |connection, _meta| {
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
                 let _ = connection
-                    .execute(ONCE.get_or_init(|| format!("set application_name = '{}';", module)).as_str())
+                    .execute(ONCE.get_or_init(|| format!("set application_name = '{module}';")).as_str())
                     .await;
+
+                info!("Successfully connected to database");
                 Ok(())
             })
         })
         .connect_with(read_database_config().await?)
-        .await?)
+        .await?;
+
+    sqlx::migrate!("../migrations").run(&pool).await?;
+    Ok(pool)
 }
 
 async fn read_database_config() -> Result<ConnectOptions> {

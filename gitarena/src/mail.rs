@@ -18,6 +18,7 @@ use gitarena_macros::from_config;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use log::debug;
 use serde::Serialize;
 use sqlx::{FromRow, Pool, Postgres, Transaction};
 
@@ -148,6 +149,13 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
 }
 
 async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {
+    let (enabled) = from_config!("smtp.enabled" => bool);
+
+    if !enabled {
+        debug!("SMTP disabled, not sending user confirmation mail");
+        return Ok(());
+    }
+
     let (server, username, password, port, tls): (String, String, String, i32, bool) = from_config!(
         "smtp.server" => String,
         "smtp.username" => String,

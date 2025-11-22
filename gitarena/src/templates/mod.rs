@@ -94,9 +94,9 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
             }
         })?;
 
-        watcher.watch(Path::new("../../templates/html"), RecursiveMode::Recursive)?;
+        watcher.watch(Path::new("./gitarena/templates/html"), RecursiveMode::Recursive)?;
 
-        info!("Started watching ./templates/html for changes...");
+        info!("Started watching ./gitarena/templates/html for changes...");
 
         Ok(watcher)
     }
@@ -121,7 +121,7 @@ pub(crate) async fn render(template: &str, context: &Context) -> Result<String> 
 }
 
 fn init_tera() -> GlobalTera {
-    let mut tera = match Tera::new("templates/html/**/*") {
+    let mut tera = match Tera::new("./gitarena/templates/html/**/*") {
         Ok(tera) => tera,
         Err(err) => panic!("{}", err),
     };

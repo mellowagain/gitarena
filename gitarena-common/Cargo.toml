@@ -5,6 +5,7 @@ authors = { workspace = true }
 description = "Shared code for GitArena packages"
 edition = { workspace = true }
 repository = { workspace = true }
+build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.52"
