@@ -14,16 +14,19 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use bstr::BString;
-use git_repository::actor::Signature;
-use git_repository::lock::acquire::Fail;
-use git_repository::objs::{CommitRef, Kind};
-use git_repository::odb::Store;
-use git_repository::odb::pack::data::{File as DataFile, ResolvedBase};
-use git_repository::odb::pack::index::File as IndexFile;
-use git_repository::odb::pack::{FindExt, cache};
-use git_repository::refs::Target;
-use git_repository::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use gitarena_common::database::Database;
+use gix::actor::Signature;
+use gix::date::parse::TimeBuf;
+use gix::features::zlib::Inflate;
+use gix::lock::acquire::Fail;
+use gix::objs::{CommitRef, Kind};
+use gix::odb::Store;
+use gix::odb::pack::data::File as DataFile;
+use gix::odb::pack::data::decode::entry::ResolvedBase;
+use gix::odb::pack::index::File as IndexFile;
+use gix::odb::pack::{FindExt, cache};
+use gix::refs::Target;
+use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use sqlx::{PgPool, Transaction};
 use tracing::instrument;
 
@@ -59,19 +62,19 @@ pub(crate) async fn process_create_update(
 
                 let data_file = DataFile::at(pack_path, GIT_HASH_KIND)?;
 
-                let entry = data_file.entry(offset);
+                let entry = data_file.entry(offset)?;
 
                 buffer.reserve(entry.decompressed_size as usize);
 
                 let outcome = data_file.decode_entry(
                     entry,
                     &mut buffer,
-                    |oid, vec| {
+                    &mut Inflate::default(),
+                    &|oid, vec| {
                         if let Some(index) = index_file.lookup(oid) {
                             let offset = index_file.pack_offset_at_index(index);
-                            let entry = data_file.entry(offset);
 
-                            Some(ResolvedBase::InPack(entry))
+                            data_file.entry(offset).ok().map(ResolvedBase::InPack)
                         } else {
                             store.to_cache_arc().find(oid, vec).ok().map(|(data, _)| ResolvedBase::OutOfPack {
                                 kind: data.kind,
@@ -96,7 +99,7 @@ pub(crate) async fn process_create_update(
 
         let previous_value = if let Some(previous_oid_str) = &ref_update.old {
             let previous_oid = oid::from_hex_str(Some(previous_oid_str.as_str()))?;
-            let previous_target = Target::Peeled(previous_oid);
+            let previous_target = Target::Object(previous_oid);
 
             PreviousValue::ExistingMustMatch(previous_target)
         } else {
@@ -111,7 +114,7 @@ pub(crate) async fn process_create_update(
                     message: BString::from(commit.message),
                 },
                 expected: previous_value,
-                new: Target::Peeled(new_oid),
+                new: Target::Object(new_oid),
             },
             name: ref_update.target_ref.as_str().try_into()?,
             deref: true,
@@ -122,9 +125,9 @@ pub(crate) async fn process_create_update(
         gitoxide_repo
             .refs
             .transaction()
-            .prepare(edits, Fail::Immediately)
+            .prepare(edits, Fail::Immediately, Fail::Immediately)
             .map_err(|err| anyhow!("Failed to commit transaction: {}", err))?
-            .commit(&Signature::from(commit.committer))?;
+            .commit(commit.committer)?;
     }
 
     // # libgit2 zone
@@ -157,7 +160,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
 
     let edits = vec![RefEdit {
         change: Change::Delete {
-            expected: PreviousValue::MustExistAndMatch(Target::Peeled(object_id)),
+            expected: PreviousValue::MustExistAndMatch(Target::Object(object_id)),
             log: RefLog::AndReference,
         },
         name: ref_update.target_ref.as_str().try_into()?,
@@ -167,9 +170,9 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
     gitoxide_repo
         .refs
         .transaction()
-        .prepare(edits, Fail::Immediately)
+        .prepare(edits, Fail::Immediately, Fail::Immediately)
         .map_err(|err| err!(INTERNAL_SERVER_ERROR, "Failed to commit transaction: {}", err))?
-        .commit(&Signature::gitarena_default())?;
+        .commit(Signature::gitarena_default().to_ref(&mut TimeBuf::default()))?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
         writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;

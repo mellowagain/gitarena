@@ -19,8 +19,9 @@ use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use log::warn;
 use memmem::{Searcher, TwoWaySearcher};
 use sqlx::PgPool;
@@ -92,7 +93,7 @@ pub(crate) async fn git_receive_pack(
     let frozen_bytes = bytes.freeze();
     let vec = &frozen_bytes[..];
 
-    let mut readable_iter = StreamingPeekableIter::new(vec, &[PacketLineRef::Flush]);
+    let mut readable_iter = StreamingPeekableIter::new(vec, &[PacketLineRef::Flush], false);
     readable_iter.fail_on_err_lines(true);
 
     let git_body = read_data_lines(&mut readable_iter).await?;
@@ -109,7 +110,7 @@ pub(crate) async fn git_receive_pack(
     }
 
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let mut output_writer = GitWriter::new();
 

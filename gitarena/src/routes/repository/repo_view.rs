@@ -13,11 +13,11 @@ use std::cmp::Ordering;
 use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
-use git_repository::hash::ObjectId;
-use git_repository::objs::Tree;
-use git_repository::objs::tree::EntryMode;
-use git_repository::refs::file::find::existing::Error as GitoxideFindError;
 use gitarena_macros::route;
+use gix::hash::ObjectId;
+use gix::objs::Tree;
+use gix::objs::tree::EntryKind;
+use gix::refs::file::find::existing::Error as GitoxideFindError;
 use sqlx::{PgPool, Postgres, Transaction};
 use tera::Context;
 use tracing_unwrap::OptionExt;
@@ -55,7 +55,7 @@ async fn render(
     let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => {
+        Err(GitoxideFindError::NotFound { name: _ }) => {
             if tree_name == repo.default_branch {
                 context.try_insert("files", &Vec::<()>::new())?;
 
@@ -71,7 +71,7 @@ async fn render(
     context.try_insert("full_tree", full_tree_name)?;
 
     let mut buffer = Vec::<u8>::new();
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
@@ -84,7 +84,7 @@ async fn render(
         let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap_or_log();
         let commit = libgit2_repo.find_commit(oid)?;
 
-        let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
+        let submodule_target_oid = if matches!(entry.mode.kind(), EntryKind::Commit) {
             Some(
                 read_blob_content(entry.oid.as_ref(), store.clone())
                     .await
@@ -95,7 +95,7 @@ async fn render(
         };
 
         files.push(RepoFile {
-            file_type: entry.mode as u16,
+            file_type: entry.mode.value(),
             file_name: name,
             submodule_target_oid,
             commit: GitCommit {
@@ -115,15 +115,15 @@ async fn render(
         // 2. Submodules
         // 3. Rest
 
-        if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type != EntryMode::Tree as u16 {
+        if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type != EntryKind::Tree as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type != EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
             Ordering::Greater
-        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
             lhs.file_name.cmp(rhs.file_name)
-        } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
+        } else if lhs.file_type == EntryKind::Commit as u16 && rhs.file_type != EntryKind::Commit as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
+        } else if lhs.file_type != EntryKind::Commit as u16 && rhs.file_type == EntryKind::Commit as u16 {
             Ordering::Greater
         } else {
             lhs.file_name.cmp(rhs.file_name)

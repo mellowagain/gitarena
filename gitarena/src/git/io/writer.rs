@@ -3,7 +3,8 @@ use crate::git::io::band::Band;
 use actix_web::web::{Bytes, BytesMut};
 use anyhow::{Context, Result};
 use futures::AsyncWriteExt;
-use git_repository::protocol::transport::packetline::{PacketLineRef, Writer as PacketlineWriter};
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::async_io::{Writer as PacketlineWriter, encode};
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
@@ -13,9 +14,10 @@ pub(crate) struct GitWriter {
 
 impl GitWriter {
     pub(crate) fn new() -> GitWriter {
-        GitWriter {
-            inner: PacketlineWriter::new(Vec::<u8>::new()).text_mode(),
-        }
+        let mut writer = PacketlineWriter::new(Vec::<u8>::new());
+        writer.enable_text_mode();
+
+        GitWriter { inner: writer }
     }
 
     // Example [hexl]text
@@ -92,14 +94,15 @@ impl GitWriter {
             .write(binary)
             .await
             .with_context(|| format!("Unable to write raw data to Git writer: {:?}", binary))?;
+
         Ok(self)
     }
 
     pub(crate) async fn flush(&mut self) -> Result<&mut GitWriter> {
-        PacketLineRef::Flush
-            .write_to(self.inner.inner_mut())
+        encode::write_packet_line(&PacketLineRef::Flush, self.inner.inner_mut())
             .await
             .context("Unable to write flush to Git writer")?;
+
         Ok(self)
     }
 
@@ -117,18 +120,18 @@ impl GitWriter {
     }
 
     pub(crate) async fn delimiter(&mut self) -> Result<&mut GitWriter> {
-        PacketLineRef::Delimiter
-            .write_to(self.inner.inner_mut())
+        encode::write_packet_line(&PacketLineRef::Delimiter, self.inner.inner_mut())
             .await
             .context("Unable to write delimiter to Git writer")?;
+
         Ok(self)
     }
 
     pub(crate) async fn response_end(&mut self) -> Result<&mut GitWriter> {
-        PacketLineRef::ResponseEnd
-            .write_to(self.inner.inner_mut())
+        encode::write_packet_line(&PacketLineRef::ResponseEnd, self.inner.inner_mut())
             .await
             .context("Unable to write response end to Git writer")?;
+
         Ok(self)
     }
 

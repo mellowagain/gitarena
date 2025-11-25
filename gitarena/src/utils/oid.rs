@@ -1,7 +1,7 @@
 use crate::git::GIT_HASH_KIND;
 
 use anyhow::{Result, anyhow};
-use git_repository::hash::ObjectId;
+use gix::hash::ObjectId;
 
 /// Normalizes an Git object id string.
 ///

@@ -1,4 +1,4 @@
-use git_repository::hash::Kind;
+use gix::hash::Kind;
 
 pub(crate) mod basic_auth;
 pub(crate) mod capabilities;

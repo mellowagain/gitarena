@@ -7,9 +7,10 @@ use awc::http::header::USER_AGENT;
 use awc::{Client, ClientBuilder};
 use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
-use git_repository::actor::{Sign, Signature as GitoxideSignature, Time as GitoxideTime};
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use gitarena_common::database::Database;
+use gix::actor::Signature;
+use gix::date::Time;
 use log::warn;
 use qstring::QString;
 use sqlx::Transaction;
@@ -172,21 +173,20 @@ impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
 pub(crate) trait GitoxideSignatureExtensions {
     /// Returns the default signature for GitArena.
     /// This is at the moment hardcoded but is subject to change in the future.
-    fn gitarena_default() -> GitoxideSignature;
+    fn gitarena_default() -> Signature;
 }
 
-impl GitoxideSignatureExtensions for GitoxideSignature {
-    fn gitarena_default() -> GitoxideSignature {
+impl GitoxideSignatureExtensions for Signature {
+    fn gitarena_default() -> Signature {
         let now = Utc::now();
         let naive = now.naive_utc();
 
-        GitoxideSignature {
+        Signature {
             name: BString::from("GitArena"),          // TODO: Allow administrators to edit this
             email: BString::from("git@gitarena.com"), // as well as this
-            time: GitoxideTime {
-                time: naive.and_utc().timestamp() as u32,
+            time: Time {
+                seconds: naive.and_utc().timestamp(),
                 offset: 0,
-                sign: Sign::Plus,
             },
         }
     }

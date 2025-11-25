@@ -14,11 +14,11 @@ use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use git_repository::objs::tree::EntryMode;
-use git_repository::objs::{Tree, TreeRef};
-use git_repository::odb::Store;
-use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
+use gix::objs::tree::{EntryKind, EntryMode};
+use gix::objs::{Tree, TreeRef};
+use gix::odb::Store;
+use gix::odb::pack::FindExt;
 use infer::MatcherType;
 use sqlx::PgPool;
 use tera::Context;
@@ -42,7 +42,7 @@ pub(crate) async fn view_blob(
     let mut buffer = Vec::<u8>::new();
     let mut blob_buffer = Vec::<u8>::new();
 
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let (name, content, mode) = recursively_visit_blob_content(tree_ref, uri.blob.as_str(), store.clone(), &mut blob_buffer).await?;
@@ -56,7 +56,7 @@ pub(crate) async fn view_blob(
     context.try_insert(
         "file",
         &RepoFile {
-            file_type: mode as u16,
+            file_type: mode.value(),
             file_name: name.as_str(),
             submodule_target_oid: None,
             commit: GitCommit {
@@ -110,7 +110,7 @@ pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::P
     let mut buffer = Vec::<u8>::new();
     let mut blob_buffer = Vec::<u8>::new();
 
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let (_, content, _) = recursively_visit_blob_content(tree_ref, uri.blob.as_str(), store.clone(), &mut blob_buffer).await?;
@@ -133,10 +133,11 @@ async fn recursively_visit_blob_content<'a>(
     let (search, remaining) = path.split_once('/').map_or_else(|| (path, None), |(a, b)| (a, Some(b)));
 
     let entry = tree.entries.iter().find(|e| e.filename == search).ok_or_else(|| err!(NOT_FOUND))?;
+    let kind = entry.mode.kind();
 
     match remaining {
         Some(remaining) => {
-            if entry.mode != EntryMode::Tree {
+            if kind != EntryKind::Tree {
                 die!(NOT_FOUND);
             }
 
@@ -146,7 +147,7 @@ async fn recursively_visit_blob_content<'a>(
             recursively_visit_blob_content(tree_ref, remaining, store, &mut buffer).await
         }
         None => {
-            if entry.mode != EntryMode::Blob && entry.mode != EntryMode::BlobExecutable {
+            if kind != EntryKind::Blob && kind != EntryKind::BlobExecutable {
                 die!(BAD_REQUEST, "Only blobs can be viewed in blob view");
             }
 

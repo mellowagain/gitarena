@@ -149,7 +149,7 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
 }
 
 async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {
-    let (enabled) = from_config!("smtp.enabled" => bool);
+    let enabled = from_config!("smtp.enabled" => bool);
 
     if !enabled {
         debug!("SMTP disabled, not sending user confirmation mail");

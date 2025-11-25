@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
-use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use log::warn;
 use tracing::instrument;
 use tracing_unwrap::OptionExt;

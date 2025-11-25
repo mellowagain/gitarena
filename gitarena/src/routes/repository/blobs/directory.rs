@@ -15,12 +15,12 @@ use actix_web::{Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use git_repository::ObjectId;
-use git_repository::objs::tree::EntryMode;
-use git_repository::objs::{Tree, TreeRef};
-use git_repository::odb::Store;
-use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
+use gix::ObjectId;
+use gix::objs::tree::EntryKind;
+use gix::objs::{Tree, TreeRef};
+use gix::odb::Store;
+use gix::odb::pack::FindExt;
 use sqlx::PgPool;
 use tera::Context;
 
@@ -42,7 +42,7 @@ pub(crate) async fn view_dir(
 
     let mut tree_ref_buffer = Vec::<u8>::new();
     let mut tree_buffer = Vec::<u8>::new();
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let mut path = uri.blob.to_owned();
     path.push('/');
@@ -80,7 +80,7 @@ pub(crate) async fn view_dir(
             .ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob (this should never happen)"))?;
         let commit = libgit2_repo.find_commit(oid)?;
 
-        let submodule_target_oid = if matches!(entry.mode, EntryMode::Commit) {
+        let submodule_target_oid = if matches!(entry.mode.kind(), EntryKind::Commit) {
             Some(
                 read_blob_content(entry.oid.as_ref(), store.clone())
                     .await
@@ -91,7 +91,7 @@ pub(crate) async fn view_dir(
         };
 
         files.push(RepoFile {
-            file_type: entry.mode as u16,
+            file_type: entry.mode.value(),
             file_name: name,
             submodule_target_oid,
             commit: GitCommit {
@@ -111,15 +111,15 @@ pub(crate) async fn view_dir(
         // 2. Submodules
         // 3. Rest
 
-        if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type != EntryMode::Tree as u16 {
+        if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type != EntryKind::Tree as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type != EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
             Ordering::Greater
-        } else if lhs.file_type == EntryMode::Tree as u16 && rhs.file_type == EntryMode::Tree as u16 {
+        } else if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
             lhs.file_name.cmp(rhs.file_name)
-        } else if lhs.file_type == EntryMode::Commit as u16 && rhs.file_type != EntryMode::Commit as u16 {
+        } else if lhs.file_type == EntryKind::Commit as u16 && rhs.file_type != EntryKind::Commit as u16 {
             Ordering::Less
-        } else if lhs.file_type != EntryMode::Commit as u16 && rhs.file_type == EntryMode::Commit as u16 {
+        } else if lhs.file_type != EntryKind::Commit as u16 && rhs.file_type == EntryKind::Commit as u16 {
             Ordering::Greater
         } else {
             lhs.file_name.cmp(rhs.file_name)
@@ -161,7 +161,7 @@ async fn recursively_visit_tree<'a>(tree_ref: TreeRef<'a>, path: &str, store: Ar
         Some((search, remaining)) => {
             let entry = tree.entries.iter().find(|e| e.filename == search).ok_or_else(|| err!(NOT_FOUND, "Not found"))?;
 
-            if entry.mode != EntryMode::Tree {
+            if entry.mode.kind() != EntryKind::Tree {
                 die!(BAD_REQUEST, "Only trees can be viewed in tree view");
             }
 

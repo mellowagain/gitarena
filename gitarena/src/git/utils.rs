@@ -3,20 +3,19 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
-use git_repository::Repository;
-use git_repository::hash::oid;
-use git_repository::objs::TreeRef;
-use git_repository::odb::Store;
-use git_repository::odb::pack::FindExt;
-use git_repository::refs::Target;
-use git_repository::refs::file::loose::Reference;
+use gix::objs::TreeRef;
+use gix::odb::Store;
+use gix::odb::pack::FindExt;
+use gix::refs::Target;
+use gix::refs::file::loose::Reference;
+use gix::{Repository, oid};
 use tracing::instrument;
 
 #[instrument(err, skip(store, repo))]
 #[async_recursion(?Send)]
 pub(crate) async fn repo_files_at_ref<'a>(reference: &Reference, store: Arc<Store>, repo: &'a Repository, buffer: &'a mut Vec<u8>) -> Result<TreeRef<'a>> {
     match &reference.target {
-        Target::Peeled(object_id) => {
+        Target::Object(object_id) => {
             let cache = store.to_cache_arc();
 
             let commit = cache.find_commit(object_id.as_ref(), buffer)?.0.tree();
@@ -25,7 +24,7 @@ pub(crate) async fn repo_files_at_ref<'a>(reference: &Reference, store: Arc<Stor
             Ok(tree)
         }
         Target::Symbolic(target) => {
-            let reference = repo.refs.find_loose(target.to_partial())?;
+            let reference = repo.refs.find_loose(target)?;
 
             repo_files_at_ref(&reference, store, repo, buffer).await
         }

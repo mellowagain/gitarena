@@ -3,16 +3,15 @@ use crate::repository::Repository;
 
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use anyhow::{Result, anyhow};
-use git_repository::odb::pack::bundle::write::Options as GitPackWriteOptions;
-use git_repository::odb::pack::data::input::Mode as PackIterationMode;
-use git_repository::odb::pack::index::Version as PackVersion;
-use git_repository::odb::pack::{Bundle, FindExt};
-use git_repository::progress;
 use gitarena_common::database::Database;
+use gix::odb::pack::Bundle;
+use gix::odb::pack::bundle::write::Options as GitPackWriteOptions;
+use gix::odb::pack::data::input::Mode as PackIterationMode;
+use gix::odb::pack::index::Version as PackVersion;
+use gix::progress;
 use sqlx::Transaction;
 use tempfile::{Builder, TempDir};
 use tracing::instrument;
@@ -39,21 +38,21 @@ pub(crate) async fn write_to_fs(data: &[u8], temp_dir: &TempDir, repo: &Reposito
     let options = GitPackWriteOptions {
         thread_limit: Some(num_cpus::get()),
         iteration_mode: PackIterationMode::Verify,
-        index_kind: PackVersion::V2,
+        index_version: PackVersion::V2,
         object_hash: GIT_HASH_KIND,
     };
 
     let repo = repo.gitoxide(tx).await?;
-    let objects = Arc::new(repo.objects);
+    let objects = repo.objects.clone();
 
-    let buf_reader = BufReader::new(data);
+    let mut buf_reader = BufReader::new(data);
 
     let bundle = Bundle::write_to_directory(
-        buf_reader,
-        Some(&temp_dir),
-        progress::Discard,
+        &mut buf_reader,
+        Some(temp_dir.path()),
+        &mut progress::Discard,
         &AtomicBool::new(false), // The Actix runtime (+ tokio) handles timeouts for us
-        Some(Box::new(move |oid, buffer| objects.to_cache_arc().find(oid, buffer).ok().map(|(data, _)| data))),
+        Some(Box::new(objects)),
         options,
     )?;
 

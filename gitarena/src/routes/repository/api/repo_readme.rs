@@ -5,8 +5,8 @@ use crate::repository::{Branch, Repository};
 use actix_web::{HttpResponse, Responder};
 use anyhow::Result;
 use bstr::ByteSlice;
-use git_repository::objs::Tree;
 use gitarena_macros::route;
+use gix::objs::Tree;
 use serde_json::json;
 
 #[route("/api/repo/{username}/{repository}/tree/{tree:.*}/readme", method = "GET", err = "json")]
@@ -14,7 +14,7 @@ pub(crate) async fn readme(_repo: Repository, branch: Branch) -> Result<impl Res
     let gitoxide_repo = branch.gitoxide_repo;
 
     let mut buffer = Vec::<u8>::new();
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree_ref);

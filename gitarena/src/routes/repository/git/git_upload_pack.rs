@@ -12,8 +12,9 @@ use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
-use git_repository::protocol::transport::packetline::{PacketLineRef, StreamingPeekableIter};
 use gitarena_macros::route;
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use sqlx::PgPool;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
@@ -75,7 +76,7 @@ pub(crate) async fn git_upload_pack(
     let frozen_bytes = bytes.freeze();
     let vec = frozen_bytes.to_vec();
 
-    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLineRef::Flush]);
+    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLineRef::Flush], false);
     readable_iter.fail_on_err_lines(true);
 
     let git_body = read_data_lines(&mut readable_iter).await?;

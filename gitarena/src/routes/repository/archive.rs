@@ -12,11 +12,11 @@ use anyhow::Result;
 use async_compression::tokio::write::GzipEncoder;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use git_repository::objs::Tree;
-use git_repository::objs::tree::EntryMode;
-use git_repository::odb::Store;
-use git_repository::odb::pack::FindExt;
 use gitarena_macros::route;
+use gix::objs::Tree;
+use gix::objs::tree::EntryKind;
+use gix::odb::Store;
+use gix::odb::pack::FindExt;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::ZipWriter;
 use zip::write::FileOptions as ZipFileOptions;
@@ -27,7 +27,7 @@ pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch) -> Result<impl
 
     let mut buffer = Vec::<u8>::new();
 
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
@@ -50,21 +50,22 @@ async fn write_directory_tar(store: Arc<Store>, tree: Tree, path: &Path, builder
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
         let path = path.join(filename);
+        let kind = entry.mode.kind();
 
-        match entry.mode {
-            EntryMode::Tree => {
+        match kind {
+            EntryKind::Tree => {
                 let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
                 let tree = Tree::from(tree_ref);
 
                 write_directory_tar(store.clone(), tree, path.as_path(), builder, buffer).await?;
             }
-            EntryMode::Blob | EntryMode::BlobExecutable | EntryMode::Link => {
+            EntryKind::Blob | EntryKind::BlobExecutable | EntryKind::Link => {
                 let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
                 let mut header = TarHeader::new_gnu();
                 header.set_size(content.len() as u64);
 
-                header.set_mode(if matches!(entry.mode, EntryMode::BlobExecutable) { 0o775 } else { 0o664 });
+                header.set_mode(if matches!(kind, EntryKind::BlobExecutable) { 0o775 } else { 0o664 });
 
                 header.set_uid(0);
                 header.set_gid(0);
@@ -76,7 +77,7 @@ async fn write_directory_tar(store: Arc<Store>, tree: Tree, path: &Path, builder
 
                 header.set_mtime(0); // TODO: Unix timestamp of last commit to this file
 
-                if matches!(entry.mode, EntryMode::Link) {
+                if matches!(entry.mode.kind(), EntryKind::Link) {
                     let cow = String::from_utf8_lossy(&content[..]);
                     let borrow: &str = cow.borrow();
 
@@ -87,7 +88,7 @@ async fn write_directory_tar(store: Arc<Store>, tree: Tree, path: &Path, builder
 
                 builder.append_data(&mut header, path.as_path(), &content[..]).await?;
             }
-            EntryMode::Commit => { /* TODO: implement submodules */ }
+            EntryKind::Commit => { /* TODO: implement submodules */ }
         }
     }
 
@@ -99,7 +100,7 @@ pub(crate) async fn zip_file(repo: Repository, branch: Branch) -> Result<impl Re
     let gitoxide_repo = branch.gitoxide_repo;
 
     let mut buffer = Vec::<u8>::new();
-    let store = gitoxide_repo.objects.clone();
+    let store = gitoxide_repo.objects.store().clone();
 
     let tree = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree);
@@ -121,9 +122,10 @@ async fn write_directory_zip(store: Arc<Store>, tree: Tree, path: &Path, writer:
         let filename = entry.filename.to_str()?;
         let path_buffer = path.join(filename);
         let path = path_buffer.as_path();
+        let kind = entry.mode.kind();
 
-        match entry.mode {
-            EntryMode::Tree => {
+        match kind {
+            EntryKind::Tree => {
                 let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
                 let tree = Tree::from(tree_ref);
 
@@ -131,19 +133,19 @@ async fn write_directory_zip(store: Arc<Store>, tree: Tree, path: &Path, writer:
 
                 write_directory_zip(store.clone(), tree, path, writer, buffer).await?;
             }
-            EntryMode::Blob | EntryMode::BlobExecutable => {
+            EntryKind::Blob | EntryKind::BlobExecutable => {
                 let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
                 let options = ZipFileOptions::default()
-                    .unix_permissions(if matches!(entry.mode, EntryMode::BlobExecutable) { 0o775 } else { 0o664 })
+                    .unix_permissions(if matches!(kind, EntryKind::BlobExecutable) { 0o775 } else { 0o664 })
                     .large_file(content.len() >= 4294967000); // 4 GiB
-                
+
                 //.last_modified_time(...) TODO: DateTime of last commit to this file
 
                 writer.start_file(format!("{}", path.display()), options)?;
                 writer.write_all(&content[..])?;
             }
-            EntryMode::Link | EntryMode::Commit => { /* TODO: implement symlinks and submodules */ }
+            EntryKind::Link | EntryKind::Commit => { /* TODO: implement symlinks and submodules */ }
         }
     }
 

@@ -14,11 +14,11 @@ use actix_web::{FromRequest, HttpMessage, HttpRequest};
 use anyhow::{Result, anyhow};
 use derive_more::{Deref, Display};
 use fs_extra::dir;
-use git_repository::Repository as GitoxideRepository;
-use git_repository::refs::file::find::existing::Error as GitoxideFindError;
-use git_repository::refs::file::loose::Reference;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use gitarena_common::database::Database;
+use gix::Repository as GitoxideRepository;
+use gix::refs::file::find::existing::Error as GitoxideFindError;
+use gix::refs::file::loose::Reference;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
@@ -75,7 +75,7 @@ impl Repository {
     }
 
     pub(crate) async fn gitoxide(&self, tx: &mut Transaction<'_, Database>) -> Result<GitoxideRepository> {
-        Ok(GitoxideRepository::discover(self.get_fs_path(tx).await?)?)
+        Ok(gix::discover(self.get_fs_path(tx).await?)?)
     }
 
     pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
@@ -231,7 +231,7 @@ async fn extract_branch_from_request(db_pool: Data<PgPool>, repo: Repository, tr
     let reference = match gitoxide_repo.refs.find_loose(tree.as_str()) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound(_)) => die!(NOT_FOUND, "Tree not found"),
+        Err(GitoxideFindError::NotFound { name: _ }) => die!(NOT_FOUND, "Tree not found"),
     }?;
 
     transaction.commit().await?;
