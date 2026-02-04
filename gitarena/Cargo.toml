@@ -33,7 +33,7 @@ fs_extra = "1.2.0"
 futures = "0.3.19"
 futures-locks = "0.7.0"
 gix = { version = "0.75.0", features = ["async-network-client", "max-performance"] }
-git2 = "0.20.0"
+git2 = "0.20.4"
 gitarena-common = { path = "../gitarena-common" }
 gitarena-macros = { path = "../gitarena-macros" }
 hex = "0.4.3"
