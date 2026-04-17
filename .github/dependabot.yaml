@@ -1,0 +1,53 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      all:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        labels:
+          - "cause::dependency"
+          - "type::chore"
+          - "automation::dependabot"
+          - "ecosystem::rust"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        labels:
+          - "cause::dependency"
+          - "type::security"
+          - "automation::dependabot"
+          - "ecosystem::rust"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      all:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        labels:
+          - "cause::dependency"
+          - "type::chore"
+          - "automation::dependabot"
+          - "ecosystem::actions"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      labels:
+        - "cause::dependency"
+        - "type::security"
+        - "automation::dependabot"
+        - "ecosystem::actions"
