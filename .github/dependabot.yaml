@@ -6,25 +6,20 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
+    labels:
+      - "cause::dependency"
+      - "type::chore"
+      - "automation::dependabot"
+      - "ecosystem::rust"
     groups:
       all:
         applies-to: version-updates
         patterns:
           - "*"
-        labels:
-          - "cause::dependency"
-          - "type::chore"
-          - "automation::dependabot"
-          - "ecosystem::rust"
       security:
         applies-to: security-updates
         patterns:
           - "*"
-        labels:
-          - "cause::dependency"
-          - "type::security"
-          - "automation::dependabot"
-          - "ecosystem::rust"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -32,22 +27,17 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
+    labels:
+      - "cause::dependency"
+      - "type::chore"
+      - "automation::dependabot"
+      - "ecosystem::actions"
     groups:
       all:
         applies-to: version-updates
         patterns:
           - "*"
-        labels:
-          - "cause::dependency"
-          - "type::chore"
-          - "automation::dependabot"
-          - "ecosystem::actions"
       security:
         applies-to: security-updates
         patterns:
           - "*"
-      labels:
-        - "cause::dependency"
-        - "type::security"
-        - "automation::dependabot"
-        - "ecosystem::actions"
