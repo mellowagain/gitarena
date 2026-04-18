@@ -24,7 +24,7 @@ use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
 
 #[derive(FromRow, Display, Debug, Serialize)]
-#[display(fmt = "{}", name)]
+#[display(fmt = "{name}")]
 pub(crate) struct Repository {
     pub(crate) id: i32,
 
@@ -175,7 +175,7 @@ async fn extract_repo_from_request(db_pool: Data<PgPool>, web_user: WebUser, use
 pub(crate) struct RepoOwner(pub(crate) String);
 
 #[derive(Display, Debug)]
-#[display(fmt = "{}", tree)]
+#[display(fmt = "{tree}")]
 pub(crate) struct Branch {
     pub(crate) gitoxide_repo: GitoxideRepository,
     pub(crate) tree: String,

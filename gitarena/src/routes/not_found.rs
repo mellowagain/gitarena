@@ -15,11 +15,11 @@ use sqlx::PgPool;
 use tera::Context;
 use tracing::instrument;
 
-async fn api_not_found() -> Result<HttpResponse> {
-    Ok(HttpResponse::NotFound().json(json!({
+fn api_not_found() -> HttpResponse {
+    HttpResponse::NotFound().json(json!({
         "error": "Not found",
         "documentation": "https://gitarena.com/docs/api"
-    })))
+    }))
 }
 
 async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<HttpResponse> {
@@ -42,9 +42,6 @@ pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_
             display_type: ErrorDisplayType::Html,
         })
     } else {
-        api_not_found().await.map_err(|err| GitArenaError {
-            source: Arc::new(err),
-            display_type: ErrorDisplayType::Json,
-        })
+        Ok(api_not_found())
     })
 }

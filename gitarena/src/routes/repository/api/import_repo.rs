@@ -38,7 +38,7 @@ pub(crate) async fn import(
 
     let name = &body.name;
 
-    if name.is_empty() || name.len() > 32 || !name.chars().all(|c| is_valid(&c)) {
+    if name.is_empty() || name.len() > 32 || !name.chars().all(is_valid) {
         die!(
             BAD_REQUEST,
             "Repository name must be between 1 and 32 characters long and may only contain a-z, 0-9, _ or -"
@@ -112,7 +112,7 @@ pub(crate) async fn import(
             .append_header(("hx-refresh", "true"))
             .finish()
     } else {
-        let url = format!("{}{}", domain, path);
+        let url = format!("{domain}{path}");
 
         HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url })
     })

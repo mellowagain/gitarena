@@ -6,6 +6,9 @@ description = "SSH component for GitArena"
 edition = { workspace = true }
 repository = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 clap = { version = "3.1.17", features = ["derive", "unicode", "wrap_help"] }
 gitarena-common = { version = "0.0.0", path = "../gitarena-common" }

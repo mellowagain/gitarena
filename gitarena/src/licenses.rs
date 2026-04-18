@@ -5,7 +5,7 @@ use tracing_unwrap::{OptionExt, ResultExt};
 
 static LICENSE_STORE: OnceCell<Store> = OnceCell::new();
 
-pub(crate) async fn init() {
+pub(crate) fn init() {
     // Normally we'd use .expect_or_log() here but askalono::Store does not implement Debug, so just ignore the error
     // This is safe because OnceCell only returns an Error on set() when it already was once initialized
     let _ = LICENSE_STORE.set(init_askalono());

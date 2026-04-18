@@ -44,7 +44,7 @@ pub(crate) async fn view_dir(
     let mut tree_buffer = Vec::<u8>::new();
     let store = gitoxide_repo.objects.store().clone();
 
-    let mut path = uri.blob.to_owned();
+    let mut path = uri.blob.clone();
     path.push('/');
 
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut tree_ref_buffer).await?;
@@ -95,7 +95,7 @@ pub(crate) async fn view_dir(
             file_name: name,
             submodule_target_oid,
             commit: GitCommit {
-                oid: format!("{}", oid),
+                oid: format!("{oid}"),
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
                 date: None,
@@ -140,7 +140,7 @@ pub(crate) async fn view_dir(
     context.try_insert(
         "last_commit",
         &GitCommit {
-            oid: format!("{}", last_commit_oid),
+            oid: format!("{last_commit_oid}"),
             message: last_commit.message().unwrap_or_default().to_owned(),
             time: last_commit.time().seconds(),
             date: None,

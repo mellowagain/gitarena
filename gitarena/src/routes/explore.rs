@@ -58,8 +58,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         left join stars on repositories.id = stars.repo \
         left join users on repositories.owner = users.id \
         left join issues on repositories.id = issues.repo \
-     {}",
-        options
+        {options}",
     );
 
     Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str()).fetch_all(&mut **tx).await?)
@@ -178,7 +177,7 @@ fn query_string_without_offset(input: &QString) -> String {
         .to_pairs()
         .iter()
         .filter(|(key, _)| key != &"offset")
-        .map(|(key, value)| format!("{}={}", key, value))
+        .map(|(key, value)| format!("{key}={value}"))
         .collect::<Vec<String>>()
         .join("&")
 }

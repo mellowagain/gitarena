@@ -26,7 +26,7 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
+    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|()| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     // TODO: Save token in cache to check for CSRF
@@ -41,7 +41,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|_| err!(BAD_REQUEST, "Unknown service"))?;
+    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|()| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
     let query_string = request.q_string();

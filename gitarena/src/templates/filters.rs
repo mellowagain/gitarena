@@ -8,7 +8,7 @@ pub(crate) fn human_prefix(value: &Value, _: &HashMap<String, Value>) -> Result<
     let input = value.as_u64().ok_or("Value needs to be u64")?;
 
     Ok(Value::String(match input {
-        i @ 0..=999 => format!("{}", i),
+        i @ 0..=999 => format!("{i}"),
         i @ 1_000..=999_999 => {
             let str = i.to_string();
             format!("{}K", &str[..str.len() - 3])
@@ -25,5 +25,5 @@ pub(crate) fn human_time(value: &Value, _: &HashMap<String, Value>) -> Result<Va
 
     let human_time = HumanTime::from(date_time);
 
-    Ok(Value::String(format!("{}", human_time)))
+    Ok(Value::String(format!("{human_time}")))
 }

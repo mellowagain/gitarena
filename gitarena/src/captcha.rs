@@ -10,9 +10,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::Transaction;
 
 pub(crate) async fn verify_captcha(token: &String, tx: &mut Transaction<'_, Database>) -> Result<bool> {
-    let api_key = match get_optional_setting::<String>("hcaptcha.site_key", tx).await? {
-        Some(api_key) => api_key,
-        None => return Ok(true),
+    let Some(api_key) = get_optional_setting::<String>("hcaptcha.site_key", tx).await? else {
+        return Ok(true);
     };
 
     let response: HCaptchaResponse = Client::gitarena()
@@ -26,13 +25,13 @@ pub(crate) async fn verify_captcha(token: &String, tx: &mut Transaction<'_, Data
 
     if let Some(errors) = response.errors {
         let errors_str = errors.join(", ");
-        error!("hCaptcha failed to verify challenge token: {}", errors_str);
+        error!("hCaptcha failed to verify challenge token: {errors_str}");
     }
 
-    if let Some(credit) = response.credit {
-        if !credit {
-            warn!("Credit was not earned for captcha response.");
-        }
+    if let Some(credit) = response.credit
+        && !credit
+    {
+        warn!("Credit was not earned for captcha response.");
     }
 
     Ok(response.success)

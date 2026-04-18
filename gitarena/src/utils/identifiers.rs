@@ -20,8 +20,8 @@ use sqlx::Transaction;
 /// let invalid_name = "invalid!name";
 /// assert!(!invalid_name.chars().all(|c| is_valid(&c)));
 /// ```
-pub(crate) fn is_valid(c: &char) -> bool {
-    c.is_ascii_alphanumeric() || c == &'-' || c == &'_'
+pub(crate) fn is_valid(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-' || c == '_'
 }
 
 /// Checks if the string is a reserved username.
@@ -59,7 +59,7 @@ pub(crate) fn is_reserved_username(input: &str) -> bool {
 ///
 /// [0]: crate::error::GAErrors::HttpError
 pub(crate) fn validate_username(input: &str) -> Result<()> {
-    if input.len() < 3 || input.len() > 32 || !input.chars().all(|c| is_valid(&c)) {
+    if input.len() < 3 || input.len() > 32 || !input.chars().all(is_valid) {
         die!(
             BAD_REQUEST,
             "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -"

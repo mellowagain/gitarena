@@ -139,7 +139,7 @@ fn extract_ip(request: &HttpRequest) -> IpNetwork {
 
 fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
     if let Some(error) = err {
-        warn!("Unable to parse ip address: {}", error);
+        warn!("Unable to parse ip address: {error}");
     }
 
     // 100::/64 is a valid, reserved black hole IPv6 address block: https://en.wikipedia.org/wiki/Reserved_IP_addresses#IPv6

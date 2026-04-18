@@ -28,8 +28,8 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
         let client = Client::gitarena();
 
         Ok(client
-            .get(format!("https://gitlab.com/api/v4/{}", endpoint).as_str())
-            .append_header((AUTHORIZATION, format!("Bearer {}", token)))
+            .get(format!("https://gitlab.com/api/v4/{endpoint}").as_str())
+            .append_header((AUTHORIZATION, format!("Bearer {token}")))
             .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
             .send()
             .await
@@ -134,7 +134,7 @@ impl SSOProvider for GitLabSSO {
         // For some reason GitLab does not currently always provide the `verified_at` field even for verified email addresses
         // TODO: Reactivate check once GitLab fixed their endpoint
         // Once their endpoint has been fixed, we can also mark all email addresses as verified
-        for gitlab_email in emails.iter()
+        for gitlab_email in &emails
         /*.skip_while(|e| e.verified_at.is_none())*/
         {
             let email = gitlab_email.email.as_str();

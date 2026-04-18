@@ -42,7 +42,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     transaction.commit().await?;
 
-    info!("User id {} verified their e-mail", user_id);
+    info!("User id {user_id} verified their e-mail");
 
     // TODO: Show html success page instead of json
     Ok(web::Json(json!({

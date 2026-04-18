@@ -46,7 +46,7 @@ pub(crate) async fn process_create_update(
             let (data, _) = store
                 .to_cache_arc()
                 .find(new_oid.as_ref(), &mut buffer)
-                .map_err(|_| anyhow!("Failed to find object {} in ODB after pack write", new_oid))?;
+                .map_err(|_| anyhow!("Failed to find object {new_oid} in ODB after pack write"))?;
 
             match data.kind {
                 Kind::Commit => {
@@ -91,7 +91,7 @@ pub(crate) async fn process_create_update(
             .refs
             .transaction()
             .prepare(edits, Fail::Immediately, Fail::Immediately)
-            .map_err(|err| anyhow!("Failed to commit transaction: {}", err))?
+            .map_err(|err| anyhow!("Failed to commit transaction: {err}"))?
             .commit(committer.to_ref(&mut TimeBuf::default()))?;
     }
 

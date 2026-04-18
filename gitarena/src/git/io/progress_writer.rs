@@ -39,9 +39,7 @@ impl ProgressWriter {
             match stage {
                 PackBuilderStage::AddingObjects => {
                     let ref_cell = &mut rc.borrow_mut();
-                    ref_cell
-                        .lines
-                        .push(format!("Counting objects: {:>3}% ({}/{}){}", percentage, current, total, ending));
+                    ref_cell.lines.push(format!("Counting objects: {percentage:>3}% ({current}/{total}){ending}"));
                 }
                 PackBuilderStage::Deltafication => {
                     let ref_cell = &mut rc.borrow_mut();
@@ -52,7 +50,7 @@ impl ProgressWriter {
 
                     ref_cell
                         .lines
-                        .push(format!("Compressing objects: {:>3}% ({}/{}){}", percentage, current, total, ending));
+                        .push(format!("Compressing objects: {percentage:>3}% ({current}/{total}){ending}"));
                 }
             }
 

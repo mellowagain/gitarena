@@ -37,10 +37,10 @@ pub(crate) async fn log(web_user: WebUser) -> Result<impl Responder> {
             let mut log_lines = Vec::with_capacity(lines.size_hint().0);
 
             for line in lines {
-                if let Ok(log_line) = serde_json::from_str::<LogLine>(line) {
-                    if let Some(Value::String(message)) = log_line.fields.get("message") {
-                        log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
-                    }
+                if let Ok(log_line) = serde_json::from_str::<LogLine>(line)
+                    && let Some(Value::String(message)) = log_line.fields.get("message")
+                {
+                    log_lines.push(format!("{} [{}] {}", log_line.timestamp, log_line.level, message));
                 }
             }
 

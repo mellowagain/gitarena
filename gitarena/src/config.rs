@@ -30,7 +30,7 @@ where
         .bind(key)
         .fetch_one(&mut **tx)
         .await
-        .with_context(|| format!("Unable to read setting {} from database", key))?;
+        .with_context(|| format!("Unable to read setting {key} from database"))?;
 
     if setting.is_set() {
         let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
@@ -56,7 +56,7 @@ where
         .bind(key)
         .fetch_one(&mut **tx)
         .await
-        .with_context(|| format!("Unable to read setting {} from database", key))?;
+        .with_context(|| format!("Unable to read setting {key} from database"))?;
 
     let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
     Ok(result)
@@ -68,6 +68,7 @@ pub(crate) async fn get_all_settings(tx: &mut Transaction<'_, Database>) -> Resu
 
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
 // Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
+#[allow(clippy::manual_async_fn)]
 pub(crate) fn set_setting<'q, 'tx, T>(
     key: &'static str,
     value: T,
@@ -88,7 +89,7 @@ where
 }
 
 #[derive(FromRow, Debug, Deserialize, Serialize, Display)]
-#[display(fmt = "{}", key)]
+#[display(fmt = "{key}")]
 pub(crate) struct Setting {
     pub(crate) key: String,
     pub(crate) value: Option<String>,

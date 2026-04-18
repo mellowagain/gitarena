@@ -30,9 +30,9 @@ pub(crate) fn normalize_str(option: Option<&str>) -> Option<&str> {
     }
 }
 
-/// Converts a Git object id string into a [ObjectId][oid].
+/// Converts a Git object id string into a [`ObjectId`][oid].
 ///
-/// If the provided input is `None`, a null [ObjectId][oid] (`0000000000000000000000000000000000000000`)
+/// If the provided input is `None`, a null [`ObjectId`][oid] (`0000000000000000000000000000000000000000`)
 /// will be returned instead of an error.
 ///
 /// The function will return an error if the input string is not 40 characters long or not a valid
@@ -56,7 +56,7 @@ pub(crate) fn from_hex_str(option: Option<&str>) -> Result<ObjectId> {
             if oid.chars().all(|c| c.is_ascii_hexdigit()) {
                 Ok(ObjectId::from_hex(oid.as_bytes())?)
             } else {
-                Err(anyhow!("Input string is not hexadecimal: {}", oid))
+                Err(anyhow!("Input string is not hexadecimal: {oid}"))
             }
         }
         None => Ok(ObjectId::null(GIT_HASH_KIND)),

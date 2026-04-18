@@ -22,11 +22,11 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                     if let Some(segment) = name_value.path.segments.first() {
                         let lowered = segment.ident.to_string().to_lowercase();
 
-                        if lowered.as_str() == "err" {
-                            if let Some(parsed_error_type) = match_error_type(&name_value.lit) {
-                                error_type = parsed_error_type;
-                                error_type_index = index;
-                            }
+                        if lowered.as_str() == "err"
+                            && let Some(parsed_error_type) = match_error_type(&name_value.lit)
+                        {
+                            error_type = parsed_error_type;
+                            error_type_index = index;
                         }
                     } else {
                         emit_error! {
@@ -78,7 +78,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // Create name for our generated function
     let ident = &sig.ident.to_string();
-    let generated_ident = format!("__generated__{}", ident);
+    let generated_ident = format!("__generated__{ident}");
     let generated_ident_ts: TokenStream2 = generated_ident.parse().unwrap();
 
     let mut generated_sig = sig.clone();
@@ -109,10 +109,10 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
             let boxed = &mut typed_arg.pat;
             let pattern = boxed.deref_mut();
 
-            if let Pat::Ident(ident) = pattern {
-                if ident.mutability.is_some() {
-                    ident.mutability = None;
-                }
+            if let Pat::Ident(ident) = pattern
+                && ident.mutability.is_some()
+            {
+                ident.mutability = None;
             }
         }
     }
@@ -175,7 +175,7 @@ impl ToTokens for ErrorDisplayType {
             ErrorDisplayType::Git => quote! { Git },
             ErrorDisplayType::Plain => quote! { Plain },
             ErrorDisplayType::Unset => unimplemented!("unset is not mapped to a GitArena type yet"),
-        })
+        });
     }
 }
 

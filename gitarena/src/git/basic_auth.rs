@@ -19,29 +19,26 @@ pub(crate) async fn validate_repo_access(
     request: &HttpRequest,
     tx: &mut Transaction<'_, Database>,
 ) -> Result<Either<(Option<User>, Repository), HttpResponse>> {
-    match repo {
-        Some(repo) => {
-            if repo.visibility != RepoVisibility::Public {
-                return match login_flow(request, tx, content_type).await? {
-                    Either::Left(user) => Ok(Either::Left((Some(user), repo))),
-                    Either::Right(response) => Ok(Either::Right(response)),
-                };
-            }
+    let Some(repo) = repo else {
+        // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
+        let _ = login_flow(request, tx, content_type).await?;
 
-            Ok(Either::Left((None, repo)))
-        }
-        None => {
-            // Prompt for authentication even if the repo does not exist to prevent leakage of private repositories
-            let _ = login_flow(request, tx, content_type).await?;
+        die!(NOT_FOUND, "Repository not found");
+    };
 
-            die!(NOT_FOUND, "Repository not found");
-        }
+    if repo.visibility != RepoVisibility::Public {
+        return match login_flow(request, tx, content_type).await? {
+            Either::Left(user) => Ok(Either::Left((Some(user), repo))),
+            Either::Right(response) => Ok(Either::Right(response)),
+        };
     }
+
+    Ok(Either::Left((None, repo)))
 }
 
 #[instrument(skip(request, tx), err)]
 pub(crate) async fn login_flow(request: &HttpRequest, tx: &mut Transaction<'_, Database>, content_type: &str) -> Result<Either<User, HttpResponse>> {
-    if !is_present(request).await {
+    if !is_present(request) {
         return Ok(Either::Right(prompt(content_type).await));
     }
 
@@ -116,6 +113,6 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
         .ok_or_else(|| err!(UNAUTHORIZED, "Both username and password is required"))?)
 }
 
-pub(crate) async fn is_present(request: &HttpRequest) -> bool {
+pub(crate) fn is_present(request: &HttpRequest) -> bool {
     request.get_header("authorization").is_some()
 }

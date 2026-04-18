@@ -53,7 +53,7 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
                         }
                     }
                 }
-                Err(err) => warn!("Failed to acquire read lock for Broadcaster: {}", err),
+                Err(err) => warn!("Failed to acquire read lock for Broadcaster: {err}"),
             }
         }
     }
@@ -62,7 +62,7 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
 #[derive(Debug, Deref, DerefMut)]
 pub(crate) struct AdminPanelVisitor<'a>(&'a mut BTreeMap<String, String>);
 
-impl<'a> Visit for AdminPanelVisitor<'a> {
+impl Visit for AdminPanelVisitor<'_> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.insert(field.name().to_string(), value.to_string());
     }
@@ -88,6 +88,6 @@ impl<'a> Visit for AdminPanelVisitor<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
-        self.insert(field.name().to_string(), format!("{:?}", value));
+        self.insert(field.name().to_string(), format!("{value:?}"));
     }
 }

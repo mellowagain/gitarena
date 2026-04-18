@@ -58,10 +58,10 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
         for _ in diff.deltas() {
             results.push(commit_oid);
 
-            if let Some(max) = max_results {
-                if results.len() >= max {
-                    break 'outer;
-                }
+            if let Some(max) = max_results
+                && results.len() >= max
+            {
+                break 'outer;
             }
         }
     }
@@ -115,5 +115,5 @@ pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
 pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Result<Vec<String>> {
     let tags = repo.tag_names(prefix)?;
 
-    Ok(tags.iter().filter_map(|o| o.map(|o| o.to_owned())).collect())
+    Ok(tags.iter().filter_map(|o| o.map(ToOwned::to_owned)).collect())
 }

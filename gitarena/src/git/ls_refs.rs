@@ -17,8 +17,8 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
     let mut options = LsRefs::default();
     let mut writer = GitWriter::new();
 
-    for raw_line in input.iter() {
-        let line = String::from_utf8(raw_line.to_vec())?;
+    for raw_line in &input {
+        let line = String::from_utf8(raw_line.clone())?;
 
         if line == "peel" {
             options.peel = true;
@@ -43,10 +43,10 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
         }
 
         // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
-        if prefix == "HEAD" {
-            if let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await {
-                writer.write_text(output_line).await?;
-            }
+        if prefix == "HEAD"
+            && let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await
+        {
+            writer.write_text(output_line).await?;
         }
 
         for output_line in build_ref_list(prefix.as_str(), repo, &options).await? {
@@ -66,7 +66,7 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
     let mut output = Vec::<String>::new();
 
-    for result in repo.references_glob(format!("{}*", prefix).as_str())? {
+    for result in repo.references_glob(format!("{prefix}*").as_str())? {
         if let Some(ref_line) = build_ref_line(result, repo, options).await {
             output.push(ref_line);
         }
@@ -84,7 +84,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
             let mut line;
 
             if let Some(oid) = reference.target() {
-                line = format!("{} {}", oid, name);
+                line = format!("{oid} {name}");
             } else if let Some(sym_target) = reference.symbolic_target() {
                 match repo.find_reference(sym_target).ok() {
                     Some(sym_target_ref) => {
@@ -99,22 +99,22 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
                     None => return None, // Reference points to a symbolic target that doesn't exist?
                 }
             } else if options.unborn {
-                line = format!("unborn {}", name);
+                line = format!("unborn {name}");
             } else {
                 return None;
             }
 
-            if options.peel {
-                if let Some(peel) = reference.target_peel() {
-                    line.push_str(&format!(" peeled:{}", peel));
-                }
+            if options.peel
+                && let Some(peel) = reference.target_peel()
+            {
+                line.push_str(&format!(" peeled:{peel}"));
             }
 
             Some(line)
         }
-        Err(e) => {
-            if e.code() != ErrorCode::NotFound {
-                error!("Failed to find reference asked for by Git client: {}", e);
+        Err(err) => {
+            if err.code() != ErrorCode::NotFound {
+                error!("Failed to find reference asked for by Git client: {err}");
             }
 
             None
@@ -135,17 +135,17 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
     for result in repo.references()? {
         match result {
             Ok(reference) => {
-                if let Some(name) = reference.name() {
-                    if let Some(oid) = reference.target() {
-                        let mut line = format!("{} {}", oid, name);
+                if let Some(name) = reference.name()
+                    && let Some(oid) = reference.target()
+                {
+                    let mut line = format!("{oid} {name}");
 
-                        // Git ignores capabilities written after the first line
-                        once.call_once(|| {
-                            line.push_str(receive_pack_capabilities());
-                        });
+                    // Git ignores capabilities written after the first line
+                    once.call_once(|| {
+                        line.push_str(receive_pack_capabilities());
+                    });
 
-                        writer.write_text(line).await?;
-                    }
+                    writer.write_text(line).await?;
                 }
             }
             Err(e) => {

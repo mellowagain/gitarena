@@ -36,7 +36,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
 
         // User has set an avatar, return it
         if path.is_file() {
-            return send_image(path, &request).await.context("Failed to read local image file");
+            return send_image(path, &request).context("Failed to read local image file");
         }
     }
 
@@ -59,10 +59,10 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
     // Gravatar integration is not enabled, return fallback icon
     // TODO: Maybe generate own identicons? -> There are crates for this
 
-    let path_str = format!("{}/default.jpg", avatars_dir);
+    let path_str = format!("{avatars_dir}/default.jpg");
     let path = Path::new(path_str.as_str());
 
-    send_image(path, &request).await.context("Failed to read default avatar file")
+    send_image(path, &request).context("Failed to read default avatar file")
 }
 
 #[route("/api/avatar", method = "PUT", err = "text")]
@@ -122,7 +122,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     Ok(HttpResponse::Created().finish())
 }
 
-async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResponse> {
+fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResponse> {
     let path = path.as_ref();
 
     let mut response = HttpResponse::Ok();
@@ -156,11 +156,11 @@ async fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<Ht
     Ok(response.body(file_content))
 }
 
-/// Returns a streaming HttpResponse with the gravatar image
+/// Returns a streaming `HttpResponse` with the gravatar image
 async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpResponse> {
     let md5hash = md5::compute(email);
 
-    let url = format!("https://www.gravatar.com/avatar/{:x}?s=500&r=pg&d=identicon", md5hash);
+    let url = format!("https://www.gravatar.com/avatar/{md5hash:x}?s=500&r=pg&d=identicon");
 
     let mut client = Client::gitarena().get(url);
 

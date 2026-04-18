@@ -11,7 +11,7 @@ mod ipc_packet;
 mod route;
 
 /// Creates resource handler, allowing multiple HTTP method guards.
-/// This method is similar to the actix_web method `actix_web::route`
+/// This method is similar to the `actix_web` method `actix_web::route`
 ///
 /// # Syntax
 ///

@@ -25,6 +25,7 @@ pub(crate) async fn detect_license(store: Arc<Store>, gitoxide_repo: &gix::Repos
             continue;
         }
 
+        #[allow(clippy::match_same_arms)]
         match entry.mode.kind() {
             EntryKind::Blob | EntryKind::BlobExecutable => {
                 let content = read_blob_content(entry.oid, store).await?;

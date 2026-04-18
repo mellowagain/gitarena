@@ -37,11 +37,11 @@ pub(crate) trait HttpRequestExtensions {
     /// [header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
     fn get_header<S: AsRef<str>>(&self, header: S) -> Option<&str>;
 
-    /// Gets a [QString](qstring::QString) built from the current request.
+    /// Gets a [`QString`](qstring::QString) built from the current request.
     ///
     /// This function is a shorthand for `QString::from(request.query_string())`. It is
     /// guaranteed to not fail or panic. If no query string was sent with the request,
-    /// a empty QString struct is returned. This method will always allocate.
+    /// a empty `QString` struct is returned. This method will always allocate.
     ///
     /// # Example
     ///
@@ -74,9 +74,9 @@ impl HttpRequestExtensions for HttpRequest {
 }
 
 pub(crate) trait LibGit2TimeExtensions {
-    /// Tries to convert from `git2` [Time][time] into `chrono` [DateTime][datetime].
+    /// Tries to convert from `git2` [Time][time] into `chrono` [`DateTime`][datetime].
     ///
-    /// The returned [DateTime][datetime] timezone is [FixedOffset](chrono::FixedOffset) with
+    /// The returned [`DateTime`][datetime] timezone is [`FixedOffset`](FixedOffset) with
     /// the offset provided by [Time][time]. In case the conversation yields an [ambiguous result](chrono::offset::LocalResult::Ambiguous)
     /// a warning is logged and the smaller of the two ambiguous results is returned.
     ///
@@ -193,10 +193,10 @@ impl GitoxideSignatureExtensions for Signature {
 }
 
 pub(crate) trait ContextExtensions {
-    /// Inserts a [WebUser] into the current context, if authenticated (not [Anonymous][WebUser::Anonymous]).
+    /// Inserts a [`WebUser`] into the current context, if authenticated (not [Anonymous][WebUser::Anonymous]).
     fn insert_web_user(&mut self, user: &WebUser) -> Result<()>;
 
-    /// Inserts a [User] into the current context. The template can then access the User via the `user` Tera variable.
+    /// Inserts a [`User`] into the current context. The template can then access the User via the `user` Tera variable.
     fn insert_user(&mut self, user: &User) -> Result<()>;
 }
 
@@ -218,7 +218,7 @@ impl ContextExtensions for Context {
 pub(crate) const USER_AGENT_STR: &str = concat!("GitArena v", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
 
 pub(crate) trait AwcExtensions {
-    /// Returns a [Client](awc::client::Client) configured with GitArena's default user agent
+    /// Returns a [`Client`](Client) configured with GitArena's default user agent
     fn gitarena() -> Client;
 }
 

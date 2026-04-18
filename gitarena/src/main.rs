@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
 
-    licenses::init().await;
+    licenses::init();
 
     // read the `Lazy` to initialize it but immediately drop the returned guard to prevent a deadlock
     let _ = SYSTEM_INFO.read().await;

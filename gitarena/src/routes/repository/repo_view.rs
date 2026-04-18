@@ -99,7 +99,7 @@ async fn render(
             file_name: name,
             submodule_target_oid,
             commit: GitCommit {
-                oid: format!("{}", oid),
+                oid: format!("{oid}"),
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
                 date: None,
@@ -157,7 +157,7 @@ async fn render(
     context.try_insert(
         "last_commit",
         &GitCommit {
-            oid: format!("{}", last_commit_oid),
+            oid: format!("{last_commit_oid}"),
             message: last_commit.message().unwrap_or_default().to_owned(),
             time: last_commit.time().seconds(),
             date: None,

@@ -6,6 +6,7 @@ use tokio::fs;
 
 // Adopted from https://stackoverflow.com/a/65192210 (turned it async using tokio::fs)
 #[async_recursion(?Send)]
+#[allow(clippy::multiple_bound_locations)]
 pub(crate) async fn copy_dir_all<P: AsRef<Path>>(source: P, destination: P) -> Result<()> {
     fs::create_dir_all(destination.as_ref()).await?;
 

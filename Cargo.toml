@@ -15,6 +15,13 @@ readme = "README.md"
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki"] }
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
 
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+used_underscore_binding = "allow"
+enum_glob_use = "allow"
+items_after_statements = "allow"
+
 [profile.release]
 lto = true
 

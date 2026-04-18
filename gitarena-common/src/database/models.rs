@@ -41,7 +41,7 @@ impl TryFrom<&str> for KeyType {
             "ecdsa-sha2-nistp384" => EcdsaSha2Nistp384,
             "ecdsa-sha2-nistp521" => EcdsaSha2Nistp521,
             "ssh-ed25519" => SshEd25519,
-            _ => bail!("Unknown key type: {}", value),
+            _ => bail!("Unknown key type: {value}"),
         })
     }
 }

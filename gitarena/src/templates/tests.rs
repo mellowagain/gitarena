@@ -7,6 +7,7 @@ pub(crate) fn empty(value: Option<&Value>, _: &[Value]) -> Result<bool> {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 pub(crate) fn none(value: Option<&Value>, _: &[Value]) -> Result<bool> {
     match value {
         Some(value) => Ok(value.is_null()),
@@ -14,6 +15,7 @@ pub(crate) fn none(value: Option<&Value>, _: &[Value]) -> Result<bool> {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 pub(crate) fn some(value: Option<&Value>, _: &[Value]) -> Result<bool> {
     match value {
         Some(value) => Ok(!value.is_null()),

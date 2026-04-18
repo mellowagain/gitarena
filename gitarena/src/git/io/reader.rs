@@ -8,7 +8,7 @@ use tracing_unwrap::OptionExt;
 #[instrument(err)]
 pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String, Vec<Vec<u8>>)> {
     for (index, raw_line) in body.iter().enumerate() {
-        match String::from_utf8(raw_line.to_vec()) {
+        match String::from_utf8(raw_line.clone()) {
             Ok(line) => match line.split_once('=') {
                 Some((key, value)) => {
                     if key != "command" {
@@ -21,11 +21,10 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
 
                     return Ok((value.to_owned(), body));
                 }
-                None => continue,
+                None => {}
             },
             Err(err) => {
-                warn!("Failed to read line into UTF-8 vec: {}", err);
-                continue;
+                warn!("Failed to read line into UTF-8 vec: {err}");
             }
         }
     }
@@ -51,8 +50,8 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
                     body.push(data[..length].to_vec());
                 }
             }
-            Ok(Err(err)) => warn!("Failed to read Git data line: {}", err),
-            Err(err) => warn!("Failed to read Git data line: {}", err),
+            Ok(Err(err)) => warn!("Failed to read Git data line: {err}"),
+            Err(err) => warn!("Failed to read Git data line: {err}"),
         }
     }
 

@@ -138,7 +138,7 @@ async fn write_directory_zip(store: Arc<Store>, tree: Tree, path: &Path, writer:
 
                 let options = ZipFileOptions::default()
                     .unix_permissions(if matches!(kind, EntryKind::BlobExecutable) { 0o775 } else { 0o664 })
-                    .large_file(content.len() >= 4294967000); // 4 GiB
+                    .large_file(content.len() >= 4_294_967_000); // 4 GiB
 
                 //.last_modified_time(...) TODO: DateTime of last commit to this file
 

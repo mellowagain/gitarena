@@ -85,7 +85,7 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> 
 
     let libgit2_version = LibGit2Version::get();
     let (major, minor, patch) = libgit2_version.libgit2_version();
-    context.try_insert("libgit2_version", format!("{}.{}.{}", major, minor, patch).as_str())?;
+    context.try_insert("libgit2_version", format!("{major}.{minor}.{patch}").as_str())?;
     context.try_insert("git2_rs_version", libgit2_version.crate_version())?;
 
     // System Info

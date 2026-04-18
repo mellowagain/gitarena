@@ -52,7 +52,7 @@ impl SettingsList {
 
     fn as_optional(&self) -> OptionalSettingsList {
         OptionalSettingsList {
-            settings: self.settings.iter().cloned().map(|s| s.as_optional()).collect(),
+            settings: self.settings.iter().map(Setting::as_optional).collect(),
         }
     }
 }
@@ -86,6 +86,7 @@ struct Setting {
     ty: Type,
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl Debug for Setting {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Setting").field("identifier", &self.identifier).field("key", &self.key).finish()

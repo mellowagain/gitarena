@@ -60,7 +60,7 @@ pub(crate) async fn view_blob(
             file_name: name.as_str(),
             submodule_target_oid: None,
             commit: GitCommit {
-                oid: format!("{}", oid),
+                oid: format!("{oid}"),
                 message: commit.message().unwrap_or_default().to_owned(),
                 time: commit.time().seconds(),
                 date: None,

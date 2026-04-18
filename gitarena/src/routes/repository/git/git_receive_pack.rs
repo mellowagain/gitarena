@@ -50,10 +50,7 @@ pub(crate) async fn git_receive_pack(
         .fetch_optional(&mut *transaction)
         .await?;
 
-    let (user_id,) = match user_option {
-        Some(user_id) => user_id,
-        None => die!(NOT_FOUND),
-    };
+    let Some((user_id,)) = user_option else { die!(NOT_FOUND) };
 
     let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(user_id)
@@ -66,10 +63,7 @@ pub(crate) async fn git_receive_pack(
         Either::Right(response) => return Ok(response),
     };
 
-    let mut repo = match repo_option {
-        Some(repo) => repo,
-        None => die!(NOT_FOUND),
-    };
+    let Some(mut repo) = repo_option else { die!(NOT_FOUND) };
 
     // If the user doesn't have access return 404 Not found to not leak existence of internal/private repositories
     if !privilege::check_access(&repo, Some(&user), &mut transaction).await? {
@@ -132,14 +126,14 @@ pub(crate) async fn git_receive_pack(
             output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
-                match RefUpdateType::determinate(&update.old, &update.new).await? {
+                match RefUpdateType::determinate(&update.old, &update.new)? {
                     RefUpdateType::Create | RefUpdateType::Update => process_create_update(&update, &repo, store.clone(), &db_pool, &mut output_writer).await?,
                     RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?,
-                };
+                }
             }
         }
         None => {
-            if !ref_update::is_only_deletions(updates.as_slice()).await? {
+            if !ref_update::is_only_deletions(updates.as_slice())? {
                 warn!("Client sent no PACK file despite having more than just deletions");
                 die!(BAD_REQUEST, "No PACK payload was sent");
             }
@@ -168,10 +162,10 @@ pub(crate) async fn git_receive_pack(
     match timeout(Duration::from_secs(10), command).await {
         Ok(Ok(status)) => {
             if !status.success() {
-                warn!("Git garbage collector exited with non-zero status: {}", status);
+                warn!("Git garbage collector exited with non-zero status: {status}");
             }
         }
-        Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {}", err),
+        Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {err}"),
         Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
     }
 

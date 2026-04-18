@@ -6,6 +6,9 @@ description = "Helper macros for GitArena"
 edition = { workspace = true }
 repository = { workspace = true }
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 

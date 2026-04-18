@@ -27,10 +27,7 @@ pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request
         "visibility = 'public'"
     };
 
-    let query = format!(
-        "select count(*) from repositories where forked_from = $1 and disabled = false and {}",
-        additional_query
-    );
+    let query = format!("select count(*) from repositories where forked_from = $1 and disabled = false and {additional_query}",);
 
     let (count,): (i64,) = sqlx::query_as(query.as_str())
         .bind(repo.id)

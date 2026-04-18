@@ -23,7 +23,7 @@ use serde::Serialize;
 use sqlx::{FromRow, Pool, Postgres, Transaction};
 
 #[derive(FromRow, Display, Serialize)]
-#[display(fmt = "{}", email)]
+#[display(fmt = "{email}")]
 pub(crate) struct Email {
     pub(crate) id: i32,
     pub(crate) owner: i32,
@@ -131,7 +131,7 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
         // Every *valid* user has a notification email address in the database, so .unwrap is fine
         let email = Email::find_notification_email(user, &mut transaction)
             .await?
-            .ok_or_else(|| anyhow!("User {} has no notification email address", user))?;
+            .ok_or_else(|| anyhow!("User {user} has no notification email address"))?;
 
         transaction.commit().await?;
 
@@ -140,7 +140,7 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
 
     let message = Message::builder()
         .from(get_root_mailbox(db_pool).await?)
-        .to(email.as_mailbox(Some(user.username.to_owned()))?)
+        .to(email.as_mailbox(Some(user.username.clone()))?)
         .subject(subject)
         .body(body)
         .context("Unable to build email.")?;

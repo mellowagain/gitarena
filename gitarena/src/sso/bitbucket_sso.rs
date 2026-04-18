@@ -26,7 +26,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
         let client = Client::gitarena();
 
         Ok(client
-            .get(format!("https://api.bitbucket.org/2.0/{}", endpoint).as_str())
+            .get(format!("https://api.bitbucket.org/2.0/{endpoint}").as_str())
             .append_header((ACCEPT, "application/json"))
             .bearer_auth(token)
             .send()

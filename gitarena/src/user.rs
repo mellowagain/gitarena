@@ -21,7 +21,7 @@ use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
 
 #[derive(FromRow, Display, Debug, Serialize)]
-#[display(fmt = "{}", username)]
+#[display(fmt = "{username}")]
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,
@@ -39,27 +39,23 @@ impl User {
     {
         let username = name.as_ref();
 
-        let user = sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1) limit 1")
+        sqlx::query_as::<_, User>("select * from users where lower(username) = lower($1) limit 1")
             .bind(username)
             .fetch_optional(&mut **tx)
             .await
             .ok()
-            .flatten();
-
-        user
+            .flatten()
     }
 
     pub(crate) async fn find_using_email(email: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<User> {
         let email = email.as_ref();
 
-        let user = sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
+        sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
             .bind(email)
             .fetch_optional(&mut **tx)
             .await
             .ok()
-            .flatten();
-
-        user
+            .flatten()
     }
 }
 

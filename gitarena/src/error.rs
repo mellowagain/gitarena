@@ -116,7 +116,7 @@ pub(crate) struct WithStatusCode {
 impl Display for WithStatusCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match &self.source {
-            Some(source) if self.display => write!(f, "{}", source),
+            Some(source) if self.display => write!(f, "{source}"),
             _ => write!(f, "{} {}", self.code.as_str(), self.code.canonical_reason().unwrap_or_default()),
         }
     }
@@ -296,10 +296,10 @@ async fn render_git_error(renderer: &GitArenaError) -> Result<BoxBody> {
 /// Returns generic Actix 500 Internal Server Error body and logs a error message similar to Rust's ICE message.
 /// This function is meant to be called when a error renderer errors.
 fn error_render_error(err: Error, ga_error: &GitArenaError, head: &mut ResponseHead) -> BoxBody {
-    error!("| Failed to render error response: {}", err);
+    error!("| Failed to render error response: {err}");
     error!("| GitArena encountered a error when rendering a error. This is a bug.");
     error!("| We would appreciate a bug report: https://github.com/mellowagain/gitarena/issues/new?labels=priority%3A%3Ahigh%2C+type%3A%3Acrash");
-    error!("| Caused by: {:?}", ga_error);
+    error!("| Caused by: {ga_error:?}");
 
     // Fall back to the generic actix response
     let actix_response = InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response();
@@ -345,11 +345,11 @@ pub(crate) enum ErrorDisplayType {
     Plain,
 }
 
-/// Simple struct which wraps an anyhow [Error](anyhow::Error). Used in conjunction with [HoldsError] trait.
+/// Simple struct which wraps an anyhow [Error](anyhow::Error). Used in conjunction with [`HoldsError`] trait.
 #[repr(transparent)]
 pub(crate) struct ErrorHolder(pub(crate) Error);
 
-/// Dummy trait used to constrain a template parameter to a [ErrorHolder].
+/// Dummy trait used to constrain a template parameter to a [`ErrorHolder`].
 pub(crate) trait HoldsError {
     /// Returns the wrapped [Error](anyhow::Error) as a value, consuming this `HoldsError` instance
     fn into_inner(self) -> Error;

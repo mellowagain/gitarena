@@ -7,6 +7,9 @@ edition = { workspace = true }
 repository = { workspace = true }
 build = "build.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 anyhow = "1.0.52"
 base64 = "0.13.0"

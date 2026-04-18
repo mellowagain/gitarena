@@ -19,11 +19,11 @@ impl Ipc {
 
         let connection = match Ipc::connect().await {
             Ok(connection) => {
-                info!("Successfully connected to workhorse at {}", ipc_path);
+                info!("Successfully connected to workhorse at {ipc_path}");
                 Some(connection)
             }
             Err(err) => {
-                error!("Failed to connect to workhorse: {}", err);
+                error!("Failed to connect to workhorse: {err}");
                 warn!("Workhorse features such as repo importing will be unavailable until IPC connection is established");
 
                 None
@@ -72,10 +72,10 @@ pub(crate) fn spawn_connection_task(data: RwLock<Ipc>) {
 
                     data.write().await.connection = Some(connection);
 
-                    info!("Successfully connected to workhorse at {}", ipc_path);
+                    info!("Successfully connected to workhorse at {ipc_path}");
                     break;
                 }
-                Err(err) => debug!("Failed to re-establish connection to workhorse, retrying in 60 seconds: {}", err),
+                Err(err) => debug!("Failed to re-establish connection to workhorse, retrying in 60 seconds: {err}"),
             }
         }
     });

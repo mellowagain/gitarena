@@ -27,7 +27,7 @@ pub(crate) fn parse(template_path: String) -> Result<Template> {
         let value = splitter.next().unwrap_or_default();
 
         if key.is_empty() || value.is_empty() {
-            return Err(anyhow!("Template `{}` meta data contains empty values", template_path));
+            return Err(anyhow!("Template `{template_path}` meta data contains empty values"));
         }
 
         tags.insert(key.to_owned(), value.to_owned());
@@ -43,7 +43,8 @@ pub(crate) fn render(template_content: String, context_option: Option<TemplateCo
 
     if let Some(context) = context_option {
         for (key, value) in context {
-            result = result.replace(format!("{{{{{}}}}}", key).as_str(), value.as_str());
+            // `{{key}}`
+            result = result.replace(format!("{{{{{key}}}}}").as_str(), value.as_str());
         }
     }
 

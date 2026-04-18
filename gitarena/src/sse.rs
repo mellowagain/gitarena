@@ -56,7 +56,7 @@ impl Broadcaster {
     /// Sends a message to all clients subscribed to a specific [Category]
     #[instrument]
     pub(crate) fn send(&self, category: Category, message: &str) {
-        let sse_message = format!("event: {}\ndata: {}\n\n", category, message);
+        let sse_message = format!("event: {category}\ndata: {message}\n\n");
         let bytes = Bytes::from(sse_message);
 
         debug!("Broadcasting in category {}: \"{}\"", category, message);
@@ -77,10 +77,10 @@ impl Broadcaster {
             // If the buffer is full the client has not recv'd for a while which means it probably disconnected
             client.try_send(Bytes::from("event: ping\ndata: pong!\n\n")).map_or_else(
                 |err| {
-                    debug!("Disconnecting a client subscribed to {}: {}", category, err);
+                    debug!("Disconnecting a client subscribed to {category}: {err}");
                     false
                 },
-                |_| true,
+                |()| true,
             )
         });
     }

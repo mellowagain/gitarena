@@ -14,8 +14,8 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
     let mut options = Fetch::default();
     let mut writer = GitWriter::new();
 
-    for raw_line in input.iter() {
-        let line = String::from_utf8(raw_line.to_vec())?;
+    for raw_line in &input {
+        let line = String::from_utf8(raw_line.clone())?;
 
         if line == "thin-pack" {
             options.thin_pack = true;
@@ -95,12 +95,12 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
         match repo.find_reference(have.as_str()) {
             Ok(reference) => {
                 if let Some(name) = reference.name() {
-                    writer.write_text(format!("ACK {}", name)).await?;
+                    writer.write_text(format!("ACK {name}")).await?;
                     written_one = true;
                 }
             }
-            Err(e) => {
-                warn!("Unable to find reference {} user has: {}", have, e);
+            Err(err) => {
+                warn!("Unable to find reference {have} user has: {err}");
             }
         }
     }
@@ -177,10 +177,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     writer
         .write_text_sideband(
             Band::Progress,
-            format!(
-                "Total {} (delta {}), reused {} (delta {}), pack-reused {}",
-                total, total_delta, reused, reused_delta, pack_reused
-            ),
+            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta}), pack-reused {pack_reused}"),
         )
         .await?;
 

@@ -44,10 +44,7 @@ pub(crate) async fn git_upload_pack(
         .fetch_optional(&mut *transaction)
         .await?;
 
-    let (user_id,) = match user_option {
-        Some(user_id) => user_id,
-        None => die!(NOT_FOUND),
-    };
+    let Some((user_id,)) = user_option else { die!(NOT_FOUND) };
 
     let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
         .bind(user_id)

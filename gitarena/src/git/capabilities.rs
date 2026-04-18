@@ -9,7 +9,7 @@ use tracing::instrument;
 pub(crate) async fn capabilities(service: &str) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 
-    writer.write_text(format!("# service={}", service)).await?;
+    writer.write_text(format!("# service={service}")).await?;
 
     writer.flush().await?;
     writer.write_text("version 2").await?;

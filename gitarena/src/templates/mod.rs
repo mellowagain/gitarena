@@ -41,7 +41,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
     })
     .await;
 
-    info!("Successfully loaded templates. Took {} seconds.", elapsed);
+    info!("Successfully loaded templates. Took {elapsed} seconds.");
 
     #[cfg(debug_assertions)]
     {
@@ -55,7 +55,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
             let event = match result {
                 Ok(event) => event,
                 Err(err) => {
-                    error!("Failed to unwrap file system notify event: {}", err);
+                    error!("Failed to unwrap file system notify event: {err}");
                     return;
                 }
             };
@@ -87,8 +87,8 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
 
                 runtime.block_on(async {
                     match tera().write().await.full_reload() {
-                        Ok(_) => info!("Successfully reloaded templates."),
-                        Err(err) => error!("Failed to reload templates: {}", err),
+                        Ok(()) => info!("Successfully reloaded templates."),
+                        Err(err) => error!("Failed to reload templates: {err}"),
                     }
                 });
             }
@@ -108,7 +108,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
 fn parse_template(template_path: String) -> Template {
     match plain::parse(template_path) {
         Ok(template) => template,
-        Err(err) => panic!("Failed to parse template: {}", err),
+        Err(err) => panic!("Failed to parse template: {err}"),
     }
 }
 

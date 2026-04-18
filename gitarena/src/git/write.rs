@@ -21,7 +21,7 @@ pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&
     let blob = repo.blob(content).context("Failed to create blob")?;
 
     let mut tree_builder = repo.treebuilder(None).context("Failed to acquire tree builder")?;
-    tree_builder.insert(file_name, blob, 0o100644).context("Failed to create blob")?;
+    tree_builder.insert(file_name, blob, 0o100_644).context("Failed to create blob")?;
 
     let tree_oid = tree_builder.write().context("Failed to write tree")?;
     let tree = repo.find_tree(tree_oid)?;

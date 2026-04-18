@@ -26,9 +26,9 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
         let client = Client::gitarena();
 
         Ok(client
-            .get(format!("https://api.github.com/{}", endpoint).as_str())
+            .get(format!("https://api.github.com/{endpoint}").as_str())
             .append_header((ACCEPT, "application/vnd.github.v3+json"))
-            .append_header((AUTHORIZATION, format!("token {}", token)))
+            .append_header((AUTHORIZATION, format!("token {token}")))
             .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
             .send()
             .await

@@ -16,18 +16,15 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
         .next()
         .ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected new ref, got: {}", line.clone()))?;
 
-    ref_update.old = oid::normalize_str(Some(old_ref)).map(|o| o.to_owned());
-    ref_update.new = oid::normalize_str(Some(new_ref)).map(|o| o.to_owned());
+    ref_update.old = oid::normalize_str(Some(old_ref)).map(ToOwned::to_owned);
+    ref_update.new = oid::normalize_str(Some(new_ref)).map(ToOwned::to_owned);
 
     let target_ref = split
         .next()
         .ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected target ref, got: {}", line.clone()))?;
 
     if !target_ref.starts_with("refs/") {
-        bail!(
-            "Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {}",
-            target_ref
-        );
+        bail!("Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {target_ref}",);
     }
 
     ref_update.target_ref = target_ref.to_owned();
@@ -67,10 +64,10 @@ pub(crate) fn propagate_capabilities(updates: &mut [RefUpdate]) {
     }
 }
 
-pub(crate) async fn is_only_deletions(updates: &[RefUpdate]) -> Result<bool> {
+pub(crate) fn is_only_deletions(updates: &[RefUpdate]) -> Result<bool> {
     for update in updates {
-        match RefUpdateType::determinate(&update.old, &update.new).await? {
-            RefUpdateType::Delete => continue,
+        match RefUpdateType::determinate(&update.old, &update.new)? {
+            RefUpdateType::Delete => {}
             _ => return Ok(false),
         }
     }
@@ -96,7 +93,8 @@ pub(crate) enum RefUpdateType {
 }
 
 impl RefUpdateType {
-    pub(crate) async fn determinate(old: &Option<String>, new: &Option<String>) -> Result<RefUpdateType> {
+    #[allow(clippy::ref_option)]
+    pub(crate) fn determinate(old: &Option<String>, new: &Option<String>) -> Result<RefUpdateType> {
         match (old, new) {
             (None, None) => {
                 bail!("Unable to determinate ref update type, both old and new OID are None")

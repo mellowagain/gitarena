@@ -27,7 +27,7 @@ impl GitWriter {
         self.inner
             .write(str_ref.as_bytes())
             .await
-            .with_context(|| format!("Unable to write text to Git writer: `{}`", str_ref))?;
+            .with_context(|| format!("Unable to write text to Git writer: `{str_ref}`"))?;
         Ok(self)
     }
 
@@ -39,7 +39,7 @@ impl GitWriter {
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| format!("Unable to write text to sideband {} in Git writer: `{}`", band, str_ref))?;
+            .with_context(|| format!("Unable to write text to sideband {band} in Git writer: `{str_ref}`"))?;
         Ok(self)
     }
 
@@ -52,7 +52,7 @@ impl GitWriter {
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| format!("Unable to write text to sideband {} in Git writer: `{}`", band, str_ref))?;
+            .with_context(|| format!("Unable to write text to sideband {band} in Git writer: `{str_ref}`"))?;
         Ok(self)
     }
 
@@ -60,7 +60,7 @@ impl GitWriter {
         self.inner
             .write(text)
             .await
-            .with_context(|| format!("Unable to write text bytes to Git writer: {:?}", text))?;
+            .with_context(|| format!("Unable to write text bytes to Git writer: {text:?}"))?;
         Ok(self)
     }
 
@@ -69,7 +69,7 @@ impl GitWriter {
         self.inner
             .write(binary)
             .await
-            .with_context(|| format!("Unable to write binary to Git writer: {:?}", binary))?;
+            .with_context(|| format!("Unable to write binary to Git writer: {binary:?}"))?;
 
         self.inner.enable_text_mode();
         Ok(self)
@@ -82,7 +82,7 @@ impl GitWriter {
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| format!("Unable to write binary to sideband {} in Git writer: {:?}", band, binary))?;
+            .with_context(|| format!("Unable to write binary to sideband {band} in Git writer: {binary:?}"))?;
 
         self.inner.enable_text_mode();
         Ok(self)
@@ -93,7 +93,7 @@ impl GitWriter {
             .inner_mut()
             .write(binary)
             .await
-            .with_context(|| format!("Unable to write raw data to Git writer: {:?}", binary))?;
+            .with_context(|| format!("Unable to write raw data to Git writer: {binary:?}"))?;
 
         Ok(self)
     }
@@ -113,7 +113,7 @@ impl GitWriter {
         self.inner
             .write(with_band.as_slice())
             .await
-            .with_context(|| format!("Unable to write flush to sideband {} in Git writer", band))?;
+            .with_context(|| format!("Unable to write flush to sideband {band} in Git writer"))?;
 
         self.inner.enable_text_mode();
         Ok(self)

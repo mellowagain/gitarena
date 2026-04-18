@@ -15,7 +15,7 @@ fn init() -> RwLock<System> {
     tokio::spawn(async move {
         loop {
             interval.tick().await;
-            SYSTEM_INFO.write().await.refresh_memory()
+            SYSTEM_INFO.write().await.refresh_memory();
         }
     });
 

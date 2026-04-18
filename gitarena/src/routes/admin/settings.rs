@@ -91,9 +91,8 @@ pub(crate) async fn patch_settings(
     // htmx does not set booleans to `false` and does not send a form data for some reason
     // As a workaround detect the triggered element and set it to false
     if !once.is_completed() {
-        let setting = match request.get_header("hx-trigger-name") {
-            Some(setting) => setting,
-            None => die!(BAD_REQUEST, "Setting not found"),
+        let Some(setting) = request.get_header("hx-trigger-name") else {
+            die!(BAD_REQUEST, "Setting not found");
         };
 
         sqlx::query("update settings set value = false where key = $1")

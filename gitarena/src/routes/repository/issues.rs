@@ -23,7 +23,7 @@ pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: Htt
         "confidential = false"
     };
 
-    let issues = sqlx::query_as::<_, Issue>(format!("select * from issues where repo = $1 and {} order by id desc", confidential).as_str())
+    let issues = sqlx::query_as::<_, Issue>(format!("select * from issues where repo = $1 and {confidential} order by id desc").as_str())
         .bind(repo.id)
         .fetch_all(&mut *transaction)
         .await?;
@@ -32,7 +32,7 @@ pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: Htt
     // TODO: Is there a way to map the original Issue struct to include these infos?
     let mut usernames = HashMap::new();
 
-    for issue in issues.iter() {
+    for issue in &issues {
         let (username,): (String,) = sqlx::query_as("select username from users where id = $1 limit 1")
             .bind(issue.author)
             .fetch_one(&mut *transaction)
@@ -44,12 +44,12 @@ pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: Htt
         if !issue.assignees.is_empty() {
             // This workaround can be removed once Vec can be passed directly: https://github.com/launchbadge/sqlx/issues/875
             let haystack = &issue.assignees.iter().join(",");
-            let query = format!("select id, username from users where id in ({})", haystack);
+            let query = format!("select id, username from users where id in ({haystack})");
 
             let db_usernames: Vec<(i32, String)> = sqlx::query_as(query.as_str()).fetch_all(&mut *transaction).await?;
 
-            for (id, username) in db_usernames.into_iter() {
-                usernames.insert(format!("u{}", id), username);
+            for (id, username) in db_usernames {
+                usernames.insert(format!("u{id}"), username);
             }
         }
     }
