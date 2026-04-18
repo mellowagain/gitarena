@@ -1,4 +1,3 @@
-use crate::git::GIT_HASH_KIND;
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
 use crate::git::ref_update::RefUpdate;
@@ -8,8 +7,6 @@ use crate::utils::oid;
 use crate::{die, err};
 
 use std::convert::TryInto;
-use std::io::Write;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
@@ -17,14 +14,10 @@ use bstr::BString;
 use gitarena_common::database::Database;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
-use gix::features::zlib::Inflate;
 use gix::lock::acquire::Fail;
-use gix::objs::{CommitRef, Kind};
+use gix::objs::{CommitRef, Kind, TagRef};
 use gix::odb::Store;
-use gix::odb::pack::data::File as DataFile;
-use gix::odb::pack::data::decode::entry::ResolvedBase;
-use gix::odb::pack::index::File as IndexFile;
-use gix::odb::pack::{FindExt, cache};
+use gix::odb::pack::FindExt;
 use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use sqlx::{PgPool, Transaction};
@@ -37,9 +30,6 @@ pub(crate) async fn process_create_update(
     store: Arc<Store>,
     db_pool: &PgPool,
     writer: &mut GitWriter,
-    index_path: Option<&PathBuf>,
-    pack_path: Option<&PathBuf>,
-    raw_pack: &[u8],
 ) -> Result<()> {
     assert!(ref_update.new.is_some());
 
@@ -47,53 +37,28 @@ pub(crate) async fn process_create_update(
     let new_oid = oid::from_hex_str(ref_update.new.as_deref())?;
 
     // # Gitoxide zone
-    // This block decodes the entry from the pack file, creates a Gitoxide Commit and then writes it to the reflog using a transaction
+    // The pack file was written by libgit2 before so we can now just search for the entries
+    // and then create a Gitoxide commit and write it to the reflog using a transaction
     {
         let mut buffer = Vec::<u8>::new();
 
-        let commit = match (index_path, pack_path) {
-            (Some(index_path), Some(pack_path)) => {
-                let index_file = IndexFile::at(index_path, GIT_HASH_KIND)?;
+        let (committer, message) = {
+            let (data, _) = store
+                .to_cache_arc()
+                .find(new_oid.as_ref(), &mut buffer)
+                .map_err(|_| anyhow!("Failed to find object {} in ODB after pack write", new_oid))?;
 
-                let index = index_file
-                    .lookup(new_oid.as_ref())
-                    .ok_or_else(|| anyhow!("Failed to lookup new oid in index file"))?;
-                let offset = index_file.pack_offset_at_index(index);
-
-                let data_file = DataFile::at(pack_path, GIT_HASH_KIND)?;
-
-                let entry = data_file.entry(offset)?;
-
-                buffer.reserve(entry.decompressed_size as usize);
-
-                let outcome = data_file.decode_entry(
-                    entry,
-                    &mut buffer,
-                    &mut Inflate::default(),
-                    &|oid, vec| {
-                        if let Some(index) = index_file.lookup(oid) {
-                            let offset = index_file.pack_offset_at_index(index);
-
-                            data_file.entry(offset).ok().map(ResolvedBase::InPack)
-                        } else {
-                            store.to_cache_arc().find(oid, vec).ok().map(|(data, _)| ResolvedBase::OutOfPack {
-                                kind: data.kind,
-                                end: data.data.len(),
-                            })
-                        }
-                    },
-                    &mut cache::Never,
-                )?;
-
-                match outcome.kind {
-                    Kind::Commit => CommitRef::from_bytes(buffer.as_slice())?,
-                    _ => die!(BAD_REQUEST, "Unexpected payload data type"),
+            match data.kind {
+                Kind::Commit => {
+                    let commit = CommitRef::from_bytes(data.data)?;
+                    (commit.committer.to_owned()?, BString::from(commit.message))
                 }
-            }
-            _ => {
-                // This is a force push to an existing repository
-                // TODO: Handle non existing refs as client errors instead of server errors
-                store.to_cache_arc().find_commit(new_oid.as_ref(), &mut buffer).map(|(data, _)| data)?
+                Kind::Tag => {
+                    let tag = TagRef::from_bytes(data.data)?;
+                    let tagger = tag.tagger.ok_or_else(|| anyhow!("Pushed tag object has no tagger field"))?;
+                    (tagger.to_owned()?, BString::from(tag.message))
+                }
+                _ => die!(BAD_REQUEST, "Unexpected payload data type"),
             }
         };
 
@@ -111,7 +76,7 @@ pub(crate) async fn process_create_update(
                 log: LogChange {
                     mode: RefLog::AndReference,
                     force_create_reflog: true,
-                    message: BString::from(commit.message),
+                    message,
                 },
                 expected: previous_value,
                 new: Target::Object(new_oid),
@@ -127,19 +92,7 @@ pub(crate) async fn process_create_update(
             .transaction()
             .prepare(edits, Fail::Immediately, Fail::Immediately)
             .map_err(|err| anyhow!("Failed to commit transaction: {}", err))?
-            .commit(commit.committer)?;
-    }
-
-    // # libgit2 zone
-    // This block writes the payload into the repo odb
-    {
-        let git2_repo = repo.libgit2(&mut transaction).await?;
-
-        let odb = git2_repo.odb()?;
-        let mut pack_writer = odb.packwriter()?;
-
-        pack_writer.write_all(raw_pack)?;
-        pack_writer.commit()?;
+            .commit(committer.to_ref(&mut TimeBuf::default()))?;
     }
 
     if ref_update.report_status || ref_update.report_status_v2 {

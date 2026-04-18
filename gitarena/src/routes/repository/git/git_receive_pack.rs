@@ -5,12 +5,13 @@ use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{basic_auth, pack, ref_update};
+use crate::git::{basic_auth, ref_update};
 use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 
+use std::io::Write;
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
@@ -109,6 +110,8 @@ pub(crate) async fn git_receive_pack(
         return Ok(HttpResponse::NoContent().append_header((CONTENT_TYPE, accept_header)).finish());
     }
 
+    ref_update::propagate_capabilities(&mut updates);
+
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
     let store = gitoxide_repo.objects.store().clone();
 
@@ -118,25 +121,19 @@ pub(crate) async fn git_receive_pack(
 
     match searcher.search_in(vec) {
         Some(pos) => {
-            let (index_path, pack_path, _temp_dir) = pack::read(&vec[pos..], &repo, &mut transaction).await?;
+            {
+                let git2_repo = repo.libgit2(&mut transaction).await?;
+                let odb = git2_repo.odb()?;
+                let mut pack_writer = odb.packwriter()?;
+                pack_writer.write_all(&vec[pos..])?;
+                pack_writer.commit()?;
+            }
 
             output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
             for update in updates {
                 match RefUpdateType::determinate(&update.old, &update.new).await? {
-                    RefUpdateType::Create | RefUpdateType::Update => {
-                        process_create_update(
-                            &update,
-                            &repo,
-                            store.clone(),
-                            &db_pool,
-                            &mut output_writer,
-                            index_path.as_ref(),
-                            pack_path.as_ref(),
-                            &vec[pos..],
-                        )
-                        .await?
-                    }
+                    RefUpdateType::Create | RefUpdateType::Update => process_create_update(&update, &repo, store.clone(), &db_pool, &mut output_writer).await?,
                     RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?,
                 };
             }

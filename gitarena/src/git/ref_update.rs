@@ -50,6 +50,23 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
     Ok(ref_update)
 }
 
+// capabilities are only sent by the client in the first line
+pub(crate) fn propagate_capabilities(updates: &mut [RefUpdate]) {
+    if updates.len() <= 1 {
+        return;
+    }
+
+    let report_status = updates[0].report_status;
+    let report_status_v2 = updates[0].report_status_v2;
+    let side_band_64k = updates[0].side_band_64k;
+
+    for update in updates.iter_mut().skip(1) {
+        update.report_status = report_status;
+        update.report_status_v2 = report_status_v2;
+        update.side_band_64k = side_band_64k;
+    }
+}
+
 pub(crate) async fn is_only_deletions(updates: &[RefUpdate]) -> Result<bool> {
     for update in updates {
         match RefUpdateType::determinate(&update.old, &update.new).await? {
