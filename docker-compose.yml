@@ -1,44 +1,39 @@
-version: "3.9"
 services:
-  database:
-    image: "postgres"
-    ports:
-      - "15432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
+  postgres:
+    image: postgres:trixie
     environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       POSTGRES_DB: gitarena
-    secrets:
-      - db_password
-  workhorse:
-    build: Dockerfile.workhorse
-    depends_on:
-      - database
+      POSTGRES_USER: gitarena
+      POSTGRES_PASSWORD: gitarena
+    expose:
+      - "5432"
     volumes:
-      - repo_data:repositories
-    environment:
-      DATABASE_URL: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
-      DATABASE_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitarena"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   gitarena:
     build: Dockerfile
     depends_on:
-      - database
-      - workhorse
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     volumes:
-      - repo_data:repositories
+      - repos:repositories
     environment:
       # TODO: Remove this once nginx is also added to this compose
       SERVE_STATIC_FILES: true
-      DATABASE_URL: "postgresql://postgres@localhost:15432/gitarena?sslmode=disable"
-      DATABASE_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
+      DATABASE_URL: "postgresql://gitarena@gitarena:5432/gitarena?sslmode=disable"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  db_data:
-  repo_data:
+  pgdata:
+  repos:

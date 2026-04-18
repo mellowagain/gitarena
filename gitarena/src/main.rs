@@ -18,7 +18,7 @@ use actix_web::http::Method;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue, LOCATION};
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
-use actix_web::{App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
@@ -131,6 +131,7 @@ async fn main() -> Result<()> {
             .configure(routes::proxy::init)
             .configure(routes::user::init)
             .configure(routes::repository::init) // Repository routes need to be always last
+            .route("/healthz", web::get().to(|| async { "healthy" }))
             .route(
                 "/favicon.ico",
                 to(|| async { HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish() }),
