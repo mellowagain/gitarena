@@ -220,7 +220,7 @@
                                     <b>{{ last_commit.author_name }}</b>
                                 </a>
                             {% else %}
-                                <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.email | urlencode }}" alt="{{ last_commit.author_name }}">
+                                <img class="ui avatar image" src="/api/avatar/-1?override={{ last_commit.author_email | urlencode }}" alt="{{ last_commit.author_name }}">
                                 <b>{{ last_commit.author_name }}</b>
                             {% endif %}
 
