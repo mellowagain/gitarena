@@ -30,7 +30,7 @@ jobs:
         run: cargo build --verbose --release
 
       - name: test
-        run: cargo test --verbose
+        run: cargo test --verbose --lib --bins
 
       - name: clippy
         uses: auguwu/clippy-action@9817d076b82df0194935be9db6154c56ac07b317 # v1.5.0

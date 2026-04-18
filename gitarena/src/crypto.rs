@@ -3,8 +3,8 @@ use crate::user::User;
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
 use once_cell::sync::Lazy;
-use rand::distributions::Distribution;
-use rand::distributions::Uniform;
+use rand::distr::Distribution;
+use rand::distr::Uniform;
 
 static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     ad: &[],
@@ -19,8 +19,8 @@ static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
 });
 
 pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> String {
-    let mut rng = rand::thread_rng();
-    let uniform = Uniform::new(0, charset.len());
+    let mut rng = rand::rng();
+    let uniform = Uniform::new(0, charset.len()).expect("charset must be non-empty");
 
     (0..length)
         .map(|_| {
