@@ -5,7 +5,7 @@ use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{basic_auth, ref_update};
+use crate::git::{GIT_CLI_AVAILABLE, basic_auth, ref_update};
 use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -151,22 +151,24 @@ pub(crate) async fn git_receive_pack(
     let repo_dir = Path::new(&repo_dir_str);
 
     // Let Git collect garbage to optimize repo size
-    let command = Command::new("git")
-        .args(["gc", "--auto", "--quiet"])
-        .current_dir(repo_dir)
-        .kill_on_drop(true)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    if *GIT_CLI_AVAILABLE {
+        let command = Command::new("git")
+            .args(["gc", "--auto", "--quiet"])
+            .current_dir(repo_dir)
+            .kill_on_drop(true)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
 
-    match timeout(Duration::from_secs(10), command).await {
-        Ok(Ok(status)) => {
-            if !status.success() {
-                warn!("Git garbage collector exited with non-zero status: {status}");
+        match timeout(Duration::from_secs(10), command).await {
+            Ok(Ok(status)) => {
+                if !status.success() {
+                    warn!("Git garbage collector exited with non-zero status: {status}");
+                }
             }
+            Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {err}"),
+            Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
         }
-        Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {err}"),
-        Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
     }
 
     output_writer.flush_sideband(Band::Data).await?;
