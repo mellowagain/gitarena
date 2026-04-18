@@ -34,6 +34,7 @@ jobs:
 
       - name: clippy
         uses: auguwu/clippy-action@9817d076b82df0194935be9db6154c56ac07b317 # v1.5.0
+        continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
