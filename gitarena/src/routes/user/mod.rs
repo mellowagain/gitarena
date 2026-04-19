@@ -1,6 +1,6 @@
 use actix_web::web::ServiceConfig;
 
-mod api;
+pub(crate) mod api;
 mod avatar;
 mod sso;
 mod user_create;

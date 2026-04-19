@@ -14,9 +14,23 @@ use gitarena_macros::route;
 use log::info;
 use serde::Deserialize;
 use sqlx::{PgPool, Pool, Postgres};
+use utoipa::ToSchema;
 
 // This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
 
+#[utoipa::path(
+    post,
+    path = "/api/repo",
+    request_body = CreateJsonRequest,
+    responses(
+        (status = 200, description = "Repository created successfully", body = CreateJsonResponse),
+        (status = 400, description = "Invalid repository name or description"),
+        (status = 401, description = "Authentication required"),
+        (status = 409, description = "Repository name already in use"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo", method = "POST", err = "json")]
 pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
@@ -102,11 +116,17 @@ async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool<Postgres>)
     write::write_file(&libgit2_repo, user, Some("HEAD"), "README.md", readme.as_bytes(), db_pool).await
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub(crate) struct CreateJsonRequest {
+    /// Repository name
+    #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
     name: String,
+    /// Short description of the repository
+    #[schema(max_length = 256)]
     description: String,
+    /// Visibility of the repository
     visibility: RepoVisibility,
+    /// Optional: initialise a README.md with the repo name and description
     #[serde(default)]
     readme: Option<String>,
 }

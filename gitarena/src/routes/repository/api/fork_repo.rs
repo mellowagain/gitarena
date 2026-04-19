@@ -12,9 +12,31 @@ use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
 use log::info;
-use serde_json::json;
+use serde::Serialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 
+/// Number of visible forks for a repository.
+#[derive(Serialize, ToSchema)]
+pub(crate) struct ForkCountResponse {
+    /// Total number of visible forks
+    forks: i64,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/repo/{username}/{repository}/fork",
+    params(
+        ("username" = String, Path, description = "Repository owner username"),
+        ("repository" = String, Path, description = "Repository name"),
+    ),
+    responses(
+        (status = 200, description = "Number of visible forks", body = ForkCountResponse),
+        (status = 404, description = "Repository not found or access denied"),
+    ),
+    security((), ("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/{username}/{repository}/fork", method = "GET", err = "htmx+json")]
 pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
@@ -40,12 +62,27 @@ pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request
     if request.is_htmx() {
         Ok(HttpResponse::Ok().body(count.to_string()))
     } else {
-        Ok(HttpResponse::Ok().json(json!({
-            "forks": count
-        })))
+        Ok(HttpResponse::Ok().json(ForkCountResponse { forks: count }))
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/repo/{username}/{repository}/fork",
+    params(
+        ("username" = String, Path, description = "Repository owner username"),
+        ("repository" = String, Path, description = "Repository name"),
+    ),
+    responses(
+        (status = 200, description = "Fork created successfully", body = CreateJsonResponse),
+        (status = 400, description = "Cannot fork your own repository"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "Repository not found or access denied"),
+        (status = 409, description = "Repository name already in use for your account"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "htmx+text")]
 pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;

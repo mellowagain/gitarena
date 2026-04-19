@@ -1,7 +1,7 @@
 use actix_web::web::ServiceConfig;
 use serde::Deserialize;
 
-mod api;
+pub(crate) mod api;
 mod archive;
 mod blobs;
 mod commits;

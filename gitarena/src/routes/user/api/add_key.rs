@@ -13,7 +13,22 @@ use log::{debug, warn};
 use openssh_keys::PublicKey;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 
+#[utoipa::path(
+    put,
+    path = "/api/ssh-key",
+    request_body = AddKeyJsonRequest,
+    responses(
+        (status = 201, description = "SSH key added successfully", body = AddKeyJsonResponse),
+        (status = 400, description = "Invalid or unsupported key, missing title"),
+        (status = 401, description = "Authentication required"),
+        (status = 409, description = "SSH key already exists"),
+        (status = 422, description = "Key fingerprint calculation failed"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "user"
+)]
 #[route("/api/ssh-key", method = "PUT", err = "json")]
 pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -78,16 +93,24 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
     Ok(HttpResponse::Created().json(AddKeyJsonResponse { id: key.id, fingerprint }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub(crate) struct AddKeyJsonRequest {
+    /// Display title for the key
+    #[schema(min_length = 1)]
     title: String,
+    /// Full OpenSSH public key string
+    #[schema(min_length = 1)]
     key: String,
+    /// Optional expiration date as a Unix timestamp (seconds since epoch)
     #[serde(default, with = "ts_seconds_option")]
+    #[schema(value_type = Option<i64>, example = 1_735_689_600)]
     expiration_date: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub(crate) struct AddKeyJsonResponse {
+    /// Internal ID of the newly added key
     id: i32,
+    /// MD5 fingerprint of the public key
     fingerprint: String,
 }

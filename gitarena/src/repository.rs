@@ -22,8 +22,9 @@ use gix::refs::file::loose::Reference;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool, Transaction};
 use tracing_unwrap::OptionExt;
+use utoipa::ToSchema;
 
-#[derive(FromRow, Display, Debug, Serialize)]
+#[derive(FromRow, Display, Debug, Serialize, ToSchema)]
 #[display(fmt = "{name}")]
 pub(crate) struct Repository {
     pub(crate) id: i32,

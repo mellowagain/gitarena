@@ -16,9 +16,24 @@ use log::info;
 use serde::Deserialize;
 use sqlx::PgPool;
 use url::Url;
+use utoipa::ToSchema;
 
 // This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
+#[utoipa::path(
+    post,
+    path = "/api/repo/import",
+    request_body = ImportJsonRequest,
+    responses(
+        (status = 200, description = "Repository import queued successfully", body = CreateJsonResponse),
+        (status = 400, description = "Invalid repository name, description, or import URL"),
+        (status = 401, description = "Authentication required"),
+        (status = 409, description = "Repository name already in use"),
+        (status = 501, description = "Importing is disabled on this instance"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/import", method = "POST", err = "json")]
 pub(crate) async fn import(
     web_user: WebUser,
@@ -118,19 +133,29 @@ pub(crate) async fn import(
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub(crate) struct ImportJsonRequest {
     //owner: String,
+    /// Repository name
+    #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
     name: String,
+    /// Short description of the repository
+    #[schema(max_length = 256)]
     description: String,
+    /// URL of the remote repository to import
     #[serde(rename = "url")]
+    #[schema(format = Uri)]
     import_url: String,
+    /// Set to any value to mirror the repository
     #[serde(default)]
     mirror: Option<String>,
+    /// Visibility of the imported repository
     visibility: RepoVisibility,
 
+    /// Username for authenticating with the remote
     #[serde(default)]
     username: Option<String>,
+    /// Password for authenticating with the remote
     #[serde(default)]
     password: Option<String>,
 }

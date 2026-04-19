@@ -1,7 +1,20 @@
+use crate::privileges::repo_visibility::RepoVisibility;
+use crate::repository::Repository;
+use crate::routes::api::ApiInfoResponse;
+use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::create_repo::CreateJsonRequest;
+use crate::routes::repository::api::fork_repo::ForkCountResponse;
+use crate::routes::repository::api::import_repo::ImportJsonRequest;
+use crate::routes::repository::api::repo_readme::ReadmeResponse;
+use crate::routes::repository::api::star::StarInfoResponse;
+use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
+
 use actix_web::web::ServiceConfig;
+use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 
 pub(crate) mod admin;
-mod api;
+pub(crate) mod api;
 mod explore;
 pub(crate) mod not_found;
 pub(crate) mod proxy;
@@ -12,3 +25,53 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(api::api);
     config.service(explore::explore);
 }
+
+/// Adds the `cookieAuth` security scheme (session cookie `gitarena-auth`) to the spec.
+struct CookieAuth;
+
+impl Modify for CookieAuth {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme("cookieAuth", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("gitarena-auth"))));
+        }
+    }
+}
+
+// The `OpenApi` derive macro generates internal `for_each` calls that trigger this lint.
+#[allow(clippy::needless_for_each)]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        crate::routes::api::api,
+        crate::routes::repository::api::create_repo::create,
+        crate::routes::repository::api::import_repo::import,
+        crate::routes::repository::api::repo_meta::meta,
+        crate::routes::repository::api::repo_readme::readme,
+        crate::routes::repository::api::fork_repo::get_fork_amount,
+        crate::routes::repository::api::fork_repo::create_fork,
+        crate::routes::repository::api::star::get_star,
+        crate::routes::repository::api::star::post_star,
+        crate::routes::repository::api::star::delete_star,
+        crate::routes::user::api::add_key::put_ssh_key,
+    ),
+    components(schemas(
+        ApiInfoResponse,
+        RepoVisibility,
+        Repository,
+        CreateJsonRequest,
+        CreateJsonResponse,
+        ImportJsonRequest,
+        ReadmeResponse,
+        ForkCountResponse,
+        StarInfoResponse,
+        AddKeyJsonRequest,
+        AddKeyJsonResponse,
+    )),
+    modifiers(&CookieAuth),
+    tags(
+        (name = "api", description = "General API endpoints"),
+        (name = "repository", description = "Repository management"),
+        (name = "user", description = "User account management"),
+    )
+)]
+pub(crate) struct ApiDoc;

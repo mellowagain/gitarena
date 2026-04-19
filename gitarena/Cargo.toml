@@ -73,6 +73,8 @@ tracing-appender = "0.2.0"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std"] }
 tracing-unwrap = "0.9.2"
 url = "2.2.2"
+utoipa = { version = "4", features = ["actix_extras", "chrono", "url"] }
+utoipa-rapidoc = { version = "1", features = ["actix-web"] }
 zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
 
 [build-dependencies]

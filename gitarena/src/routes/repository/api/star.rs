@@ -8,9 +8,36 @@ use anyhow::{Result, anyhow};
 use gitarena_common::database::Database;
 use gitarena_macros::route;
 use log::debug;
-use serde_json::json;
+use serde::Serialize;
 use sqlx::{PgPool, Transaction};
+use utoipa::ToSchema;
 
+/// Star count for a repository
+#[derive(Serialize, ToSchema)]
+pub(crate) struct StarInfoResponse {
+    /// Repository identifier in `owner/name` format
+    repo: String,
+    /// Total number of stars
+    stars: i64,
+    /// Whether the authenticated user has starred this repository
+    #[serde(rename = "self")]
+    self_starred: bool,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/repo/{username}/{repository}/star",
+    params(
+        ("username" = String, Path, description = "Repository owner username"),
+        ("repository" = String, Path, description = "Repository name"),
+    ),
+    responses(
+        (status = 200, description = "Star count and viewer state", body = StarInfoResponse),
+        (status = 404, description = "Repository not found or access denied"),
+    ),
+    security((), ("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/{username}/{repository}/star", method = "GET", err = "htmx+json")]
 pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
@@ -31,14 +58,30 @@ pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpR
     if request.is_htmx() {
         Ok(HttpResponse::Ok().body(count.to_string()))
     } else {
-        Ok(HttpResponse::Ok().json(json!({
-            "repo": format!("{}/{}", repo_owner, repo.name.as_str()),
-            "stars": count,
-            "self": self_stargazer
-        })))
+        Ok(HttpResponse::Ok().json(StarInfoResponse {
+            repo: format!("{}/{}", repo_owner, repo.name.as_str()),
+            stars: count,
+            self_starred: self_stargazer,
+        }))
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/repo/{username}/{repository}/star",
+    params(
+        ("username" = String, Path, description = "Repository owner username"),
+        ("repository" = String, Path, description = "Repository name"),
+    ),
+    responses(
+        (status = 201, description = "Star added successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "Repository not found or access denied"),
+        (status = 409, description = "Repository already starred"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/{username}/{repository}/star", method = "POST", err = "json")]
 pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -56,6 +99,22 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
     Ok(HttpResponse::Created().finish())
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/repo/{username}/{repository}/star",
+    params(
+        ("username" = String, Path, description = "Repository owner username"),
+        ("repository" = String, Path, description = "Repository name"),
+    ),
+    responses(
+        (status = 204, description = "Star removed successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "Repository not found or access denied"),
+        (status = 409, description = "Repository was not starred"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "repository"
+)]
 #[route("/api/repo/{username}/{repository}/star", method = "DELETE", err = "json")]
 pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -73,6 +132,7 @@ pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: we
     Ok(HttpResponse::NoContent().finish())
 }
 
+// not utopia annotated because its not a json api, but TODO we should change this
 #[route("/api/repo/{username}/{repository}/star", method = "PUT", err = "text")]
 pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;

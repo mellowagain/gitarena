@@ -2,6 +2,7 @@
 
 use crate::error::error_renderer_middleware;
 use crate::ipc::Ipc;
+use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
 use crate::utils::system::SYSTEM_INFO;
@@ -27,6 +28,8 @@ use gitarena_macros::from_optional_config;
 use log::info;
 use time::Duration as TimeDuration;
 use tracing_subscriber::Layer;
+use utoipa::OpenApi;
+use utoipa_rapidoc::RapiDoc;
 
 mod captcha;
 mod config;
@@ -130,6 +133,7 @@ async fn main() -> Result<()> {
             .configure(routes::init)
             .configure(routes::proxy::init)
             .configure(routes::user::init)
+            .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/healthz", web::get().to(|| async { "healthy" }))
             .route(

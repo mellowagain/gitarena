@@ -1670,6 +1670,8 @@ dependencies = [
  "tracing-subscriber",
  "tracing-unwrap",
  "url",
+ "utoipa",
+ "utoipa-rapidoc",
  "vergen",
  "zip",
 ]
@@ -3148,6 +3150,8 @@ checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.16.0",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -5943,6 +5947,44 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "utoipa"
+version = "4.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5afb1a60e207dca502682537fefcfd9921e71d0b83e9576060f09abc6efab23"
+dependencies = [
+ "indexmap 2.11.4",
+ "serde",
+ "serde_json",
+ "utoipa-gen",
+]
+
+[[package]]
+name = "utoipa-gen"
+version = "4.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20c24e8ab68ff9ee746aad22d39b5535601e6416d1b0feeabf78be986a5c4392"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.106",
+ "url",
+]
+
+[[package]]
+name = "utoipa-rapidoc"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d54a9a294323cfd98cb7e210ffa3d65ec83f3c09b17b5c49ce17d9658101e162"
+dependencies = [
+ "actix-web",
+ "serde",
+ "serde_json",
+ "utoipa",
+]
 
 [[package]]
 name = "uuid"

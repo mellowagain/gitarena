@@ -1,12 +1,13 @@
 use actix_web::web::ServiceConfig;
 use serde::Serialize;
+use utoipa::ToSchema;
 
-mod create_repo;
-mod fork_repo;
-mod import_repo;
-mod repo_meta;
-mod repo_readme;
-mod star;
+pub(crate) mod create_repo;
+pub(crate) mod fork_repo;
+pub(crate) mod import_repo;
+pub(crate) mod repo_meta;
+pub(crate) mod repo_readme;
+pub(crate) mod star;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
     // import_repo needs to be always above create_repo
@@ -24,8 +25,10 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(star::put_star);
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub(crate) struct CreateJsonResponse {
+    /// Internal ID of the newly created repository
     pub(crate) id: i32,
+    /// Full URL to the repository
     pub(crate) url: String,
 }
