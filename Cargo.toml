@@ -16,7 +16,7 @@ sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
 opentelemetry = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic"] }
+opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki-roots", "http-proto", "http-json", "reqwest-rustls-webpki-roots"] }
 opentelemetry-semantic-conventions = "0.31.0"
 opentelemetry-appender-tracing = { version = "0.31.1", default-features = false, features = ["log"] }
 tracing-opentelemetry = "0.32.1"
