@@ -2,13 +2,13 @@ use std::env;
 
 use anyhow::{Result, bail};
 use opentelemetry::global;
+use opentelemetry_otlp::Protocol as OtelProtocol;
 use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::logs::BatchLogProcessor;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::metrics::{PeriodicReader, SdkMeterProvider};
 use opentelemetry_sdk::trace::{BatchSpanProcessor, SdkTracerProvider};
-use opentelemetry_otlp::Protocol as OtelProtocol;
 
 /// dropping this struct causes the observability stack to be flushed
 pub struct TelemetryGuards {
@@ -40,7 +40,7 @@ impl Drop for TelemetryGuards {
 enum Protocol {
     Grpc,
     HttpProtobuf,
-    HttpJson
+    HttpJson,
 }
 
 fn is_configured() -> bool {
