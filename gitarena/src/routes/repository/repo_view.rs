@@ -13,12 +13,13 @@ use std::cmp::Ordering;
 use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
+use gitarena_common::database::{Database, Pool};
 use gitarena_macros::route;
 use gix::hash::ObjectId;
 use gix::objs::Tree;
 use gix::objs::tree::EntryKind;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::Transaction;
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
@@ -27,7 +28,7 @@ async fn render(
     repo: Repository,
     username: &str,
     web_user: WebUser,
-    mut transaction: Transaction<'_, Postgres>,
+    mut transaction: Transaction<'_, Database>,
 ) -> Result<impl Responder + use<>> {
     let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
 
@@ -171,14 +172,14 @@ async fn render(
 }
 
 #[route("/{username}/{repository}/tree/{tree:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_repo_tree(repo: Repository, uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo_tree(repo: Repository, uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
     render(Some(uri.tree.as_str()), repo, &uri.username, web_user, transaction).await
 }
 
 #[route("/{username}/{repository}", method = "GET", err = "html")]
-pub(crate) async fn view_repo(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_repo(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
     let extensions = request.extensions();

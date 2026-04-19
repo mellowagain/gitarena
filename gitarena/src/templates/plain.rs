@@ -2,10 +2,12 @@ use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use tracing::instrument;
 
 pub(crate) type Template = (String, HashMap<String, String>);
 pub(crate) type TemplateContext = HashMap<String, String>;
 
+#[instrument]
 pub(crate) fn parse(template_path: String) -> Result<Template> {
     let template_dir = Path::new("./gitarena/templates/");
     let path = template_dir.join(&template_path);

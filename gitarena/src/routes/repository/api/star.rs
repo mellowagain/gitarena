@@ -6,10 +6,11 @@ use crate::user::{User, WebUser};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Result, anyhow};
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use gitarena_macros::route;
-use log::debug;
 use serde::Serialize;
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
+use tracing::{debug, instrument};
 use utoipa::ToSchema;
 
 /// Star count for a repository
@@ -39,7 +40,7 @@ pub(crate) struct StarInfoResponse {
     tag = "repository"
 )]
 #[route("/api/repo/{username}/{repository}/star", method = "GET", err = "htmx+json")]
-pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let count = get_star_count(&repo, &mut transaction).await?;
@@ -83,7 +84,7 @@ pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpR
     tag = "repository"
 )]
 #[route("/api/repo/{username}/{repository}/star", method = "POST", err = "json")]
-pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -116,7 +117,7 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
     tag = "repository"
 )]
 #[route("/api/repo/{username}/{repository}/star", method = "DELETE", err = "json")]
-pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -134,7 +135,7 @@ pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: we
 
 // not utopia annotated because its not a json api, but TODO we should change this
 #[route("/api/repo/{username}/{repository}/star", method = "PUT", err = "text")]
-pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -156,6 +157,7 @@ pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::
     Ok(response.body(count.to_string()))
 }
 
+#[instrument(err, skip(tx))]
 async fn get_star_count(repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<i64> {
     let (count,): (i64,) = sqlx::query_as("select count(*) from stars where repo = $1")
         .bind(repo.id)
@@ -166,6 +168,7 @@ async fn get_star_count(repo: &Repository, tx: &mut Transaction<'_, Database>) -
     Ok(count)
 }
 
+#[instrument(err, skip(tx))]
 async fn add_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<()> {
     sqlx::query("insert into stars (stargazer, repo) values ($1, $2)")
         .bind(user.id)
@@ -173,11 +176,12 @@ async fn add_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Datab
         .execute(&mut **tx)
         .await?;
 
-    debug!("{} (id {}) added a star to repository id {}", user.username, user.id, repo.id);
+    debug!(user.username, user.id, repo.id, "Star added to repo");
 
     Ok(())
 }
 
+#[instrument(err, skip(tx))]
 async fn remove_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<()> {
     sqlx::query("delete from stars where stargazer = $1 and repo = $2")
         .bind(user.id)
@@ -185,11 +189,12 @@ async fn remove_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Da
         .execute(&mut **tx)
         .await?;
 
-    debug!("{} (id {}) removed their star from repository id {}", user.username, user.id, repo.id);
+    debug!(user.username, user.id, repo.id, "Star removed from repo");
 
     Ok(())
 }
 
+#[instrument(err, skip(tx))]
 async fn has_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<bool> {
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from stars where stargazer = $1 and repo = $2 limit 1)")
         .bind(user.id)

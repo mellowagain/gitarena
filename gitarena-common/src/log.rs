@@ -4,11 +4,14 @@ use std::path::Path;
 use std::{env, fs, io};
 
 use anyhow::{Context, Result};
-use log::debug;
+use opentelemetry::global;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use tracing::Subscriber;
 use tracing::metadata::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
+use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::filter::FromEnvError;
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -21,6 +24,7 @@ pub fn init_logger(
     module: &str,
     directives: &'static [&str],
     additional: Option<Box<dyn layer::Layer<Registry> + Send + Sync + 'static>>,
+    logger_provider: Option<&SdkLoggerProvider>,
 ) -> Result<Vec<WorkerGuard>> {
     let mut guards = Vec::new();
 
@@ -38,6 +42,9 @@ pub fn init_logger(
 
     let (env_filter, tokio_console_layer) = tokio_console(env_filter);
 
+    let otel_tracing_layer = OpenTelemetryLayer::new(global::tracer(module.to_owned()));
+    let otel_log_bridge = logger_provider.map(OpenTelemetryTracingBridge::new);
+
     // https://stackoverflow.com/a/66138267
     Registry::default()
         .with(additional)
@@ -45,14 +52,17 @@ pub fn init_logger(
         .with(stdout_layer)
         .with(file_layer)
         .with(tokio_console_layer)
+        .with(otel_tracing_layer)
+        .with(otel_log_bridge)
         .try_init()
         .context("Failed to initialize logger")?;
 
-    debug!("Successfully initialized logger for {}", module);
+    tracing::debug!("Successfully initialized logger for {module}");
 
     Ok(guards)
 }
 
+#[must_use]
 pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>() -> Option<(impl layer::Layer<S>, WorkerGuard)> {
     if env::var_os("NO_STDOUT_LOG").is_some() {
         return None;
@@ -98,11 +108,11 @@ pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(filter: EnvFilter) 
     (filter, Some(layer))
 }
 
+#[must_use]
 pub fn default_env(err: FromEnvError, directives: &[&str]) -> EnvFilter {
     let not_found = err
         .source()
-        .map(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)))
-        .unwrap_or(false);
+        .is_some_and(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)));
 
     if !not_found {
         eprintln!(

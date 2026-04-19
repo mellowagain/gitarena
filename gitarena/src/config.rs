@@ -12,6 +12,7 @@ use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::{FromRow, Postgres, Transaction, Type};
+use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
 /// Gets the value of a setting from the database.
@@ -21,6 +22,7 @@ use tracing_unwrap::OptionExt;
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
+#[instrument(err, skip(tx))]
 pub(crate) async fn get_optional_setting<T>(key: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<T>>
 where
     T: TryFrom<Setting> + Send,
@@ -47,6 +49,7 @@ where
 /// If the setting does not exist, returns SQL Err.
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
+#[instrument(err, skip(tx))]
 pub(crate) async fn get_setting<T>(key: &'static str, tx: &mut Transaction<'_, Database>) -> Result<T>
 where
     T: TryFrom<Setting> + Send,
@@ -62,12 +65,14 @@ where
     Ok(result)
 }
 
+#[instrument(err, skip(tx))]
 pub(crate) async fn get_all_settings(tx: &mut Transaction<'_, Database>) -> Result<Vec<Setting>> {
     Ok(sqlx::query_as::<_, Setting>("select * from settings order by key").fetch_all(&mut **tx).await?)
 }
 
 // This function returns impl Future instead of relying on async fn to automatically convert it into doing just that
 // Because async fn tries to unify lifetimes, we need to do this. More info: https://stackoverflow.com/a/68733302
+#[instrument(err, skip(tx))]
 #[allow(clippy::manual_async_fn)]
 pub(crate) fn set_setting<'q, 'tx, T>(
     key: &'static str,
@@ -75,7 +80,7 @@ pub(crate) fn set_setting<'q, 'tx, T>(
     tx: &'q mut Transaction<'tx, Database>,
 ) -> impl Future<Output = Result<()>> + 'q + use<'q, 'tx, T>
 where
-    T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Send + 'q,
+    T: TryFrom<Setting> + Encode<'q, Postgres> + Type<Postgres> + Debug + Send + 'q,
 {
     async move {
         sqlx::query("update settings set value = $1 where key = $2")

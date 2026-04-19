@@ -6,15 +6,16 @@ use crate::routes::repository::api::CreateJsonResponse;
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{Ipc, die, err};
+use gitarena_common::database::Pool;
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use futures_locks::RwLock;
 use gitarena_common::packets::git::GitImport;
 use gitarena_macros::route;
-use log::info;
 use serde::Deserialize;
-use sqlx::PgPool;
+use tracing::info;
+
 use url::Url;
 use utoipa::ToSchema;
 
@@ -40,7 +41,7 @@ pub(crate) async fn import(
     body: web::Json<ImportJsonRequest>,
     request: HttpRequest,
     ipc: web::Data<RwLock<Ipc>>,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
@@ -117,8 +118,11 @@ pub(crate) async fn import(
     transaction.commit().await?;
 
     info!(
-        "New repository created for importing: {}/{} (id {}) (source: {})",
-        &user.username, &repo.name, &repo.id, url
+        target.id = repo.id,
+        target.owner = user.username,
+        target.name = repo.name,
+        source.url = %url,
+        "New repository created for importing",
     );
 
     Ok(if request.is_htmx() {

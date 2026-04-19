@@ -7,6 +7,7 @@ use crate::prelude::USER_AGENT_STR;
 use awc::ClientBuilder;
 use awc::http::header::USER_AGENT;
 use oauth2::{HttpRequest, HttpResponse};
+use opentelemetry_instrumentation_actix_web::ClientExt;
 
 pub(crate) async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, WithStatusCode> {
     let client = ClientBuilder::new()
@@ -21,6 +22,7 @@ pub(crate) async fn async_http_client(request: HttpRequest) -> Result<HttpRespon
     }
 
     let mut response = client_request
+        .trace_request()
         .send_body(request.body)
         .await
         .map_err(|err| err!(BAD_GATEWAY, "Failed to contact gateway: {}", err))?;

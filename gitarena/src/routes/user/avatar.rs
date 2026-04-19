@@ -2,6 +2,7 @@ use crate::mail::Email;
 use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
 use crate::{die, err};
+use gitarena_common::database::Pool;
 
 use std::fs;
 use std::io::Cursor;
@@ -18,11 +19,12 @@ use chrono::{Duration, NaiveDateTime};
 use futures::TryStreamExt;
 use gitarena_macros::{from_config, route};
 use image::ImageFormat;
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::Deserialize;
-use sqlx::PgPool;
+use tracing::{Span, instrument};
 
 #[route("/api/avatar/{user_id}", method = "GET", err = "text")]
-pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let (gravatar_enabled, avatars_dir): (bool, String) = from_config!(
         "avatars.gravatar" => bool,
         "avatars.dir" => String
@@ -66,7 +68,7 @@ pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request
 }
 
 #[route("/api/avatar", method = "PUT", err = "text")]
-pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Anonymous) {
         die!(UNAUTHORIZED, "No logged in");
     }
@@ -122,6 +124,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     Ok(HttpResponse::Created().finish())
 }
 
+#[instrument(err, skip(request), fields(path = path.as_ref().display().to_string()))]
 fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResponse> {
     let path = path.as_ref();
 
@@ -157,10 +160,14 @@ fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResp
 }
 
 /// Returns a streaming `HttpResponse` with the gravatar image
+#[instrument(err, skip_all, fields(hash))]
 async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpResponse> {
     let md5hash = md5::compute(email);
+    let hash_str = format!("{md5hash:x}");
 
-    let url = format!("https://www.gravatar.com/avatar/{md5hash:x}?s=500&r=pg&d=identicon");
+    Span::current().record("hash", &hash_str);
+
+    let url = format!("https://www.gravatar.com/avatar/{hash_str}?s=500&r=pg&d=identicon");
 
     let mut client = Client::gitarena().get(url);
 
@@ -169,9 +176,11 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
     }
 
     let gateway_response = client
+        .trace_request()
         .send()
         .await
         .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to Gravatar: {}", err))?;
+
     let mut response = HttpResponse::build(gateway_response.status());
 
     let headers = gateway_response.headers();

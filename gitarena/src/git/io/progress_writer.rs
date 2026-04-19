@@ -26,7 +26,6 @@ impl ProgressWriter {
         self.lines.push(text);
     }
 
-    #[instrument]
     pub(crate) fn pack_builder_callback(&mut self) -> impl FnMut(PackBuilderStage, u32, u32) -> bool + '_ {
         let rc = Rc::new(RefCell::new(self));
 

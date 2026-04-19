@@ -10,11 +10,13 @@ use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use gitarena_macros::route;
-use sqlx::{PgPool, Pool, Postgres, Transaction};
+use sqlx::Transaction;
+use tracing::instrument;
 
 #[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
-pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let service = match query_string.get("service") {
@@ -56,6 +58,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
     }
 }
 
+#[instrument(err, skip(request, tx))]
 async fn upload_pack_info_refs(
     repo_option: Option<Repository>,
     service: &str,
@@ -78,7 +81,8 @@ async fn upload_pack_info_refs(
         .body(capabilities(service).await?))
 }
 
-async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpRequest, db_pool: &Pool<Postgres>) -> Result<HttpResponse> {
+#[instrument(err, skip(request, db_pool))]
+async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpRequest, db_pool: &Pool) -> Result<HttpResponse> {
     let mut transaction = db_pool.begin().await?;
 
     let _user = match basic_auth::login_flow(request, &mut transaction, "application/x-git-receive-pack-advertisement").await? {

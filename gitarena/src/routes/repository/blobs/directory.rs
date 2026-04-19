@@ -7,6 +7,7 @@ use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
 use crate::user::WebUser;
 use crate::{die, err, render_template};
+use gitarena_common::database::Pool;
 
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -21,7 +22,7 @@ use gix::objs::tree::EntryKind;
 use gix::objs::{Tree, TreeRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
-use sqlx::PgPool;
+
 use tera::Context;
 
 #[route("/{username}/{repository}/tree/{tree}/directory/{blob:.*}", method = "GET", err = "html")]
@@ -30,7 +31,7 @@ pub(crate) async fn view_dir(
     branch: Branch,
     uri: web::Path<BlobRequest>,
     web_user: WebUser,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

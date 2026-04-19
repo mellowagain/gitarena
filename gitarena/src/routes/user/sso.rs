@@ -6,6 +6,7 @@ use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::{User, WebUser};
 use crate::{die, err};
+use gitarena_common::database::Pool;
 
 use std::ops::Deref;
 use std::str::FromStr;
@@ -15,13 +16,12 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use gitarena_macros::route;
-use log::debug;
 use oauth2::TokenResponse;
 use serde::Deserialize;
-use sqlx::PgPool;
+use tracing::debug;
 
 #[route("/sso/{service}", method = "GET", err = "html")]
-pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         die!(UNAUTHORIZED, "Already logged in");
     }
@@ -36,7 +36,7 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
 }
 
 #[route("/sso/{service}/callback", method = "GET", err = "html")]
-pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         die!(UNAUTHORIZED, "Already logged in");
     }
@@ -86,8 +86,10 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     if user.disabled || !primary_email.is_allowed_login() {
         debug!(
-            "Received {} sso login request for disabled user {} (id {})",
-            &provider, &user.username, &user.id
+            %provider,
+            user.username,
+            user.id,
+            "Received sso login request from disabled user"
         );
 
         die!(FORBIDDEN, "Account has been disabled. Please contact support.");
@@ -100,7 +102,12 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
 
-    debug!("{} (id {}) logged in successfully using {} sso", &user.username, &user.id, &provider);
+    debug!(
+        %provider,
+        user.username,
+        user.id,
+        "User logged in through sso"
+    );
 
     transaction.commit().await?;
 

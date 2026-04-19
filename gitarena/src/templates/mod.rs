@@ -2,9 +2,9 @@ use crate::templates::plain::Template;
 use crate::utils::time_function;
 
 use anyhow::Result;
-use log::info;
 use once_cell::sync::OnceCell;
 use tera::{Context, Tera};
+use tracing::{info, instrument};
 use tracing_unwrap::{OptionExt, ResultExt};
 
 mod filters;
@@ -28,6 +28,7 @@ type TemplateInitResult = ();
 pub(crate) static VERIFY_EMAIL: OnceCell<Template> = OnceCell::new();
 static TERA: OnceCell<GlobalTera> = OnceCell::new();
 
+#[instrument]
 pub(crate) async fn init() -> Result<TemplateInitResult> {
     info!("Loading templates. This may take a few seconds.");
 
@@ -41,21 +42,21 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
     })
     .await;
 
-    info!("Successfully loaded templates. Took {elapsed} seconds.");
+    info!(duration.seconds = elapsed, "Successfully loaded templates");
 
     #[cfg(debug_assertions)]
     {
         use std::path::Path;
 
         use actix_web::rt::Runtime;
-        use log::error;
         use notify::{Error as NotifyError, Event, RecursiveMode, Watcher};
+        use tracing::error;
 
         let mut watcher = notify::recommended_watcher(|result: std::result::Result<Event, NotifyError>| {
             let event = match result {
                 Ok(event) => event,
                 Err(err) => {
-                    error!("Failed to unwrap file system notify event: {err}");
+                    error!(?err, "Failed to unwrap file system notify event");
                     return;
                 }
             };
@@ -120,6 +121,7 @@ pub(crate) async fn render(template: &str, context: &Context) -> Result<String> 
     return Ok(tera().render(template, context)?);
 }
 
+#[instrument]
 fn init_tera() -> GlobalTera {
     let mut tera = match Tera::new("./gitarena/templates/html/**/*") {
         Ok(tera) => tera,

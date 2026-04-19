@@ -6,6 +6,7 @@ use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
 use crate::user::WebUser;
 use crate::{die, err, render_template};
+use gitarena_common::database::Pool;
 
 use std::sync::Arc;
 
@@ -20,7 +21,7 @@ use gix::objs::{Tree, TreeRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
 use infer::MatcherType;
-use sqlx::PgPool;
+
 use tera::Context;
 use tracing_unwrap::OptionExt;
 
@@ -30,7 +31,7 @@ pub(crate) async fn view_blob(
     branch: Branch,
     uri: web::Path<BlobRequest>,
     web_user: WebUser,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -102,7 +103,7 @@ pub(crate) async fn view_blob(
 }
 
 #[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
-pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;

@@ -11,10 +11,10 @@ use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use gitarena_common::database::Database;
 use gix::actor::Signature;
 use gix::date::Time;
-use log::warn;
 use qstring::QString;
 use sqlx::Transaction;
 use tera::Context;
+use tracing::warn;
 
 pub(crate) trait HttpRequestExtensions {
     /// Gets a specific header from the current request.
@@ -121,7 +121,7 @@ impl LibGit2TimeExtensions for LibGit2Time {
         match offset.timestamp_opt(self.seconds(), 0) {
             LocalResult::Single(date_time) => Ok(date_time),
             LocalResult::Ambiguous(min, max) => {
-                warn!("Received ambiguous result for commit: {} and {}", &min, &max);
+                warn!("Received ambiguous date result for commit: {} and {}", &min, &max);
                 Ok(min)
             }
             LocalResult::None => bail!("Cannot convert to UNIX time {} to DateTime<{}>", self.seconds(), offset),

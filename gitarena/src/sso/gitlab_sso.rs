@@ -13,17 +13,21 @@ use async_trait::async_trait;
 use awc::Client;
 use awc::http::header::{AUTHORIZATION, USER_AGENT};
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
+use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitLabSSO;
 
 #[async_trait(?Send)]
 impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
+    #[instrument(skip(token))]
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::gitarena();
 
@@ -31,6 +35,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitLabSSO {
             .get(format!("https://gitlab.com/api/v4/{endpoint}").as_str())
             .append_header((AUTHORIZATION, format!("Bearer {token}")))
             .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
+            .trace_request()
             .send()
             .await
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitLab api: {}", err))?
@@ -87,7 +92,8 @@ impl SSOProvider for GitLabSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitLab API json response"))
     }
 
-    async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User> {
+    #[instrument(skip_all)]
+    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
         let profile_data: SerdeMap = GitLabSSO::request_data("user", token).await?;

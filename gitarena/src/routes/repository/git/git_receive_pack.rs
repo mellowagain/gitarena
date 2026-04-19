@@ -6,15 +6,17 @@ use crate::git::io::writer::GitWriter;
 use crate::git::receive_pack::{process_create_update, process_delete};
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
 use crate::git::{GIT_CLI_AVAILABLE, basic_auth, ref_update};
+use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
+use gitarena_common::database::Pool;
 
 use std::io::Write;
 use std::path::Path;
 use std::process::Stdio;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
@@ -23,19 +25,20 @@ use futures::StreamExt;
 use gitarena_macros::route;
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
-use log::warn;
 use memmem::{Searcher, TwoWaySearcher};
-use sqlx::PgPool;
+use opentelemetry::KeyValue;
 use tokio::process::Command;
 use tokio::time::timeout;
+use tracing::warn;
 
 #[route("/{username}/{repository}.git/git-receive-pack", method = "POST", err = "git")]
 pub(crate) async fn git_receive_pack(
     uri: web::Path<GitRequest>,
     mut body: web::Payload,
     request: HttpRequest,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
+    let start = Instant::now();
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
 
@@ -163,10 +166,11 @@ pub(crate) async fn git_receive_pack(
         match timeout(Duration::from_secs(10), command).await {
             Ok(Ok(status)) => {
                 if !status.success() {
-                    warn!("Git garbage collector exited with non-zero status: {status}");
+                    let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
+                    warn!(exit_code, "Git garbage collector exited with non-zero status");
                 }
             }
-            Ok(Err(err)) => warn!("Failed to execute Git garbage collector: {err}"),
+            Ok(Err(err)) => warn!(?err, "Failed to execute Git garbage collector"),
             Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
         }
     }
@@ -186,6 +190,10 @@ pub(crate) async fn git_receive_pack(
         .await?;
 
     transaction.commit().await?;
+
+    let elapsed = start.elapsed().as_secs_f64();
+    OPERATION_COUNT.add(1, &[KeyValue::new("operation", "push"), KeyValue::new("status", "ok")]);
+    OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "push")]);
 
     Ok(HttpResponse::Ok()
         .append_header((CONTENT_TYPE, accept_header))

@@ -16,9 +16,9 @@ use anyhow::Result;
 use derive_more::{Deref, Display};
 use futures::Stream;
 use futures_locks::RwLock;
-use log::debug;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tracing::instrument;
+use tracing::{Instrument, debug, info_span};
 
 pub(crate) const SSE_BUFFER_SIZE: usize = 512;
 
@@ -42,12 +42,12 @@ impl Broadcaster {
         data
     }
 
-    #[instrument]
+    #[instrument(err)]
     pub(crate) async fn new_client(&mut self, category: Category) -> Result<SseClient> {
         let (tx, rx) = channel(SSE_BUFFER_SIZE);
         tx.send(Bytes::from("data: connected\n\n")).await?;
 
-        debug!("New client subscribed to category {}", category);
+        debug!(%category, "New client subscribed");
 
         self.clients.push((tx, category));
         Ok(SseClient(rx))
@@ -59,7 +59,7 @@ impl Broadcaster {
         let sse_message = format!("event: {category}\ndata: {message}\n\n");
         let bytes = Bytes::from(sse_message);
 
-        debug!("Broadcasting in category {}: \"{}\"", category, message);
+        debug!(%category, msg = %message, "Broadcasting message");
 
         for (client, _) in self.clients.iter().filter(|(_, c)| *c == category) {
             // Errors would only occur if the client disconnected
@@ -77,7 +77,7 @@ impl Broadcaster {
             // If the buffer is full the client has not recv'd for a while which means it probably disconnected
             client.try_send(Bytes::from("event: ping\ndata: pong!\n\n")).map_or_else(
                 |err| {
-                    debug!("Disconnecting a client subscribed to {category}: {err}");
+                    debug!(%category, ?err, "Removing stale client because ping failed");
                     false
                 },
                 |()| true,
@@ -126,10 +126,13 @@ impl Stream for SseClient {
 fn spawn_ping_task(data: Data<RwLock<Broadcaster>>) {
     let mut interval = tokio::time::interval(Duration::new(10, 0));
 
-    tokio::spawn(async move {
-        loop {
-            interval.tick().await;
-            data.write().await.remove_stale_clients().await;
+    tokio::spawn(
+        async move {
+            loop {
+                interval.tick().await;
+                data.write().await.remove_stale_clients().await;
+            }
         }
-    });
+        .instrument(info_span!("sse_ping_task")),
+    );
 }

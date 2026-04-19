@@ -11,9 +11,9 @@ use anyhow::{Result, anyhow};
 use chrono::{DateTime, Local};
 use gitarena_common::database::Database;
 use ipnetwork::{IpNetwork, Ipv6Network};
-use log::warn;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
+use tracing::{instrument, warn};
 use tracing_unwrap::ResultExt;
 
 #[derive(FromRow, Debug, Serialize)]
@@ -34,6 +34,7 @@ impl Display for Session {
 }
 
 impl Session {
+    #[instrument(err, skip(request, tx))]
     pub(crate) async fn new(request: &HttpRequest, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Session> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
@@ -51,6 +52,7 @@ impl Session {
     }
 
     /// Finds existing session from Identity (Display of Session)
+    #[instrument(err, skip(tx))]
     pub(crate) async fn from_identity(identity: Option<String>, tx: &mut Transaction<'_, Database>) -> Result<Option<Session>> {
         match identity {
             Some(identity) => {
@@ -69,6 +71,7 @@ impl Session {
         }
     }
 
+    #[instrument(err, skip(tx))]
     pub(crate) async fn update_explicit(&self, ip_address: &IpNetwork, user_agent: &str, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let now = Local::now();
 
@@ -87,7 +90,7 @@ impl Session {
         Ok(())
     }
 
-    #[allow(dead_code)]
+    #[instrument(err, skip(tx))]
     pub(crate) async fn update_from_request(&self, request: &HttpRequest, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let (ip_address, user_agent) = extract_ip_and_ua(request);
 
@@ -95,6 +98,7 @@ impl Session {
     }
 
     /// Consumes the current session and destroys it
+    #[instrument(err, skip(tx))]
     pub(crate) async fn destroy(self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         sqlx::query("delete from sessions where user_id = $1 and hash = $2")
             .bind(self.user_id)
@@ -139,7 +143,7 @@ fn extract_ip(request: &HttpRequest) -> IpNetwork {
 
 fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
     if let Some(error) = err {
-        warn!("Unable to parse ip address: {error}");
+        warn!(err = ?error, "Unable to parse ip address");
     }
 
     // 100::/64 is a valid, reserved black hole IPv6 address block: https://en.wikipedia.org/wiki/Reserved_IP_addresses#IPv6

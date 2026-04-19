@@ -6,8 +6,9 @@ use anyhow::Result;
 use awc::Client;
 use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
 use gitarena_macros::route;
-use log::debug;
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::Deserialize;
+use tracing::debug;
 
 const PASSTHROUGH_HEADERS: [&str; 6] = ["cache-control", "content-encoding", "etag", "expires", "last-modified", "transfer-encoding"];
 
@@ -83,9 +84,10 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
         client = client.append_header((CACHE_CONTROL, header_value));
     }
 
-    debug!("Image proxy request for {}", &url);
+    debug!(?url, "Image proxy request");
 
     let gateway_response = client
+        .trace_request()
         .send()
         .await
         .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to gateway: {}", err))?;

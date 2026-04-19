@@ -3,6 +3,8 @@ use crate::session::Session;
 use crate::{die, err, session};
 
 use std::convert::TryFrom;
+use std::fmt;
+use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -15,12 +17,14 @@ use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
-use sqlx::{FromRow, PgPool, Transaction};
+use sqlx::{FromRow, Transaction};
+use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
-#[derive(FromRow, Display, Debug, Serialize)]
+#[derive(FromRow, Display, Serialize)]
 #[display(fmt = "{username}")]
 pub(crate) struct User {
     pub(crate) id: i32,
@@ -32,10 +36,24 @@ pub(crate) struct User {
     pub(crate) created_at: DateTime<Utc>,
 }
 
+impl Debug for User {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("User")
+            .field("id", &self.id)
+            .field("username", &self.username)
+            .field("password", &"[redacted]")
+            .field("disabled", &self.disabled)
+            .field("admin", &self.admin)
+            .field("created_at", &self.created_at)
+            .finish()
+    }
+}
+
 impl User {
+    #[instrument(skip(tx))]
     pub(crate) async fn find_using_name<S>(name: S, tx: &mut Transaction<'_, Database>) -> Option<User>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + Debug,
     {
         let username = name.as_ref();
 
@@ -47,7 +65,11 @@ impl User {
             .flatten()
     }
 
-    pub(crate) async fn find_using_email(email: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<User> {
+    #[instrument(skip(tx))]
+    pub(crate) async fn find_using_email<E>(email: E, tx: &mut Transaction<'_, Database>) -> Option<User>
+    where
+        E: AsRef<str> + Debug,
+    {
         let email = email.as_ref();
 
         sqlx::query_as::<_, User>("select * from users where id = (select owner from emails where lower(email) = lower($1) limit 1) limit 1")
@@ -83,7 +105,8 @@ impl FromRequest for User {
     type Error = GitArenaError;
     type Future = Pin<Box<dyn Future<Output = Result<User, Self::Error>>>>;
 
-    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+    #[instrument(skip(_payload))]
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let match_info = req.match_info();
 
         // If this method gets called from a handler that does not have username or repository in the match info
@@ -94,9 +117,8 @@ impl FromRequest for User {
             .expect_or_log("from_request called on User despite not having user/username argument")
             .to_owned();
 
-        match req.app_data::<Data<PgPool>>() {
+        match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
-                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
@@ -116,7 +138,8 @@ impl FromRequest for User {
     }
 }
 
-async fn extract_user_from_request(db_pool: Data<PgPool>, username: &str) -> Result<User> {
+#[instrument(err, skip(db_pool))]
+async fn extract_user_from_request(db_pool: Data<Pool>, username: &str) -> Result<User> {
     let mut transaction = db_pool.begin().await?;
 
     let user = User::find_using_name(username, &mut transaction)
@@ -158,14 +181,13 @@ impl FromRequest for WebUser {
     type Error = GitArenaError;
     type Future = Pin<Box<dyn Future<Output = Result<WebUser, Self::Error>>>>;
 
+    #[instrument(skip(payload))]
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        match req.app_data::<Data<PgPool>>() {
+        match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
-                // HttpRequest is just a wrapper around `Rc<R>` so .clone() is cheap
                 let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req.clone());
                 let id_future = Identity::from_request(req, payload);
 
-                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
@@ -187,8 +209,9 @@ impl FromRequest for WebUser {
     }
 }
 
+#[instrument(err, skip(db_pool, id_future))]
 async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Identity>>>(
-    db_pool: Data<PgPool>,
+    db_pool: Data<Pool>,
     id_future: F,
     ip_network: IpNetwork,
     user_agent: String,

@@ -6,8 +6,8 @@ use std::sync::Once;
 use actix_web::web::Bytes;
 use anyhow::Result;
 use git2::{Error as Git2Error, ErrorCode, Reference, Repository as Git2Repository};
-use log::{error, warn};
 use tracing::instrument;
+use tracing::{error, warn};
 
 // TODO: Combine ls_refs and ls_refs_all to be shared (currently some code is duplicated)
 
@@ -114,7 +114,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
         }
         Err(err) => {
             if err.code() != ErrorCode::NotFound {
-                error!("Failed to find reference asked for by Git client: {err}");
+                error!(?err, "Failed to find reference asked for by Git client");
             }
 
             None
@@ -148,8 +148,8 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
                     writer.write_text(line).await?;
                 }
             }
-            Err(e) => {
-                warn!("Failed to grab repository references for {}: {}", repo.path().display(), e);
+            Err(err) => {
+                warn!(?err, repo_path = %repo.path().display(), "Failed to grab repository references");
             }
         }
     }

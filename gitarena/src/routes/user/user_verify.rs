@@ -1,16 +1,17 @@
 use crate::die;
+use gitarena_common::database::Pool;
 
 use actix_web::{Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
-use log::info;
 use serde::Deserialize;
 use serde_json::json;
-use sqlx::PgPool;
+use tracing::info;
+
 use tracing_unwrap::OptionExt;
 
 #[route("/api/verify/{token}", method = "GET", err = "html")]
-pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let token = &verify_request.token;
 
     if token.len() != 32 || !token.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -42,7 +43,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     transaction.commit().await?;
 
-    info!("User id {user_id} verified their e-mail");
+    info!(user.id = user_id, "User verified their e-mail");
 
     // TODO: Show html success page instead of json
     Ok(web::Json(json!({

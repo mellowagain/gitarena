@@ -19,9 +19,9 @@ use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use derive_more::{Display, Error};
-use log::error;
 use serde_json::json;
 use tera::Context;
+use tracing::error;
 
 /// Returns early with an error. This macro is similar to the `bail!` macro which can be found in `anyhow`.
 /// This macro is equivalent to `return Err(err!(...))`.
@@ -192,7 +192,7 @@ impl ResponseError for GitArenaError {
 
     fn error_response(&self) -> HttpResponse {
         if self.should_print() {
-            error!("Error occurred in route: {:?}", self.source);
+            error!(err = ?self.source, "Error occurred in route");
         }
 
         let mut builder = HttpResponseBuilder::new(self.status_code());
@@ -296,10 +296,9 @@ async fn render_git_error(renderer: &GitArenaError) -> Result<BoxBody> {
 /// Returns generic Actix 500 Internal Server Error body and logs a error message similar to Rust's ICE message.
 /// This function is meant to be called when a error renderer errors.
 fn error_render_error(err: Error, ga_error: &GitArenaError, head: &mut ResponseHead) -> BoxBody {
-    error!("| Failed to render error response: {err}");
+    error!(?err, caused_by = ?ga_error, "| Failed to render error response");
     error!("| GitArena encountered a error when rendering a error. This is a bug.");
     error!("| We would appreciate a bug report: https://github.com/mellowagain/gitarena/issues/new?labels=priority%3A%3Ahigh%2C+type%3A%3Acrash");
-    error!("| Caused by: {ga_error:?}");
 
     // Fall back to the generic actix response
     let actix_response = InternalError::new(err, StatusCode::INTERNAL_SERVER_ERROR).error_response();

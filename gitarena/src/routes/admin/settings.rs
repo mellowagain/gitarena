@@ -2,6 +2,7 @@ use crate::config::{Setting, TypeConstraint};
 use crate::prelude::{ContextExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
 use crate::{config, die, err, render_template};
+use gitarena_common::database::Pool;
 
 use std::collections::HashMap;
 use std::sync::Once;
@@ -10,11 +11,11 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context as _, Result};
 use gitarena_macros::route;
 use multimap::MultiMap;
-use sqlx::PgPool;
+
 use tera::Context;
 
 #[route("/settings", method = "GET", err = "html")]
-pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_settings(web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -48,7 +49,7 @@ pub(crate) async fn patch_settings(
     data: web::Form<HashMap<String, String>>,
     web_user: WebUser,
     request: HttpRequest,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 

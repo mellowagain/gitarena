@@ -1,17 +1,17 @@
 use crate::die;
 use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
+use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
-use log::debug;
-use sqlx::PgPool;
+use tracing::debug;
 
 #[route("/logout", method = "POST", err = "htmx+html")]
-pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?
         die!(UNAUTHORIZED, "Already logged out");
@@ -20,8 +20,7 @@ pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Dat
     let mut transaction = db_pool.begin().await?;
 
     if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await.ok().flatten() {
-        debug!("Destroying a session for user id {}", &session.user_id);
-
+        debug!(user.id = session.user_id, "User logged out");
         session.destroy(&mut transaction).await?;
     }
 

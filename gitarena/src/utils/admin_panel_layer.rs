@@ -9,8 +9,8 @@ use actix_web::web::Data;
 use chrono::Utc;
 use derive_more::{Deref, DerefMut};
 use futures_locks::RwLock;
-use log::warn;
 use tracing::field::{Field, Visit};
+use tracing::warn;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::Context;
@@ -53,7 +53,7 @@ impl<S: Subscriber> Layer<S> for AdminPanelLayer {
                         }
                     }
                 }
-                Err(err) => warn!("Failed to acquire read lock for Broadcaster: {err}"),
+                Err(err) => warn!(?err, "Failed to acquire read lock for Broadcaster"),
             }
         }
     }

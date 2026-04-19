@@ -14,13 +14,14 @@ use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use log::debug;
 use serde::Serialize;
-use sqlx::{FromRow, Pool, Postgres, Transaction};
+use sqlx::{FromRow, Transaction};
+use tracing::{debug, instrument};
 
 #[derive(FromRow, Display, Serialize)]
 #[display(fmt = "{email}")]
@@ -110,20 +111,21 @@ impl Debug for Email {
     }
 }
 
-pub(crate) async fn get_root_email(db_pool: &Pool<Postgres>) -> Result<String> {
+pub(crate) async fn get_root_email(db_pool: &Pool) -> Result<String> {
     let address: String = from_config!("smtp.address" => String);
 
     Ok(address)
 }
 
-pub(crate) async fn get_root_mailbox(db_pool: &Pool<Postgres>) -> Result<Mailbox> {
+pub(crate) async fn get_root_mailbox(db_pool: &Pool) -> Result<Mailbox> {
     let address = get_root_email(db_pool).await?;
 
     // TODO: Allow customization of display name for email address
     Ok(Mailbox::new(Some("GitArena".to_owned()), address.parse()?))
 }
 
-pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_pool: &Pool<Postgres>) -> Result<()> {
+#[instrument(err, skip(db_pool))]
+pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_pool: &Pool) -> Result<()> {
     // This is in an extra block so `transaction` gets dropped early
     let email = {
         let mut transaction = db_pool.begin().await?;
@@ -148,7 +150,8 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
     send_mail(message, db_pool).await
 }
 
-async fn send_mail(message: Message, db_pool: &Pool<Postgres>) -> Result<()> {
+#[instrument(err, skip(db_pool))]
+async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
     let enabled = from_config!("smtp.enabled" => bool);
 
     if !enabled {

@@ -7,15 +7,15 @@ use gitarena_common::log::init_logger;
 use gitarena_common::packets::PacketId;
 use gitarena_common::packets::git::GitImport;
 use gitarena_common::prelude::*;
-use log::{debug, error, info, warn};
 use num_traits::cast::FromPrimitive;
 use parity_tokio_ipc::Endpoint;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
+use tracing::{debug, error, info, instrument, warn};
 use tracing_unwrap::ResultExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _log_guards = init_logger("gitarena-workhorse", &[], None)?;
+    let _log_guards = init_logger("gitarena-workhorse", &[], None, None)?;
 
     Endpoint::new(ipc_path()?.to_owned())
         .incoming()
@@ -32,6 +32,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+#[instrument(err, skip_all)]
 async fn handle<T: AsyncRead + AsyncWrite + Unpin + 'static>(connection: Result<T, io::Error>) -> Result<()> {
     let mut connection = connection?;
 

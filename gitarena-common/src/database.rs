@@ -4,10 +4,10 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow, bail};
-use log::info;
 use once_cell::sync::OnceCell;
 use sqlx::{Executor, Postgres};
 use tokio::fs;
+use tracing::{info, instrument};
 
 pub mod models;
 
@@ -18,10 +18,10 @@ pub type ConnectOptions = PgConnectOptions;
 pub type Database = Postgres;
 pub type DatabaseError = PgDatabaseError;
 
-// These type aliases get their values from above so will not need to be #[cfg]'ed
-pub type Pool = sqlx::pool::Pool<Database>;
+pub type Pool = sqlx::Pool<Database>;
 pub type PoolOptions = sqlx::pool::PoolOptions<Database>;
 
+#[instrument(err)]
 pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) -> Result<Pool> {
     static ONCE: OnceCell<String> = OnceCell::new();
 
@@ -43,9 +43,11 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
         .await?;
 
     sqlx::migrate!("../migrations").run(&pool).await?;
+
     Ok(pool)
 }
 
+#[instrument(err)]
 async fn read_database_config() -> Result<ConnectOptions> {
     let mut options = match (env::var_os("DATABASE_URL"), env::var_os("DATABASE_URL_FILE")) {
         (Some(url), None) => {

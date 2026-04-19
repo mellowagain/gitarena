@@ -11,17 +11,21 @@ use async_trait::async_trait;
 use awc::Client;
 use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
+use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct GitHubSSO;
 
 #[async_trait(?Send)]
 impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
+    #[instrument(skip(token))]
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::gitarena();
 
@@ -30,6 +34,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for GitHubSSO {
             .append_header((ACCEPT, "application/vnd.github.v3+json"))
             .append_header((AUTHORIZATION, format!("token {token}")))
             .append_header((USER_AGENT, concat!("GitArena ", env!("CARGO_PKG_VERSION"))))
+            .trace_request()
             .send()
             .await
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to GitHub api: {}", err))?
@@ -101,7 +106,8 @@ impl SSOProvider for GitHubSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve id from GitHub API json response"))
     }
 
-    async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User> {
+    #[instrument(skip_all)]
+    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
         let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;

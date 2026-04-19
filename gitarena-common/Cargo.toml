@@ -23,6 +23,11 @@ num-derive = "0.3.3"
 num-traits = "0.2.14"
 num_cpus = "1.13.1"
 once_cell = "1.9.0"
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+opentelemetry-appender-tracing = { workspace = true }
+tracing-opentelemetry = { workspace = true }
 serde = { version = "1.0.133", features = ["derive"] }
 sqlx = { workspace = true }
 tokio = { version = "1.15.0", features = ["full", "tracing"] }

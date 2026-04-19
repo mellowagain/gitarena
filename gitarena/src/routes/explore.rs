@@ -2,6 +2,7 @@ use crate::prelude::{ContextExtensions, HttpRequestExtensions};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::WebUser;
 use crate::{err, render_template};
+use gitarena_common::database::Pool;
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -12,12 +13,12 @@ use gitarena_common::database::Database;
 use gitarena_macros::route;
 use qstring::QString;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+
 use sqlx::{FromRow, Transaction};
 use tera::Context;
 
 #[route("/explore", method = "GET", err = "htmx+html")]
-pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
     let sorting = query_string.get("sort").unwrap_or("stars_desc");

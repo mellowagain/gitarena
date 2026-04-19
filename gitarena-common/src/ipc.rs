@@ -1,8 +1,8 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Read, Write};
-use std::{fmt, fs, mem};
+use std::{fmt, mem};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bincode::config::{AllowTrailing, Bounded, LittleEndian, VarintEncoding, WithOtherEndian, WithOtherIntEncoding, WithOtherLimit, WithOtherTrailing};
 use bincode::{DefaultOptions, Options as _};
 use serde::de::DeserializeOwned;
@@ -33,11 +33,12 @@ impl<T: Serialize + Sized + PacketId> IpcPacket<T> {
 }
 
 impl<T: Sized> IpcPacket<T> {
-    /// Maximum size that this struct can be serialized from (mem::size_of::<Self> + 1 MB)
+    /// Maximum size that this struct can be serialized from (`mem::size_of::<Self>` + 1 MB)
     #[inline]
+    #[must_use]
     pub const fn max_size() -> u64 {
         // Allow 1 MB additional limit
-        mem::size_of::<T>() as u64 + 1_000_000
+        size_of::<T>() as u64 + 1_000_000
     }
 
     #[inline]
@@ -97,15 +98,10 @@ pub trait PacketId {
 }
 
 /// Cross-platform way to get the socket/pipe path.
-///
-/// # Side effects
-///
-/// On *non-Windows systems* this function exhibits side effects (creation of directory `/run/gitarena`)
 pub fn ipc_path() -> Result<&'static str> {
     Ok(if cfg!(windows) {
         r"\\.\pipe\gitarena-workhorse"
     } else {
-        fs::create_dir_all("/run/gitarena").context("Failed to create directory")?;
         "/run/gitarena/workhorse"
     })
 }

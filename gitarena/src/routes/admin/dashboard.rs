@@ -3,6 +3,7 @@ use crate::repository::Repository;
 use crate::user::{User, WebUser};
 use crate::utils::system::SYSTEM_INFO;
 use crate::{die, render_template};
+use gitarena_common::database::Pool;
 
 use std::env::consts;
 use std::process;
@@ -14,12 +15,12 @@ use chrono_humanize::{Accuracy, HumanTime, Tense};
 use git2::Version as LibGit2Version;
 use gitarena_macros::route;
 use once_cell::sync::Lazy;
-use sqlx::PgPool;
+
 use sysinfo::SystemExt;
 use tera::Context;
 
 #[route("/", method = "GET", err = "html")]
-pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {

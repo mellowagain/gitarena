@@ -4,10 +4,12 @@ use crate::{err, mail};
 
 use anyhow::{Context, Result};
 use git2::{Repository as LibGit2Repo, Signature};
-use sqlx::{Pool, Postgres};
+use gitarena_common::database::Pool;
+use tracing::instrument;
 
 /// Writes and commits a file into the repository
-pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&str>, file_name: &str, content: &[u8], db_pool: &Pool<Postgres>) -> Result<()> {
+#[instrument(err, skip(repo, db_pool))]
+pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&str>, file_name: &str, content: &[u8], db_pool: &Pool) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
 
     let author_email = Email::find_commit_email(user, &mut transaction)

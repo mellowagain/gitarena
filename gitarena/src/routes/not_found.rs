@@ -2,6 +2,7 @@ use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::prelude::ContextExtensions;
 use crate::render_template;
 use crate::user::WebUser;
+use gitarena_common::database::Pool;
 
 use std::sync::Arc;
 
@@ -9,9 +10,9 @@ use actix_web::Result as ActixResult;
 use actix_web::http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use log::debug;
 use serde_json::json;
-use sqlx::PgPool;
+use tracing::debug;
+
 use tera::Context;
 use tracing::instrument;
 
@@ -22,7 +23,7 @@ fn api_not_found() -> HttpResponse {
     }))
 }
 
-async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<HttpResponse> {
+async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<HttpResponse> {
     let mut transaction = db_pool.begin().await?;
     let mut context = Context::new();
 
@@ -33,8 +34,8 @@ async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Da
 }
 
 #[instrument(skip_all)]
-pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_pool: web::Data<PgPool>) -> ActixResult<impl Responder> {
-    debug!("Got request for non-existent resource: {}", request.path());
+pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_pool: web::Data<Pool>) -> ActixResult<impl Responder> {
+    debug!(path = request.path(), "Got request for non-existent route");
 
     Ok(if !request.path().starts_with("/api") {
         web_not_found(request, web_user, db_pool).await.map_err(|err| GitArenaError {

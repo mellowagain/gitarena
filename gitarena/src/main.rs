@@ -2,6 +2,7 @@
 
 use crate::error::error_renderer_middleware;
 use crate::ipc::Ipc;
+use crate::metrics::db_pool::spawn_db_pool_metrics_task;
 use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
 use crate::utils::admin_panel_layer::AdminPanelLayer;
@@ -24,9 +25,11 @@ use anyhow::{Context, Result, anyhow};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
 use gitarena_common::log::init_logger;
+use gitarena_common::telemetry;
 use gitarena_macros::from_optional_config;
-use log::info;
+use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use time::Duration as TimeDuration;
+use tracing::{info, warn};
 use tracing_subscriber::Layer;
 use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
@@ -40,6 +43,7 @@ mod ipc;
 mod issue;
 mod licenses;
 mod mail;
+mod metrics;
 mod prelude;
 mod privileges;
 mod repository;
@@ -55,6 +59,8 @@ mod verification;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let (telemetry_guards, logger_provider) = telemetry::init("gitarena")?;
+
     let broadcaster = Broadcaster::new();
     let _log_guards = init_logger(
         "gitarena",
@@ -70,9 +76,15 @@ async fn main() -> Result<()> {
             "sqlx=warn",
         ],
         Some(AdminPanelLayer::new(broadcaster.clone()).boxed()),
+        Some(&logger_provider),
     )?;
 
+    if !telemetry_guards.is_guarding() {
+        warn!("OpenTelemetry exporting is disabled because the env variables were not set");
+    }
+
     let db_pool = create_postgres_pool("gitarena", None).await?;
+    let _task_handle = spawn_db_pool_metrics_task(db_pool.clone());
 
     licenses::init();
 
@@ -103,9 +115,11 @@ async fn main() -> Result<()> {
         );
 
         let mut app = App::new()
-            .app_data(Data::new(db_pool.clone())) // Pool<Postgres> is just a wrapper around Arc<P> so .clone() is cheap
+            .app_data(Data::new(db_pool.clone()))
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
+            .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
+            .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(identity_service)
             .wrap_fn(|req, srv| {

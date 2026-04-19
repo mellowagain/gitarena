@@ -10,10 +10,10 @@ use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
+use gitarena_common::database::Pool;
 use gitarena_macros::route;
-use log::info;
 use serde::Deserialize;
-use sqlx::{PgPool, Pool, Postgres};
+use tracing::{info, instrument};
 use utoipa::ToSchema;
 
 // This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
@@ -32,7 +32,7 @@ use utoipa::ToSchema;
     tag = "repository"
 )]
 #[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let user = web_user.into_user()?;
@@ -91,7 +91,10 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     transaction.commit().await?;
 
-    info!("New repository created: {}/{} (id {})", &user.username, &repo.name, &repo.id);
+    let owner = &user.username;
+    let name = &repo.name;
+
+    info!(id = repo.id, owner, name, "New repository created");
 
     Ok(if request.is_htmx() {
         HttpResponse::Ok()
@@ -106,7 +109,8 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     })
 }
 
-async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool<Postgres>) -> Result<()> {
+#[instrument(err, skip(db_pool))]
+async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());

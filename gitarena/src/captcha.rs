@@ -5,10 +5,11 @@ use crate::prelude::AwcExtensions;
 use anyhow::Result;
 use awc::Client;
 use gitarena_common::database::Database;
-use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::Transaction;
+use tracing::{error, instrument, warn};
 
+#[instrument(err, skip(tx))]
 pub(crate) async fn verify_captcha(token: &String, tx: &mut Transaction<'_, Database>) -> Result<bool> {
     let Some(api_key) = get_optional_setting::<String>("hcaptcha.site_key", tx).await? else {
         return Ok(true);
@@ -25,7 +26,7 @@ pub(crate) async fn verify_captcha(token: &String, tx: &mut Transaction<'_, Data
 
     if let Some(errors) = response.errors {
         let errors_str = errors.join(", ");
-        error!("hCaptcha failed to verify challenge token: {errors_str}");
+        error!(err = errors_str, "hCaptcha failed to verify challenge token");
     }
 
     if let Some(credit) = response.credit

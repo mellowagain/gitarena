@@ -6,8 +6,8 @@ use actix_web::web::Bytes;
 use anyhow::Result;
 use async_recursion::async_recursion;
 use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
-use log::warn;
 use tracing::instrument;
+use tracing::warn;
 
 #[instrument(err, skip(repo))]
 pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
@@ -100,7 +100,7 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
                 }
             }
             Err(err) => {
-                warn!("Unable to find reference {have} user has: {err}");
+                warn!(?err, "Unable to find reference {have} user has");
             }
         }
     }
@@ -147,8 +147,8 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
                         pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
                     }
                 }
-                Err(e) => {
-                    warn!("Unable to find wanted object: {} error: {}", &wanted_obj, e);
+                Err(err) => {
+                    warn!(?err, "Unable to find wanted object: {}", &wanted_obj);
                 }
             }
         }

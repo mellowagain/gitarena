@@ -1,6 +1,7 @@
 use crate::ssh::SshKey;
 use crate::user::WebUser;
 use crate::{die, err};
+use gitarena_common::database::Pool;
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Context;
@@ -9,10 +10,10 @@ use chrono::serde::ts_seconds_option;
 use chrono::{DateTime, Utc};
 use gitarena_common::database::models::KeyType;
 use gitarena_macros::route;
-use log::{debug, warn};
 use openssh_keys::PublicKey;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use tracing::{debug, warn};
+
 use utoipa::ToSchema;
 
 #[utoipa::path(
@@ -30,7 +31,7 @@ use utoipa::ToSchema;
     tag = "user"
 )]
 #[route("/api/ssh-key", method = "PUT", err = "json")]
-pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
@@ -52,11 +53,7 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
     let fingerprint = public_key.fingerprint_md5();
 
     if fingerprint.len() != 47 {
-        warn!(
-            "Calculated md5 fingerprint is not acceptable: {} (expected 47 characters, got {})",
-            &fingerprint,
-            fingerprint.len()
-        );
+        warn!(length = fingerprint.len(), fingerprint, "Calculated md5 fingerprint is the wrong length",);
         die!(UNPROCESSABLE_ENTITY, "Calculated md5 fingerprint did not end up being 47 characters long");
     }
 
@@ -82,13 +79,7 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
 
     transaction.commit().await?;
 
-    debug!(
-        "New SSH key added for user {}: {} (fingerprint: {} id {})",
-        &user.id,
-        key_title,
-        fingerprint.as_str(),
-        &key.id
-    );
+    debug!(user.id, key.id, key.title, key.fingerprint = fingerprint.as_str(), "New SSH key added by user",);
 
     Ok(HttpResponse::Created().json(AddKeyJsonResponse { id: key.id, fingerprint }))
 }

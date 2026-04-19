@@ -12,6 +12,7 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use bstr::BString;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
 use gix::lock::acquire::Fail;
@@ -20,17 +21,11 @@ use gix::odb::Store;
 use gix::odb::pack::FindExt;
 use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
 use tracing::instrument;
 
 #[instrument(err, skip(writer, store))]
-pub(crate) async fn process_create_update(
-    ref_update: &RefUpdate,
-    repo: &Repository,
-    store: Arc<Store>,
-    db_pool: &PgPool,
-    writer: &mut GitWriter,
-) -> Result<()> {
+pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, store: Arc<Store>, db_pool: &Pool, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.new.is_some());
 
     let mut transaction = db_pool.begin().await?;

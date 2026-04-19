@@ -3,6 +3,7 @@ use crate::prelude::ContextExtensions;
 use crate::render_template;
 use crate::repository::{RepoOwner, Repository};
 use crate::user::WebUser;
+use gitarena_common::database::Pool;
 
 use std::collections::HashMap;
 
@@ -10,11 +11,11 @@ use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};
 use gitarena_macros::route;
 use itertools::Itertools;
-use sqlx::PgPool;
+
 use tera::Context;
 
 #[route("/{username}/{repository}/issues", method = "GET", err = "html")]
-pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn all_issues(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let confidential = if web_user.as_ref().map_or_else(|| false, |user| user.id == repo.owner) {

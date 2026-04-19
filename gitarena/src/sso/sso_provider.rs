@@ -9,11 +9,13 @@ use crate::user::User;
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::url::Url;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
 use qstring::QString;
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
+use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
 #[async_trait(?Send)]
@@ -23,7 +25,8 @@ pub(crate) trait SSOProvider {
     fn get_auth_url(&self) -> AuthUrl;
     fn get_token_url(&self) -> Option<TokenUrl>;
 
-    async fn build_client(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicClient> {
+    #[instrument(skip(self, db_pool))]
+    async fn build_client(&self, provider: &SSOProviderType, db_pool: &Pool) -> Result<BasicClient> {
         let mut transaction = db_pool.begin().await?;
 
         let (client_id, client_secret) = match provider {
@@ -79,7 +82,7 @@ pub(crate) trait SSOProvider {
         self.get_scopes_as_str().iter().map(|scope| Scope::new(scope.to_string())).collect()
     }
 
-    async fn generate_auth_url(&self, provider: &SSOProviderType, db_pool: &PgPool) -> Result<(Url, CsrfToken)> {
+    async fn generate_auth_url(&self, provider: &SSOProviderType, db_pool: &Pool) -> Result<(Url, CsrfToken)> {
         let client = self.build_client(provider, db_pool).await?;
         let mut request = client.authorize_url(CsrfToken::new_random);
 
@@ -91,7 +94,8 @@ pub(crate) trait SSOProvider {
     }
 
     /// Exchanges a response (provide by `state` and `code` in `query_string`) into an oauth access token
-    async fn exchange_response(&self, query_string: &QString, provider: &SSOProviderType, db_pool: &PgPool) -> Result<BasicTokenResponse> {
+    #[instrument(skip(self, query_string, db_pool))]
+    async fn exchange_response(&self, query_string: &QString, provider: &SSOProviderType, db_pool: &Pool) -> Result<BasicTokenResponse> {
         let code_option = query_string.get("code");
         let state_option = query_string.get("state");
 
@@ -127,7 +131,7 @@ pub(crate) trait SSOProvider {
 
     async fn get_provider_id(&self, token: &str) -> Result<String>;
 
-    async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User>;
+    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User>;
 }
 
 #[async_trait]

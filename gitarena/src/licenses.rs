@@ -1,16 +1,18 @@
 use askalono::Store;
-use log::info;
 use once_cell::sync::OnceCell;
+use tracing::{info, instrument};
 use tracing_unwrap::{OptionExt, ResultExt};
 
 static LICENSE_STORE: OnceCell<Store> = OnceCell::new();
 
+#[instrument]
 pub(crate) fn init() {
     // Normally we'd use .expect_or_log() here but askalono::Store does not implement Debug, so just ignore the error
     // This is safe because OnceCell only returns an Error on set() when it already was once initialized
     let _ = LICENSE_STORE.set(init_askalono());
 
-    info!("Successfully loaded {} licenses from cache", store().len());
+    let amount = store().len();
+    info!(amount, "Successfully loaded licenses from cache");
 }
 
 fn init_askalono() -> Store {

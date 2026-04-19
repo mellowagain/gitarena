@@ -5,15 +5,16 @@ use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::user::WebUser;
 use crate::utils::filesystem::copy_dir_all;
+use gitarena_common::database::Pool;
 
 use std::path::Path;
 
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
-use log::info;
 use serde::Serialize;
-use sqlx::PgPool;
+use tracing::info;
+
 use utoipa::ToSchema;
 
 /// Number of visible forks for a repository.
@@ -38,7 +39,7 @@ pub(crate) struct ForkCountResponse {
     tag = "repository"
 )]
 #[route("/api/repo/{username}/{repository}/fork", method = "GET", err = "htmx+json")]
-pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let additional_query = if matches!(web_user, WebUser::Authenticated(_)) {
@@ -84,7 +85,7 @@ pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request
     tag = "repository"
 )]
 #[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "htmx+text")]
-pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -129,8 +130,13 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
     let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
 
     info!(
-        "New repository forked: {}/{} (id {}, from {}/{})",
-        &user.username, &new_repo.name, &repo.id, repo_owner, &repo.name
+        target.id = new_repo.id,
+        target.owner = user.username,
+        target.name = new_repo.name,
+        source.id = repo.id,
+        source.owner = %repo_owner,
+        source.name = repo.name,
+        "New repository forked"
     );
 
     Ok(if request.is_htmx() {

@@ -14,6 +14,12 @@ readme = "README.md"
 [workspace.dependencies]
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki"] }
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
+opentelemetry = "0.31.0"
+opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic"] }
+opentelemetry-semantic-conventions = "0.31.0"
+opentelemetry-appender-tracing = { version = "0.31.1", default-features = false, features = ["log"] }
+tracing-opentelemetry = "0.32.1"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

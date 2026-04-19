@@ -3,10 +3,14 @@ use crate::git::basic_auth;
 use crate::git::fetch::fetch;
 use crate::git::io::reader::{read_data_lines, read_until_command};
 use crate::git::ls_refs::ls_refs;
+use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
+use gitarena_common::database::Pool;
+
+use std::time::Instant;
 
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
@@ -15,14 +19,14 @@ use futures::StreamExt;
 use gitarena_macros::route;
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
-use sqlx::PgPool;
+use opentelemetry::KeyValue;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
 pub(crate) async fn git_upload_pack(
     uri: web::Path<GitRequest>,
     mut body: web::Payload,
     request: HttpRequest,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
@@ -78,6 +82,9 @@ pub(crate) async fn git_upload_pack(
 
     let git_body = read_data_lines(&mut readable_iter).await?;
     let (command, body) = read_until_command(git_body).await?;
+    let command = command.clone();
+
+    let start = Instant::now();
 
     let response = match command.as_str() {
         "ls-refs" => {
@@ -96,6 +103,11 @@ pub(crate) async fn git_upload_pack(
                 .finish()
         }
     };
+
+    let elapsed = start.elapsed().as_secs_f64();
+    let op_attr = KeyValue::new("operation", command);
+    OPERATION_COUNT.add(1, &[op_attr.clone(), KeyValue::new("status", "ok")]);
+    OPERATION_DURATION.record(elapsed, &[op_attr]);
 
     transaction.commit().await?;
 

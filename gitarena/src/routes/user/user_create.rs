@@ -5,18 +5,19 @@ use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_username_taken, validate_username};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die, render_template};
+use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
-use log::info;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use tracing::info;
+
 use tera::Context;
 
 #[route("/register", method = "GET", err = "html")]
-pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     if matches!(web_user, WebUser::Authenticated(_)) {
@@ -41,7 +42,7 @@ pub(crate) async fn post_register(
     body: web::Json<RegisterJsonRequest>,
     id: Identity,
     request: HttpRequest,
-    db_pool: web::Data<PgPool>,
+    db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     if id.identity().is_some() {
         // Maybe just redirect to home page?
@@ -124,7 +125,7 @@ pub(crate) async fn post_register(
 
     transaction.commit().await?;
 
-    info!("New user registered: {} (id {})", &user.username, &user.id);
+    info!(user.username, user.id, "New user signed up");
 
     Ok(if request.is_htmx() {
         HttpResponse::Ok()

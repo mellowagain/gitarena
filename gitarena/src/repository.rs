@@ -16,11 +16,13 @@ use derive_more::{Deref, Display};
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use gix::Repository as GitoxideRepository;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;
 use serde::Serialize;
-use sqlx::{FromRow, PgPool, Transaction};
+use sqlx::{FromRow, Transaction};
+use tracing::instrument;
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 
@@ -61,6 +63,7 @@ impl Repository {
         repo
     }
 
+    #[instrument(err, skip(tx))]
     pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head(self.default_branch.as_str());
@@ -71,14 +74,17 @@ impl Repository {
         Ok(())
     }
 
+    #[instrument(err, skip(tx))]
     pub(crate) async fn libgit2(&self, tx: &mut Transaction<'_, Database>) -> Result<Git2Repository> {
         Ok(Git2Repository::open(self.get_fs_path(tx).await?)?)
     }
 
+    #[instrument(err, skip(tx))]
     pub(crate) async fn gitoxide(&self, tx: &mut Transaction<'_, Database>) -> Result<GitoxideRepository> {
         Ok(gix::discover(self.get_fs_path(tx).await?)?)
     }
 
+    #[instrument(ret, err, skip(tx))]
     pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
         // Instead of using `config::get_optional_setting`, we run our own query to get both username and repo base dir in one query
         // https://stackoverflow.com/a/16364390
@@ -95,6 +101,7 @@ impl Repository {
         Ok(format!("{}/{}/{}", base_dir, username, &self.name))
     }
 
+    #[instrument(ret, err, skip(tx))]
     pub(crate) async fn repo_size(&self, tx: &mut Transaction<'_, Database>) -> Result<u64> {
         Ok(dir::get_size(self.get_fs_path(tx).await?)?)
     }
@@ -125,9 +132,8 @@ impl FromRequest for Repository {
 
         let web_user_future = WebUser::from_request(req, payload);
 
-        match req.app_data::<Data<PgPool>>() {
+        match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
-                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
@@ -151,7 +157,8 @@ impl FromRequest for Repository {
     }
 }
 
-async fn extract_repo_from_request(db_pool: Data<PgPool>, web_user: WebUser, username: &str, repository: &str) -> Result<Repository> {
+#[instrument(err, skip(db_pool))]
+async fn extract_repo_from_request(db_pool: Data<Pool>, web_user: WebUser, username: &str, repository: &str) -> Result<Repository> {
     let mut transaction = db_pool.begin().await?;
 
     let user = User::find_using_name(username, &mut transaction)
@@ -199,9 +206,8 @@ impl FromRequest for Branch {
 
         let repo_future = Repository::from_request(req, payload);
 
-        match req.app_data::<Data<PgPool>>() {
+        match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
-                // Data<PgPool> is just a wrapper around `Arc<P>` so .clone() is cheap
                 let db_pool = db_pool.clone();
 
                 Box::pin(async move {
@@ -224,7 +230,8 @@ impl FromRequest for Branch {
     }
 }
 
-async fn extract_branch_from_request(db_pool: Data<PgPool>, repo: Repository, tree: String) -> Result<Branch> {
+#[instrument(err, skip(db_pool))]
+async fn extract_branch_from_request(db_pool: Data<Pool>, repo: Repository, tree: String) -> Result<Branch> {
     let mut transaction = db_pool.begin().await?;
 
     let gitoxide_repo = repo.gitoxide(&mut transaction).await?;

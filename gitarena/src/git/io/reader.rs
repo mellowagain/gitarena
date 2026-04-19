@@ -1,8 +1,8 @@
 use anyhow::{Result, bail};
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
-use log::warn;
 use tracing::instrument;
+use tracing::warn;
 use tracing_unwrap::OptionExt;
 
 #[instrument(err)]
@@ -24,7 +24,7 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
                 None => {}
             },
             Err(err) => {
-                warn!("Failed to read line into UTF-8 vec: {err}");
+                warn!(?err, "Failed to read line into UTF-8 vec");
             }
         }
     }
@@ -50,8 +50,8 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
                     body.push(data[..length].to_vec());
                 }
             }
-            Ok(Err(err)) => warn!("Failed to read Git data line: {err}"),
-            Err(err) => warn!("Failed to read Git data line: {err}"),
+            Ok(Err(err)) => warn!(?err, "Failed to read Git data line"),
+            Err(err) => warn!(?err, "Failed to read Git data line"),
         }
     }
 

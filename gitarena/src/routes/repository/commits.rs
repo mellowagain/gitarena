@@ -4,16 +4,17 @@ use crate::repository::{Branch, RepoOwner, Repository};
 use crate::templates::web::GitCommit;
 use crate::user::WebUser;
 use crate::{die, render_template};
+use gitarena_common::database::Pool;
 
 use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
 use gitarena_macros::route;
-use sqlx::PgPool;
+
 use tera::Context;
 
 #[route("/{username}/{repository}/tree/{tree:.*}/commits", method = "GET", err = "htmx+html")]
-pub(crate) async fn commits(repo: Repository, branch: Branch, web_user: WebUser, request: HttpRequest, db_pool: web::Data<PgPool>) -> Result<impl Responder> {
+pub(crate) async fn commits(repo: Repository, branch: Branch, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let full_tree_name = branch.reference.name.as_bstr().to_str()?;

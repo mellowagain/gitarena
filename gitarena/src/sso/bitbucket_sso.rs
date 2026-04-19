@@ -11,17 +11,21 @@ use async_trait::async_trait;
 use awc::Client;
 use awc::http::header::ACCEPT;
 use gitarena_common::database::Database;
+use gitarena_common::database::Pool;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{PgPool, Transaction};
+use sqlx::Transaction;
+use tracing::instrument;
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct BitBucketSSO;
 
 #[async_trait(?Send)]
 impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
+    #[instrument(skip(token))]
     async fn request_data(endpoint: &'static str, token: &str) -> Result<T> {
         let client = Client::gitarena();
 
@@ -29,6 +33,7 @@ impl<T: DeserializeOwned> OAuthRequest<T> for BitBucketSSO {
             .get(format!("https://api.bitbucket.org/2.0/{endpoint}").as_str())
             .append_header((ACCEPT, "application/json"))
             .bearer_auth(token)
+            .trace_request()
             .send()
             .await
             .map_err(|err| err!(BAD_GATEWAY, "Failed to connect to BitBucket api: {}", err))?
@@ -85,7 +90,8 @@ impl SSOProvider for BitBucketSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve id from BitBucket API json response"))
     }
 
-    async fn create_user(&self, token: &str, db_pool: &PgPool) -> Result<User> {
+    #[instrument(skip_all)]
+    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;

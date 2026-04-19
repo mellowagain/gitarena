@@ -21,6 +21,7 @@ impl GitWriter {
     }
 
     // Example [hexl]text
+    #[instrument(err, skip_all)]
     pub(crate) async fn write_text<S: AsRef<str>>(&mut self, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
 
@@ -32,6 +33,7 @@ impl GitWriter {
     }
 
     // Example: [hexl]\x01text
+    #[instrument(err, skip(self, text))]
     pub(crate) async fn write_text_sideband<S: AsRef<str>>(&mut self, band: Band, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
         let with_band = [band.serialize(), str_ref.as_bytes()].concat();
@@ -44,6 +46,7 @@ impl GitWriter {
     }
 
     // Example: "[hexl]\x01[hexl]text"
+    #[instrument(err, skip(self, text))]
     pub(crate) async fn write_text_sideband_pktline<S: AsRef<str>>(&mut self, band: Band, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
         let hex_prefix = &u16_to_hex((str_ref.len() + 4 + 1) as u16); // 4 for length, 1 for newline
@@ -56,6 +59,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn write_text_bytes(&mut self, text: &[u8]) -> Result<&mut GitWriter> {
         self.inner
             .write(text)
@@ -64,6 +68,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn write_binary(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
         self.inner.enable_binary_mode();
         self.inner
@@ -75,6 +80,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip(self, binary))]
     pub(crate) async fn write_binary_sideband(&mut self, band: Band, binary: &[u8]) -> Result<&mut GitWriter> {
         let with_band = [band.serialize(), binary].concat();
 
@@ -88,6 +94,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn write_raw(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
         self.inner
             .inner_mut()
@@ -98,6 +105,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn flush(&mut self) -> Result<&mut GitWriter> {
         encode::write_packet_line(&PacketLineRef::Flush, self.inner.inner_mut())
             .await
@@ -106,6 +114,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip(self))]
     pub(crate) async fn flush_sideband(&mut self, band: Band) -> Result<&mut GitWriter> {
         let with_band = [band.serialize(), b"0000"].concat();
 
@@ -119,6 +128,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn delimiter(&mut self) -> Result<&mut GitWriter> {
         encode::write_packet_line(&PacketLineRef::Delimiter, self.inner.inner_mut())
             .await
@@ -127,6 +137,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn response_end(&mut self) -> Result<&mut GitWriter> {
         encode::write_packet_line(&PacketLineRef::ResponseEnd, self.inner.inner_mut())
             .await
@@ -135,6 +146,7 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn append(&mut self, other: GitWriter) -> Result<&mut GitWriter> {
         let serialized = other.serialize().await.context("Unable to write deserialize Git writer")?;
         self.write_raw(serialized.to_vec().as_slice())
