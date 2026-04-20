@@ -10,7 +10,7 @@ use askalono::TextData;
 use bstr::ByteSlice;
 use gix::objs::tree::EntryKind;
 use gix::odb::Store;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 #[instrument(err, skip(store))]
 pub(crate) async fn detect_license(store: Arc<Store>, gitoxide_repo: &gix::Repository, repo: &mut Repository) -> Result<()> {
@@ -50,8 +50,12 @@ async fn detect_license_from_file(repo: &mut Repository, data: &str) {
 
     // Only apply license if we're confident
     repo.license = if license_match.score >= 0.9 {
-        Some(license_match.name.to_owned())
+        let name = license_match.name.to_owned();
+
+        debug!(?repo, license = name, "successfully detected license");
+        Some(name)
     } else {
+        debug!(?repo, "failed to detect license in repo");
         None
     };
 }

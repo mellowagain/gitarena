@@ -44,6 +44,7 @@ image = "0.23.14"
 infer = "0.19.0"
 ipnetwork = { workspace = true }
 itertools = "0.10.3"
+linguist = "0.1.9"
 lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1", "tokio1-native-tls"] }
 md5 = "0.7.0"
 memmem = "0.1.1"
@@ -69,6 +70,7 @@ sysinfo = "0.29.0"
 tempfile = "3.3.0"
 tera = { version = "1.15.0", features = ["builtins"] }
 time = "0.3.5"
+tokei = { version = "14.0.0", default-features = false }
 tokio = { version = "1.28.2", features = ["full", "tracing"] }
 tokio-tar = "0.3.0"
 tracing = "0.1.29"

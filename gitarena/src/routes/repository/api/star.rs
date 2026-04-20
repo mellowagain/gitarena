@@ -13,58 +13,72 @@ use sqlx::Transaction;
 use tracing::{debug, instrument};
 use utoipa::ToSchema;
 
-/// Star count for a repository
+/// Statistics for a repository
 #[derive(Serialize, ToSchema)]
-pub(crate) struct StarInfoResponse {
-    /// Repository identifier in `owner/name` format
-    repo: String,
-    /// Total number of stars
-    stars: i64,
-    /// Whether the authenticated user has starred this repository
+#[serde(rename_all(serialize = "camelCase"))]
+pub(crate) struct RepoStatsStarsResponse {
+    /// Size of the repository in bytes
+    size: u64,
+    /// Stars
+    stars: RepoStatsDetailResponse,
+    /// Forks
+    forks: RepoStatsDetailResponse,
+    /// Watchers
+    watchers: RepoStatsDetailResponse,
+}
+
+/// Details about a statistic like Stars, Forks or Watchers
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub(crate) struct RepoStatsDetailResponse {
+    /// Total number
+    count: i64,
+    /// Whether the authenticated user has itself has given it for the repository
     #[serde(rename = "self")]
     self_starred: bool,
 }
 
 #[utoipa::path(
     get,
-    path = "/api/repo/{username}/{repository}/star",
+    path = "/api/repos/{username}/{repository}/stats",
     params(
         ("username" = String, Path, description = "Repository owner username"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
-        (status = 200, description = "Star count and viewer state", body = StarInfoResponse),
+        (status = 200, description = "Statistics about the repository", body = RepoStatsStarsResponse),
         (status = 404, description = "Repository not found or access denied"),
     ),
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}/star", method = "GET", err = "htmx+json")]
-pub(crate) async fn get_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+#[route("/api/repos/{username}/{repository}/stats", method = "GET", err = "json")]
+pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let count = get_star_count(&repo, &mut transaction).await?;
-
-    let self_stargazer = if let Some(user) = web_user.as_ref() {
+    let self_starred = if let Some(user) = web_user.as_ref() {
         has_star(user, &repo, &mut transaction).await?
     } else {
         false
     };
 
-    let extensions = request.extensions();
-    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    let response = RepoStatsStarsResponse {
+        size: repo.repo_size(&mut transaction).await?,
+        stars: RepoStatsDetailResponse {
+            count: get_star_count(&repo, &mut transaction).await?,
+            self_starred,
+        },
+        forks: RepoStatsDetailResponse {
+            count: get_fork_count(&repo, &web_user, &mut transaction).await?,
+            self_starred: false, // TODO: implement self starred for forks
+        },
+        // TODO: implement watchers
+        watchers: RepoStatsDetailResponse { count: 0, self_starred: false },
+    };
 
     transaction.commit().await?;
 
-    if request.is_htmx() {
-        Ok(HttpResponse::Ok().body(count.to_string()))
-    } else {
-        Ok(HttpResponse::Ok().json(StarInfoResponse {
-            repo: format!("{}/{}", repo_owner, repo.name.as_str()),
-            stars: count,
-            self_starred: self_stargazer,
-        }))
-    }
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(
@@ -155,6 +169,21 @@ pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::
     transaction.commit().await?;
 
     Ok(response.body(count.to_string()))
+}
+
+#[instrument(err, skip(tx))]
+pub(crate) async fn get_fork_count(repo: &Repository, web_user: &WebUser, tx: &mut Transaction<'_, Database>) -> Result<i64> {
+    let visibility_filter = if matches!(web_user, WebUser::Authenticated(_)) {
+        "visibility != 'private'"
+    } else {
+        "visibility = 'public'"
+    };
+
+    let query = format!("select count(*) from repositories where forked_from = $1 and disabled = false and {visibility_filter}");
+
+    let (count,): (i64,) = sqlx::query_as(query.as_str()).bind(repo.id).fetch_optional(&mut **tx).await?.unwrap_or((0,));
+
+    Ok(count)
 }
 
 #[instrument(err, skip(tx))]

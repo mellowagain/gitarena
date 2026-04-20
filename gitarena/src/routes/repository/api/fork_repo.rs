@@ -12,60 +12,7 @@ use std::path::Path;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
-use serde::Serialize;
 use tracing::info;
-
-use utoipa::ToSchema;
-
-/// Number of visible forks for a repository.
-#[derive(Serialize, ToSchema)]
-pub(crate) struct ForkCountResponse {
-    /// Total number of visible forks
-    forks: i64,
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/repo/{username}/{repository}/fork",
-    params(
-        ("username" = String, Path, description = "Repository owner username"),
-        ("repository" = String, Path, description = "Repository name"),
-    ),
-    responses(
-        (status = 200, description = "Number of visible forks", body = ForkCountResponse),
-        (status = 404, description = "Repository not found or access denied"),
-    ),
-    security((), ("cookieAuth" = [])),
-    tag = "repository"
-)]
-#[route("/api/repo/{username}/{repository}/fork", method = "GET", err = "htmx+json")]
-pub(crate) async fn get_fork_amount(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-
-    let additional_query = if matches!(web_user, WebUser::Authenticated(_)) {
-        // Allow public and unlisted repositories if the user is logged in
-        "visibility != 'private'"
-    } else {
-        // Only allow public repositories, not unlisted or private repositories
-        "visibility = 'public'"
-    };
-
-    let query = format!("select count(*) from repositories where forked_from = $1 and disabled = false and {additional_query}",);
-
-    let (count,): (i64,) = sqlx::query_as(query.as_str())
-        .bind(repo.id)
-        .fetch_optional(&mut *transaction)
-        .await?
-        .unwrap_or((0,));
-
-    transaction.commit().await?;
-
-    if request.is_htmx() {
-        Ok(HttpResponse::Ok().body(count.to_string()))
-    } else {
-        Ok(HttpResponse::Ok().json(ForkCountResponse { forks: count }))
-    }
-}
 
 #[utoipa::path(
     post,
