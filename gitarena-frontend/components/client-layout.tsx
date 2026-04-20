@@ -2,8 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { SWRConfig } from "swr";
+import { InstanceConfigProvider } from "@/components/instance-config-provider";
+import type { InstanceConfig } from "@/lib/instance-config";
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+const fetcher = (url: string) =>
+    fetch(url).then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+    });
+
+export function ClientLayout({ instanceConfig, children }: { instanceConfig: InstanceConfig | null; children: React.ReactNode }) {
     const router = useRouter();
     const lastPathRef = useRef("");
 
@@ -24,5 +33,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         return () => window.removeEventListener("popstate", handlePopState);
     }, [router]);
 
-    return <>{children}</>;
+    return (
+        <InstanceConfigProvider config={instanceConfig}>
+            <SWRConfig value={{ fetcher }}>{children}</SWRConfig>
+        </InstanceConfigProvider>
+    );
 }

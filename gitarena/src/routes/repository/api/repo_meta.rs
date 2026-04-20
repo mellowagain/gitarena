@@ -6,7 +6,7 @@ use gitarena_macros::route;
 
 #[utoipa::path(
     get,
-    path = "/api/repo/{username}/{repository}",
+    path = "/api/repos/{username}/{repository}",
     params(
         ("username" = String, Path, description = "Repository owner username"),
         ("repository" = String, Path, description = "Repository name"),
@@ -18,7 +18,7 @@ use gitarena_macros::route;
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}", method = "GET", err = "json")]
+#[route("/api/repos/{username}/{repository}", method = "GET", err = "json")]
 pub(crate) async fn meta(repo: Repository) -> Result<impl Responder> {
     Ok(HttpResponse::Ok().json(repo))
 }

@@ -183,8 +183,9 @@ pub(crate) async fn git_receive_pack(
         .await
         .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
 
-    sqlx::query("update repositories set license = $1 where id = $2")
+    sqlx::query("update repositories set license = $1, languages = $2 where id = $3")
         .bind(&repo.license)
+        .bind(&repo.languages)
         .bind(repo.id)
         .execute(&mut *transaction)
         .await?;

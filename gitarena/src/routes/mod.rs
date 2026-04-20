@@ -2,11 +2,11 @@ use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::api::ApiInfoResponse;
 use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
-use crate::routes::repository::api::fork_repo::ForkCountResponse;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
-use crate::routes::repository::api::star::StarInfoResponse;
+use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 
 use actix_web::web::ServiceConfig;
@@ -47,11 +47,11 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::import_repo::import,
         crate::routes::repository::api::repo_meta::meta,
         crate::routes::repository::api::repo_readme::readme,
-        crate::routes::repository::api::fork_repo::get_fork_amount,
         crate::routes::repository::api::fork_repo::create_fork,
-        crate::routes::repository::api::star::get_star,
+        crate::routes::repository::api::star::get_stats,
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,
+        crate::routes::repository::api::branch_files::branch_files,
         crate::routes::user::api::add_key::put_ssh_key,
     ),
     components(schemas(
@@ -62,8 +62,12 @@ impl Modify for CookieAuth {
         CreateJsonResponse,
         ImportJsonRequest,
         ReadmeResponse,
-        ForkCountResponse,
-        StarInfoResponse,
+        RepoStatsStarsResponse,
+        RepoStatsDetailResponse,
+        BranchFilesResponse,
+        FileEntry,
+        FileCommitInfo,
+        FileType,
         AddKeyJsonRequest,
         AddKeyJsonResponse,
     )),

@@ -2,6 +2,7 @@ use actix_web::web::ServiceConfig;
 use serde::Serialize;
 use utoipa::ToSchema;
 
+pub(crate) mod branch_files;
 pub(crate) mod create_repo;
 pub(crate) mod fork_repo;
 pub(crate) mod import_repo;
@@ -15,11 +16,11 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(create_repo::create);
     config.service(repo_meta::meta);
     config.service(repo_readme::readme);
+    config.service(branch_files::branch_files);
 
-    config.service(fork_repo::get_fork_amount);
     config.service(fork_repo::create_fork);
 
-    config.service(star::get_star);
+    config.service(star::get_stats);
     config.service(star::post_star);
     config.service(star::delete_star);
     config.service(star::put_star);

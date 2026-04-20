@@ -4,6 +4,8 @@ use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::{User, WebUser};
 use crate::{die, err};
 
+use std::collections::HashMap;
+use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -21,30 +23,60 @@ use gix::Repository as GitoxideRepository;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;
 use serde::Serialize;
+use sqlx::types::Json;
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 
-#[derive(FromRow, Display, Debug, Serialize, ToSchema)]
+#[derive(FromRow, Display, Serialize, ToSchema)]
 #[display(fmt = "{name}")]
+#[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct Repository {
+    /// ID
     pub(crate) id: i32,
-
+    /// User ID of the repository owner
     pub(crate) owner: i32,
+    /// Name of the repository
     pub(crate) name: String,
+    /// Description, set by the user
     pub(crate) description: String,
-
+    /// Visibility
     pub(crate) visibility: RepoVisibility,
+    /// Default branch
     pub(crate) default_branch: String,
-
+    /// Auto-detected license name
     pub(crate) license: Option<String>,
-
+    /// Auto-detected programming language stats of the main branch in the format of (Language, Byte count).
+    /// Caveat: SVG files are the amount of files instead of the total byte count to avoid skewing repository stats
+    #[schema(value_type = HashMap<String, u64>)]
+    pub(crate) languages: Json<HashMap<String, u64>>,
+    /// ID of the repo from which this one was forked from
     pub(crate) forked_from: Option<i32>,
+    /// URL of the repo from which this one is mirrored from
     pub(crate) mirrored_from: Option<String>,
-
+    /// Archived flag
     pub(crate) archived: bool,
+    /// Disabled flag
     pub(crate) disabled: bool,
+}
+
+impl fmt::Debug for Repository {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Repository")
+            .field("id", &self.id)
+            .field("owner", &self.owner)
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .field("default_branch", &self.default_branch)
+            .field("license", &self.license)
+            .field("languages", &self.languages.0.len())
+            .field("forked_from", &self.forked_from)
+            .field("mirrored", &self.mirrored_from.is_some())
+            .field("archived", &self.archived)
+            .field("disabled", &self.disabled)
+            .finish()
+    }
 }
 
 impl Repository {
