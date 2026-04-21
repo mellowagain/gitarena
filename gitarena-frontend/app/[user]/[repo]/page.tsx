@@ -8,8 +8,8 @@ import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
-import { MarkdownRenderer, isMarkdown } from "@/components/markdown-renderer";
-import { CodeBlock } from "@/components/code-block";
+import { isMarkdown } from "@/components/markdown-renderer";
+import { FileContent } from "@/components/file-content";
 
 // Mock data
 const repoData = {
@@ -64,6 +64,7 @@ interface RepoMetadata {
     visibility: string;
     defaultBranch: string;
 
+    readme?: string;
     license?: string;
     languages: Record<string, number>;
 
@@ -113,20 +114,14 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
         return <ErrorDisplay failed={"repo"} error={error} />;
     }
 
-    return <RepoPageContent user={user} repo={repo} meta={data} />;
+    return <RepoPageContent user={user} repo={repo} meta={data} defaultFile={data.readme} />;
 }
 
-function RepoPageContent({ user, repo, meta }: { user: string; repo: string; meta: RepoMetadata }) {
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
+function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo: string; meta: RepoMetadata; defaultFile?: string }) {
+    const [selectedFile, setSelectedFile] = useState<string | null>(defaultFile ?? null);
     const [showSource, setShowSource] = useState(false);
     const [wrapLines, setWrapLines] = useState(false);
     const [branch, setBranch] = useState(meta.defaultBranch);
-
-    const { data: readmeData } = useSWR<{ file_name: string; content: string }>(
-        `http://localhost:8080/api/repo/${user}/${repo}/tree/${branch}/readme`
-    );
-
-    const displayFile = selectedFile ?? readmeData?.file_name ?? null;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -145,82 +140,87 @@ function RepoPageContent({ user, repo, meta }: { user: string; repo: string; met
                 />
 
                 <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-                        <div className="flex items-center gap-2.5">
-                            <FileText className="h-[18px] w-[18px] text-muted-foreground" />
-                            <span className="font-medium">{displayFile ?? "README"}</span>
-                            {((displayFile && !isMarkdown(displayFile)) || showSource) && (
-                                <span className="text-sm text-muted-foreground">2.4 KB</span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {((displayFile && !isMarkdown(displayFile)) || showSource) && (
-                                <div className="flex items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                    >
-                                        <Edit3 className="h-3.5 w-3.5" />
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setWrapLines((w) => !w)}
-                                        className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
-                                    >
-                                        <WrapText className="h-3.5 w-3.5" />
-                                        Wrap
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        Raw
-                                    </Button>
+                    {selectedFile && (
+                        <>
+                            <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
+                                <div className="flex items-center gap-2.5">
+                                    <FileText className="h-[18px] w-[18px] text-muted-foreground" />
+                                    <span className="font-medium">{selectedFile}</span>
+                                    {(!isMarkdown(selectedFile) || showSource) && (
+                                        <span className="text-sm text-muted-foreground">2.4 KB</span>
+                                    )}
                                 </div>
-                            )}
-                            {displayFile && isMarkdown(displayFile) && (
-                                <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
-                                    <button
-                                        onClick={() => setShowSource(false)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                                            !showSource ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        <BookOpen className="h-3.5 w-3.5" />
-                                        Preview
-                                    </button>
-                                    <button
-                                        onClick={() => setShowSource(true)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                                            showSource ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        <Code className="h-3.5 w-3.5" />
-                                        Code
-                                    </button>
+                                <div className="flex items-center gap-2">
+                                    {(!isMarkdown(selectedFile) || showSource) && (
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                            >
+                                                <Edit3 className="h-3.5 w-3.5" />
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setWrapLines((w) => !w)}
+                                                className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
+                                            >
+                                                <WrapText className="h-3.5 w-3.5" />
+                                                Wrap
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                Raw
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {isMarkdown(selectedFile) && (
+                                        <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
+                                            <button
+                                                onClick={() => setShowSource(false)}
+                                                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                                                    !showSource
+                                                        ? "bg-background text-foreground"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                }`}
+                                            >
+                                                <BookOpen className="h-3.5 w-3.5" />
+                                                Preview
+                                            </button>
+                                            <button
+                                                onClick={() => setShowSource(true)}
+                                                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                                                    showSource
+                                                        ? "bg-background text-foreground"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                }`}
+                                            >
+                                                <Code className="h-3.5 w-3.5" />
+                                                Code
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                    </div>
+                            </div>
 
-                    <div className="flex-1 overflow-auto">
-                        {displayFile && isMarkdown(displayFile) && readmeData && (
-                            <MarkdownRenderer
-                                content={readmeData.content}
-                                fileName={readmeData.file_name}
-                                showSource={showSource}
-                                wrapLines={wrapLines}
-                            />
-                        )}
-                        {displayFile && !isMarkdown(displayFile) && (
-                            <CodeBlock user={user} repo={repo} branch={branch} filename={displayFile} wrapLines={wrapLines} />
-                        )}
-                    </div>
+                            <div className="flex-1 overflow-auto">
+                                <FileContent
+                                    user={user}
+                                    repo={repo}
+                                    branch={branch}
+                                    filename={selectedFile}
+                                    showSource={showSource}
+                                    wrapLines={wrapLines}
+                                />
+                            </div>
+                        </>
+                    )}
                 </main>
 
                 <RepoSidebar
