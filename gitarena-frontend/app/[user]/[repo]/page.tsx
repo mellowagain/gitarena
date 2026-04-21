@@ -8,7 +8,7 @@ import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
-import { ReadmeView, isMarkdown } from "@/components/readme-view";
+import { MarkdownRenderer, isMarkdown } from "@/components/markdown-renderer";
 import { CodeBlock } from "@/components/code-block";
 
 // Mock data
@@ -105,7 +105,7 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
     const { user, repo } = use(params);
 
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
-    const [showReadmeSource, setShowReadmeSource] = useState(false);
+    const [showSource, setShowSource] = useState(false);
     const [wrapLines, setWrapLines] = useState(false);
     const [branch, setBranch] = useState<string | null>(null);
 
@@ -148,12 +148,12 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                         <div className="flex items-center gap-2.5">
                             <FileText className="h-[18px] w-[18px] text-muted-foreground" />
                             <span className="font-medium">{displayFile ?? "README"}</span>
-                            {((displayFile && !isMarkdown(displayFile)) || showReadmeSource) && (
+                            {((displayFile && !isMarkdown(displayFile)) || showSource) && (
                                 <span className="text-sm text-muted-foreground">2.4 KB</span>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            {((displayFile && !isMarkdown(displayFile)) || showReadmeSource) && (
+                            {((displayFile && !isMarkdown(displayFile)) || showSource) && (
                                 <div className="flex items-center gap-1">
                                     <Button
                                         variant="ghost"
@@ -185,22 +185,18 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                             {displayFile && isMarkdown(displayFile) && (
                                 <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
                                     <button
-                                        onClick={() => setShowReadmeSource(false)}
+                                        onClick={() => setShowSource(false)}
                                         className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                                            !showReadmeSource
-                                                ? "bg-background text-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
+                                            !showSource ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
                                         }`}
                                     >
                                         <BookOpen className="h-3.5 w-3.5" />
                                         Preview
                                     </button>
                                     <button
-                                        onClick={() => setShowReadmeSource(true)}
+                                        onClick={() => setShowSource(true)}
                                         className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                                            showReadmeSource
-                                                ? "bg-background text-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
+                                            showSource ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
                                         }`}
                                     >
                                         <Code className="h-3.5 w-3.5" />
@@ -213,10 +209,10 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
 
                     <div className="flex-1 overflow-auto">
                         {displayFile && isMarkdown(displayFile) && readmeData && (
-                            <ReadmeView
+                            <MarkdownRenderer
                                 content={readmeData.content}
                                 fileName={readmeData.file_name}
-                                showSource={showReadmeSource}
+                                showSource={showSource}
                                 wrapLines={wrapLines}
                             />
                         )}
