@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_recursion::async_recursion;
 use git2::{DiffOptions, Oid, Repository as Git2Repository, Sort};
+use std::collections::{HashMap, HashSet};
 use tracing::instrument;
 
 #[instrument(err, skip(repo))]
@@ -8,6 +9,58 @@ pub(crate) async fn last_commit_for_blob(repo: &Git2Repository, reference_name: 
     let commits = commits_for_blob(repo, reference_name, file_name, Some(1)).await?;
 
     Ok(commits.first().copied())
+}
+
+#[instrument(err, skip(repo, paths))]
+pub(crate) async fn batch_last_commits(repo: &Git2Repository, reference: &str, paths: HashSet<String>) -> Result<HashMap<String, Oid>> {
+    let mut pending = paths;
+    let mut results = HashMap::<String, Oid>::with_capacity(pending.len());
+
+    let mut rev_walk = repo.revwalk()?;
+    rev_walk.set_sorting(Sort::TIME)?;
+    rev_walk.push_ref(reference)?;
+
+    let mut diff_options = DiffOptions::new();
+    diff_options.enable_fast_untracked_dirs(true);
+    diff_options.skip_binary_check(true);
+
+    for result in rev_walk {
+        if pending.is_empty() {
+            break;
+        }
+
+        let commit_oid = result?;
+        let commit = repo.find_commit(commit_oid)?;
+        let tree = commit.tree()?;
+
+        let previous_tree = if commit.parent_count() > 0 {
+            let previous_commit = commit.parent(0)?;
+            Some(previous_commit.tree()?)
+        } else {
+            None
+        };
+
+        let diff = repo.diff_tree_to_tree(previous_tree.as_ref(), Some(&tree), Some(&mut diff_options))?;
+
+        for delta in diff.deltas() {
+            let Some(path) = delta.new_file().path() else { continue };
+
+            let mut path_str = path.to_string_lossy().into_owned();
+
+            loop {
+                if pending.remove(&path_str) {
+                    results.insert(path_str.clone(), commit_oid);
+                }
+
+                match path_str.rfind('/') {
+                    Some(pos) => path_str = path_str[..pos].to_owned(),
+                    None => break,
+                }
+            }
+        }
+    }
+
+    Ok(results)
 }
 
 #[instrument(err, skip(repo))]

@@ -12,6 +12,7 @@ import {
     XCircle,
     Loader2,
     Ban,
+    TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useState, useRef, useEffect } from "react";
@@ -260,7 +261,7 @@ export function RepoFileSidebar({
 
     const [branch, setBranch] = useState(initialBranch ?? defaultBranch);
 
-    const { data, error, isLoading } = useSWR<{ files: BranchFile[] }>(
+    const { data, error, isLoading } = useSWR<{ files: BranchFile[]; truncated: boolean }>(
         `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/files`
     );
 
@@ -364,6 +365,12 @@ export function RepoFileSidebar({
                 </div>
             </div>
 
+            {!isLoading && data?.truncated && (
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-xs text-muted-foreground">
+                    <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-yellow-500" />
+                    <span>Showing first 10,000 entries only</span>
+                </div>
+            )}
             {isLoading ? (
                 <FileTreeSkeleton />
             ) : (
