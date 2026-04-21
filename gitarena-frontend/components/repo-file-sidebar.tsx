@@ -1,6 +1,19 @@
 "use client";
 
-import { GitCommit, ChevronDown, ChevronRight, Folder, FileText, CheckCircle2, XCircle, Loader2, Ban, TriangleAlert } from "lucide-react";
+import {
+    GitCommit,
+    ChevronDown,
+    ChevronRight,
+    Folder,
+    FileText,
+    FileCode,
+    Link2,
+    CheckCircle2,
+    XCircle,
+    Loader2,
+    Ban,
+    TriangleAlert,
+} from "lucide-react";
 import Link from "next/link";
 import React, { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
@@ -12,7 +25,7 @@ import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
 
 export type FileNode = {
     name: string;
-    type: "file" | "folder";
+    fileType: string;
     children?: FileNode[];
     lastCommit?: string;
     lastChanged?: string;
@@ -64,7 +77,7 @@ function buildFileTree(files: BranchFile[]): FileNode[] {
         const parts = file.fileName.split("/");
         const node: FileNode = {
             name: parts[parts.length - 1],
-            type: file.fileType === "tree" ? "folder" : "file",
+            fileType: file.fileType,
             lastCommit: file.commit.message.trim(),
             lastChanged: formatDistanceToNowStrict(new Date(file.commit.time * 1000), { addSuffix: false, locale: shortLocale }),
             children: file.fileType === "tree" ? [] : undefined,
@@ -168,16 +181,22 @@ function FileTreeItem({
 
     const content = (
         <button
-            onClick={() => (node.type === "folder" ? onToggleFolder(fullPath) : onSelect(fullPath))}
+            onClick={() => (node.fileType === "tree" ? onToggleFolder(fullPath) : onSelect(fullPath))}
             className={`w-full flex items-center gap-2 py-1.5 px-3 hover:bg-accent/50 transition-colors ${
                 isSelected ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
-            style={{ paddingLeft: `${depth * 14 + (node.type === "folder" ? 12 : 26)}px` }}
+            style={{ paddingLeft: `${depth * 14 + (node.fileType === "tree" ? 12 : 26)}px` }}
         >
-            {node.type === "folder" &&
+            {node.fileType === "tree" &&
                 (isExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />)}
-            {node.type === "folder" ? (
+            {node.fileType === "tree" ? (
                 <Folder className="h-[18px] w-[18px] shrink-0" />
+            ) : node.fileType === "link" ? (
+                <Link2 className="h-[18px] w-[18px] shrink-0" />
+            ) : node.fileType === "commit" ? (
+                <GitCommit className="h-[18px] w-[18px] shrink-0" />
+            ) : node.fileType === "blobExecutable" ? (
+                <FileCode className="h-[18px] w-[18px] shrink-0" />
             ) : (
                 <FileText className="h-[18px] w-[18px] shrink-0" />
             )}
@@ -201,7 +220,7 @@ function FileTreeItem({
             content
         );
 
-    if (node.type === "folder") {
+    if (node.fileType === "tree") {
         return (
             <div>
                 {wrappedContent}
