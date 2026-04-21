@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { BranchBar } from "@/components/branch-bar";
 import { formatDistanceToNowStrict } from "date-fns";
+import { shortLocale } from "@/lib/utils";
 import { ErrorDisplay } from "@/components/error-display";
 import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
 
@@ -65,7 +66,7 @@ function buildFileTree(files: BranchFile[]): FileNode[] {
             name: parts[parts.length - 1],
             type: file.fileType === "tree" ? "folder" : "file",
             lastCommit: file.commit.message.trim(),
-            lastChanged: formatDistanceToNowStrict(new Date(file.commit.time * 1000), { addSuffix: false }),
+            lastChanged: formatDistanceToNowStrict(new Date(file.commit.time * 1000), { addSuffix: false, locale: shortLocale }),
             children: file.fileType === "tree" ? [] : undefined,
         };
 
