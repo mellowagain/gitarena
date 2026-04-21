@@ -2,11 +2,8 @@
 
 import React from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { AlertCircle } from "lucide-react";
-import useSWR from "swr";
 import * as linguistLanguages from "linguist-languages";
 import type { Language } from "linguist-languages";
-import { ErrorDisplay } from "@/components/error-display";
 
 export const gitarenaTheme: Record<string, React.CSSProperties> = {
     'code[class*="language-"]': { color: "var(--foreground)", background: "none" },
@@ -110,7 +107,7 @@ function buildExtMap(): Map<string, string> {
 
 const EXT_TO_LANGUAGE = buildExtMap();
 
-const textFetcher = (url: string) =>
+export const textFetcher = (url: string) =>
     fetch(url).then((res) => {
         if (!res.ok) throw new Error(res.statusText);
         return res.text();
@@ -163,36 +160,8 @@ export function CodeBlockSkeleton() {
 /*
 
 TODO:
-- fetch latest commit and and commit count for branch to show in sidebar top left
+- fetch latest commit to show in sidebar top left
 - change file endpoint from the raw ~blob to an actual json endpoint that also returns the file size and last commit info
 - add history button to see history for a file
 
  */
-
-export function CodeBlock({
-    user,
-    repo,
-    branch,
-    filename,
-    wrapLines = false,
-}: {
-    user: string;
-    repo: string;
-    branch: string | null;
-    filename: string;
-    wrapLines?: boolean;
-}) {
-    const url = branch ? `http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${filename}` : null;
-
-    const { data: content, error, isLoading } = useSWR<string>(url, textFetcher);
-
-    if (isLoading || !branch) {
-        return <CodeBlockSkeleton />;
-    }
-
-    if (error) {
-        return <ErrorDisplay failed={"code block"} error={error} />;
-    }
-
-    return <CodeBlockContent content={content ?? ""} filename={filename} wrapLines={wrapLines} />;
-}
