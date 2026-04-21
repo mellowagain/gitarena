@@ -46,6 +46,7 @@ export type RepoFileSidebarProps = {
     setSelectedFile: (path: string) => void;
 
     initialBranch?: string;
+    onBranchChange?: (branch: string) => void;
 
     defaultBranch: string;
     branches: string[];
@@ -247,6 +248,7 @@ export function RepoFileSidebar({
     selectedFile,
     setSelectedFile,
     initialBranch,
+    onBranchChange,
     defaultBranch,
     branches,
     latestCommit,
@@ -318,10 +320,16 @@ export function RepoFileSidebar({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-56">
-                            {branches.map((branch) => (
-                                <DropdownMenuItem key={branch}>
+                            {branches.map((b) => (
+                                <DropdownMenuItem
+                                    key={b}
+                                    onClick={() => {
+                                        setBranch(b);
+                                        onBranchChange?.(b);
+                                    }}
+                                >
                                     <GitBranch className="mr-2 h-4 w-4 opacity-50" />
-                                    {branch}
+                                    {b}
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>
