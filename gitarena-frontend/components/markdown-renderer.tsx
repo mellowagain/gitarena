@@ -86,7 +86,11 @@ export function MarkdownRenderer({
                     ),
                     td: ({ children }) => <td className="border border-border px-4 py-2 text-muted-foreground">{children}</td>,
                     img: ({ src, alt }) => (
-                        <img src={typeof src === "string" ? proxyImageUrl(src) : undefined} alt={alt} className="inline-block align-middle" />
+                        <img
+                            src={typeof src === "string" ? proxyImageUrl(src) : undefined}
+                            alt={alt}
+                            className="inline-block align-middle"
+                        />
                     ),
                 }}
             >

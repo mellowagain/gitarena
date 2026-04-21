@@ -1,24 +1,10 @@
 "use client";
 
-import {
-    GitBranch,
-    GitCommit,
-    History,
-    ChevronDown,
-    ChevronRight,
-    Folder,
-    FileText,
-    CheckCircle2,
-    XCircle,
-    Loader2,
-    Ban,
-    TriangleAlert,
-} from "lucide-react";
+import { GitCommit, ChevronDown, ChevronRight, Folder, FileText, CheckCircle2, XCircle, Loader2, Ban, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useSWR from "swr";
+import { BranchBar } from "@/components/branch-bar";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ErrorDisplay } from "@/components/error-display";
 import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
@@ -46,11 +32,10 @@ export type RepoFileSidebarProps = {
     selectedFile: string | null;
     setSelectedFile: (path: string) => void;
 
-    initialBranch?: string;
-    onBranchChange?: (branch: string) => void;
+    branch: string;
+    onBranchChange: (branch: string) => void;
 
     defaultBranch: string;
-    branches: string[];
     latestCommit: LatestCommit;
 };
 
@@ -248,18 +233,15 @@ export function RepoFileSidebar({
     repo,
     selectedFile,
     setSelectedFile,
-    initialBranch,
+    branch,
     onBranchChange,
     defaultBranch,
-    branches,
     latestCommit,
 }: RepoFileSidebarProps) {
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
     const sidebarRef = useRef<HTMLDivElement>(null);
-
-    const [branch, setBranch] = useState(initialBranch ?? defaultBranch);
 
     const { data, error, isLoading } = useSWR<{ files: BranchFile[]; truncated: boolean }>(
         `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/files`
@@ -309,40 +291,7 @@ export function RepoFileSidebar({
             style={{ width: sidebarWidth }}
         >
             <div className="p-4 border-b border-border space-y-3">
-                <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="secondary" size="sm" className="flex-1 justify-between h-9">
-                                <span className="flex items-center gap-2">
-                                    <GitBranch className="h-4 w-4" />
-                                    {branch}
-                                </span>
-                                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56">
-                            {branches.map((b) => (
-                                <DropdownMenuItem
-                                    key={b}
-                                    onClick={() => {
-                                        setBranch(b);
-                                        onBranchChange?.(b);
-                                    }}
-                                >
-                                    <GitBranch className="mr-2 h-4 w-4 opacity-50" />
-                                    {b}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Link
-                        href="#"
-                        className="flex items-center gap-1.5 px-2.5 h-9 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md hover:bg-accent/50"
-                    >
-                        <History className="h-3.5 w-3.5" />
-                        <span>{latestCommit.totalCommits}</span>
-                    </Link>
-                </div>
+                <BranchBar user={user} repo={repo} defaultBranch={defaultBranch} selectedBranch={branch} onBranchChange={onBranchChange} />
 
                 <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">

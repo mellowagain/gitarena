@@ -103,21 +103,7 @@ function RepoTopBar({ user, repo }: { user: string; repo: string }) {
 
 export default function RepoPage({ params }: { params: Promise<{ user: string; repo: string }> }) {
     const { user, repo } = use(params);
-
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
-    const [showSource, setShowSource] = useState(false);
-    const [wrapLines, setWrapLines] = useState(false);
-    const [branch, setBranch] = useState<string | null>(null);
-
     const { data, error, isLoading } = useSWR<RepoMetadata>(`http://localhost:8080/api/repos/${user}/${repo}`);
-
-    const effectiveBranch = branch ?? data?.defaultBranch ?? null;
-
-    const { data: readmeData } = useSWR<{ file_name: string; content: string }>(
-        effectiveBranch ? `http://localhost:8080/api/repo/${user}/${repo}/tree/${effectiveBranch}/readme` : null
-    );
-
-    const displayFile = selectedFile ?? readmeData?.file_name ?? null;
 
     if (isLoading) {
         return <RepoPageSkeleton user={user} repo={repo} />;
@@ -126,6 +112,21 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
     if (error || !data) {
         return <ErrorDisplay failed={"repo"} error={error} />;
     }
+
+    return <RepoPageContent user={user} repo={repo} meta={data} />;
+}
+
+function RepoPageContent({ user, repo, meta }: { user: string; repo: string; meta: RepoMetadata }) {
+    const [selectedFile, setSelectedFile] = useState<string | null>(null);
+    const [showSource, setShowSource] = useState(false);
+    const [wrapLines, setWrapLines] = useState(false);
+    const [branch, setBranch] = useState(meta.defaultBranch);
+
+    const { data: readmeData } = useSWR<{ file_name: string; content: string }>(
+        `http://localhost:8080/api/repo/${user}/${repo}/tree/${branch}/readme`
+    );
+
+    const displayFile = selectedFile ?? readmeData?.file_name ?? null;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -137,9 +138,9 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                     repo={repo}
                     selectedFile={selectedFile}
                     setSelectedFile={setSelectedFile}
-                    defaultBranch={data.defaultBranch}
+                    branch={branch}
                     onBranchChange={setBranch}
-                    branches={repoData.branches}
+                    defaultBranch={meta.defaultBranch}
                     latestCommit={repoData.latestCommit}
                 />
 
@@ -217,7 +218,7 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                             />
                         )}
                         {displayFile && !isMarkdown(displayFile) && (
-                            <CodeBlock user={user} repo={repo} branch={effectiveBranch} filename={displayFile} wrapLines={wrapLines} />
+                            <CodeBlock user={user} repo={repo} branch={branch} filename={displayFile} wrapLines={wrapLines} />
                         )}
                     </div>
                 </main>
@@ -225,13 +226,13 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                 <RepoSidebar
                     user={user}
                     repo={repo}
-                    description={data.description}
-                    projectId={data.id}
-                    license={data.license}
+                    description={meta.description}
+                    projectId={meta.id}
+                    license={meta.license}
                     //websiteUrl="idk"
                     //createdAt={"creation date"}
                     topics={[]}
-                    languages={data.languages}
+                    languages={meta.languages}
                     //latestRelease={repoData.latestRelease}
                     //contributors={repoData.contributors}
                 />

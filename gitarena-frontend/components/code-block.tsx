@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 import useSWR from "swr";
 import * as linguistLanguages from "linguist-languages";
 import type { Language } from "linguist-languages";
-import {ErrorDisplay} from "@/components/error-display";
+import { ErrorDisplay } from "@/components/error-display";
 
 export const gitarenaTheme: Record<string, React.CSSProperties> = {
     'code[class*="language-"]': { color: "var(--foreground)", background: "none" },
@@ -163,7 +163,7 @@ export function CodeBlockSkeleton() {
 /*
 
 TODO:
-- fetch latest commit and all branches and commit count for branch to show in sidebar top left
+- fetch latest commit and and commit count for branch to show in sidebar top left
 - change file endpoint from the raw ~blob to an actual json endpoint that also returns the file size and last commit info
 - add history button to see history for a file
 
