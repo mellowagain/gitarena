@@ -1,7 +1,6 @@
 "use client";
 
-import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, Edit3 } from "lucide-react";
-import Link from "next/link";
+import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, Edit3, WrapText } from "lucide-react";
 import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/top-bar";
@@ -9,6 +8,8 @@ import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
+import { ReadmeView, isMarkdown } from "@/components/readme-view";
+import { CodeBlock } from "@/components/code-block";
 
 // Mock data
 const repoData = {
@@ -52,246 +53,6 @@ const repoData = {
         { name: "Jordan", commits: 8, avatarUrl: null },
     ],
 };
-
-const readmeContent = `# test
-
-A lightweight git hosting solution built for speed and simplicity.
-
-## Features
-
-- Fast repository browsing
-- Built-in code review
-- Issue tracking
-- Cross-platform support
-
-## Getting Started
-
-\`\`\`bash
-git clone https://git.mari.zip/mellowagain/test.git
-cd test
-cargo build --release
-\`\`\`
-
-## License
-
-MIT License - see LICENSE for details.`;
-
-const fileContents: Record<string, string> = {
-    "src/main.rs": `use std::env;
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    println!("GitArena v0.1.0");
-    
-    if args.len() > 1 {
-        match args[1].as_str() {
-            "serve" => start_server(),
-            "init" => init_repo(),
-            _ => print_help(),
-        }
-    }
-}
-
-fn start_server() {
-    println!("Starting server on :3000...");
-}
-
-fn init_repo() {
-    println!("Initializing repository...");
-}
-
-fn print_help() {
-    println!("Usage: gitarena [command]");
-}`,
-    "src/lib.rs": `pub mod handlers;
-pub mod models;
-pub mod config;
-
-pub use config::Config;`,
-    "src/handlers/auth.rs": `use crate::models::User;
-
-pub async fn login(credentials: Credentials) -> Result<Token, AuthError> {
-    let user = User::find_by_email(&credentials.email).await?;
-    user.verify_password(&credentials.password)?;
-    
-    Ok(Token::generate(&user))
-}
-
-pub async fn logout(token: Token) -> Result<(), AuthError> {
-    token.invalidate().await
-}`,
-    "src/handlers/repo.rs": `use crate::models::Repository;
-
-pub async fn list_repos(user_id: i64) -> Vec<Repository> {
-    Repository::find_by_owner(user_id).await
-}
-
-pub async fn create_repo(name: &str, owner_id: i64) -> Result<Repository, RepoError> {
-    Repository::create(name, owner_id).await
-}`,
-    ".gitignore": `/target
-*.log
-.env
-.DS_Store`,
-    "Cargo.toml": `[package]
-name = "gitarena"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tokio = { version = "1", features = ["full"] }
-axum = "0.7"
-serde = { version = "1", features = ["derive"] }
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio"] }`,
-    LICENSE: `MIT License
-
-Copyright (c) 2024 mellowagain
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.`,
-};
-
-// Simple syntax highlighting based on file extension
-function tokenize(line: string, ext: string): React.ReactNode[] {
-    const rustKeywords =
-        /\b(fn|let|mut|pub|use|mod|struct|impl|enum|match|if|else|for|while|loop|return|async|await|const|static|type|where|trait|self|Self|crate|super|move|ref|in|as|break|continue|unsafe|extern|dyn)\b/g;
-    const jsKeywords =
-        /\b(function|const|let|var|if|else|for|while|return|import|export|from|default|class|extends|new|this|async|await|try|catch|throw|typeof|instanceof|true|false|null|undefined)\b/g;
-    const tomlKeywords = /\b(true|false)\b/g;
-
-    const keywords = ext === "rs" ? rustKeywords : ext === "toml" ? tomlKeywords : jsKeywords;
-    const stringRegex = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g;
-    const commentRegex = ext === "rs" || ext === "toml" ? /\/\/.*$|#.*$/g : /\/\/.*$|\/\*[\s\S]*?\*\//g;
-    const numberRegex = /\b(\d+\.?\d*)\b/g;
-
-    const commentMatch = line.match(commentRegex);
-    if ((commentMatch && line.trim().startsWith("//")) || line.trim().startsWith("#")) {
-        return [
-            <span key="comment" className="text-muted-foreground/50 italic">
-                {line}
-            </span>,
-        ];
-    }
-
-    let result = line;
-
-    result = result.replace(stringRegex, (match) => `\x00STR${match}\x00END`);
-    result = result.replace(keywords, (match) => `\x00KW${match}\x00END`);
-    result = result.replace(numberRegex, (match) => `\x00NUM${match}\x00END`);
-
-    const parts = result.split(/(\x00(?:STR|KW|NUM).*?\x00END)/g);
-
-    return parts.map((part, i) => {
-        if (part.startsWith("\x00STR")) {
-            const content = part.slice(4, -4);
-            return (
-                <span key={i} className="text-amber-400/80">
-                    {content}
-                </span>
-            );
-        }
-        if (part.startsWith("\x00KW")) {
-            const content = part.slice(3, -4);
-            return (
-                <span key={i} className="text-blue-400/90">
-                    {content}
-                </span>
-            );
-        }
-        if (part.startsWith("\x00NUM")) {
-            const content = part.slice(4, -4);
-            return (
-                <span key={i} className="text-purple-400/80">
-                    {content}
-                </span>
-            );
-        }
-        return (
-            <span key={i} className="text-foreground/80">
-                {part}
-            </span>
-        );
-    });
-}
-
-function CodeBlock({ content, filename }: { content: string; filename: string }) {
-    const lines = content.split("\n");
-    const ext = filename.split(".").pop() || "";
-
-    return (
-        <div className="font-mono text-sm leading-relaxed">
-            {lines.map((line, i) => (
-                <div key={i} className="flex hover:bg-accent/30 group py-0.5">
-                    <span className="w-14 shrink-0 text-right pr-4 text-muted-foreground/40 select-none group-hover:text-muted-foreground/60">
-                        {i + 1}
-                    </span>
-                    <pre className="flex-1 overflow-x-auto pr-6">
-                        <code>{tokenize(line || " ", ext)}</code>
-                    </pre>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function ReadmeView({ showSource }: { showSource: boolean }) {
-    if (showSource) {
-        return <CodeBlock content={readmeContent} filename="README.md" />;
-    }
-
-    const sections = readmeContent.split("\n\n");
-
-    return (
-        <div className="p-8 space-y-5">
-            {sections.map((section, i) => {
-                if (section.startsWith("# ")) {
-                    return (
-                        <h1 key={i} className="text-2xl font-semibold text-foreground">
-                            {section.slice(2)}
-                        </h1>
-                    );
-                }
-                if (section.startsWith("## ")) {
-                    return (
-                        <h2 key={i} className="text-lg font-medium text-foreground pt-2">
-                            {section.slice(3)}
-                        </h2>
-                    );
-                }
-                if (section.startsWith("```")) {
-                    const lines = section.split("\n");
-                    const code = lines.slice(1, -1).join("\n");
-                    return (
-                        <pre key={i} className="rounded-md bg-card border border-border p-5 font-mono text-sm overflow-x-auto">
-                            <code className="text-muted-foreground">{code}</code>
-                        </pre>
-                    );
-                }
-                if (section.startsWith("- ")) {
-                    return (
-                        <ul key={i} className="list-disc list-inside text-muted-foreground space-y-1.5">
-                            {section.split("\n").map((item, j) => (
-                                <li key={j}>{item.slice(2)}</li>
-                            ))}
-                        </ul>
-                    );
-                }
-                return (
-                    <p key={i} className="text-muted-foreground leading-relaxed">
-                        {section}
-                    </p>
-                );
-            })}
-        </div>
-    );
-}
 
 interface RepoMetadata {
     id: number;
@@ -345,8 +106,18 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
 
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [showReadmeSource, setShowReadmeSource] = useState(false);
+    const [wrapLines, setWrapLines] = useState(false);
+    const [branch, setBranch] = useState<string | null>(null);
 
     const { data, error, isLoading } = useSWR<RepoMetadata>(`http://localhost:8080/api/repos/${user}/${repo}`);
+
+    const effectiveBranch = branch ?? data?.defaultBranch ?? null;
+
+    const { data: readmeData } = useSWR<{ file_name: string; content: string }>(
+        effectiveBranch ? `http://localhost:8080/api/repo/${user}/${repo}/tree/${effectiveBranch}/readme` : null
+    );
+
+    const displayFile = selectedFile ?? readmeData?.file_name ?? null;
 
     if (isLoading) {
         return <RepoPageSkeleton user={user} repo={repo} />;
@@ -367,6 +138,7 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                     selectedFile={selectedFile}
                     setSelectedFile={setSelectedFile}
                     defaultBranch={data.defaultBranch}
+                    onBranchChange={setBranch}
                     branches={repoData.branches}
                     latestCommit={repoData.latestCommit}
                 />
@@ -375,13 +147,42 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                     <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                         <div className="flex items-center gap-2.5">
                             <FileText className="h-[18px] w-[18px] text-muted-foreground" />
-                            <span className="font-medium">{selectedFile || "README.md"}</span>
-                            {((selectedFile && !selectedFile.endsWith(".md")) || showReadmeSource) && (
+                            <span className="font-medium">{displayFile ?? "README"}</span>
+                            {((displayFile && !isMarkdown(displayFile)) || showReadmeSource) && (
                                 <span className="text-sm text-muted-foreground">2.4 KB</span>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            {(!selectedFile || selectedFile.endsWith(".md")) && (
+                            {((displayFile && !isMarkdown(displayFile)) || showReadmeSource) && (
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                    >
+                                        <Edit3 className="h-3.5 w-3.5" />
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setWrapLines((w) => !w)}
+                                        className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
+                                    >
+                                        <WrapText className="h-3.5 w-3.5" />
+                                        Wrap
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                    >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Raw
+                                    </Button>
+                                </div>
+                            )}
+                            {displayFile && isMarkdown(displayFile) && (
                                 <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
                                     <button
                                         onClick={() => setShowReadmeSource(false)}
@@ -407,34 +208,20 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
                                     </button>
                                 </div>
                             )}
-                            {((selectedFile && !selectedFile.endsWith(".md")) || showReadmeSource) && (
-                                <div className="flex items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                    >
-                                        <Edit3 className="h-3.5 w-3.5" />
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        Raw
-                                    </Button>
-                                </div>
-                            )}
                         </div>
                     </div>
 
                     <div className="flex-1 overflow-auto">
-                        {selectedFile && fileContents[selectedFile] ? (
-                            <CodeBlock content={fileContents[selectedFile]} filename={selectedFile} />
-                        ) : (
-                            <ReadmeView showSource={showReadmeSource} />
+                        {displayFile && isMarkdown(displayFile) && readmeData && (
+                            <ReadmeView
+                                content={readmeData.content}
+                                fileName={readmeData.file_name}
+                                showSource={showReadmeSource}
+                                wrapLines={wrapLines}
+                            />
+                        )}
+                        {displayFile && !isMarkdown(displayFile) && (
+                            <CodeBlock user={user} repo={repo} branch={effectiveBranch} filename={displayFile} wrapLines={wrapLines} />
                         )}
                     </div>
                 </main>
