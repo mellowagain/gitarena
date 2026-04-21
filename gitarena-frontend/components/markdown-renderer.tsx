@@ -4,7 +4,8 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { CodeBlockContent, gitarenaTheme } from "@/components/code-block";
+import { gitarenaTheme } from "@/components/code-block";
+import { CodeBlockContent } from "@/components/code-block";
 
 const MARKDOWN_EXTENSIONS = new Set(["md", "mdx", "markdown"]);
 
@@ -22,15 +23,15 @@ function proxyImageUrl(url: string): string {
     return `http://localhost:8080/api/proxy/${hex}`;
 }
 
-export function ReadmeView({
+export function MarkdownRenderer({
     content,
     fileName,
-    showSource,
+    showSource = false,
     wrapLines = false,
 }: {
     content: string;
     fileName: string;
-    showSource: boolean;
+    showSource?: boolean;
     wrapLines?: boolean;
 }) {
     if (showSource) {
@@ -84,7 +85,9 @@ export function ReadmeView({
                         <th className="border border-border px-4 py-2 text-left font-medium text-foreground bg-secondary">{children}</th>
                     ),
                     td: ({ children }) => <td className="border border-border px-4 py-2 text-muted-foreground">{children}</td>,
-                    img: ({ src, alt }) => <img src={typeof src === "string" ? proxyImageUrl(src) : undefined} alt={alt} className="inline-block align-middle" />,
+                    img: ({ src, alt }) => (
+                        <img src={typeof src === "string" ? proxyImageUrl(src) : undefined} alt={alt} className="inline-block align-middle" />
+                    ),
                 }}
             >
                 {content}

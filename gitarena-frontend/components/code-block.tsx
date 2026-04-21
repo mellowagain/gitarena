@@ -159,6 +159,16 @@ export function CodeBlockSkeleton() {
     );
 }
 
+/*
+
+TODO:
+- use actual error display component on line 191 instead of hand rolling it
+- fetch latest commit and all branches and commit count for branch to show in sidebar top left
+- change file endpoint from the raw ~blob to an actual json endpoint that also returns the file size and last commit info
+- add history button to see history for a file
+
+ */
+
 export function CodeBlock({
     user,
     repo,
