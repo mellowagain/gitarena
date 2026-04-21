@@ -6,6 +6,7 @@ import { AlertCircle } from "lucide-react";
 import useSWR from "swr";
 import * as linguistLanguages from "linguist-languages";
 import type { Language } from "linguist-languages";
+import {ErrorDisplay} from "@/components/error-display";
 
 export const gitarenaTheme: Record<string, React.CSSProperties> = {
     'code[class*="language-"]': { color: "var(--foreground)", background: "none" },
@@ -162,7 +163,6 @@ export function CodeBlockSkeleton() {
 /*
 
 TODO:
-- use actual error display component on line 191 instead of hand rolling it
 - fetch latest commit and all branches and commit count for branch to show in sidebar top left
 - change file endpoint from the raw ~blob to an actual json endpoint that also returns the file size and last commit info
 - add history button to see history for a file
@@ -191,13 +191,7 @@ export function CodeBlock({
     }
 
     if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground py-16">
-                <AlertCircle className="h-5 w-5 text-destructive" />
-                <p className="text-sm font-medium">Failed to load file</p>
-                <p className="text-xs font-mono text-muted-foreground/60">{error.message}</p>
-            </div>
-        );
+        return <ErrorDisplay failed={"code block"} error={error} />;
     }
 
     return <CodeBlockContent content={content ?? ""} filename={filename} wrapLines={wrapLines} />;
