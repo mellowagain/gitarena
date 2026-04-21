@@ -1,19 +1,19 @@
 use crate::err;
 use crate::git::GIT_HASH_KIND;
-use crate::git::history::last_commit_for_blob;
+use crate::git::history::batch_last_commits;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::{Branch, Repository};
 
 use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use actix_web::{HttpResponse, Responder, web};
-use anyhow::Result;
-use async_recursion::async_recursion;
+use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
-use git2::Repository as Git2Repository;
-use gitarena_common::database::{Database, Pool};
+use git2::Oid;
+use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use gix::ObjectId;
 use gix::objs::Tree;
@@ -21,12 +21,12 @@ use gix::objs::tree::EntryKind;
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
 use serde::Serialize;
-use sqlx::Transaction;
+use tracing::instrument;
 use utoipa::ToSchema;
 
 const MAX_ENTRIES: usize = 10_000;
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum FileType {
     /// Directory
@@ -53,11 +53,9 @@ impl From<EntryKind> for FileType {
     }
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct FileCommitInfo {
-    /// SHA1 hash of the commit
-    sha1: String,
+struct CommitInfo {
     /// Commit message
     message: String,
     /// Unix timestamp of the commit
@@ -66,8 +64,18 @@ pub(crate) struct FileCommitInfo {
     author_name: String,
     /// Author email address
     author_email: String,
-    /// GitArena user ID of the author, if registered
+    /// GitArena user ID of the author
     author_uid: Option<i32>,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct FileCommitInfo {
+    /// SHA1 hash of the commit
+    sha1: String,
+    #[serde(flatten)]
+    #[schema(inline)]
+    info: CommitInfo,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -89,19 +97,19 @@ pub(crate) struct FileEntry {
 pub(crate) struct BranchFilesResponse {
     /// File entries, capped at 10'000
     files: Vec<FileEntry>,
+    /// Whether the file listing was truncated due to exceeding the 10'000 entry limit
+    truncated: bool,
 }
 
-#[async_recursion(?Send)]
-async fn collect_entries(
-    tree: Tree,
-    path_prefix: &str,
-    store: Arc<Store>,
-    libgit2_repo: &Git2Repository,
-    full_tree_name: &str,
-    transaction: &mut Transaction<'_, Database>,
-    files: &mut Vec<FileEntry>,
-    remaining: &mut usize,
-) -> Result<()> {
+#[derive(Debug)]
+struct CollectedEntry {
+    file_type: FileType,
+    file_name: String,
+    entry_oid: ObjectId,
+}
+
+#[instrument(level = "trace", skip(store, files), fields(files = files.len()))]
+fn collect_entries(tree: Tree, path_prefix: &str, store: &Arc<Store>, files: &mut Vec<CollectedEntry>, remaining: &mut usize) -> Result<()> {
     let mut entries = tree.entries;
 
     entries.sort_by(|lhs, rhs| {
@@ -135,43 +143,18 @@ async fn collect_entries(
         let full_path = if path_prefix.is_empty() {
             name.to_owned()
         } else {
-            format!("{}/{}", path_prefix, name)
+            format!("{path_prefix}/{name}")
         };
-
-        let oid = last_commit_for_blob(libgit2_repo, full_tree_name, &full_path)
-            .await?
-            .ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob"))?;
-        let commit = libgit2_repo.find_commit(oid)?;
-
-        let (author_name, author_uid, author_email) = commit.author().try_disassemble(transaction).await;
 
         let file_type = FileType::from(entry.mode.kind());
         let is_dir = matches!(file_type, FileType::Tree);
 
-        let submodule_target_oid = if matches!(entry.mode.kind(), EntryKind::Commit) {
-            Some(
-                read_blob_content(entry.oid.as_ref(), store.clone())
-                    .await
-                    .unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()),
-            )
-        } else {
-            None
-        };
-
         *remaining -= 1;
 
-        files.push(FileEntry {
+        files.push(CollectedEntry {
             file_type,
             file_name: full_path.clone(),
-            submodule_target_oid,
-            commit: FileCommitInfo {
-                sha1: format!("{oid}"),
-                message: commit.message().unwrap_or_default().to_owned(),
-                time: commit.time().seconds(),
-                author_name,
-                author_email,
-                author_uid,
-            },
+            entry_oid: entry.oid,
         });
 
         if is_dir {
@@ -179,7 +162,7 @@ async fn collect_entries(
             let (subtree_ref, _) = store.to_handle_arc().find_tree(entry.oid.as_ref(), &mut subtree_buffer)?;
             let subtree = Tree::from(subtree_ref);
 
-            collect_entries(subtree, &full_path, store.clone(), libgit2_repo, full_tree_name, transaction, files, remaining).await?;
+            collect_entries(subtree, &full_path, store, files, remaining)?;
         }
     }
 
@@ -215,10 +198,66 @@ pub(crate) async fn branch_files(repo: Repository, branch: Branch, db_pool: web:
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree_ref);
 
-    let mut files = Vec::<FileEntry>::new();
+    let mut collected = Vec::<CollectedEntry>::new();
     let mut remaining = MAX_ENTRIES;
 
-    collect_entries(tree, "", store, &libgit2_repo, full_tree_name, &mut transaction, &mut files, &mut remaining).await?;
+    collect_entries(tree, "", &store, &mut collected, &mut remaining)?;
 
-    Ok(HttpResponse::Ok().json(BranchFilesResponse { files }))
+    let paths: HashSet<String> = collected.iter().map(|e| e.file_name.clone()).collect();
+    let path_to_commit = batch_last_commits(&libgit2_repo, full_tree_name, paths).await?;
+
+    let unique_oids: HashSet<Oid> = path_to_commit.values().copied().collect();
+    let mut commit_cache: HashMap<Oid, CommitInfo> = HashMap::with_capacity(unique_oids.len());
+
+    for oid in unique_oids {
+        let commit = libgit2_repo.find_commit(oid)?;
+        let (author_name, author_uid, author_email) = commit.author().try_disassemble(&mut transaction).await;
+
+        commit_cache.insert(
+            oid,
+            CommitInfo {
+                message: commit.message().unwrap_or_default().to_owned(),
+                time: commit.time().seconds(),
+                author_name,
+                author_uid,
+                author_email,
+            },
+        );
+    }
+
+    let mut files = Vec::<FileEntry>::with_capacity(collected.len());
+
+    for entry in collected {
+        let commit_oid = path_to_commit
+            .get(&entry.file_name)
+            .copied()
+            .ok_or_else(|| err!(INTERNAL_SERVER_ERROR, "No last commit found for blob"))?;
+
+        let info = commit_cache.get(&commit_oid).ok_or_else(|| anyhow!("Commit cache miss for {commit_oid}"))?;
+
+        let submodule_target_oid = if matches!(entry.file_type, FileType::Commit) {
+            Some(
+                read_blob_content(entry.entry_oid.as_ref(), store.clone())
+                    .await
+                    .unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()),
+            )
+        } else {
+            None
+        };
+
+        files.push(FileEntry {
+            file_type: entry.file_type,
+            file_name: entry.file_name,
+            submodule_target_oid,
+            commit: FileCommitInfo {
+                sha1: format!("{commit_oid}"),
+                info: info.clone(),
+            },
+        });
+    }
+
+    Ok(HttpResponse::Ok().json(BranchFilesResponse {
+        files,
+        truncated: remaining == 0,
+    }))
 }
