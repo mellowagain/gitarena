@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, Edit3, WrapText, MoreHorizontal } from "lucide-react";
+import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, WrapText, MoreHorizontal, History } from "lucide-react";
 import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -229,14 +229,6 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                            >
-                                                <Edit3 className="h-3.5 w-3.5" />
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
                                                 onClick={() => setWrapLines((w) => !w)}
                                                 className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
                                             >
@@ -257,6 +249,14 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                                     <ExternalLink className="h-3.5 w-3.5" />
                                                     Raw
                                                 </a>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                            >
+                                                <History className="h-3.5 w-3.5" />
+                                                History
                                             </Button>
                                         </div>
                                     )}
