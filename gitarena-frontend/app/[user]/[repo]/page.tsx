@@ -15,49 +15,6 @@ import prettyBytes from "pretty-bytes";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 
-// Mock data
-const repoData = {
-    org: "mellowagain",
-    name: "test",
-    description: "A lightweight git hosting solution built for speed and simplicity.",
-    projectId: 1,
-    size: "1.81 kB",
-    stars: 12,
-    forks: 3,
-    watchers: 5,
-    license: "MIT",
-    websiteUrl: "https://gitarena.dev",
-    visibility: "public" as "public" | "internal" | "private",
-    defaultBranch: "main",
-    branches: ["main", "develop", "feature/auth"],
-    topics: ["git", "self-hosted", "rust"],
-    createdAt: "Jan 15, 2024",
-    languages: [
-        { name: "Rust", percentage: 68.4, color: "#dea584" },
-        { name: "TOML", percentage: 18.2, color: "#9c4221" },
-        { name: "Shell", percentage: 13.4, color: "#89e051" },
-    ],
-    latestCommit: {
-        hash: "9bf39d9",
-        message: "init",
-        author: "Mari",
-        avatarUrl: null,
-        date: "19 hours ago",
-        totalCommits: 1,
-        ciStatus: "passed" as "pending" | "passed" | "failed" | "cancelled",
-    },
-    latestRelease: {
-        tag: "v0.1.0",
-        name: "Initial Release",
-        date: "2 days ago",
-    },
-    contributors: [
-        { name: "Mari", commits: 24, avatarUrl: null },
-        { name: "Alex", commits: 12, avatarUrl: null },
-        { name: "Jordan", commits: 8, avatarUrl: null },
-    ],
-};
-
 interface RepoMetadata {
     id: number;
 
@@ -148,7 +105,6 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                     branch={branch}
                     onBranchChange={setBranch}
                     defaultBranch={meta.defaultBranch}
-                    latestCommit={repoData.latestCommit}
                 />
 
                 <main className="flex-1 flex flex-col min-w-0 overflow-hidden">

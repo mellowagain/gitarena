@@ -1,23 +1,11 @@
 "use client";
 
-import {
-    GitCommit,
-    ChevronDown,
-    ChevronRight,
-    Folder,
-    FileText,
-    FileCode,
-    Link2,
-    CheckCircle2,
-    XCircle,
-    Loader2,
-    Ban,
-    TriangleAlert,
-} from "lucide-react";
+import { GitCommit, ChevronDown, ChevronRight, Folder, FileText, FileCode, Link2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import React, { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { BranchBar } from "@/components/branch-bar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { ErrorDisplay } from "@/components/error-display";
@@ -30,15 +18,6 @@ export type FileNode = {
     lastChanged?: string;
 };
 
-type LatestCommit = {
-    hash: string;
-    message: string;
-    author: string;
-    date: string;
-    totalCommits: number;
-    ciStatus: "pending" | "passed" | "failed" | "cancelled";
-};
-
 export type RepoFileSidebarProps = {
     user: string;
     repo: string;
@@ -49,7 +28,6 @@ export type RepoFileSidebarProps = {
     onBranchChange: (branch: string) => void;
 
     defaultBranch: string;
-    latestCommit: LatestCommit;
 };
 
 interface BranchFile {
@@ -109,16 +87,60 @@ function FileTreeSkeleton() {
     );
 }
 
-function CIStatusBadge({ status }: { status: "pending" | "passed" | "failed" | "cancelled" }) {
-    const config = {
-        pending: { icon: Loader2, className: "text-yellow-500 animate-spin" },
-        passed: { icon: CheckCircle2, className: "text-green-500" },
-        failed: { icon: XCircle, className: "text-red-500" },
-        cancelled: { icon: Ban, className: "text-muted-foreground" },
-    };
+function RepoFileSidebarCommitInfoSkeleton() {
+    return (
+        <div className="flex items-start gap-2.5 w-full animate-pulse">
+            <div className="h-6 w-6 rounded-full bg-accent shrink-0" />
+            <div className="flex-1 space-y-2">
+                <div className="h-3 w-3/4 rounded bg-accent" />
+                <div className="h-2.5 w-1/2 rounded bg-accent" />
+            </div>
+        </div>
+    );
+}
 
-    const { icon: Icon, className } = config[status];
-    return <Icon className={`h-4 w-4 ${className}`} />;
+function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo: string; branch: string }) {
+    const { data, error, isLoading } = useSWR<{ commits: FileCommitInfo[] }>(
+        `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/commits?limit=1`
+    );
+
+    if (isLoading) {
+        return <RepoFileSidebarCommitInfoSkeleton />;
+    }
+
+    if (error || !data) {
+        return <ErrorDisplay failed={"latest commit"} error={error} />;
+    }
+
+    const commit = data.commits[0];
+
+    return (
+        <>
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
+                {commit.authorName[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{commit.authorName}</span>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="truncate cursor-default">{commit.message}</span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm whitespace-pre-wrap">{commit.message.trim()}</TooltipContent>
+                    </Tooltip>
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs">
+                    <Link href="#" className="font-mono hover:text-foreground transition-colors flex items-center gap-1">
+                        <GitCommit className="h-3.5 w-3.5" />
+                        {commit.sha1.slice(0, 7)}
+                    </Link>
+                    <span className="ml-auto">
+                        {formatDistanceToNowStrict(new Date(commit.time * 1000), { addSuffix: true, locale: shortLocale })}
+                    </span>
+                </div>
+            </div>
+        </>
+    );
 }
 
 function FileTooltip({ commit, date, children }: { commit: string; date: string; children: React.ReactNode }) {
@@ -255,7 +277,6 @@ export function RepoFileSidebar({
     branch,
     onBranchChange,
     defaultBranch,
-    latestCommit,
 }: RepoFileSidebarProps) {
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
@@ -313,23 +334,7 @@ export function RepoFileSidebar({
                 <BranchBar user={user} repo={repo} defaultBranch={defaultBranch} selectedBranch={branch} onBranchChange={onBranchChange} />
 
                 <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
-                        {latestCommit.author[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">{latestCommit.author}</span>
-                            <span className="truncate">{latestCommit.message}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs">
-                            <CIStatusBadge status={latestCommit.ciStatus} />
-                            <Link href="#" className="font-mono hover:text-foreground transition-colors flex items-center gap-1">
-                                <GitCommit className="h-3.5 w-3.5" />
-                                {latestCommit.hash}
-                            </Link>
-                            <span>{latestCommit.date}</span>
-                        </div>
-                    </div>
+                    <RepoFileSidebarCommitInfo user={user} repo={repo} branch={branch} />
                 </div>
             </div>
 
