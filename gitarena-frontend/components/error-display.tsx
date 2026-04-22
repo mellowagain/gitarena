@@ -10,7 +10,6 @@ interface ErrorDisplayProps {
 export function ErrorDisplay({ failed, error }: ErrorDisplayProps) {
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-            <TopBar />
             <div className="flex flex-1 items-center justify-center">
                 <div className="text-center space-y-3 max-w-sm">
                     <p className="text-sm font-medium">Failed to load {failed}</p>

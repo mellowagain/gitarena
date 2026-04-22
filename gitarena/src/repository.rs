@@ -25,7 +25,7 @@ use gix::refs::file::loose::Reference;
 use serde::Serialize;
 use sqlx::types::Json;
 use sqlx::{FromRow, Transaction};
-use tracing::instrument;
+use tracing::{Level, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 
@@ -116,7 +116,7 @@ impl Repository {
         Ok(gix::discover(self.get_fs_path(tx).await?)?)
     }
 
-    #[instrument(ret, err, skip(tx))]
+    #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
     pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
         // Instead of using `config::get_optional_setting`, we run our own query to get both username and repo base dir in one query
         // https://stackoverflow.com/a/16364390
@@ -133,7 +133,7 @@ impl Repository {
         Ok(format!("{}/{}/{}", base_dir, username, &self.name))
     }
 
-    #[instrument(ret, err, skip(tx))]
+    #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
     pub(crate) async fn repo_size(&self, tx: &mut Transaction<'_, Database>) -> Result<u64> {
         Ok(dir::get_size(self.get_fs_path(tx).await?)?)
     }
