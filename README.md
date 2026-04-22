@@ -57,7 +57,7 @@ to view the logs, look for a file in the `logs` directory ending with the curren
 
 Repository:
 
-![Repository](https://i.cutegirl.tech/vka53i6m9wnv.png)
+![Repository](docs/readme_screenshots/repo.png)
 
 Repository commits:
 
