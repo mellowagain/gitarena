@@ -64,6 +64,18 @@ const PRISM_NAME_OVERRIDES: Record<string, string> = {
     "c++": "cpp",
     "c#": "csharp",
     shell: "bash",
+    sqlpl: "sql",
+    tsql: "sql",
+    plpgsql: "sql",
+    // filename-detected languages whose linguist names differ from Prism's
+    "vim script": "vim",
+    batchfile: "batch",
+    starlark: "python",
+    snakemake: "python",
+    "alpine abuild": "bash",
+    "ant build system": "xml",
+    soong: "json",
+    xmake: "lua",
 };
 
 const TYPE_ORDER: Record<string, number> = { programming: 0, markup: 1, data: 2, prose: 3 };
@@ -89,11 +101,15 @@ function buildExtMap(): Map<string, string> {
         candidates.sort((a, b) => {
             const aAlias = (a.aliases ?? []).includes(ext) ? 0 : 1;
             const bAlias = (b.aliases ?? []).includes(ext) ? 0 : 1;
-            if (aAlias !== bAlias) return aAlias - bAlias;
+            if (aAlias !== bAlias) {
+                return aAlias - bAlias;
+            }
 
             const aPrimary = a.extensions?.[0]?.slice(1).toLowerCase() === ext ? 0 : 1;
             const bPrimary = b.extensions?.[0]?.slice(1).toLowerCase() === ext ? 0 : 1;
-            if (aPrimary !== bPrimary) return aPrimary - bPrimary;
+            if (aPrimary !== bPrimary) {
+                return aPrimary - bPrimary;
+            }
 
             return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);
         });
@@ -105,17 +121,62 @@ function buildExtMap(): Map<string, string> {
     return map;
 }
 
+function buildFilenameMap(): Map<string, string> {
+    const byFilename = new Map<string, Language[]>();
+
+    for (const lang of Object.values(linguistLanguages) as Language[]) {
+        for (const fn of lang.filenames ?? []) {
+            const bucket = byFilename.get(fn);
+            if (bucket) {
+                bucket.push(lang);
+            } else {
+                byFilename.set(fn, [lang]);
+            }
+        }
+    }
+
+    const map = new Map<string, string>();
+
+    for (const [fn, candidates] of byFilename) {
+        candidates.sort((a, b) => {
+            const aAlias = (a.aliases ?? []).map((s) => s.toLowerCase()).includes(fn.toLowerCase()) ? 0 : 1;
+            const bAlias = (b.aliases ?? []).map((s) => s.toLowerCase()).includes(fn.toLowerCase()) ? 0 : 1;
+            if (aAlias !== bAlias) {
+                return aAlias - bAlias;
+            }
+
+            const aPrimary = a.filenames?.[0] === fn ? 0 : 1;
+            const bPrimary = b.filenames?.[0] === fn ? 0 : 1;
+            if (aPrimary !== bPrimary) {
+                return aPrimary - bPrimary;
+            }
+
+            return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);
+        });
+
+        const name = candidates[0].name.toLowerCase();
+        map.set(fn, PRISM_NAME_OVERRIDES[name] ?? name);
+    }
+
+    return map;
+}
+
 const EXT_TO_LANGUAGE = buildExtMap();
+
+const FILENAME_TO_LANGUAGE = buildFilenameMap();
 
 export const textFetcher = (url: string) =>
     fetch(url).then((res) => {
-        if (!res.ok) throw new Error(res.statusText);
+        if (!res.ok) {
+            throw new Error(res.statusText);
+        }
         return res.text();
     });
 
 export function CodeBlockContent({ content, filename, wrapLines = false }: { content: string; filename: string; wrapLines?: boolean }) {
-    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-    const language = EXT_TO_LANGUAGE.get(ext) ?? ext;
+    const basename = filename.split("/").pop() ?? filename;
+    const ext = basename.split(".").pop()?.toLowerCase() ?? "";
+    const language = FILENAME_TO_LANGUAGE.get(basename) ?? EXT_TO_LANGUAGE.get(ext) ?? ext;
 
     return (
         <SyntaxHighlighter
@@ -142,6 +203,14 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
     );
 }
 
+/*
+
+TODO:
+- fetch latest commit to show in sidebar top left
+- add history button to see history for a file
+
+ */
+
 export function CodeBlockSkeleton() {
     return (
         <div className="font-mono text-sm leading-relaxed pr-6 animate-pulse">
@@ -156,12 +225,3 @@ export function CodeBlockSkeleton() {
         </div>
     );
 }
-
-/*
-
-TODO:
-- fetch latest commit to show in sidebar top left
-- change file endpoint from the raw ~blob to an actual json endpoint that also returns the file size and last commit info
-- add history button to see history for a file
-
- */

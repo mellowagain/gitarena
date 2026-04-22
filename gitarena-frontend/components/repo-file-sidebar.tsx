@@ -21,7 +21,6 @@ import { BranchBar } from "@/components/branch-bar";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { ErrorDisplay } from "@/components/error-display";
-import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
 
 export type FileNode = {
     name: string;
@@ -200,7 +199,7 @@ function FileTreeItem({
             ) : (
                 <FileText className="h-[18px] w-[18px] shrink-0" />
             )}
-            <span className="shrink-0 text-left">{node.name}</span>
+            <span className="min-w-0 truncate text-left">{node.name}</span>
             {node.lastCommit && showCommit && (
                 <span className="text-xs text-muted-foreground/40 truncate flex-1 text-left">{node.lastCommit}</span>
             )}
@@ -267,22 +266,6 @@ export function RepoFileSidebar({
         `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/files`
     );
 
-    if (error || (!data && !isLoading)) {
-        return <ErrorDisplay failed={"files"} error={error} />;
-    }
-
-    const toggleFolder = (path: string) => {
-        setExpandedFolders((prev) => {
-            const next = new Set(prev);
-            if (next.has(path)) {
-                next.delete(path);
-            } else {
-                next.add(path);
-            }
-            return next;
-        });
-    };
-
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) {
@@ -303,6 +286,22 @@ export function RepoFileSidebar({
             document.removeEventListener("mouseup", handleMouseUp);
         };
     }, [isResizing]);
+
+    if (error || (!data && !isLoading)) {
+        return <ErrorDisplay failed={"files"} error={error} />;
+    }
+
+    const toggleFolder = (path: string) => {
+        setExpandedFolders((prev) => {
+            const next = new Set(prev);
+            if (next.has(path)) {
+                next.delete(path);
+            } else {
+                next.add(path);
+            }
+            return next;
+        });
+    };
 
     return (
         <aside

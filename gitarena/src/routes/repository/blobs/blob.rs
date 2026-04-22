@@ -10,7 +10,7 @@ use gitarena_common::database::Pool;
 
 use std::sync::Arc;
 
-use actix_web::http::header::CONTENT_TYPE;
+use actix_web::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
@@ -116,11 +116,14 @@ pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::P
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let (_, content, _) = recursively_visit_blob_content(tree_ref, uri.blob.as_str(), store.clone(), &mut blob_buffer).await?;
 
-    let mime = infer::get(content.as_bytes()).map_or_else(|| "application/octet-stream", |ty| ty.mime_type());
+    let mime = infer::get(content.as_bytes()).map_or("text/plain", |ty| ty.mime_type());
 
     transaction.commit().await?;
 
-    Ok(HttpResponse::Ok().insert_header((CONTENT_TYPE, mime)).body(content))
+    Ok(HttpResponse::Ok()
+        .insert_header((CONTENT_TYPE, mime))
+        .insert_header((CONTENT_DISPOSITION, "inline"))
+        .body(content))
 }
 
 #[async_recursion(?Send)]
@@ -136,25 +139,22 @@ async fn recursively_visit_blob_content<'a>(
     let entry = tree.entries.iter().find(|e| e.filename == search).ok_or_else(|| err!(NOT_FOUND))?;
     let kind = entry.mode.kind();
 
-    match remaining {
-        Some(remaining) => {
-            if kind != EntryKind::Tree {
-                die!(NOT_FOUND);
-            }
-
-            let tree_ref = store.to_handle_arc().find_tree(entry.oid.as_ref(), buffer).map(|(tree, _)| tree)?;
-            let mut buffer = Vec::<u8>::new();
-
-            recursively_visit_blob_content(tree_ref, remaining, store, &mut buffer).await
+    if let Some(remaining) = remaining {
+        if kind != EntryKind::Tree {
+            die!(NOT_FOUND);
         }
-        None => {
-            if kind != EntryKind::Blob && kind != EntryKind::BlobExecutable {
-                die!(BAD_REQUEST, "Only blobs can be viewed in blob view");
-            }
 
-            let file_name = entry.filename.to_str().unwrap_or("Invalid file name");
+        let tree_ref = store.to_handle_arc().find_tree(entry.oid.as_ref(), buffer).map(|(tree, _)| tree)?;
+        let mut buffer = Vec::<u8>::new();
 
-            Ok((file_name.to_owned(), read_blob_content(entry.oid.as_ref(), store).await?, entry.mode))
+        recursively_visit_blob_content(tree_ref, remaining, store, &mut buffer).await
+    } else {
+        if kind != EntryKind::Blob && kind != EntryKind::BlobExecutable {
+            die!(BAD_REQUEST, "Only blobs can be viewed in blob view");
         }
+
+        let file_name = entry.filename.to_str().unwrap_or("Invalid file name");
+
+        Ok((file_name.to_owned(), read_blob_content(entry.oid.as_ref(), store).await?, entry.mode))
     }
 }

@@ -92,14 +92,6 @@ function StatButton({
     );
 }
 
-function getCloneUrl(protocol: "https" | "ssh", user: string, repo: string) {
-    const instanceConfig = useInstanceConfig();
-
-    return protocol === "https"
-        ? `${instanceConfig?.baseUrl ?? ""}/${user}/${repo}.git`
-        : `git@${instanceConfig?.baseUrl?.replace(/^https?:\/\//, "") ?? ""}:${user}/${repo}.git`;
-}
-
 export function RepoSidebar({
     user,
     repo,
@@ -114,7 +106,11 @@ export function RepoSidebar({
     contributors,
 }: RepoSidebarProps) {
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
-    const cloneUrl = getCloneUrl(protocol, user, repo);
+    const instanceConfig = useInstanceConfig();
+    const cloneUrl =
+        protocol === "https"
+            ? `${instanceConfig?.baseUrl ?? ""}/${user}/${repo}.git`
+            : `git@${instanceConfig?.baseUrl?.replace(/^https?:\/\//, "") ?? ""}:${user}/${repo}.git`;
 
     const { data, error, isLoading } = useSWR<RepoStats>(`http://localhost:8080/api/repos/${user}/${repo}/stats`);
 
