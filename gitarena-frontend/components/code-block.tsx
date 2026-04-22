@@ -165,14 +165,6 @@ const EXT_TO_LANGUAGE = buildExtMap();
 
 const FILENAME_TO_LANGUAGE = buildFilenameMap();
 
-export const textFetcher = (url: string) =>
-    fetch(url).then((res) => {
-        if (!res.ok) {
-            throw new Error(res.statusText);
-        }
-        return res.text();
-    });
-
 export function CodeBlockContent({ content, filename, wrapLines = false }: { content: string; filename: string; wrapLines?: boolean }) {
     const basename = filename.split("/").pop() ?? filename;
     const ext = basename.split(".").pop()?.toLowerCase() ?? "";
