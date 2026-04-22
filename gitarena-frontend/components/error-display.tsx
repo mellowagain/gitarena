@@ -1,7 +1,5 @@
 "use client";
 
-import { TopBar } from "@/components/top-bar";
-
 interface ErrorDisplayProps {
     failed: string;
     error?: Error;

@@ -123,6 +123,29 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
 }
 
 /// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
+/// Returns a page of commits starting at `offset`, returning at most `limit` entries
+#[instrument(err, skip(repo))]
+pub(crate) async fn paged_commits(repo: &Git2Repository, reference: &str, offset: usize, limit: usize, reverse: bool) -> Result<Vec<Oid>> {
+    let mut results = Vec::<Oid>::with_capacity(limit);
+
+    let mut rev_walk = repo.revwalk()?;
+
+    let sort = if reverse { Sort::TIME | Sort::REVERSE } else { Sort::TIME };
+    rev_walk.set_sorting(sort)?;
+
+    match Oid::from_str(reference) {
+        Ok(oid) => rev_walk.push(oid)?,
+        Err(_) => rev_walk.push_ref(reference)?,
+    }
+
+    for result in rev_walk.skip(offset).take(limit) {
+        results.push(result?);
+    }
+
+    Ok(results)
+}
+
+/// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
 /// Returns at most `limit` commits or all commits if `limit == 0`
 #[instrument(err, skip(repo))]
 pub(crate) async fn all_commits(repo: &Git2Repository, reference: &str, limit: usize) -> Result<Vec<Oid>> {
