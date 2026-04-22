@@ -352,7 +352,12 @@ export default function DashboardPage() {
     }
 
     if (error) {
-        return <ErrorDisplay failed="Dashboard" error={error} />;
+        return (
+            <>
+                <TopBar />
+                <ErrorDisplay failed="Dashboard" error={error} />
+            </>
+        );
     }
 
     if (!currentUser) {

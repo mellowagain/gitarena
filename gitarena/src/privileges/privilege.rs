@@ -6,7 +6,7 @@ use crate::user::User;
 use anyhow::{Context, Result};
 use gitarena_common::database::Database;
 use sqlx::{FromRow, Transaction};
-use tracing::instrument;
+use tracing::{Level, instrument};
 
 #[derive(FromRow, Debug)]
 pub(crate) struct Privilege {
@@ -18,7 +18,7 @@ pub(crate) struct Privilege {
 
 macro_rules! generate_check {
     ($name:ident, $target:ident) => {
-        #[instrument(ret, err, skip(tx))]
+        #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
         pub(crate) async fn $name(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<bool> {
             Ok(if let Some(user) = user {
                 if &user.id != &repo.owner && !user.admin {
@@ -36,7 +36,7 @@ macro_rules! generate_check {
     };
 }
 
-#[instrument(ret, err, skip(tx))]
+#[instrument(ret(level = Level::DEBUG), err, skip(tx))]
 pub(crate) async fn check_access(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<bool> {
     if repo.disabled {
         return Ok(user.map_or_else(|| false, |user| user.admin));
@@ -66,7 +66,7 @@ generate_check!(check_manage_issues, can_manage_issues);
 generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
 
-#[instrument(ret, err, skip(tx))]
+#[instrument(ret(level = Level::DEBUG), err, skip(tx))]
 async fn get_repo_privilege(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Option<Privilege>> {
     Ok(
         sqlx::query_as::<_, Privilege>("select * from privileges where user_id = $1 and repo_id = $2 limit 1")
