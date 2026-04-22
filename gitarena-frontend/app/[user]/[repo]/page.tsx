@@ -1,15 +1,19 @@
 "use client";
 
-import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, Edit3, WrapText } from "lucide-react";
+import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, Edit3, WrapText, MoreHorizontal } from "lucide-react";
 import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
 import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file-sidebar";
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
 import { isMarkdown } from "@/components/markdown-renderer";
-import { FileContent } from "@/components/file-content";
+import { FileContent, type FileCommit } from "@/components/file-content";
+import prettyBytes from "pretty-bytes";
+import { formatDistanceToNowStrict } from "date-fns";
+import { shortLocale } from "@/lib/utils";
 
 // Mock data
 const repoData = {
@@ -122,6 +126,14 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
     const [showSource, setShowSource] = useState(false);
     const [wrapLines, setWrapLines] = useState(false);
     const [branch, setBranch] = useState(meta.defaultBranch);
+    const [fileSize, setFileSize] = useState<number | null>(null);
+    const [fileCommit, setFileCommit] = useState<FileCommit | null>(null);
+
+    function handleSelectFile(file: string | null) {
+        setSelectedFile(file);
+        setFileSize(null);
+        setFileCommit(null);
+    }
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -132,7 +144,7 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                     user={user}
                     repo={repo}
                     selectedFile={selectedFile}
-                    setSelectedFile={setSelectedFile}
+                    setSelectedFile={handleSelectFile}
                     branch={branch}
                     onBranchChange={setBranch}
                     defaultBranch={meta.defaultBranch}
@@ -143,11 +155,72 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                     {selectedFile && (
                         <>
                             <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-                                <div className="flex items-center gap-2.5">
-                                    <FileText className="h-[18px] w-[18px] text-muted-foreground" />
-                                    <span className="font-medium">{selectedFile}</span>
-                                    {(!isMarkdown(selectedFile) || showSource) && (
-                                        <span className="text-sm text-muted-foreground">2.4 KB</span>
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <FileText className="h-[18px] w-[18px] text-muted-foreground shrink-0" />
+                                    <div className="flex items-center gap-2 shrink-0 group/filename peer/filename">
+                                        <span className="font-medium">
+                                            <span className="group-hover/filename:hidden">{selectedFile.split("/").pop()}</span>
+                                            <span className="hidden group-hover/filename:inline text-muted-foreground">{selectedFile}</span>
+                                        </span>
+                                        {(!isMarkdown(selectedFile) || showSource) && fileSize !== null && (
+                                            <span className="text-sm text-muted-foreground">{prettyBytes(fileSize)}</span>
+                                        )}
+                                    </div>
+                                    {fileCommit && (
+                                        <div className="flex flex-col border-l border-border pl-3 ml-1 min-w-0 peer-hover/filename:invisible">
+                                            <div className="flex items-center gap-1.5">
+                                                {(() => {
+                                                    const lines = fileCommit.message.split("\n").filter((l) => l.trim() !== "");
+                                                    const firstLine = lines[0] ?? "";
+                                                    const hasMore = lines.length > 1;
+                                                    const msg = <span className="text-sm text-foreground truncate">{firstLine}</span>;
+                                                    return hasMore ? (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <span className="flex items-center gap-1 truncate cursor-default">
+                                                                    <span className="text-sm text-foreground truncate">{firstLine}</span>
+                                                                    <MoreHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                                                                </span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                                                                {fileCommit.message.trim()}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        msg
+                                                    );
+                                                })()}
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="text-xs text-muted-foreground/60 shrink-0 cursor-default">
+                                                            {formatDistanceToNowStrict(new Date(fileCommit.time * 1000), {
+                                                                locale: shortLocale,
+                                                            })}
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        {new Date(fileCommit.time * 1000).toLocaleString(undefined, {
+                                                            year: "numeric",
+                                                            month: "long",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            second: "2-digit",
+                                                        })}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                                                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-medium">
+                                                    {fileCommit.authorName[0].toUpperCase()}
+                                                </div>
+                                                <span className="font-medium text-foreground/80 shrink-0">{fileCommit.authorName}</span>
+                                                <span className="text-muted-foreground/40">·</span>
+                                                <span className="font-mono text-muted-foreground/60 shrink-0">
+                                                    {fileCommit.sha1.slice(0, 7)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -171,12 +244,19 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                                 Wrap
                                             </Button>
                                             <Button
+                                                asChild
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
                                             >
-                                                <ExternalLink className="h-3.5 w-3.5" />
-                                                Raw
+                                                <a
+                                                    href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${selectedFile}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                    Raw
+                                                </a>
                                             </Button>
                                         </div>
                                     )}
@@ -217,6 +297,8 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                     filename={selectedFile}
                                     showSource={showSource}
                                     wrapLines={wrapLines}
+                                    setFileSize={setFileSize}
+                                    setCommit={setFileCommit}
                                 />
                             </div>
                         </>
@@ -254,7 +336,15 @@ export function RepoPageSkeleton({ user, repo }: { user: string; repo: string })
                     <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                         <div className="flex items-center gap-2.5">
                             <div className="h-4 w-4 rounded bg-accent shrink-0" />
-                            <div className="h-3.5 w-28 rounded bg-accent" />
+                            <div className="h-3.5 w-28 rounded bg-accent shrink-0" />
+                            <div className="flex flex-col border-l border-border pl-3 ml-1 gap-1.5">
+                                <div className="h-3.5 w-48 rounded bg-accent" />
+                                <div className="flex items-center gap-1.5">
+                                    <div className="h-4 w-4 rounded-full bg-accent shrink-0" />
+                                    <div className="h-3 w-16 rounded bg-accent" />
+                                    <div className="h-3 w-12 rounded bg-accent" />
+                                </div>
+                            </div>
                         </div>
                         <div className="h-7 w-32 rounded bg-accent" />
                     </div>

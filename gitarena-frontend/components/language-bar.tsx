@@ -19,7 +19,9 @@ function languageFallbackColor(name: string): string {
 
 function computeLanguages(raw: Record<string, number>): Language[] {
     const total = Object.values(raw).reduce((sum, bytes) => sum + bytes, 0);
-    if (total === 0) return [];
+    if (total === 0) {
+        return [];
+    }
 
     return Object.entries(raw)
         .sort(([, a], [, b]) => b - a)

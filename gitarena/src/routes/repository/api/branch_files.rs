@@ -55,27 +55,27 @@ impl From<EntryKind> for FileType {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-struct CommitInfo {
+pub(crate) struct CommitInfo {
     /// Commit message
-    message: String,
+    pub(crate) message: String,
     /// Unix timestamp of the commit
-    time: i64,
+    pub(crate) time: i64,
     /// Author display name
-    author_name: String,
+    pub(crate) author_name: String,
     /// Author email address
-    author_email: String,
+    pub(crate) author_email: String,
     /// GitArena user ID of the author
-    author_uid: Option<i32>,
+    pub(crate) author_uid: Option<i32>,
 }
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct FileCommitInfo {
     /// SHA1 hash of the commit
-    sha1: String,
+    pub(crate) sha1: String,
     #[serde(flatten)]
     #[schema(inline)]
-    info: CommitInfo,
+    pub(crate) info: CommitInfo,
 }
 
 #[derive(Serialize, ToSchema)]
