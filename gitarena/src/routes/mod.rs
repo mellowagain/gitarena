@@ -8,6 +8,8 @@ use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
+use crate::routes::user::api::auth::login::LoginJsonRequest;
+use crate::routes::user::api::auth::me::MeResponse;
 
 use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
@@ -53,6 +55,9 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::star::delete_star,
         crate::routes::repository::api::branch_files::branch_files,
         crate::routes::user::api::add_key::put_ssh_key,
+        crate::routes::user::api::auth::login::post_login,
+        crate::routes::user::api::auth::logout::post_logout,
+        crate::routes::user::api::auth::me::get_me,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -70,6 +75,8 @@ impl Modify for CookieAuth {
         FileType,
         AddKeyJsonRequest,
         AddKeyJsonResponse,
+        LoginJsonRequest,
+        MeResponse,
     )),
     modifiers(&CookieAuth),
     tags(

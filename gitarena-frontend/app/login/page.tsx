@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Github, Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -42,10 +44,37 @@ function MicrosoftIcon({ className }: { className?: string }) {
 }
 
 export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginContent />
+        </Suspense>
+    );
+}
+
+function LoginContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { isAuthenticated, isLoading, isLoggingIn, loginError, login } = useAuth();
+
     const [showPassword, setShowPassword] = useState(false);
     const [authMethod, setAuthMethod] = useState<"password" | "passkey">("password");
-    const [identifier, setIdentifier] = useState("");
-    const [password, setPassword] = useState("");
+    const [form, setForm] = useState({ identifier: "", password: "" });
+
+    const rawRedirect = searchParams.get("redirect") ?? "/";
+    // Reject absolute URLs and protocol-relative URLs to prevent open redirects.
+    const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            router.replace(redirect);
+        }
+    }, [isAuthenticated, isLoading, redirect, router]);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        const user = await login(form.identifier, form.password).catch(() => null);
+        if (user) { router.push(redirect); }
+    }
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -160,7 +189,13 @@ export default function LoginPage() {
                         </div>
 
                         {authMethod === "password" ? (
-                            <form className="space-y-4">
+                            <form className="space-y-4" onSubmit={handleSubmit}>
+                                {loginError && (
+                                    <div className="px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                                        {loginError.message}
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <label htmlFor="identifier" className="text-sm font-medium">
                                         Username or email
@@ -168,10 +203,13 @@ export default function LoginPage() {
                                     <input
                                         id="identifier"
                                         type="text"
-                                        value={identifier}
-                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        value={form.identifier}
+                                        onChange={(e) => setForm(f => ({ ...f, identifier: e.target.value }))}
                                         placeholder="you@example.com"
-                                        className="w-full h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        autoComplete="username"
+                                        required
+                                        disabled={isSubmitting}
+                                        className="w-full h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
 
@@ -191,10 +229,13 @@ export default function LoginPage() {
                                         <input
                                             id="password"
                                             type={showPassword ? "text" : "password"}
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            value={form.password}
+                                            onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
                                             placeholder="Enter your password"
-                                            className="w-full h-11 px-4 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            autoComplete="current-password"
+                                            required
+                                            disabled={isLoggingIn}
+                                            className="w-full h-11 px-4 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                         />
                                         <button
                                             type="button"
@@ -206,9 +247,9 @@ export default function LoginPage() {
                                     </div>
                                 </div>
 
-                                <Button type="submit" className="w-full h-11 gap-2">
-                                    Sign in
-                                    <ArrowRight className="h-4 w-4" />
+                                <Button type="submit" className="w-full h-11 gap-2" disabled={isLoggingIn}>
+                                    {isLoggingIn ? "Signing in..." : "Sign in"}
+                                    {!isLoggingIn && <ArrowRight className="h-4 w-4" />}
                                 </Button>
                             </form>
                         ) : (
