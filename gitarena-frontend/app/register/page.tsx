@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Github, Mail, Lock, Eye, EyeOff, User, ArrowRight, Check, Compass, GitMerge, UserPlus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -90,10 +92,23 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function RegisterPage() {
+    const router = useRouter();
+    const { isAuthenticated, isLoading, isRegistering, registerError, register } = useAuth();
+
     const [showPassword, setShowPassword] = useState(false);
-    const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [form, setForm] = useState({ username: "", email: "", password: "" });
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            router.replace("/");
+        }
+    }, [isAuthenticated, isLoading, router]);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        const user = await register(form.username, form.email, form.password).catch(() => null);
+        if (user) { router.push("/"); }
+    }
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -200,7 +215,13 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
-                        <form className="space-y-4">
+                        <form className="space-y-4" onSubmit={handleSubmit}>
+                            {registerError && (
+                                <div className="px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                                    {registerError.message}
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <label htmlFor="username" className="text-sm font-medium">
                                     Username
@@ -210,15 +231,18 @@ export default function RegisterPage() {
                                     <input
                                         id="username"
                                         type="text"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
+                                        value={form.username}
+                                        onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
                                         placeholder="johndoe"
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        autoComplete="username"
+                                        required
+                                         disabled={isRegistering}
+                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
-                                {username && (
+                                {form.username && (
                                     <p className="text-xs text-muted-foreground">
-                                        Your profile: <span className="text-foreground font-mono">gitarena.dev/{username}</span>
+                                        Your profile: <span className="text-foreground font-mono">gitarena.dev/{form.username}</span>
                                     </p>
                                 )}
                             </div>
@@ -232,10 +256,13 @@ export default function RegisterPage() {
                                     <input
                                         id="email"
                                         type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        value={form.email}
+                                        onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
                                         placeholder="you@example.com"
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        autoComplete="email"
+                                        required
+                                         disabled={isRegistering}
+                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -249,10 +276,13 @@ export default function RegisterPage() {
                                     <input
                                         id="password"
                                         type={showPassword ? "text" : "password"}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        value={form.password}
+                                        onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
                                         placeholder="Create a password"
-                                        className="w-full h-11 pl-10 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        autoComplete="new-password"
+                                        required
+                                         disabled={isRegistering}
+                                        className="w-full h-11 pl-10 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                     <button
                                         type="button"
@@ -262,12 +292,12 @@ export default function RegisterPage() {
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                {password && <PasswordStrength password={password} />}
+                                {form.password && <PasswordStrength password={form.password} />}
                             </div>
 
-                            <Button type="submit" className="w-full h-11 gap-2">
-                                Create account
-                                <ArrowRight className="h-4 w-4" />
+                            <Button type="submit" className="w-full h-11 gap-2" disabled={isRegistering}>
+                                {isRegistering ? "Creating account..." : "Create account"}
+                                {!isRegistering && <ArrowRight className="h-4 w-4" />}
                             </Button>
 
                             <p className="text-center text-xs text-muted-foreground">

@@ -10,7 +10,7 @@ use gitarena_common::database::Pool;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_macros::route;
+use gitarena_macros::{from_config, from_optional_config, route};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -37,7 +37,7 @@ pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<Pool>) ->
     render_template!("user/register.html", context, transaction)
 }
 
-#[route("/api/user", method = "POST", err = "htmx+html")]
+#[route("/api/user", method = "POST", err = "json")]
 pub(crate) async fn post_register(
     body: web::Json<RegisterJsonRequest>,
     id: Identity,
@@ -51,7 +51,12 @@ pub(crate) async fn post_register(
 
     let mut transaction = db_pool.begin().await?;
 
-    if !get_setting::<bool>("allow_registrations", &mut transaction).await? {
+    let (allow_registrations, smtp_enabled) = from_config!(
+        "allow_registrations" => bool,
+        "smtp.enabled" => bool
+    );
+
+    if !allow_registrations {
         die!(FORBIDDEN, "User registrations are disabled");
     }
 
@@ -118,7 +123,9 @@ pub(crate) async fn post_register(
     transaction.commit().await?;
     let mut transaction = db_pool.begin().await?;
 
-    send_verification_mail(&user, &db_pool).await?;
+    if smtp_enabled {
+        send_verification_mail(&user, &db_pool).await?;
+    }
 
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
@@ -127,14 +134,7 @@ pub(crate) async fn post_register(
 
     info!(user.username, user.id, "New user signed up");
 
-    Ok(if request.is_htmx() {
-        HttpResponse::Ok()
-            .append_header(("hx-redirect", "/"))
-            .append_header(("hx-refresh", "true"))
-            .finish()
-    } else {
-        HttpResponse::Ok().json(RegisterJsonResponse { success: true, id: user.id })
-    })
+    Ok(HttpResponse::Ok().json(RegisterJsonResponse { success: true, id: user.id }))
 }
 
 #[derive(Deserialize)]
