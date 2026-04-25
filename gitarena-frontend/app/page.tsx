@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useSWR from "swr";
 import Link from "next/link";
 import {
     Plus,
@@ -21,13 +20,7 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
-
-interface CurrentUser {
-    name: string;
-    username: string;
-    email: string;
-    isAdmin: boolean;
-}
+import { useAuth, type AuthUser } from "@/hooks/use-auth";
 
 const repositories = [
     {
@@ -251,7 +244,7 @@ function LabelBadge({ label }: { label: { name: string; color: string } }) {
     );
 }
 
-function ActivityRow({ item, currentUser }: { item: (typeof activityFeed)[0]; currentUser: CurrentUser }) {
+function ActivityRow({ item, currentUser }: { item: (typeof activityFeed)[0]; currentUser: AuthUser }) {
     const borderColor =
         item.type === "merge"
             ? "border-purple-500/50"
@@ -319,30 +312,19 @@ function ActivityRow({ item, currentUser }: { item: (typeof activityFeed)[0]; cu
 
 export default function DashboardPage() {
     const router = useRouter();
-    const {
-        data: currentUser,
-        error,
-        isLoading,
-    } = useSWR<CurrentUser>("/api/users/me", (url: string) => {
-        return fetch(url).then((res) => {
-            if (res.status === 401) {
-                router.push("/about");
-                return null;
-            }
+    const { user, error, isLoading } = useAuth();
 
-            if (!res.ok) {
-                throw new Error(`${res.status} ${res.statusText}`);
-            }
-
-            return res.json();
-        });
-    });
+    useEffect(() => {
+        if (!isLoading && !user) {
+            router.push("/about");
+        }
+    }, [isLoading, user, router]);
 
     const [repoFilter, setRepoFilter] = useState<"all" | "owned" | "starred">("all");
 
     const filteredRepos = repositories.filter((r) => {
         if (repoFilter === "owned") {
-            return r.org === currentUser?.username;
+            return r.org === user?.username;
         }
         return true;
     });
@@ -360,8 +342,8 @@ export default function DashboardPage() {
         );
     }
 
-    if (!currentUser) {
-        // user will get redirected to /about
+    if (!user) {
+        // user will get redirected to /about via useEffect
         return null;
     }
 
@@ -564,7 +546,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="px-4 py-4 space-y-4">
                             {activityFeed.map((item) => (
-                                <ActivityRow key={item.id} item={item} currentUser={currentUser} />
+                                <ActivityRow key={item.id} item={item} currentUser={user} />
                             ))}
                         </div>
                     </div>

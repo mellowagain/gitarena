@@ -1,4 +1,3 @@
-use crate::mail::Email;
 use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
 use crate::sso::SSO;
@@ -11,16 +10,49 @@ use gitarena_common::database::Pool;
 use std::ops::Deref;
 use std::str::FromStr;
 
+use crate::mail::Email;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
-use gitarena_macros::route;
+use gitarena_macros::{from_config, route};
 use oauth2::TokenResponse;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::debug;
+use utoipa::ToSchema;
 
-#[route("/sso/{service}", method = "GET", err = "html")]
+#[utoipa::path(
+    get,
+    path = "/api/sso",
+    responses(
+        (status = 200, description = "Which SSO providers are enabled on this instance", body = SSOProvidersResponse),
+    ),
+    tag = "user"
+)]
+#[route("/api/sso", method = "GET", err = "json")]
+pub(crate) async fn get_sso_providers(db_pool: web::Data<Pool>) -> Result<impl Responder> {
+    let (sso_github_enabled, sso_gitlab_enabled, sso_bitbucket_enabled) = from_config!(
+        "sso.github.enabled" => bool,
+        "sso.gitlab.enabled" => bool,
+        "sso.bitbucket.enabled" => bool
+    );
+
+    Ok(HttpResponse::Ok().json(SSOProvidersResponse {
+        github: sso_github_enabled,
+        gitlab: sso_gitlab_enabled,
+        bitbucket: sso_bitbucket_enabled,
+    }))
+}
+
+/// Whether the specific SSO methods are enabled
+#[derive(Serialize, ToSchema)]
+pub(crate) struct SSOProvidersResponse {
+    github: bool,
+    gitlab: bool,
+    bitbucket: bool,
+}
+
+#[route("/api/sso/{service}", method = "GET", err = "json")]
 pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         die!(UNAUTHORIZED, "Already logged in");
@@ -30,12 +62,12 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
     let provider_impl = provider.get_implementation();
 
     // TODO: Save token in cache to check for CSRF
-    let (url, _token) = SSOProvider::generate_auth_url(provider_impl.deref(), &provider, &db_pool).await?;
+    let (url, _token) = SSOProvider::generate_auth_url(&*provider_impl, &provider, &db_pool).await?;
 
     Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, url.to_string())).finish())
 }
 
-#[route("/sso/{service}/callback", method = "GET", err = "html")]
+#[route("/api/sso/{service}/callback", method = "GET", err = "json")]
 pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if id.identity().is_some() {
         die!(UNAUTHORIZED, "Already logged in");
@@ -45,9 +77,9 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
     let provider_impl = provider.get_implementation();
 
     let query_string = request.q_string();
-    let token_response = SSOProvider::exchange_response(provider_impl.deref(), &query_string, &provider, &db_pool).await?;
+    let token_response = SSOProvider::exchange_response(&*provider_impl, &query_string, &provider, &db_pool).await?;
 
-    if !SSOProvider::validate_scopes(provider_impl.deref(), token_response.scopes()) {
+    if !SSOProvider::validate_scopes(&*provider_impl, token_response.scopes()) {
         die!(CONFLICT, "Not all required scopes have been granted");
     }
 
@@ -56,9 +88,9 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
 
     let mut transaction = db_pool.begin().await?;
 
-    let provider_id = SSOProvider::get_provider_id(provider_impl.deref(), token.as_str()).await?;
+    let provider_id = SSOProvider::get_provider_id(&*provider_impl, token.as_str()).await?;
 
-    let sso: Option<SSO> = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
+    let sso = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
         .bind(&provider)
         .bind(provider_id.as_str())
         .fetch_optional(&mut *transaction)
@@ -74,7 +106,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         }
         None => {
             // User link does not exist -> Create new user
-            SSOProvider::create_user(provider_impl.deref(), token.as_str(), &db_pool)
+            SSOProvider::create_user(&*provider_impl, token.as_str(), &db_pool)
                 .await
                 .context("Failed to create new user using sso")?
         }
