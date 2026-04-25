@@ -100,9 +100,7 @@ function RepoFileSidebarCommitInfoSkeleton() {
 }
 
 function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo: string; branch: string }) {
-    const { data, error, isLoading } = useSWR<{ commits: FileCommitInfo[] }>(
-        `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/commits?limit=1`
-    );
+    const { data, error, isLoading } = useSWR<{ commits: FileCommitInfo[] }>(`/api/repos/${user}/${repo}/branch/${branch}/commits?limit=1`);
 
     if (isLoading) {
         return <RepoFileSidebarCommitInfoSkeleton />;
@@ -284,7 +282,7 @@ export function RepoFileSidebar({
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     const { data, error, isLoading } = useSWR<{ files: BranchFile[]; truncated: boolean }>(
-        `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/files`
+        `/api/repos/${user}/${repo}/branch/${branch}/files`
     );
 
     useEffect(() => {

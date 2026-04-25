@@ -3,7 +3,6 @@ import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ClientLayout } from "@/components/client-layout";
-import { getInstanceConfig } from "@/lib/instance-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,20 +28,18 @@ export const metadata: Metadata = {
     },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const instanceConfig = await getInstanceConfig();
-
     return (
         <html lang="en" className="bg-background">
             <body className="font-sans antialiased">
                 <Suspense fallback={null}>
                     <NavigationProgress />
                 </Suspense>
-                <ClientLayout instanceConfig={instanceConfig}>{children}</ClientLayout>
+                <ClientLayout>{children}</ClientLayout>
                 {process.env.NODE_ENV === "production" && <Analytics />}
             </body>
         </html>

@@ -5,11 +5,13 @@ const PROTECTED_PATHS = ["/new", "/import", "/settings", "/notifications", "/adm
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    const lowercased = pathname.toLowerCase();
-    if (pathname !== lowercased) {
-        const url = request.nextUrl.clone();
-        url.pathname = lowercased;
-        return NextResponse.redirect(url, 308);
+    if (!pathname.startsWith("/api/")) {
+        const lowercased = pathname.toLowerCase();
+        if (pathname !== lowercased) {
+            const url = request.nextUrl.clone();
+            url.pathname = lowercased;
+            return NextResponse.redirect(url, 308);
+        }
     }
 
     const isProtected = PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));

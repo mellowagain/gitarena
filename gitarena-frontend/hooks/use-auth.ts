@@ -1,14 +1,11 @@
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import { authFetcher, postJsonFetcher, postFetcher } from "@/lib/fetchers";
 
 export interface AuthUser {
     id: number;
     username: string;
     admin: boolean;
-}
-
-interface ApiError {
-    error: string;
 }
 
 interface LoginArgs {
@@ -20,43 +17,6 @@ interface RegisterArgs {
     username: string;
     email: string;
     password: string;
-}
-
-async function authFetcher(url: string): Promise<AuthUser | null> {
-    const res = await fetch(url);
-
-    if (res.status === 401) {
-        return null;
-    }
-
-    if (!res.ok) {
-        throw new Error(res.statusText);
-    }
-
-    return res.json();
-}
-
-async function postJsonFetcher<TArg, TResult>(url: string, { arg }: { arg: TArg }): Promise<TResult> {
-    const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(arg),
-    });
-
-    if (!res.ok) {
-        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(body.error ?? res.statusText);
-    }
-
-    return res.json();
-}
-
-async function logoutFetcher(url: string): Promise<void> {
-    const res = await fetch(url, { method: "POST" });
-
-    if (!res.ok) {
-        throw new Error(`Logout failed: ${res.statusText}`);
-    }
 }
 
 export function useAuth() {
@@ -85,7 +45,7 @@ export function useAuth() {
         trigger: triggerLogout,
         isMutating: isLoggingOut,
         error: logoutError,
-    } = useSWRMutation("/api/auth/logout", logoutFetcher, {
+    } = useSWRMutation("/api/auth/logout", postFetcher, {
         onSuccess: () => mutate(null, { revalidate: false }),
     });
 

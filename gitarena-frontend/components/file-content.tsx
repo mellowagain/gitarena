@@ -25,18 +25,10 @@ export interface FileCommit {
     authorUid: number | null;
 }
 
-const jsonFetcher = (url: string) =>
-    fetch(url).then((res) => {
-        if (!res.ok) {
-            throw new Error(res.statusText);
-        }
-        return res.json();
-    });
-
 interface FileContentProps {
     user: string;
     repo: string;
-    branch: string | null;
+    branch: string;
     filename: string;
     showSource?: boolean;
     wrapLines?: boolean;
@@ -54,9 +46,7 @@ export function FileContent({
     setFileSize,
     setCommit,
 }: FileContentProps) {
-    const url = branch ? `http://localhost:8080/api/repos/${user}/${repo}/branch/${branch}/files/${filename}` : null;
-
-    const { data, error, isLoading } = useSWR<FileContentResponse>(url, jsonFetcher);
+    const { data, error, isLoading } = useSWR<FileContentResponse>(`/api/repos/${user}/${repo}/branch/${branch}/files/${filename}`);
 
     useEffect(() => {
         if (data && setFileSize) {

@@ -20,7 +20,7 @@ function proxyImageUrl(url: string): string {
     const hex = Array.from(url)
         .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
         .join("");
-    return `http://localhost:8080/api/proxy/${hex}`;
+    return `/api/proxy/${hex}`;
 }
 
 export function MarkdownRenderer({
