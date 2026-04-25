@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -37,8 +38,12 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
     const { user, isAuthenticated, logout } = useAuth();
 
     async function handleSignOut() {
-        await logout().catch(() => null);
-        router.push("/");
+        try {
+            await logout();
+            router.push("/");
+        } catch {
+            toast.error("Sign out failed. Please try again.");
+        }
     }
 
     return (

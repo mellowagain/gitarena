@@ -11,6 +11,17 @@ interface ApiError {
     error: string;
 }
 
+interface LoginArgs {
+    identifier: string;
+    password: string;
+}
+
+interface RegisterArgs {
+    username: string;
+    email: string;
+    password: string;
+}
+
 async function authFetcher(url: string): Promise<AuthUser | null> {
     const res = await fetch(url);
 
@@ -25,7 +36,7 @@ async function authFetcher(url: string): Promise<AuthUser | null> {
     return res.json();
 }
 
-async function loginFetcher(url: string, { arg }: { arg: { identifier: string; password: string } }): Promise<AuthUser> {
+async function postJsonFetcher<TArg, TResult>(url: string, { arg }: { arg: TArg }): Promise<TResult> {
     const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,23 +44,8 @@ async function loginFetcher(url: string, { arg }: { arg: { identifier: string; p
     });
 
     if (!res.ok) {
-        const body: ApiError = await res.json().catch(() => ({ error: "Login failed" }));
-        throw new Error(body.error ?? "Login failed");
-    }
-
-    return res.json();
-}
-
-async function registerFetcher(_url: string, { arg }: { arg: { username: string; email: string; password: string } }): Promise<AuthUser> {
-    const res = await fetch("/api/user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(arg),
-    });
-
-    if (!res.ok) {
-        const body: ApiError = await res.json().catch(() => ({ error: "Registration failed" }));
-        throw new Error(body.error ?? "Registration failed");
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
     }
 
     return res.json();
@@ -69,15 +65,27 @@ export function useAuth() {
         revalidateOnFocus: true,
     });
 
-    const { trigger: triggerRegister, isMutating: isRegistering, error: registerError } = useSWRMutation("/api/user", registerFetcher, {
+    const {
+        trigger: triggerRegister,
+        isMutating: isRegistering,
+        error: registerError,
+    } = useSWRMutation<AuthUser, Error, string, RegisterArgs>("/api/user", postJsonFetcher, {
         onSuccess: (user) => mutate(user, { revalidate: false }),
     });
 
-    const { trigger: triggerLogin, isMutating: isLoggingIn, error: loginError } = useSWRMutation("/api/auth/login", loginFetcher, {
+    const {
+        trigger: triggerLogin,
+        isMutating: isLoggingIn,
+        error: loginError,
+    } = useSWRMutation<AuthUser, Error, string, LoginArgs>("/api/auth/login", postJsonFetcher, {
         onSuccess: (user) => mutate(user, { revalidate: false }),
     });
 
-    const { trigger: triggerLogout, isMutating: isLoggingOut, error: logoutError } = useSWRMutation("/api/auth/logout", logoutFetcher, {
+    const {
+        trigger: triggerLogout,
+        isMutating: isLoggingOut,
+        error: logoutError,
+    } = useSWRMutation("/api/auth/logout", logoutFetcher, {
         onSuccess: () => mutate(null, { revalidate: false }),
     });
 

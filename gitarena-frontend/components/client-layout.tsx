@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { SWRConfig } from "swr";
+import { Toaster } from "@/components/ui/sonner";
 import { InstanceConfigProvider } from "@/components/instance-config-provider";
 import type { InstanceConfig } from "@/lib/instance-config";
 
@@ -38,6 +39,7 @@ export function ClientLayout({ instanceConfig, children }: { instanceConfig: Ins
     return (
         <InstanceConfigProvider config={instanceConfig}>
             <SWRConfig value={{ fetcher }}>{children}</SWRConfig>
+            <Toaster />
         </InstanceConfigProvider>
     );
 }
