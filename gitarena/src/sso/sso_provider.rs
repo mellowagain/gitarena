@@ -138,7 +138,7 @@ pub(crate) trait SSOProvider {
 pub(crate) trait DatabaseSSOProvider: SSOProvider {
     async fn get_redirect_url(&self, tx: &mut Transaction<'_, Database>) -> Result<RedirectUrl> {
         let domain: String = config::get_setting("domain", tx).await?;
-        let url = format!("{}/sso/{}/callback", domain, self.get_name());
+        let url = format!("{}/api/sso/{}/callback", domain, self.get_name());
 
         Ok(RedirectUrl::new(url)?)
     }

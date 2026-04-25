@@ -232,14 +232,11 @@ export default function AboutPage() {
                         </nav>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Link
-                            href="/mellowagain/test"
-                            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
+                        <Link href="/login" className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                             Sign in
                         </Link>
                         <Link
-                            href="/mellowagain/test"
+                            href="/register"
                             className="px-3 py-1.5 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium"
                         >
                             Get started

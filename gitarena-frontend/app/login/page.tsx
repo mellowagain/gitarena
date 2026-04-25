@@ -4,8 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorDisplay } from "@/components/error-display";
 import { Github, Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import useSWR from "swr";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -24,23 +27,10 @@ function BitbucketIcon({ className }: { className?: string }) {
     );
 }
 
-function GoogleIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-        </svg>
-    );
-}
-
-function MicrosoftIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
-        </svg>
-    );
+interface SSOProviders {
+    github: boolean;
+    gitlab: boolean;
+    bitbucket: boolean;
 }
 
 export default function LoginPage() {
@@ -54,21 +44,22 @@ export default function LoginPage() {
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { isAuthenticated, isLoading, isLoggingIn, loginError, login } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, isLoggingIn, loginError, login } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [authMethod, setAuthMethod] = useState<"password" | "passkey">("password");
     const [form, setForm] = useState({ identifier: "", password: "" });
+    const { data, isLoading, error } = useSWR<SSOProviders>("/api/sso");
 
     const rawRedirect = searchParams.get("redirect") ?? "/";
     // Reject absolute URLs and protocol-relative URLs to prevent open redirects.
     const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
 
     useEffect(() => {
-        if (!isLoading && isAuthenticated) {
+        if (!authLoading && isAuthenticated) {
             router.replace(redirect);
         }
-    }, [isAuthenticated, isLoading, redirect, router]);
+    }, [isAuthenticated, authLoading, redirect, router]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -77,6 +68,10 @@ function LoginContent() {
             router.push(redirect);
         }
     }
+
+    const anySsoEnabled = !!data && (data.github || data.gitlab || data.bitbucket);
+
+    const showSsoSection = isLoading || error || anySsoEnabled;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -274,47 +269,62 @@ function LoginContent() {
                             </div>
                         )}
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-border" />
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="bg-background px-4 text-muted-foreground">or continue with</span>
-                            </div>
-                        </div>
+                        {showSsoSection && (
+                            <>
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-border" />
+                                    </div>
+                                    <div className="relative flex justify-center text-sm">
+                                        <span className="bg-background px-4 text-muted-foreground">or continue with</span>
+                                    </div>
+                                </div>
 
-                        <div className="flex items-center justify-center gap-3">
-                            <button
-                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                title="GitHub"
-                            >
-                                <Github className="h-5 w-5" />
-                            </button>
-                            <button
-                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                title="GitLab"
-                            >
-                                <GitLabIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                title="Bitbucket"
-                            >
-                                <BitbucketIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                title="Google"
-                            >
-                                <GoogleIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                title="Microsoft"
-                            >
-                                <MicrosoftIcon className="h-5 w-5" />
-                            </button>
-                        </div>
+                                {isLoading && (
+                                    <div className="flex items-center justify-center gap-3">
+                                        <Skeleton className="h-11 w-11 rounded-lg" />
+                                        <Skeleton className="h-11 w-11 rounded-lg" />
+                                        <Skeleton className="h-11 w-11 rounded-lg" />
+                                    </div>
+                                )}
+
+                                {error && <ErrorDisplay failed="SSO providers" error={error} />}
+
+                                {/* eslint-disable @next/next/no-html-link-for-pages */}
+                                {anySsoEnabled && (
+                                    <div className="flex items-center justify-center gap-3">
+                                        {data?.github && (
+                                            <a
+                                                href="/api/sso/github"
+                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                                                title="GitHub"
+                                            >
+                                                <Github className="h-5 w-5" />
+                                            </a>
+                                        )}
+                                        {data?.gitlab && (
+                                            <a
+                                                href="/api/sso/gitlab"
+                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                                                title="GitLab"
+                                            >
+                                                <GitLabIcon className="h-5 w-5" />
+                                            </a>
+                                        )}
+                                        {data?.bitbucket && (
+                                            <a
+                                                href="/api/sso/bitbucket"
+                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                                                title="Bitbucket"
+                                            >
+                                                <BitbucketIcon className="h-5 w-5" />
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
+                                {/* eslint-enable @next/next/no-html-link-for-pages */}
+                            </>
+                        )}
 
                         <p className="text-center text-sm text-muted-foreground lg:hidden">
                             New to GitArena?{" "}
