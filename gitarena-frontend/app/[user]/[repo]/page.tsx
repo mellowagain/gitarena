@@ -65,7 +65,7 @@ function RepoTopBar({ user, repo }: { user: string; repo: string }) {
 
 export default function RepoPage({ params }: { params: Promise<{ user: string; repo: string }> }) {
     const { user, repo } = use(params);
-    const { data, error, isLoading } = useSWR<RepoMetadata>(`http://localhost:8080/api/repos/${user}/${repo}`);
+    const { data, error, isLoading } = useSWR<RepoMetadata>(`/api/repos/${user}/${repo}`);
 
     if (isLoading) {
         return <RepoPageSkeleton user={user} repo={repo} />;

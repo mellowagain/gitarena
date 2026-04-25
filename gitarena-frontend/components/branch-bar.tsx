@@ -34,7 +34,7 @@ export interface BranchBarProps {
 }
 
 export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchChange }: BranchBarProps) {
-    const { data, error, isLoading } = useSWR<BranchesResponse>(`http://localhost:8080/api/repos/${user}/${repo}/branches`);
+    const { data, error, isLoading } = useSWR<BranchesResponse>(`/api/repos/${user}/${repo}/branches`);
 
     if (isLoading) {
         return <BranchBarSkeleton />;

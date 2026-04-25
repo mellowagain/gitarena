@@ -4,18 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { SWRConfig } from "swr";
 import { Toaster } from "@/components/ui/sonner";
-import { InstanceConfigProvider } from "@/components/instance-config-provider";
-import type { InstanceConfig } from "@/lib/instance-config";
+import { jsonFetcher } from "@/lib/fetchers";
 
-const fetcher = (url: string) =>
-    fetch(url).then((res) => {
-        if (!res.ok) {
-            throw new Error(res.statusText);
-        }
-        return res.json();
-    });
-
-export function ClientLayout({ instanceConfig, children }: { instanceConfig: InstanceConfig | null; children: React.ReactNode }) {
+export function ClientLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const lastPathRef = useRef("");
 
@@ -37,9 +28,9 @@ export function ClientLayout({ instanceConfig, children }: { instanceConfig: Ins
     }, [router]);
 
     return (
-        <InstanceConfigProvider config={instanceConfig}>
-            <SWRConfig value={{ fetcher }}>{children}</SWRConfig>
+        <>
+            <SWRConfig value={{ fetcher: jsonFetcher }}>{children}</SWRConfig>
             <Toaster />
-        </InstanceConfigProvider>
+        </>
     );
 }

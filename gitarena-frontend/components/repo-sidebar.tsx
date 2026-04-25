@@ -112,7 +112,7 @@ export function RepoSidebar({
             ? `${instanceConfig?.baseUrl ?? ""}/${user}/${repo}.git`
             : `git@${instanceConfig?.baseUrl?.replace(/^https?:\/\//, "") ?? ""}:${user}/${repo}.git`;
 
-    const { data, error, isLoading } = useSWR<RepoStats>(`http://localhost:8080/api/repos/${user}/${repo}/stats`);
+    const { data, error, isLoading } = useSWR<RepoStats>(`/api/repos/${user}/${repo}/stats`);
 
     if (isLoading) {
         return <RepoPageSkeleton user={user} repo={repo} />;
