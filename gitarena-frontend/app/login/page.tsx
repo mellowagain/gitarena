@@ -73,7 +73,9 @@ function LoginContent() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         const user = await login(form.identifier, form.password).catch(() => null);
-        if (user) { router.push(redirect); }
+        if (user) {
+            router.push(redirect);
+        }
     }
 
     return (
@@ -204,11 +206,11 @@ function LoginContent() {
                                         id="identifier"
                                         type="text"
                                         value={form.identifier}
-                                        onChange={(e) => setForm(f => ({ ...f, identifier: e.target.value }))}
+                                        onChange={(e) => setForm((f) => ({ ...f, identifier: e.target.value }))}
                                         placeholder="you@example.com"
                                         autoComplete="username"
                                         required
-                                        disabled={isSubmitting}
+                                        disabled={isLoggingIn}
                                         className="w-full h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
@@ -230,7 +232,7 @@ function LoginContent() {
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             value={form.password}
-                                            onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                                            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                                             placeholder="Enter your password"
                                             autoComplete="current-password"
                                             required

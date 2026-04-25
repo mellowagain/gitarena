@@ -257,30 +257,29 @@ export default function AboutPage() {
                             <ChevronRight className="h-3 w-3" />
                         </div>
                         <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-balance max-w-2xl leading-tight">
-                            Git infrastructure that belongs to you
+                            The git forge that fits in your homelab
                         </h1>
                         <p className="text-muted-foreground text-base leading-relaxed max-w-xl text-balance">
-                            GitArena is a self-hosted Git platform built in Rust. Issue tracking, merge requests, CI pipelines, and a
-                            package registry — without the SaaS overhead or vendor lock-in.
+                            GitArena is a lightweight, Rust-powered alternative to Gitea and Forgejo. Ships in minutes with Docker Compose
                         </p>
                         <div className="flex items-center gap-3 flex-wrap justify-center">
                             <Link
                                 href="/mellowagain/test"
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium"
                             >
-                                Explore the demo
+                                Try the demo
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
                                 href="#"
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
                             >
-                                Read the docs
+                                Documentation
                             </Link>
                         </div>
                         <div className="flex items-center gap-2 border border-border rounded-md px-4 py-2.5 bg-accent/30 font-mono text-sm text-muted-foreground">
                             <Terminal className="h-3.5 w-3.5 shrink-0" />
-                            <span>curl -fsSL https://gitarena.dev/install.sh | sh</span>
+                            <span>curl -fsSL https://git.mari.zip/install | docker compose -f - up -d</span>
                         </div>
                     </div>
                 </section>

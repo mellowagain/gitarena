@@ -107,7 +107,9 @@ export default function RegisterPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         const user = await register(form.username, form.email, form.password).catch(() => null);
-        if (user) { router.push("/"); }
+        if (user) {
+            router.push("/");
+        }
     }
 
     return (
@@ -232,11 +234,11 @@ export default function RegisterPage() {
                                         id="username"
                                         type="text"
                                         value={form.username}
-                                        onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
+                                        onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                                         placeholder="johndoe"
                                         autoComplete="username"
                                         required
-                                         disabled={isRegistering}
+                                        disabled={isRegistering}
                                         className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
@@ -257,11 +259,11 @@ export default function RegisterPage() {
                                         id="email"
                                         type="email"
                                         value={form.email}
-                                        onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                                        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                                         placeholder="you@example.com"
                                         autoComplete="email"
                                         required
-                                         disabled={isRegistering}
+                                        disabled={isRegistering}
                                         className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                 </div>
@@ -277,11 +279,11 @@ export default function RegisterPage() {
                                         id="password"
                                         type={showPassword ? "text" : "password"}
                                         value={form.password}
-                                        onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                                         placeholder="Create a password"
                                         autoComplete="new-password"
                                         required
-                                         disabled={isRegistering}
+                                        disabled={isRegistering}
                                         className="w-full h-11 pl-10 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                                     />
                                     <button
