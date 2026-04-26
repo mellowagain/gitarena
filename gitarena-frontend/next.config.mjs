@@ -6,12 +6,12 @@ const nextConfig = {
     images: {
         unoptimized: true,
     },
-    // for development only, in prod the /api path gets rerouted by the reverse proxy to the backend
     async rewrites() {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
         return [
             {
                 source: "/api/:path*",
-                destination: "http://localhost:8080/api/:path*",
+                destination: `${backendUrl}/api/:path*`,
             },
         ];
     },
