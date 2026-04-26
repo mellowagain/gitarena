@@ -1,21 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { toast } from "sonner";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Globe, Users, Lock, FileText, GitBranch, Scale, Compass, GitMerge, Code, FolderGit2, Sparkles } from "lucide-react";
+import {
+    ChevronDown,
+    Globe,
+    Users,
+    Lock,
+    FileText,
+    GitBranch,
+    Scale,
+    Compass,
+    GitMerge,
+    Code,
+    FolderGit2,
+    Sparkles,
+    CheckCircle2,
+    AlertCircle,
+    Loader2,
+} from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-const currentUser = {
-    name: "Mari",
-    username: "mellowagain",
-    orgs: [
-        { name: "mellowagain", type: "user" },
-        { name: "gitarena", type: "org" },
-        { name: "acme-corp", type: "org" },
-    ],
-};
+import { useAuth } from "@/hooks/use-auth";
+import { postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -35,8 +47,22 @@ const gitignoreTemplates = [
 
 type Visibility = "public" | "internal" | "private";
 
+interface CreateRepoRequest {
+    name: string;
+    description: string;
+    visibility: Visibility;
+    readme?: string;
+}
+
+interface CreateRepoResponse {
+    id: number;
+    url: string;
+}
+
 export default function NewRepositoryPage() {
-    const [namespace, setNamespace] = useState(currentUser.orgs[0].name);
+    const router = useRouter();
+    const { user } = useAuth();
+
     const [repoName, setRepoName] = useState("");
     const [description, setDescription] = useState("");
     const [visibility, setVisibility] = useState<Visibility>("public");
@@ -45,7 +71,58 @@ export default function NewRepositoryPage() {
     const [selectedGitignore, setSelectedGitignore] = useState("none");
     const [defaultBranch, setDefaultBranch] = useState("main");
 
-    const baseUrl = "git.mari.zip";
+    // Debounced values sent to the validate endpoint
+    const [debouncedName, setDebouncedName] = useState("");
+    const [debouncedDescription, setDebouncedDescription] = useState("");
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedName(repoName);
+            setDebouncedDescription(description);
+        }, 400);
+        return () => clearTimeout(t);
+    }, [repoName, description]);
+
+    // Single validate call covers name rules, reserved names, duplicate check, and description length
+    const validateUrl =
+        user && debouncedName
+            ? `/api/repo/validate?name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
+            : null;
+
+    const { data: validation, isLoading: isValidating } = useSWR(validateUrl, validationFetcher, {
+        shouldRetryOnError: false,
+        revalidateOnFocus: false,
+    });
+
+    const namePending = (!!repoName && repoName !== debouncedName) || isValidating;
+    const descPending = description !== debouncedDescription || isValidating;
+    const isPending = namePending || descPending;
+    const nameValid = !!repoName && !isPending && validation?.valid === true;
+    const nameError = !!repoName && !isPending ? (validation?.name ?? null) : null;
+    const descriptionError = !isPending ? (validation?.description ?? null) : null;
+
+    const { trigger, isMutating } = useSWRMutation<CreateRepoResponse, Error, string, CreateRepoRequest>("/api/repo", postJsonFetcher);
+
+    const canSubmit = !!user && !!repoName && nameValid && !descriptionError && !isPending && !isMutating;
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!canSubmit || !user) {
+            return;
+        }
+
+        try {
+            await trigger({
+                name: repoName,
+                description,
+                visibility,
+                ...(createReadme ? { readme: `# ${repoName}\n\n${description}` } : {}),
+            });
+            router.push(`/${user.username}/${repoName}`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to create repository");
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -78,7 +155,7 @@ export default function NewRepositoryPage() {
                                     New organization
                                 </Link>
                                 <Link
-                                    href="#"
+                                    href="/import"
                                     className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
                                 >
                                     <Code className="h-4 w-4" />
@@ -89,21 +166,8 @@ export default function NewRepositoryPage() {
 
                         <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent repositories</h3>
-                            <div className="space-y-1">
-                                <Link
-                                    href="/mellowagain/test"
-                                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
-                                >
-                                    <div className="h-2 w-2 rounded-full bg-green-500" />
-                                    mellowagain/test
-                                </Link>
-                                <Link
-                                    href="/gitarena/gitarena"
-                                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
-                                >
-                                    <div className="h-2 w-2 rounded-full bg-blue-500" />
-                                    gitarena/gitarena
-                                </Link>
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                                <p className="px-3 py-2">No recent repositories</p>
                             </div>
                         </div>
                     </div>
@@ -123,64 +187,52 @@ export default function NewRepositoryPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-8">
+                        <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="space-y-3">
                                 <label className="text-sm font-medium">
                                     Owner <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
-                                                <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                                    {namespace[0].toUpperCase()}
-                                                </div>
-                                                <span>{namespace}</span>
-                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="w-56">
-                                            {currentUser.orgs.map((org) => (
-                                                <DropdownMenuItem
-                                                    key={org.name}
-                                                    onClick={() => setNamespace(org.name)}
-                                                    className="flex items-center gap-3"
-                                                >
-                                                    <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                                        {org.name[0].toUpperCase()}
-                                                    </div>
-                                                    {org.name}
-                                                    {org.type === "user" && (
-                                                        <span className="text-xs text-muted-foreground ml-auto">you</span>
-                                                    )}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {/* Owner is always the current user — no org dropdown for now */}
+                                    <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
+                                        <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
+                                            {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                        </div>
+                                        <span>{user?.username ?? "…"}</span>
+                                    </div>
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
-                                    <input
-                                        type="text"
-                                        value={repoName}
-                                        onChange={(e) => setRepoName(e.target.value)}
-                                        placeholder="repository-name"
-                                        className="flex-1 h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    />
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            value={repoName}
+                                            onChange={(e) => setRepoName(e.target.value)}
+                                            placeholder="repository-name"
+                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                            {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
+                                        </div>
+                                    </div>
                                 </div>
-                                {repoName && (
+                                {nameError && <p className="text-sm text-red-500">{nameError}</p>}
+                                {nameValid && user && (
                                     <p className="text-sm text-muted-foreground">
                                         Your repository will be available at{" "}
                                         <span className="text-foreground font-mono">
-                                            {baseUrl}/{namespace}/{repoName}
+                                            {user.username}/{repoName}
                                         </span>
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">
+                                <label className="text-sm font-medium flex items-center gap-2">
                                     Description <span className="text-muted-foreground font-normal">(optional)</span>
+                                    {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
                                 </label>
                                 <textarea
                                     value={description}
@@ -189,6 +241,7 @@ export default function NewRepositoryPage() {
                                     rows={2}
                                     className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                                 />
+                                {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             </div>
 
                             <div className="space-y-3">
@@ -328,11 +381,18 @@ export default function NewRepositoryPage() {
                             </div>
 
                             <div className="pt-4">
-                                <Button type="submit" className="w-full h-12 text-base" disabled={!repoName}>
-                                    Create repository
+                                <Button type="submit" className="w-full h-12 text-base" disabled={!canSubmit}>
+                                    {isMutating ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Creating…
+                                        </>
+                                    ) : (
+                                        "Create repository"
+                                    )}
                                 </Button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </main>

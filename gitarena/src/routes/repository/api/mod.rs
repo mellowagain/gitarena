@@ -12,10 +12,12 @@ pub(crate) mod import_repo;
 pub(crate) mod repo_meta;
 pub(crate) mod repo_readme;
 pub(crate) mod star;
+pub(crate) mod validate_repo;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
-    // import_repo needs to be always above create_repo
+    // import_repo and validate_repo need to be always above create_repo
     config.service(import_repo::import);
+    config.service(validate_repo::validate);
     config.service(create_repo::create);
     config.service(repo_meta::meta);
     config.service(repo_readme::readme);
