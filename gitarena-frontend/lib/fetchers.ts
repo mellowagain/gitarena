@@ -103,3 +103,26 @@ export async function deleteFetcher(url: string): Promise<void> {
         throw new Error(body.error ?? res.statusText);
     }
 }
+
+export interface ValidationResult {
+    valid: boolean;
+    /** Error message for the name field, if any */
+    name?: string;
+    /** Error message for the description field, if any */
+    description?: string;
+}
+
+/**
+ * Fetcher for the /api/repo/validate endpoint.
+ * Always returns a ValidationResult with per-field error messages.
+ * Unexpected errors (network, 5xx) are still thrown.
+ */
+export async function validationFetcher(url: string): Promise<ValidationResult> {
+    const res = await fetch(url);
+
+    if (res.status >= 500) {
+        throw new Error(res.statusText);
+    }
+
+    return res.json() as Promise<ValidationResult>;
+}

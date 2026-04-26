@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { toast } from "sonner";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import {
-    ChevronDown,
     Globe,
     Users,
     Lock,
@@ -16,11 +19,13 @@ import {
     Github,
     Link as LinkIcon,
     ArrowRight,
-    Loader2,
     CheckCircle2,
     AlertCircle,
+    Loader2,
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
+import { postJsonFetcher, validationFetcher } from "@/lib/fetchers";
+import { isValidUrl, extractRepoNameFromUrl } from "@/lib/repo-validation";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -51,52 +56,108 @@ function BitbucketIcon({ className }: { className?: string }) {
     );
 }
 
-const currentUser = {
-    name: "Mari",
-    username: "mellowagain",
-    orgs: [
-        { name: "mellowagain", type: "user" },
-        { name: "gitarena", type: "org" },
-        { name: "acme-corp", type: "org" },
-    ],
-};
-
 type ImportSource = "url" | "github" | "gitlab" | "bitbucket";
 type Visibility = "public" | "internal" | "private";
-type ImportStatus = "idle" | "validating" | "valid" | "invalid";
+
+interface ImportRepoRequest {
+    name: string;
+    description: string;
+    url: string;
+    visibility: Visibility;
+    username?: string;
+    password?: string;
+}
+
+interface ImportRepoResponse {
+    id: number;
+    url: string;
+}
 
 export default function ImportRepositoryPage() {
+    const router = useRouter();
+    const { user } = useAuth();
+
     const [source, setSource] = useState<ImportSource>("url");
     const [repoUrl, setRepoUrl] = useState("");
-    const [namespace, setNamespace] = useState(currentUser.orgs[0].name);
     const [repoName, setRepoName] = useState("");
+    const [description, setDescription] = useState("");
     const [visibility, setVisibility] = useState<Visibility>("private");
-    const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
-    const [mirror, setMirror] = useState(false);
+    const [importUsername, setImportUsername] = useState("");
+    const [importPassword, setImportPassword] = useState("");
 
-    const baseUrl = "git.mari.zip";
+    // Debounced values for the validate endpoint
+    const [debouncedName, setDebouncedName] = useState("");
+    const [debouncedDescription, setDebouncedDescription] = useState("");
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedName(repoName);
+            setDebouncedDescription(description);
+        }, 400);
+        return () => clearTimeout(t);
+    }, [repoName, description]);
+
+    // Client-side URL validation (mirrors url::Url::parse behaviour)
+    const urlValid = repoUrl.length > 0 && isValidUrl(repoUrl);
+    const urlInvalid = repoUrl.length > 0 && !urlValid;
 
     const handleUrlChange = (url: string) => {
         setRepoUrl(url);
-        if (url.length > 10) {
-            setImportStatus("validating");
-            setTimeout(() => {
-                if (url.includes("github.com") || url.includes("gitlab.com") || url.includes("bitbucket.org") || url.endsWith(".git")) {
-                    setImportStatus("valid");
-                    // Auto-extract repo name from URL
-                    const parts = url.split("/");
-                    const name = parts[parts.length - 1]?.replace(".git", "") || "";
-                    if (name && !repoName) {
-                        setRepoName(name);
-                    }
-                } else {
-                    setImportStatus("invalid");
-                }
-            }, 800);
-        } else {
-            setImportStatus("idle");
+
+        // Auto-fill repo name from URL when the field is still empty
+        if (isValidUrl(url)) {
+            const extracted = extractRepoNameFromUrl(url);
+            if (extracted && !repoName) {
+                setRepoName(extracted);
+            }
         }
     };
+
+    // Single validate call covers name rules, reserved names, duplicate check, and description length
+    const validateUrl =
+        user && debouncedName
+            ? `/api/repo/validate?name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
+            : null;
+
+    const { data: validation, isLoading: isValidating } = useSWR(validateUrl, validationFetcher, {
+        shouldRetryOnError: false,
+        revalidateOnFocus: false,
+    });
+
+    const namePending = (!!repoName && repoName !== debouncedName) || isValidating;
+    const descPending = description !== debouncedDescription || isValidating;
+    const isPending = namePending || descPending;
+    const nameValid = !!repoName && !isPending && validation?.valid === true;
+    const nameError = !!repoName && !isPending ? (validation?.name ?? null) : null;
+    const descriptionError = !isPending ? (validation?.description ?? null) : null;
+
+    const { trigger, isMutating } = useSWRMutation<ImportRepoResponse, Error, string, ImportRepoRequest>(
+        "/api/repo/import",
+        postJsonFetcher
+    );
+
+    const canSubmit = !!user && !!repoName && nameValid && !descriptionError && !isPending && (source !== "url" || urlValid) && !isMutating;
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!canSubmit || !user) {
+            return;
+        }
+
+        try {
+            await trigger({
+                name: repoName,
+                description,
+                url: repoUrl,
+                visibility,
+                ...(importUsername ? { username: importUsername } : {}),
+                ...(importPassword ? { password: importPassword } : {}),
+            });
+            router.push(`/${user.username}/${repoName}`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to import repository");
+        }
+    }
 
     const sourceOptions = [
         { id: "url" as ImportSource, label: "Clone URL", icon: LinkIcon, desc: "Import from any Git URL" },
@@ -108,7 +169,7 @@ export default function ImportRepositoryPage() {
     return (
         <div className="min-h-screen bg-background flex flex-col">
             <TopBar
-                breadcrumb={[{ label: "Mirror repository" }]}
+                breadcrumb={[{ label: "Import repository" }]}
                 navLinks={[
                     { label: "Explore", href: "/explore", icon: <Compass className="h-[18px] w-[18px]" /> },
                     { label: "Merge Requests", href: "#", icon: <GitMerge className="h-[18px] w-[18px]" /> },
@@ -166,7 +227,7 @@ export default function ImportRepositoryPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-8">
+                        <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="space-y-3">
                                 <label className="text-sm font-medium">Import source</label>
                                 <div className="grid grid-cols-2 gap-3">
@@ -214,30 +275,27 @@ export default function ImportRepositoryPage() {
                                             className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                            {importStatus === "validating" && (
-                                                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-                                            )}
-                                            {importStatus === "valid" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                                            {importStatus === "invalid" && <AlertCircle className="h-4 w-4 text-red-500" />}
+                                            {urlValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {urlInvalid && <AlertCircle className="h-4 w-4 text-red-500" />}
                                         </div>
                                     </div>
-                                    {importStatus === "valid" && <p className="text-sm text-green-500">Repository found and accessible</p>}
-                                    {importStatus === "invalid" && (
-                                        <p className="text-sm text-red-500">
-                                            Could not access repository. Check the URL or ensure it&apos;s public.
-                                        </p>
-                                    )}
+                                    {urlValid && <p className="text-sm text-green-500">Valid URL</p>}
+                                    {urlInvalid && <p className="text-sm text-red-500">Please enter a valid URL</p>}
 
                                     <div className="pt-4 border-t border-border space-y-3">
                                         <p className="text-sm text-muted-foreground">For private repositories, provide authentication:</p>
                                         <div className="grid grid-cols-2 gap-3">
                                             <input
                                                 type="text"
+                                                value={importUsername}
+                                                onChange={(e) => setImportUsername(e.target.value)}
                                                 placeholder="Username (optional)"
                                                 className="h-10 px-3 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                             />
                                             <input
                                                 type="password"
+                                                value={importPassword}
+                                                onChange={(e) => setImportPassword(e.target.value)}
                                                 placeholder="Token or password"
                                                 className="h-10 px-3 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                             />
@@ -257,7 +315,7 @@ export default function ImportRepositoryPage() {
                                         </p>
                                         <p className="text-sm text-muted-foreground mt-1">Authorize GitArena to access your repositories</p>
                                     </div>
-                                    <Button className="gap-2">
+                                    <Button type="button" className="gap-2">
                                         Connect to {sourceOptions.find((s) => s.id === source)?.label}
                                         <ArrowRight className="h-4 w-4" />
                                     </Button>
@@ -269,53 +327,55 @@ export default function ImportRepositoryPage() {
                                     Import to <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
-                                                <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                                    {namespace[0].toUpperCase()}
-                                                </div>
-                                                <span>{namespace}</span>
-                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="w-56">
-                                            {currentUser.orgs.map((org) => (
-                                                <DropdownMenuItem
-                                                    key={org.name}
-                                                    onClick={() => setNamespace(org.name)}
-                                                    className="flex items-center gap-3"
-                                                >
-                                                    <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                                        {org.name[0].toUpperCase()}
-                                                    </div>
-                                                    {org.name}
-                                                    {org.type === "user" && (
-                                                        <span className="text-xs text-muted-foreground ml-auto">you</span>
-                                                    )}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {/* Owner is always the current user — no org dropdown for now */}
+                                    <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
+                                        <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
+                                            {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                        </div>
+                                        <span>{user?.username ?? "…"}</span>
+                                    </div>
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
-                                    <input
-                                        type="text"
-                                        value={repoName}
-                                        onChange={(e) => setRepoName(e.target.value)}
-                                        placeholder="repository-name"
-                                        className="flex-1 h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    />
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            value={repoName}
+                                            onChange={(e) => setRepoName(e.target.value)}
+                                            placeholder="repository-name"
+                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                            {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
+                                        </div>
+                                    </div>
                                 </div>
-                                {repoName && (
+                                {nameError && <p className="text-sm text-red-500">{nameError}</p>}
+                                {nameValid && user && (
                                     <p className="text-sm text-muted-foreground">
                                         Will be imported to{" "}
                                         <span className="text-foreground font-mono">
-                                            {baseUrl}/{namespace}/{repoName}
+                                            {user.username}/{repoName}
                                         </span>
                                     </p>
                                 )}
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium flex items-center gap-2">
+                                    Description <span className="text-muted-foreground font-normal">(optional)</span>
+                                    {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
+                                </label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="A short description of your repository"
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                />
+                                {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             </div>
 
                             <div className="space-y-3">
@@ -357,50 +417,36 @@ export default function ImportRepositoryPage() {
 
                             <div className="space-y-3">
                                 <label className="text-sm font-medium">Options</label>
-                                <button
-                                    type="button"
-                                    onClick={() => setMirror(!mirror)}
-                                    className={`flex items-center gap-3 p-4 rounded-lg border text-left w-full transition-colors ${
-                                        mirror ? "border-foreground bg-accent/30" : "border-border hover:bg-accent/20"
-                                    }`}
+                                <div
+                                    className="flex items-center gap-3 p-4 rounded-lg border border-border text-left w-full opacity-50 cursor-not-allowed"
+                                    title="Mirror support is coming soon"
                                 >
-                                    <div
-                                        className={`flex items-center justify-center h-5 w-5 rounded border-2 transition-colors ${
-                                            mirror ? "border-foreground bg-foreground" : "border-muted-foreground"
-                                        }`}
-                                    >
-                                        {mirror && (
-                                            <svg
-                                                className="h-3 w-3 text-background"
-                                                viewBox="0 0 12 12"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            >
-                                                <path d="M2 6l3 3 5-6" />
-                                            </svg>
-                                        )}
-                                    </div>
+                                    <div className="flex items-center justify-center h-5 w-5 rounded border-2 border-muted-foreground" />
                                     <div>
                                         <span className="font-medium">Mirror repository</span>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            Keep the repository in sync with the source. Changes will be pulled automatically.
+                                            Keep the repository in sync with the source — coming soon
                                         </p>
                                     </div>
-                                </button>
+                                </div>
                             </div>
 
                             <div className="pt-4">
-                                <Button
-                                    type="submit"
-                                    className="w-full h-12 text-base gap-2"
-                                    disabled={!repoName || (source === "url" && importStatus !== "valid")}
-                                >
-                                    <Download className="h-5 w-5" />
-                                    Import repository
+                                <Button type="submit" className="w-full h-12 text-base gap-2" disabled={!canSubmit}>
+                                    {isMutating ? (
+                                        <>
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            Importing…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="h-5 w-5" />
+                                            Import repository
+                                        </>
+                                    )}
                                 </Button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </main>
