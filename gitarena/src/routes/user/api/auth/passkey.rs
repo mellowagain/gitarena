@@ -1,21 +1,23 @@
-use crate::{die, err};
 use crate::mail::Email;
 use crate::passkey::{ChallengeType, StoredPasskey, WebAuthnChallenge, aaguid_from_raw_credential, name_from_user_agent};
 use crate::routes::user::api::auth::me::MeResponse;
 use crate::session::Session;
 use crate::user::{User, WebUser};
+use crate::{die, err};
 use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use webauthn_rs::prelude::{CreationChallengeResponse, DiscoverableAuthentication, DiscoverableKey, PasskeyRegistration, PublicKeyCredential, RegisterPublicKeyCredential, Webauthn};
+use webauthn_rs::prelude::{
+    CreationChallengeResponse, DiscoverableAuthentication, DiscoverableKey, PasskeyRegistration, PublicKeyCredential, RegisterPublicKeyCredential, Webauthn,
+};
 
 #[utoipa::path(
     get,
@@ -126,10 +128,7 @@ pub(crate) async fn post_register_start(web_user: WebUser, webauthn: web::Data<W
 
     tx.commit().await?;
 
-    Ok(HttpResponse::Ok().json(RegisterStartResponse {
-        challenge_id,
-        options: ccr,
-    }))
+    Ok(HttpResponse::Ok().json(RegisterStartResponse { challenge_id, options: ccr }))
 }
 
 #[derive(Serialize, ToSchema)]
