@@ -8,7 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/error-display";
 import { Github, Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import type { AuthUser } from "@/hooks/use-auth";
 import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { startAuthentication } from "@simplewebauthn/browser";
+import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
+import { postJsonFetcher } from "@/lib/fetchers";
+import { toast } from "sonner";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -33,6 +39,16 @@ interface SSOProviders {
     bitbucket: boolean;
 }
 
+interface PasskeyLoginStartResponse {
+    challenge_id: string;
+    options: { publicKey: PublicKeyCredentialRequestOptionsJSON };
+}
+
+interface PasskeyLoginFinishRequest {
+    challenge_id: string;
+    credential: object;
+}
+
 export default function LoginPage() {
     return (
         <Suspense>
@@ -44,12 +60,30 @@ export default function LoginPage() {
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { isAuthenticated, isLoading: authLoading, isLoggingIn, loginError, login } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, isLoggingIn, loginError, login, mutate: mutateAuth } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [authMethod, setAuthMethod] = useState<"password" | "passkey">("password");
     const [form, setForm] = useState({ identifier: "", password: "" });
     const { data, isLoading, error } = useSWR<SSOProviders>("/api/sso");
+
+    const { trigger: triggerPasskeyStart, isMutating: isPasskeyStarting } = useSWRMutation<
+        PasskeyLoginStartResponse,
+        Error,
+        string,
+        Record<string, never>
+    >("/api/auth/passkey/login/start", postJsonFetcher);
+
+    const { trigger: triggerPasskeyFinish, isMutating: isPasskeyFinishing } = useSWRMutation<
+        AuthUser,
+        Error,
+        string,
+        PasskeyLoginFinishRequest
+    >("/api/auth/passkey/login/finish", postJsonFetcher, {
+        onSuccess: (user) => mutateAuth(user, { revalidate: false }),
+    });
+
+    const isPasskeyLoading = isPasskeyStarting || isPasskeyFinishing;
 
     const rawRedirect = searchParams.get("redirect") ?? "/";
     // Reject absolute URLs and protocol-relative URLs to prevent open redirects.
@@ -66,6 +100,19 @@ function LoginContent() {
         const user = await login(form.identifier, form.password).catch(() => null);
         if (user) {
             router.push(redirect);
+        }
+    }
+
+    async function handlePasskeyLogin() {
+        try {
+            const startResponse = await triggerPasskeyStart({} as Record<string, never>);
+            const credential = await startAuthentication({ optionsJSON: startResponse.options.publicKey });
+            const user = await triggerPasskeyFinish({ challenge_id: startResponse.challenge_id, credential });
+            if (user) {
+                router.push(redirect);
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Passkey authentication failed");
         }
     }
 
@@ -261,9 +308,14 @@ function LoginContent() {
                                             Use your device&apos;s biometric authentication or security key
                                         </p>
                                     </div>
-                                    <Button type="button" className="w-full h-11 gap-2">
+                                    <Button
+                                        type="button"
+                                        className="w-full h-11 gap-2"
+                                        onClick={handlePasskeyLogin}
+                                        disabled={isPasskeyLoading}
+                                    >
                                         <Fingerprint className="h-5 w-5" />
-                                        Continue with Passkey
+                                        {isPasskeyLoading ? "Authenticating..." : "Continue with Passkey"}
                                     </Button>
                                 </div>
                             </div>

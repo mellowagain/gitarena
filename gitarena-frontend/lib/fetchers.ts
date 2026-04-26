@@ -61,3 +61,45 @@ export async function postFetcher(url: string): Promise<void> {
         throw new Error(res.statusText);
     }
 }
+
+/**
+ * SWR mutation fetcher for POST requests with no body that return JSON.
+ */
+export async function postEmptyFetcher<TResult>(url: string): Promise<TResult> {
+    const res = await fetch(url, { method: "POST" });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+
+    return res.json();
+}
+
+/**
+ * SWR mutation fetcher for POST requests with a JSON body that return no body (e.g. 201 No Content).
+ */
+export async function postJsonVoidFetcher<TArg>(url: string, { arg }: { arg: TArg }): Promise<void> {
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+    });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+}
+
+/**
+ * Fetcher for DELETE requests.
+ */
+export async function deleteFetcher(url: string): Promise<void> {
+    const res = await fetch(url, { method: "DELETE" });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+}

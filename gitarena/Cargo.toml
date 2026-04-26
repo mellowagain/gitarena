@@ -64,6 +64,7 @@ rand = "0.8.4"
 regex = "1.5.5"
 rust-argon2 = { version = "1.0.0", features = ["crossbeam-utils"] }
 serde = { version = "1.0.133", features = ["derive"] }
+serde_cbor_2 = "0.13.0"
 serde_json = "1.0.75"
 sqlx = { workspace = true }
 sysinfo = "0.29.0"
@@ -79,6 +80,8 @@ tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std
 tracing-unwrap = "0.9.2"
 url = "2.2.2"
 utoipa = { version = "4", features = ["actix_extras", "chrono", "url"] }
+uuid = { version = "1", features = ["v4", "v5", "v7", "serde"] }
+webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 utoipa-rapidoc = { version = "1", features = ["actix-web"] }
 zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
 
