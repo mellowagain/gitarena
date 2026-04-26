@@ -61,7 +61,7 @@ Repository:
 
 Repository commits:
 
-![Commits](https://i.cutegirl.tech/ed3qdisinquh.png)
+![Commits](docs/readme_screenshots/commits.png)
 
 File view:
 

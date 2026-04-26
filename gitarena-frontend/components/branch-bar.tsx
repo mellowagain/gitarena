@@ -14,14 +14,14 @@ import Link from "next/link";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
 
-interface BranchInfo {
+export interface BranchInfo {
     name: string;
     commitCount: number;
     ahead: number;
     behind: number;
 }
 
-interface BranchesResponse {
+export interface BranchesResponse {
     branches: BranchInfo[];
 }
 
@@ -75,7 +75,7 @@ export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchC
                 </DropdownMenuContent>
             </DropdownMenu>
             <Link
-                href="#"
+                href={`/${user}/${repo}/commits/${selectedBranch}`}
                 className="flex items-center gap-1.5 px-2.5 h-9 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md hover:bg-accent/50"
             >
                 <History className="h-3.5 w-3.5" />

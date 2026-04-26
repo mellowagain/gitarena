@@ -15,7 +15,7 @@ import prettyBytes from "pretty-bytes";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 
-interface RepoMetadata {
+export interface RepoMetadata {
     id: number;
 
     owner: number;

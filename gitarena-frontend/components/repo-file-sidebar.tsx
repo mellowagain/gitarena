@@ -37,7 +37,7 @@ interface BranchFile {
     commit: FileCommitInfo;
 }
 
-interface FileCommitInfo {
+export interface FileCommitInfo {
     sha1: string;
     message: string;
     time: number;
