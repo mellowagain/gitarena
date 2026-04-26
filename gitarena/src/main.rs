@@ -44,6 +44,7 @@ mod issue;
 mod licenses;
 mod mail;
 mod metrics;
+mod passkey;
 mod prelude;
 mod privileges;
 mod repository;
@@ -96,7 +97,11 @@ async fn main() -> Result<()> {
 
     let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain" => String);
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
-    let secure = domain.map_or_else(|| false, |d| d.starts_with("https"));
+    let secure = domain.as_deref().map_or(false, |d| d.starts_with("https"));
+
+    let webauthn_origin: Option<String> = from_optional_config!("webauthn.origin" => String);
+    let webauthn_domain = domain.unwrap_or_else(|| "http://localhost:8320".to_owned());
+    let webauthn = passkey::build_webauthn(&webauthn_domain, webauthn_origin.as_deref())?;
 
     let ipc = RwLock::new(Ipc::new().await?);
 
@@ -118,6 +123,7 @@ async fn main() -> Result<()> {
             .app_data(Data::new(db_pool.clone()))
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
+            .app_data(Data::new(webauthn.clone()))
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
