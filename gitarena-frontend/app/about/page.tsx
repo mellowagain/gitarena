@@ -163,7 +163,12 @@ const features = [
         label: "Privacy first",
         desc: "No telemetry, no analytics, no call-home. Self-host and your data never leaves your server.",
     },
-    { icon: Globe, label: "Federation", desc: "Follow repos and users across the ForgeFed universe, including other GitArena instances.", wip: true },
+    {
+        icon: Globe,
+        label: "Federation",
+        desc: "Follow repos and users across the ForgeFed universe, including other GitArena instances.",
+        wip: true,
+    },
     {
         icon: Braces,
         label: "Open API",
@@ -325,7 +330,10 @@ export default async function AboutPage() {
                     <div className="max-w-6xl mx-auto px-6">
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                             {stats.map((s) => (
-                                <div key={s.label} className="py-5 px-4 text-center border-r border-b border-border last:border-r-0 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:[&:nth-child(6n)]:border-r-0 lg:[&:nth-last-child(-n+6)]:border-b-0 [&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+3)]:border-b-0">
+                                <div
+                                    key={s.label}
+                                    className="py-5 px-4 text-center border-r border-b border-border last:border-r-0 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:[&:nth-child(6n)]:border-r-0 lg:[&:nth-last-child(-n+6)]:border-b-0 [&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+3)]:border-b-0"
+                                >
                                     <p className="text-lg font-semibold font-mono">{s.value}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
                                 </div>
@@ -363,14 +371,16 @@ export default async function AboutPage() {
                                         {demoIssues.map((issue, i) => (
                                             <div
                                                 key={issue.id}
-                                                className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i < demoIssues.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
+                                                className={`flex items-center gap-3 px-4 py-2.5 text-sm min-w-0 ${i < demoIssues.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
                                             >
-                                                 <IssueStatusIcon status={issue.status} />
+                                                <IssueStatusIcon status={issue.status} />
                                                 <span className="text-xs text-muted-foreground font-mono w-8 shrink-0">#{issue.id}</span>
                                                 <span className="flex-1 min-w-0 truncate">{issue.title}</span>
-                                                <div className="hidden sm:flex items-center gap-1.5 w-36 shrink-0 justify-end">
-                                                    {issue.labels.map((l) => (
-                                                        <LabelBadge key={l.name} label={l} />
+                                                <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                                                    {issue.labels.map((l, li) => (
+                                                        <span key={l.name} className={li > 0 ? "hidden lg:contents" : undefined}>
+                                                            <LabelBadge label={l} />
+                                                        </span>
                                                     ))}
                                                 </div>
                                                 <span className="hidden sm:flex w-8 shrink-0 items-center gap-1 text-xs text-muted-foreground justify-end">
@@ -466,17 +476,17 @@ export default async function AboutPage() {
                                                 className={`flex items-start gap-3 px-3 py-2.5 ${i < features.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
                                             >
                                                 <f.icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium leading-none mb-1 flex items-center gap-2">
-                                        {f.label}
-                                        {f.wip && (
-                                            <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
-                                                WIP
-                                            </span>
-                                        )}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
-                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium leading-none mb-1 flex items-center gap-2">
+                                                        {f.label}
+                                                        {f.wip && (
+                                                            <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
+                                                                WIP
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

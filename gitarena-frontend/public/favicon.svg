@@ -1,0 +1,62 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <style>
+    .bg  { fill: #18181b; }
+    .cat { fill: #e4e4e7; }
+    .drk { fill: #a1a1aa; }
+    .eye { fill: #18181b; }
+    .nos { fill: #f87171; }
+  </style>
+
+  <!-- background -->
+  <rect width="32" height="32" class="bg" rx="6"/>
+
+  <!-- ears (pointy) -->
+  <rect x="6"  y="3"  width="2" height="2" class="cat"/>
+  <rect x="7"  y="2"  width="2" height="2" class="cat"/>
+  <rect x="8"  y="1"  width="2" height="3" class="cat"/>
+  <rect x="22" y="3"  width="2" height="2" class="cat"/>
+  <rect x="23" y="2"  width="2" height="2" class="cat"/>
+  <rect x="22" y="1"  width="2" height="3" class="cat"/>
+
+  <!-- inner ears -->
+  <rect x="8"  y="2"  width="1" height="2" class="nos"/>
+  <rect x="23" y="2"  width="1" height="2" class="nos"/>
+
+  <!-- head -->
+  <rect x="6"  y="5"  width="20" height="14" class="cat"/>
+  <rect x="5"  y="6"  width="22" height="12" class="cat"/>
+
+  <!-- eyes -->
+  <rect x="9"  y="10" width="3" height="3" class="eye"/>
+  <rect x="20" y="10" width="3" height="3" class="eye"/>
+
+  <!-- eye shine -->
+  <rect x="9"  y="10" width="1" height="1" class="cat"/>
+  <rect x="20" y="10" width="1" height="1" class="cat"/>
+
+  <!-- nose -->
+  <rect x="15" y="14" width="2" height="1" class="nos"/>
+
+  <!-- mouth -->
+  <rect x="14" y="15" width="1" height="1" class="drk"/>
+  <rect x="17" y="15" width="1" height="1" class="drk"/>
+
+  <!-- whiskers -->
+  <rect x="7"  y="14" width="6" height="1" class="drk"/>
+  <rect x="19" y="14" width="6" height="1" class="drk"/>
+  <rect x="8"  y="16" width="5" height="1" class="drk"/>
+  <rect x="19" y="16" width="5" height="1" class="drk"/>
+
+  <!-- body -->
+  <rect x="8"  y="19" width="16" height="10" class="cat"/>
+  <rect x="7"  y="20" width="18" height="8"  class="cat"/>
+
+  <!-- tail -->
+  <rect x="24" y="22" width="2" height="6" class="cat"/>
+  <rect x="23" y="27" width="2" height="2" class="cat"/>
+  <rect x="22" y="28" width="2" height="2" class="cat"/>
+
+  <!-- paws -->
+  <rect x="9"  y="29" width="4" height="2" class="cat"/>
+  <rect x="19" y="29" width="4" height="2" class="cat"/>
+</svg>

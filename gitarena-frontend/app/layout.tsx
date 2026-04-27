@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ClientLayout } from "@/components/client-layout";
 import "./globals.css";
@@ -25,7 +27,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className="bg-background">
+        <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} bg-background`}>
             <body className="font-sans antialiased">
                 <Suspense fallback={null}>
                     <NavigationProgress />

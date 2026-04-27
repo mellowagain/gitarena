@@ -36,7 +36,8 @@ export function Footer({ apiInfo }: FooterProps) {
                                 </a>
                                 {shortCommit && (
                                     <>
-                                        {" "}·{" "}
+                                        {" "}
+                                        ·{" "}
                                         <a
                                             href={`${repoUrl}/commit/${apiInfo.commit}`}
                                             target="_blank"
