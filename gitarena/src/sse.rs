@@ -70,8 +70,7 @@ impl Broadcaster {
 
     /// Removes clients which we are unable to send a ping to
     /// This method should be called by a tokio task around every 10 seconds
-    #[instrument]
-    async fn remove_stale_clients(&mut self) {
+    fn remove_stale_clients(&mut self) {
         self.clients.retain(|(client, category)| {
             // This will fail if the buffer is full or the client is disconnected
             // If the buffer is full the client has not recv'd for a while which means it probably disconnected
@@ -130,7 +129,7 @@ fn spawn_ping_task(data: Data<RwLock<Broadcaster>>) {
         async move {
             loop {
                 interval.tick().await;
-                data.write().await.remove_stale_clients().await;
+                data.write().await.remove_stale_clients();
             }
         }
         .instrument(info_span!("sse_ping_task")),
