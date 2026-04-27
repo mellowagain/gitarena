@@ -13,6 +13,10 @@ const nextConfig = {
                 source: "/api/:path*",
                 destination: `${backendUrl}/api/:path*`,
             },
+            {
+                source: "/:username/:repo.git/:path*",
+                destination: `${backendUrl}/:username/:repo.git/:path*`,
+            },
         ];
     },
 };
