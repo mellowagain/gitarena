@@ -1,144 +1,180 @@
-"use client";
-
 import Link from "next/link";
 import {
-    GitBranch,
     GitMerge,
-    AlertCircle,
     MessageSquare,
     CheckCircle2,
     CircleDot,
     Circle,
-    Package,
     Shield,
     Zap,
     Globe,
     Lock,
     Users,
-    ChevronRight,
-    FileCode,
     ArrowRight,
-    Check,
-    X,
-    Terminal,
     Server,
-    Key,
+    GitBranch,
+    BookOpen,
+    Braces,
+    Sparkles,
+    PaintRoller,
 } from "lucide-react";
+import { TopBar } from "@/components/top-bar";
+import { CTA } from "@/components/landing/cta";
+import { Footer } from "@/components/landing/footer";
 
 const demoIssues = [
     {
-        id: 42,
+        id: 19,
+        status: "todo",
+        title: "Allow Git access over SSH",
+        labels: [
+            { name: "feature::git", color: "#d21386" },
+            { name: "help wanted", color: "#0FE3F1" },
+        ],
+        comments: 0,
+        ago: "2021",
+    },
+    {
+        id: 50,
+        status: "todo",
+        title: "Implement password reset self service",
+        labels: [
+            { name: "feature::users", color: "#d21386" },
+            { name: "type::enhancement", color: "#3371d6" },
+        ],
+        comments: 0,
+        ago: "2022",
+    },
+    {
+        id: 74,
         status: "in_progress",
-        title: "Add support for SSH key authentication",
+        title: "Federation with other software forges",
         labels: [
-            { name: "enhancement", color: "#a2eeef" },
-            { name: "component::auth", color: "#d73a4a" },
+            { name: "feature::federation", color: "#d21386" },
+            { name: "status::investigating", color: "#f9ef66" },
         ],
-        comments: 8,
-        ago: "2h ago",
+        comments: 0,
+        ago: "2025",
     },
     {
-        id: 41,
-        status: "todo",
-        title: "Repository mirroring from GitHub/GitLab",
-        labels: [{ name: "feature", color: "#0075ca" }],
-        comments: 3,
-        ago: "1d ago",
-    },
-    {
-        id: 38,
+        id: 26,
         status: "done",
-        title: "Fix timezone offset in commit timestamps",
-        labels: [{ name: "bug", color: "#d73a4a" }],
-        comments: 2,
-        ago: "3d ago",
-    },
-    {
-        id: 37,
-        status: "todo",
-        title: "Add webhook support for push events",
+        title: "Extend admin panel to allow changing of settings",
         labels: [
-            { name: "enhancement", color: "#a2eeef" },
-            { name: "component::webhooks", color: "#7057ff" },
+            { name: "feature::admin", color: "#d21386" },
+            { name: "type::enhancement", color: "#3371d6" },
         ],
-        comments: 5,
-        ago: "4d ago",
+        comments: 0,
+        ago: "2021",
     },
 ];
 
 const demoMRs = [
     {
-        id: 15,
-        status: "open",
-        ci: "passed",
-        title: "feat: implement SSH key parsing and validation",
-        source: "feature/ssh-keys",
-        additions: 312,
-        deletions: 18,
-    },
-    {
-        id: 14,
-        status: "merged",
-        ci: "passed",
-        title: "fix: handle UTF-8 filenames in tree view",
-        source: "fix/utf8-tree",
-        additions: 47,
-        deletions: 22,
-    },
-    {
-        id: 13,
+        id: 83,
         status: "open",
         ci: "running",
-        title: "refactor: split auth module into sub-crates",
-        source: "refactor/auth",
-        additions: 189,
-        deletions: 203,
+        title: "Frontend redesign",
+        source: "redesign",
+        additions: 27841,
+        deletions: 186,
     },
-    { id: 12, status: "closed", ci: "failed", title: "chore: upgrade axum to 0.7", source: "chore/axum-07", additions: 84, deletions: 91 },
+    {
+        id: 73,
+        status: "merged",
+        ci: "passed",
+        title: "Add /{username}.keys route to list user SSH keys",
+        source: "ssh-keys",
+        additions: 102,
+        deletions: 3,
+    },
+    {
+        id: 52,
+        status: "merged",
+        ci: "passed",
+        title: "IPC between Main <-> Workhorse",
+        source: "ipc",
+        additions: 695,
+        deletions: 91,
+    },
+    {
+        id: 29,
+        status: "merged",
+        ci: "passed",
+        title: "Revamp error handling",
+        source: "error-handling",
+        additions: 674,
+        deletions: 441,
+    },
 ];
 
 const demoCommits = [
-    { hash: "9bf39d9", message: "feat(auth): add SSH key fingerprint verification", author: "Mari", ago: "2h ago", ci: "passed" },
-    { hash: "3ca21f1", message: "fix(tree): handle symlinks in directory listing", author: "Alex", ago: "5h ago", ci: "passed" },
-    { hash: "b8e04d2", message: "refactor(db): migrate pool to sqlx 0.7", author: "Jordan", ago: "1d ago", ci: "failed" },
-    { hash: "f1a9c33", message: "docs: update API reference for v0.2", author: "Mari", ago: "2d ago", ci: "passed" },
+    { hash: "0dec4ee", message: "add openapi schema using utopia", author: "Mari", ago: "8d ago", ci: "passed" },
+    { hash: "eec8561", message: "fix `REF_DELTA`s not being found within same pack", author: "Mari", ago: "9d ago", ci: "passed" },
+    { hash: "a3a02e5", message: "adjust argon config to OWASP recommended", author: "Mari", ago: "6mo ago", ci: "passed" },
+    { hash: "b15b33a", message: "modernize docker files and add healthz endpoint", author: "Mari", ago: "6mo ago", ci: "passed" },
 ];
 
-const stats = [
+const staticStats = [
     { label: "Written in", value: "Rust" },
-    { label: "License", value: "AGPL-3.0" },
-    { label: "Open issues", value: "42" },
-    { label: "Contributors", value: "9" },
-    { label: "Releases", value: "3" },
-    { label: "Stars", value: "1.2k" },
+    { label: "License", value: "MIT" },
 ];
+
+interface GithubStats {
+    openPRs: number;
+    openIssues: number;
+    contributors: number;
+    forks: number;
+    stars: number;
+}
+
+async function getGithubStats(): Promise<GithubStats | null> {
+    try {
+        const headers = process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : undefined;
+        const [repoRes, prsRes, contributorsRes] = await Promise.all([
+            fetch("https://api.github.com/repos/mellowagain/gitarena", { headers, next: { revalidate: 3600 } }),
+            fetch("https://api.github.com/repos/mellowagain/gitarena/pulls?state=open&per_page=1", { headers, next: { revalidate: 3600 } }),
+            fetch("https://api.github.com/repos/mellowagain/gitarena/contributors?per_page=100", { headers, next: { revalidate: 3600 } }),
+        ]);
+        if (!repoRes.ok) {
+            return null;
+        }
+        const repo = await repoRes.json();
+        const prs = prsRes.ok ? await prsRes.json() : [];
+        const contributors = contributorsRes.ok ? await contributorsRes.json() : [];
+        return {
+            openPRs: Array.isArray(prs) ? prs.length : 0,
+            openIssues: repo.open_issues_count ?? 0,
+            contributors: Array.isArray(contributors) ? contributors.length : 0,
+            forks: repo.forks_count ?? 0,
+            stars: repo.stargazers_count ?? 0,
+        };
+    } catch {
+        return null;
+    }
+}
 
 const features = [
     { icon: GitBranch, label: "Git hosting", desc: "Full Git protocol over HTTPS and SSH with LFS support." },
-    { icon: AlertCircle, label: "Issue tracking", desc: "Labels, milestones, assignments, scoped labels." },
-    { icon: GitMerge, label: "Merge requests", desc: "Inline diffs, CI integration, review workflows." },
     { icon: Shield, label: "Access control", desc: "Org-level roles, repo visibility, deploy keys." },
-    { icon: Zap, label: "CI integration", desc: "Webhook-driven pipelines — bring your own runner." },
-    { icon: Package, label: "Package registry", desc: "Cargo, npm, Docker — one registry, one auth layer." },
-    { icon: Globe, label: "Federation", desc: "Follow repos and users across GitArena instances." },
-    { icon: FileCode, label: "Code review", desc: "Line-level comments, suggestions, approval gates." },
-];
-
-const comparison = [
-    { feature: "Self-hostable", gitarena: true, github: false, gitlab: true },
-    { feature: "Written in Rust", gitarena: true, github: false, gitlab: false },
-    { feature: "Single binary deploy", gitarena: true, github: false, gitlab: false },
-    { feature: "Scoped labels", gitarena: true, github: false, gitlab: true },
-    { feature: "Built-in package registry", gitarena: true, github: true, gitlab: true },
-    { feature: "Federation", gitarena: true, github: false, gitlab: false },
-    { feature: "Open source (AGPL-3.0)", gitarena: true, github: false, gitlab: false },
-    { feature: "No telemetry", gitarena: true, github: false, gitlab: false },
-];
-
-const testimonials = [
-    { quote: "Finally a Git platform that doesn't require a Kubernetes cluster to run.", author: "Lars K.", role: "Platform engineer" },
-    { quote: "Migrated off GitLab in a weekend. Single binary, SQLite, done.", author: "Yuki T.", role: "Solo founder" },
-    { quote: "The Rust rewrite means it runs great on my old server. Zero bloat.", author: "Morgan S.", role: "Open source maintainer" },
+    { icon: Zap, label: "CI integration", desc: "Webhook-driven pipelines — bring your own runner.", wip: true },
+    {
+        icon: Lock,
+        label: "Privacy first",
+        desc: "No telemetry, no analytics, no call-home. Self-host and your data never leaves your server.",
+    },
+    { icon: Globe, label: "Federation", desc: "Follow repos and users across the ForgeFed universe, including other GitArena instances.", wip: true },
+    {
+        icon: Braces,
+        label: "Open API",
+        desc: "Full REST API with an OpenAPI spec. Any registered user can generate an API key.",
+    },
+    {
+        icon: Sparkles,
+        label: "AI native",
+        desc: "Our MCP server lets AI agents browse repos, read issues, and open merge requests.",
+        wip: true,
+    },
 ];
 
 function IssueStatusIcon({ status }: { status: string }) {
@@ -205,87 +241,91 @@ function Avatar({ name }: { name: string }) {
     );
 }
 
-function Tick({ ok }: { ok: boolean }) {
-    return ok ? <Check className="h-3.5 w-3.5 text-green-500 mx-auto" /> : <X className="h-3.5 w-3.5 text-muted-foreground/40 mx-auto" />;
+import { InstanceConfig } from "@/lib/instance-config";
+
+async function getApiInfo(): Promise<InstanceConfig | null> {
+    try {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+        const res = await fetch(`${backendUrl}/api`, { next: { revalidate: 3600 } });
+        if (!res.ok) {
+            return null;
+        }
+        return res.json();
+    } catch {
+        return null;
+    }
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+    const [apiInfo, githubStats] = await Promise.all([getApiInfo(), getGithubStats()]);
+
+    const activityLabel = githubStats
+        ? githubStats.openPRs > 0
+            ? { label: githubStats.openPRs === 1 ? "Open MR" : "Open MRs", value: String(githubStats.openPRs) }
+            : { label: githubStats.openIssues === 1 ? "Open issue" : "Open issues", value: String(githubStats.openIssues) }
+        : { label: "Open issues", value: "19" };
+
+    const stats = [
+        ...staticStats,
+        activityLabel,
+        { label: "Contributors", value: githubStats ? String(githubStats.contributors) : "3" },
+        { label: "Forks", value: githubStats ? String(githubStats.forks) : "11" },
+        { label: "Stars", value: githubStats ? String(githubStats.stars) : "99" },
+    ];
     return (
         <div className="min-h-screen bg-background text-foreground font-sans">
-            <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
-                <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-6">
-                        <Link href="/" className="flex items-center gap-2 font-semibold text-sm">
-                            <GitBranch className="h-4 w-4" />
-                            GitArena
-                        </Link>
-                        <nav className="hidden md:flex items-center gap-1">
-                            {(["Features", "Self-host", "Docs", "Changelog"] as const).map((item) => (
-                                <Link
-                                    key={item}
-                                    href="#"
-                                    className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                    {item}
-                                </Link>
-                            ))}
-                        </nav>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link href="/login" className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                            Sign in
-                        </Link>
-                        <Link
-                            href="/register"
-                            className="px-3 py-1.5 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium"
-                        >
-                            Get started
-                        </Link>
-                    </div>
-                </div>
-            </header>
+            <TopBar
+                navLinks={[
+                    { label: "Documentation", href: "/docs", icon: <BookOpen className="h-[18px] w-[18px]" /> },
+                    {
+                        label: "Source code",
+                        href: "https://git.mari.zip/mellowagain/gitarena",
+                        icon: <GitBranch className="h-[18px] w-[18px]" />,
+                    },
+                ]}
+            />
 
             <main>
                 <section className="border-b border-border">
                     <div className="max-w-6xl mx-auto px-6 py-20 flex flex-col items-center text-center gap-6">
-                        <div className="inline-flex items-center gap-1.5 border border-border rounded-full px-3 py-1 text-xs text-muted-foreground">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            v0.2.1 just shipped — SSH keys &amp; webhook push events
-                            <ChevronRight className="h-3 w-3" />
-                        </div>
                         <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-balance max-w-2xl leading-tight">
                             The git forge that fits in your homelab
                         </h1>
                         <p className="text-muted-foreground text-base leading-relaxed max-w-xl text-balance">
-                            GitArena is a lightweight, Rust-powered alternative to Gitea and Forgejo. Ships in minutes with Docker Compose
+                            Take control of <b>your</b> data with GitArena, a lightweight, self-hosted Git forge written in Rust. Deploy in
+                            one command with Docker Compose.
                         </p>
                         <div className="flex items-center gap-3 flex-wrap justify-center">
                             <Link
-                                href="/mellowagain/test"
+                                href="/explore"
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium"
                             >
-                                Try the demo
+                                Explore instance
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
-                                href="#"
+                                href="/docs/getting-started/quickstart"
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
                             >
-                                Documentation
+                                Deploy your own
                             </Link>
                         </div>
-                        <div className="flex items-center gap-2 border border-border rounded-md px-4 py-2.5 bg-accent/30 font-mono text-sm text-muted-foreground">
-                            <Terminal className="h-3.5 w-3.5 shrink-0" />
-                            <span>curl -fsSL https://git.mari.zip/install | docker compose -f - up -d</span>
-                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            The hosted instance at{" "}
+                            <a href="https://git.mari.zip" className="underline underline-offset-2 hover:text-foreground transition-colors">
+                                git.mari.zip
+                            </a>{" "}
+                            is invite-only for now.
+                        </p>
                     </div>
                 </section>
 
                 <section className="border-b border-border">
                     <div className="max-w-6xl mx-auto px-6">
-                        <div className="flex items-stretch divide-x divide-border">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                             {stats.map((s) => (
-                                <div key={s.label} className="flex-1 py-5 px-4 text-center">
+                                <div key={s.label} className="py-5 px-4 text-center border-r border-b border-border last:border-r-0 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:[&:nth-child(6n)]:border-r-0 lg:[&:nth-last-child(-n+6)]:border-b-0 [&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-last-child(-n+3)]:border-b-0">
                                     <p className="text-lg font-semibold font-mono">{s.value}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
                                 </div>
@@ -296,11 +336,14 @@ export default function AboutPage() {
 
                 <section className="border-b border-border">
                     <div className="max-w-6xl mx-auto px-6">
-                        <div className="flex gap-0 divide-x divide-border">
-                            <div className="flex-1 min-w-0 py-12 pr-10 space-y-14">
+                        <div className="flex flex-col lg:flex-row gap-0 lg:divide-x divide-border">
+                            <div className="flex-1 min-w-0 py-12 lg:pr-10 space-y-14">
                                 <div>
-                                    <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
+                                    <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-2">
                                         Issue tracking
+                                        <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
+                                            WIP
+                                        </span>
                                     </p>
                                     <h2 className="text-xl font-semibold mb-2">Bug reports and feature requests, organised</h2>
                                     <p className="text-sm text-muted-foreground mb-5 leading-relaxed max-w-lg">
@@ -322,27 +365,30 @@ export default function AboutPage() {
                                                 key={issue.id}
                                                 className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i < demoIssues.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
                                             >
-                                                <IssueStatusIcon status={issue.status} />
-                                                <span className="text-xs text-muted-foreground font-mono shrink-0">#{issue.id}</span>
+                                                 <IssueStatusIcon status={issue.status} />
+                                                <span className="text-xs text-muted-foreground font-mono w-8 shrink-0">#{issue.id}</span>
                                                 <span className="flex-1 min-w-0 truncate">{issue.title}</span>
-                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                <div className="hidden sm:flex items-center gap-1.5 w-36 shrink-0 justify-end">
                                                     {issue.labels.map((l) => (
                                                         <LabelBadge key={l.name} label={l} />
                                                     ))}
                                                 </div>
-                                                <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+                                                <span className="hidden sm:flex w-8 shrink-0 items-center gap-1 text-xs text-muted-foreground justify-end">
                                                     <MessageSquare className="h-3 w-3" />
                                                     {issue.comments}
                                                 </span>
-                                                <span className="text-xs text-muted-foreground shrink-0">{issue.ago}</span>
+                                                <span className="text-xs text-muted-foreground shrink-0 w-10 text-right">{issue.ago}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
+                                    <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-2">
                                         Merge requests
+                                        <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
+                                            WIP
+                                        </span>
                                     </p>
                                     <h2 className="text-xl font-semibold mb-2">Code review that stays out of your way</h2>
                                     <p className="text-sm text-muted-foreground mb-5 leading-relaxed max-w-lg">
@@ -367,15 +413,15 @@ export default function AboutPage() {
                                             >
                                                 <MRStatusIcon status={mr.status} />
                                                 <CIDot ci={mr.ci} />
-                                                <span className="text-xs text-muted-foreground font-mono shrink-0">!{mr.id}</span>
+                                                <span className="text-xs text-muted-foreground font-mono w-8 shrink-0">!{mr.id}</span>
                                                 <span className="flex-1 min-w-0 truncate">{mr.title}</span>
-                                                <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground font-mono">
-                                                    <GitBranch className="h-3 w-3" />
-                                                    <span className="max-w-[80px] truncate">{mr.source}</span>
+                                                <span className="hidden sm:flex w-24 shrink-0 items-center gap-1 text-xs text-muted-foreground font-mono justify-end">
+                                                    <GitBranch className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">{mr.source}</span>
                                                 </span>
-                                                <span className="shrink-0 flex items-center gap-2 text-xs font-mono">
-                                                    <span className="text-green-500">+{mr.additions}</span>
-                                                    <span className="text-red-500">-{mr.deletions}</span>
+                                                <span className="hidden sm:flex w-28 shrink-0 items-center gap-1.5 text-xs font-mono justify-end">
+                                                    <span className="text-green-500 w-14 text-right">+{mr.additions}</span>
+                                                    <span className="text-red-500 w-10 text-right">-{mr.deletions}</span>
                                                 </span>
                                             </div>
                                         ))}
@@ -398,17 +444,17 @@ export default function AboutPage() {
                                                 className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i < demoCommits.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
                                             >
                                                 <CIDot ci={c.ci} />
-                                                <span className="font-mono text-xs text-muted-foreground shrink-0">{c.hash}</span>
+                                                <span className="font-mono text-xs text-muted-foreground w-14 shrink-0">{c.hash}</span>
                                                 <span className="flex-1 min-w-0 truncate">{c.message}</span>
                                                 <Avatar name={c.author} />
-                                                <span className="text-xs text-muted-foreground shrink-0">{c.ago}</span>
+                                                <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">{c.ago}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="w-72 shrink-0 py-12 pl-8 space-y-8">
+                            <div className="w-full lg:w-72 shrink-0 py-12 lg:pl-8 lg:border-t-0 border-t border-border space-y-8">
                                 <div>
                                     <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
                                         Everything included
@@ -420,10 +466,17 @@ export default function AboutPage() {
                                                 className={`flex items-start gap-3 px-3 py-2.5 ${i < features.length - 1 ? "border-b border-border" : ""} hover:bg-accent/40 transition-colors`}
                                             >
                                                 <f.icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-medium leading-none mb-1">{f.label}</p>
-                                                    <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
-                                                </div>
+                                <div>
+                                    <p className="text-sm font-medium leading-none mb-1 flex items-center gap-2">
+                                        {f.label}
+                                        {f.wip && (
+                                            <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
+                                                WIP
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -435,10 +488,10 @@ export default function AboutPage() {
                                         {[
                                             { icon: Server, label: "Your data, your server" },
                                             { icon: Users, label: "Unlimited users and repos" },
-                                            { icon: Zap, label: "Single binary, ships with SQLite" },
-                                            { icon: Key, label: "SSH + HTTPS, no agent required" },
-                                            { icon: Globe, label: "Federate with other instances" },
+                                            { icon: Zap, label: "Single Docker Compose" },
+                                            { icon: Globe, label: "Federate with the ForgeFed" },
                                             { icon: Lock, label: "No telemetry, no call-home" },
+                                            { icon: PaintRoller, label: "Whitelabel and customize" },
                                         ].map((item, i, arr) => (
                                             <div
                                                 key={item.label}
@@ -450,145 +503,15 @@ export default function AboutPage() {
                                         ))}
                                     </div>
                                 </div>
-
-                                <div>
-                                    <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
-                                        Latest release
-                                    </h3>
-                                    <div className="border border-border rounded-md px-3 py-3 space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium font-mono">v0.2.1</span>
-                                            <span className="text-xs text-muted-foreground">3 days ago</span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground leading-relaxed">
-                                            SSH key auth, webhook push events, improved diff renderer.
-                                        </p>
-                                        <Link
-                                            href="#"
-                                            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 pt-0.5"
-                                        >
-                                            View changelog <ChevronRight className="h-3 w-3" />
-                                        </Link>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section className="border-b border-border">
-                    <div className="max-w-6xl mx-auto px-6 py-16">
-                        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1 text-center">
-                            How it stacks up
-                        </p>
-                        <h2 className="text-2xl font-semibold text-center mb-2">GitArena vs the alternatives</h2>
-                        <p className="text-sm text-muted-foreground text-center mb-10">
-                            No subscriptions. No data leaving your network. No surprises.
-                        </p>
-
-                        <div className="border border-border rounded-md overflow-hidden max-w-2xl mx-auto">
-                            <div className="grid grid-cols-4 border-b border-border bg-accent/30 text-xs font-medium">
-                                <div className="px-4 py-2.5 text-muted-foreground uppercase tracking-widest">Feature</div>
-                                <div className="px-4 py-2.5 text-center border-l border-border">GitArena</div>
-                                <div className="px-4 py-2.5 text-center border-l border-border text-muted-foreground">GitHub</div>
-                                <div className="px-4 py-2.5 text-center border-l border-border text-muted-foreground">GitLab</div>
-                            </div>
-                            {comparison.map((row, i) => (
-                                <div
-                                    key={row.feature}
-                                    className={`grid grid-cols-4 text-sm ${i < comparison.length - 1 ? "border-b border-border" : ""}`}
-                                >
-                                    <div className="px-4 py-2.5 text-muted-foreground text-xs">{row.feature}</div>
-                                    <div className="px-4 py-2.5 border-l border-border">
-                                        <Tick ok={row.gitarena} />
-                                    </div>
-                                    <div className="px-4 py-2.5 border-l border-border">
-                                        <Tick ok={row.github} />
-                                    </div>
-                                    <div className="px-4 py-2.5 border-l border-border">
-                                        <Tick ok={row.gitlab} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section className="border-b border-border">
-                    <div className="max-w-6xl mx-auto px-6 py-16">
-                        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-8 text-center">
-                            What people are saying
-                        </p>
-                        <div className="grid md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-border border border-border rounded-md overflow-hidden">
-                            {testimonials.map((t) => (
-                                <div key={t.author} className="px-6 py-6 space-y-4">
-                                    <p className="text-sm leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-7 h-7 rounded-full bg-accent border border-border flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
-                                            {t.author[0]}
-                                        </span>
-                                        <div>
-                                            <p className="text-sm font-medium leading-none">{t.author}</p>
-                                            <p className="text-xs text-muted-foreground mt-0.5">{t.role}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <div className="max-w-6xl mx-auto px-6 py-20 flex flex-col items-center text-center gap-6">
-                        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Get started today</p>
-                        <h2 className="text-3xl font-semibold tracking-tight text-balance max-w-lg">Own your Git infrastructure. Fully.</h2>
-                        <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-                            One binary. One command. Your repos, your rules. No seats, no storage limits, no surprise bills.
-                        </p>
-                        <div className="flex items-center gap-3 flex-wrap justify-center">
-                            <Link
-                                href="/mellowagain/test"
-                                className="flex items-center gap-2 px-5 py-2.5 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium"
-                            >
-                                Try the live demo
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center gap-2 px-5 py-2.5 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                            >
-                                Self-host in 5 minutes
-                            </Link>
-                        </div>
-                        <div className="flex items-center gap-6 text-xs text-muted-foreground mt-2">
-                            <span className="flex items-center gap-1.5">
-                                <Check className="h-3 w-3 text-green-500" /> Free forever
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <Check className="h-3 w-3 text-green-500" /> No credit card
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <Check className="h-3 w-3 text-green-500" /> AGPL-3.0
-                            </span>
-                        </div>
-                    </div>
-                </section>
+                <CTA />
             </main>
 
-            <footer className="border-t border-border">
-                <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
-                        <GitBranch className="h-3.5 w-3.5" /> GitArena &mdash; AGPL-3.0
-                    </span>
-                    <div className="flex items-center gap-4">
-                        {["Docs", "Source", "Issues", "Releases"].map((l) => (
-                            <Link key={l} href="#" className="hover:text-foreground transition-colors">
-                                {l}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </footer>
+            <Footer apiInfo={apiInfo} />
         </div>
     );
 }

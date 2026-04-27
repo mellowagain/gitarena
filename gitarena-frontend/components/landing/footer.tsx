@@ -1,119 +1,75 @@
 import Link from "next/link";
-import { Github, Twitter } from "lucide-react";
+import { InstanceConfig } from "@/lib/instance-config";
 
-const footerLinks = {
-    product: [
-        { label: "Features", href: "#features" },
-        { label: "Pricing", href: "/pricing" },
-        { label: "Roadmap", href: "/roadmap" },
-        { label: "Changelog", href: "/changelog" },
-    ],
-    resources: [
-        { label: "Documentation", href: "/docs" },
-        { label: "API Reference", href: "/docs/api" },
-        { label: "Community", href: "/community" },
-        { label: "Blog", href: "/blog" },
-    ],
-    company: [
-        { label: "About", href: "/about" },
-        { label: "Contact", href: "/contact" },
-        { label: "Privacy", href: "/privacy" },
-        { label: "Terms", href: "/terms" },
-    ],
-};
+interface FooterProps {
+    apiInfo?: InstanceConfig | null;
+}
 
-export function Footer() {
+export function Footer({ apiInfo }: FooterProps) {
+    const repoUrl = apiInfo?.repository ?? "https://github.com/mellowagain/gitarena";
+    const releaseUrl = apiInfo?.version ? `${repoUrl}/releases/tag/v${apiInfo.version}` : repoUrl;
+    const shortCommit = apiInfo?.commit?.slice(0, 7);
+
     return (
-        <footer className="px-6 py-16 border-t border-border">
+        <footer className="px-6 py-12 border-t border-border">
             <div className="max-w-6xl mx-auto">
-                <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
-                    {/* Brand */}
-                    <div className="lg:col-span-2">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-8 h-8 font-bold rounded-lg bg-foreground text-background">
-                                G
-                            </div>
-                            <span className="text-lg font-semibold">GitArena</span>
-                        </Link>
-                        <p className="max-w-xs mt-4 text-sm leading-relaxed text-muted-foreground">
-                            A lightweight, performant Git platform built for developers who value simplicity and control.
-                        </p>
-                        <div className="flex gap-4 mt-6">
-                            <a
-                                href="https://github.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="GitHub"
-                            >
-                                <Github className="w-5 h-5" />
-                            </a>
-                            <a
-                                href="https://twitter.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Twitter"
-                            >
-                                <Twitter className="w-5 h-5" />
-                            </a>
-                        </div>
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    {/* Brand + version */}
+                    <div className="flex items-center gap-4">
+                        <a
+                            href={repoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-base font-semibold tracking-tight hover:opacity-80"
+                        >
+                            GITARENA
+                        </a>
+                        {apiInfo && (
+                            <span className="text-sm text-muted-foreground font-mono">
+                                <a
+                                    href={releaseUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-foreground transition-colors"
+                                >
+                                    v{apiInfo.version}
+                                </a>
+                                {shortCommit && (
+                                    <>
+                                        {" "}·{" "}
+                                        <a
+                                            href={`${repoUrl}/commit/${apiInfo.commit}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:text-foreground transition-colors"
+                                        >
+                                            {shortCommit}
+                                        </a>
+                                    </>
+                                )}
+                            </span>
+                        )}
                     </div>
 
                     {/* Links */}
-                    <div>
-                        <h3 className="mb-4 text-sm font-semibold">Product</h3>
-                        <ul className="space-y-3">
-                            {footerLinks.product.map((link) => (
-                                <li key={link.href}>
-                                    <Link
-                                        href={link.href}
-                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 className="mb-4 text-sm font-semibold">Resources</h3>
-                        <ul className="space-y-3">
-                            {footerLinks.resources.map((link) => (
-                                <li key={link.href}>
-                                    <Link
-                                        href={link.href}
-                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 className="mb-4 text-sm font-semibold">Company</h3>
-                        <ul className="space-y-3">
-                            {footerLinks.company.map((link) => (
-                                <li key={link.href}>
-                                    <Link
-                                        href={link.href}
-                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                        <Link href="/docs/api-reference/" className="hover:text-foreground transition-colors">
+                            API reference
+                        </Link>
+                        <Link href="/privacy" className="hover:text-foreground transition-colors">
+                            Privacy policy
+                        </Link>
+                        <Link href="/terms" className="hover:text-foreground transition-colors">
+                            Terms of service
+                        </Link>
+                        <Link href="/dmca" className="hover:text-foreground transition-colors">
+                            DMCA
+                        </Link>
                     </div>
                 </div>
 
-                <div className="pt-8 mt-12 border-t border-border">
-                    <p className="text-sm text-center text-muted-foreground">
-                        © {new Date().getFullYear()} GitArena. Open source under the MIT License.
-                    </p>
+                <div className="pt-6 mt-6 border-t border-border">
+                    <p className="text-xs text-muted-foreground">Open source under the MIT License.</p>
                 </div>
             </div>
         </footer>
