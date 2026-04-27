@@ -8,23 +8,14 @@ import "./globals.css";
 export const metadata: Metadata = {
     title: "GitArena - Lightweight Git Platform for Self-Hosting",
     description: "A performant, self-hosted alternative to GitLab and Gitea with built-in VCS, issue tracking, and code review.",
-    generator: "v0.app",
+    generator: "GitArena",
     icons: {
         icon: [
             {
-                url: "/icon-light-32x32.png",
-                media: "(prefers-color-scheme: light)",
-            },
-            {
-                url: "/icon-dark-32x32.png",
-                media: "(prefers-color-scheme: dark)",
-            },
-            {
-                url: "/icon.svg",
+                url: "/favicon.svg",
                 type: "image/svg+xml",
             },
         ],
-        apple: "/apple-icon.png",
     },
 };
 

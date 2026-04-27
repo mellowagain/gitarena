@@ -185,7 +185,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                         </>
                     ) : (
                         <>
-                            <Link href="/login">
+                            <Link href="/login" className="hidden sm:block">
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -195,7 +195,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                 </Button>
                             </Link>
                             <Link href="/register">
-                                <Button variant="secondary" size="sm" className="h-9 px-4 text-base">
+                                <Button variant="secondary" size="sm" className="h-9 px-3 sm:px-4 text-base">
                                     Sign up
                                 </Button>
                             </Link>
