@@ -2,6 +2,7 @@
 
 import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, WrapText, MoreHorizontal, History } from "lucide-react";
 import { use, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
@@ -210,9 +211,14 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                                asChild
                                             >
-                                                <History className="h-3.5 w-3.5" />
-                                                History
+                                                <Link
+                                                    href={`/${user}/${repo}/commits/${encodeURIComponent(branch)}?path=${encodeURIComponent(selectedFile)}`}
+                                                >
+                                                    <History className="h-3.5 w-3.5" />
+                                                    History
+                                                </Link>
                                             </Button>
                                         </div>
                                     )}

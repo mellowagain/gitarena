@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
@@ -167,6 +167,8 @@ function groupByDate(commits: FileCommitInfo[]): { label: string; commits: FileC
 export default function CommitsPage() {
     const { user, repo, branch: undecodedBranch } = useParams<{ user: string; repo: string; branch: string }>();
     const branch = decodeURIComponent(undecodedBranch);
+    const searchParams = useSearchParams();
+    const filePath = searchParams.get("path");
 
     const {
         data: branchesData,
@@ -175,9 +177,10 @@ export default function CommitsPage() {
     } = useSWR<BranchesResponse>(`/api/repos/${user}/${repo}/branches`);
     const { data: repoData, error: repoError } = useSWR<RepoMetadata>(`/api/repos/${user}/${repo}`);
 
-    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<BranchCommitsResponse>(
-        (index) => `/api/repos/${user}/${repo}/branch/${undecodedBranch}/commits?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}`
-    );
+    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<BranchCommitsResponse>((index) => {
+        const base = `/api/repos/${user}/${repo}/branch/${undecodedBranch}/commits?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}`;
+        return filePath ? `${base}&path=${encodeURIComponent(filePath)}` : base;
+    });
 
     if (branchesError) {
         return <ErrorDisplay failed="branches" error={branchesError} />;
@@ -225,6 +228,14 @@ export default function CommitsPage() {
 
                     <div className="mb-8">
                         <h1 className="text-2xl font-semibold mb-3 leading-snug">Commits</h1>
+                        {filePath && (
+                            <div className="flex items-center gap-2 text-sm mb-2">
+                                <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className="text-muted-foreground">
+                                    History for <code className="font-mono text-foreground">{filePath}</code>
+                                </span>
+                            </div>
+                        )}
 
                         <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">

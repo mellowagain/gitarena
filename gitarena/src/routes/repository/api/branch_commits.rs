@@ -1,4 +1,4 @@
-use crate::git::history::paged_commits;
+use crate::git::history::{paged_commits, paged_commits_for_path};
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::api::branch_files::{CommitInfo, FileCommitInfo};
@@ -36,6 +36,9 @@ struct CommitsQuery {
     offset: usize,
     #[serde(default)]
     sort: SortOrder,
+    /// Path to filter for
+    #[serde(default)]
+    path: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -70,7 +73,12 @@ pub(crate) async fn branch_commits(repo: Repository, branch: Branch, query: web:
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
     let full_tree_name = branch.reference.name.as_bstr().to_str()?;
 
-    let commit_ids = paged_commits(&libgit2_repo, full_tree_name, query.offset, limit, reverse).await?;
+    let commit_ids = if let Some(ref path) = query.path {
+        paged_commits_for_path(&libgit2_repo, full_tree_name, path, query.offset, limit).await?
+    } else {
+        paged_commits(&libgit2_repo, full_tree_name, query.offset, limit, reverse).await?
+    };
+
     let mut commits = Vec::<FileCommitInfo>::with_capacity(commit_ids.len());
 
     for oid in commit_ids {

@@ -123,6 +123,57 @@ pub(crate) async fn commits_for_blob(repo: &Git2Repository, reference: &str, fil
 }
 
 /// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
+/// Returns a page of commits that touched `path`, starting at `offset`, returning at most `limit` entries
+#[instrument(err, skip(repo))]
+pub(crate) async fn paged_commits_for_path(repo: &Git2Repository, reference: &str, path: &str, offset: usize, limit: usize) -> Result<Vec<Oid>> {
+    let mut results = Vec::<Oid>::with_capacity(limit);
+    let mut skipped = 0usize;
+
+    let mut rev_walk = repo.revwalk()?;
+    rev_walk.set_sorting(Sort::TIME)?;
+
+    match Oid::from_str(reference) {
+        Ok(oid) => rev_walk.push(oid)?,
+        Err(_) => rev_walk.push_ref(reference)?,
+    }
+
+    let mut diff_options = DiffOptions::new();
+    diff_options.enable_fast_untracked_dirs(true);
+    diff_options.skip_binary_check(true);
+    diff_options.pathspec(path);
+
+    for result in rev_walk {
+        let commit_oid = result?;
+        let commit = repo.find_commit(commit_oid)?;
+        let tree = commit.tree()?;
+
+        let previous_tree = if commit.parent_count() > 0 {
+            let previous_commit = commit.parent(0)?;
+            Some(previous_commit.tree()?)
+        } else {
+            None
+        };
+
+        let diff = repo.diff_tree_to_tree(previous_tree.as_ref(), Some(&tree), Some(&mut diff_options))?;
+
+        if diff.deltas().next().is_some() {
+            if skipped < offset {
+                skipped += 1;
+                continue;
+            }
+
+            results.push(commit_oid);
+
+            if results.len() >= limit {
+                return Ok(results);
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// `reference` can be either a full ref name or a OID string (ascii-hex-numeric, 40 digits)
 /// Returns a page of commits starting at `offset`, returning at most `limit` entries
 #[instrument(err, skip(repo))]
 pub(crate) async fn paged_commits(repo: &Git2Repository, reference: &str, offset: usize, limit: usize, reverse: bool) -> Result<Vec<Oid>> {
