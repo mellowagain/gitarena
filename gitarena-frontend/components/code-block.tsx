@@ -195,14 +195,6 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
     );
 }
 
-/*
-
-TODO:
-- fetch latest commit to show in sidebar top left
-- add history button to see history for a file
-
- */
-
 export function CodeBlockSkeleton() {
     return (
         <div className="font-mono text-sm leading-relaxed pr-6 animate-pulse">
