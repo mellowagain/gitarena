@@ -1,46 +1,56 @@
-use crate::prelude::{ContextExtensions, HttpRequestExtensions};
+use crate::err;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::WebUser;
-use crate::{err, render_template};
 use gitarena_common::database::Pool;
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use actix_web::{HttpRequest, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use derive_more::Display;
 use gitarena_common::database::Database;
 use gitarena_macros::route;
 use qstring::QString;
 use serde::{Deserialize, Serialize};
-
+use serde_json::Value as JsonValue;
 use sqlx::{FromRow, Transaction};
-use tera::Context;
+use utoipa::ToSchema;
 
-#[route("/explore", method = "GET", err = "htmx+html")]
+#[derive(Serialize, ToSchema)]
+pub(crate) struct ExploreResponse {
+    repositories: Vec<ExploreRepo>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/explore",
+    params(
+        ("sort" = Option<String>, Query, description = "Sort order"),
+        ("archived" = Option<u8>, Query, description = "Include archived repositories"),
+        ("fork" = Option<u8>, Query, description = "Include forked repositories"),
+        ("mirror" = Option<u8>, Query, description = "Include mirrored repositories"),
+        ("offset" = Option<u32>, Query, description = "Pagination offset"),
+    ),
+    responses(
+        (status = 200, description = "List of repositories", body = ExploreResponse),
+        (status = 400, description = "Invalid sort order"),
+    ),
+    security((), ("cookieAuth" = [])),
+    tag = "explore"
+)]
+#[route("/api/explore", method = "GET", err = "json")]
 pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let query_string = request.q_string();
+    let query_string = QString::from(request.query_string());
 
     let sorting = query_string.get("sort").unwrap_or("stars_desc");
     let (sort_method, order) = Order::parse(sorting).ok_or_else(|| err!(BAD_REQUEST, "Invalid order"))?;
-    let htmx_request = request.is_htmx();
-    let options = ExploreOptions::parse(&query_string, &web_user, sort_method, order, htmx_request);
+    let options = ExploreOptions::parse(&query_string, &web_user, sort_method, order);
 
     let mut transaction = db_pool.begin().await?;
-    let mut context = Context::new();
+    let repositories = get_repositories(&options, &mut transaction).await?;
+    transaction.commit().await?;
 
-    context.insert_web_user(&web_user)?;
-
-    context.try_insert("repositories", &get_repositories(&options, &mut transaction).await?)?;
-    context.try_insert("options", &options)?;
-    context.try_insert("query_string", query_string_without_offset(&query_string).as_str())?;
-
-    // Only send a partial result (only the component) if it's a request by htmx
-    if options.htmx_request {
-        return render_template!("explore_list_component.html", context, transaction);
-    }
-
-    render_template!("explore.html", context, transaction)
+    Ok(HttpResponse::Ok().json(ExploreResponse { repositories }))
 }
 
 async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_, Database>) -> Result<Vec<ExploreRepo>> {
@@ -53,6 +63,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         repositories.visibility, \
         repositories.archived, \
         repositories.disabled, \
+        repositories.languages, \
         count(distinct stars.stargazer) as stars, \
         count(distinct issues.id) filter (where not(issues.closed = true or issues.confidential = true)) as issues \
         from repositories \
@@ -65,8 +76,9 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
     Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str()).fetch_all(&mut **tx).await?)
 }
 
-#[derive(FromRow, Serialize, Deserialize, Debug)]
-struct ExploreRepo {
+#[derive(FromRow, Serialize, Deserialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ExploreRepo {
     id: i32,
     name: String,
     description: String,
@@ -75,13 +87,14 @@ struct ExploreRepo {
     visibility: RepoVisibility,
     archived: bool,
     disabled: bool,
+    languages: JsonValue,
     stars: i64,
     issues: i64,
     #[sqlx(default)]
     merge_requests: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 struct ExploreOptions<'a> {
     archived: bool,
     forked: bool,
@@ -91,11 +104,10 @@ struct ExploreOptions<'a> {
     sort: &'a str,
     order: Order,
     offset: u32,
-    htmx_request: bool,
 }
 
 impl ExploreOptions<'_> {
-    fn parse<'a>(query_string: &'a QString, web_user: &WebUser, sort: &'a str, order: Order, htmx_request: bool) -> ExploreOptions<'a> {
+    fn parse<'a>(query_string: &'a QString, web_user: &WebUser, sort: &'a str, order: Order) -> ExploreOptions<'a> {
         let (internal, disabled) = web_user.as_ref().map_or_else(|| (false, false), |user| (true, user.admin));
 
         ExploreOptions {
@@ -107,7 +119,6 @@ impl ExploreOptions<'_> {
             sort,
             order,
             offset: query_string.get("offset").map_or_else(|| 0, |value| value.parse::<u32>().unwrap_or(0)),
-            htmx_request,
         }
     }
 }
@@ -171,14 +182,4 @@ impl Order {
 
         Some((method, order))
     }
-}
-
-fn query_string_without_offset(input: &QString) -> String {
-    input
-        .to_pairs()
-        .iter()
-        .filter(|(key, _)| key != &"offset")
-        .map(|(key, value)| format!("{key}={value}"))
-        .collect::<Vec<String>>()
-        .join("&")
 }

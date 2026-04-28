@@ -1,167 +1,62 @@
 "use client";
 
 import { useState } from "react";
+import useSWRInfinite from "swr/infinite";
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import {
-    Star,
-    GitFork,
-    TrendingUp,
-    Clock,
-    Flame,
-    Globe,
-    ChevronDown,
-    Compass,
-    GitMerge,
-    Sparkles,
-    Code,
-    Users,
-    Search,
-} from "lucide-react";
+import { Star, Lock, Globe, Clock, ChevronDown, Compass, GitMerge, Sparkles, Search } from "lucide-react";
+import { jsonFetcher } from "@/lib/fetchers";
+import { Badge } from "@/components/ui/badge";
+import * as allLangs from "linguist-languages";
 
-type Repository = {
+function languageColor(name: string): string {
+    const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
+    if (color) {
+        return color;
+    }
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `hsl(${Math.abs(hash) % 360}, 60%, 55%)`;
+}
+
+const PAGE_SIZE = 20;
+
+interface ExploreRepo {
     id: number;
-    org: string;
     name: string;
     description: string;
+    ownerId: number;
+    ownerName: string;
+    visibility: string;
+    archived: boolean;
+    disabled: boolean;
+    languages: Record<string, number>;
     stars: number;
-    forks: number;
-    language: string;
-    languageColor: string;
-    updatedAt: string;
-    topics: string[];
-    starsToday?: number;
-};
+    issues: number;
+    mergeRequests: number;
+}
 
-const trendingRepos: Repository[] = [
-    {
-        id: 1,
-        org: "rust-lang",
-        name: "rust",
-        description: "Empowering everyone to build reliable and efficient software.",
-        stars: 89420,
-        forks: 11850,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "2h",
-        topics: ["rust", "compiler", "programming-language"],
-        starsToday: 142,
-    },
-    {
-        id: 2,
-        org: "denoland",
-        name: "deno",
-        description: "A modern runtime for JavaScript and TypeScript.",
-        stars: 92100,
-        forks: 5120,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "4h",
-        topics: ["javascript", "typescript", "runtime"],
-        starsToday: 89,
-    },
-    {
-        id: 3,
-        org: "vercel",
-        name: "next.js",
-        description: "The React Framework for the Web",
-        stars: 118500,
-        forks: 25400,
-        language: "TypeScript",
-        languageColor: "#3178c6",
-        updatedAt: "1h",
-        topics: ["react", "nextjs", "framework"],
-        starsToday: 234,
-    },
-    {
-        id: 4,
-        org: "tauri-apps",
-        name: "tauri",
-        description: "Build smaller, faster, and more secure desktop applications with a web frontend.",
-        stars: 74200,
-        forks: 2180,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "6h",
-        topics: ["desktop", "rust", "webview"],
-        starsToday: 156,
-    },
-    {
-        id: 5,
-        org: "astral-sh",
-        name: "uv",
-        description: "An extremely fast Python package installer and resolver, written in Rust.",
-        stars: 28900,
-        forks: 820,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "3h",
-        topics: ["python", "package-manager", "rust"],
-        starsToday: 312,
-    },
-    {
-        id: 6,
-        org: "oven-sh",
-        name: "bun",
-        description: "Incredibly fast JavaScript runtime, bundler, test runner, and package manager.",
-        stars: 68400,
-        forks: 2340,
-        language: "Zig",
-        languageColor: "#ec915c",
-        updatedAt: "5h",
-        topics: ["javascript", "runtime", "bundler"],
-        starsToday: 98,
-    },
-    {
-        id: 7,
-        org: "biomejs",
-        name: "biome",
-        description: "A toolchain for web projects, aimed to provide functionalities to maintain them.",
-        stars: 11200,
-        forks: 380,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "8h",
-        topics: ["linter", "formatter", "rust"],
-        starsToday: 67,
-    },
-    {
-        id: 8,
-        org: "mellowagain",
-        name: "gitarena",
-        description: "A lightweight and performant git hosting platform for self-hosting.",
-        stars: 2840,
-        forks: 124,
-        language: "Rust",
-        languageColor: "#dea584",
-        updatedAt: "1h",
-        topics: ["git", "self-hosted", "rust"],
-        starsToday: 45,
-    },
+interface ExploreResponse {
+    repositories: ExploreRepo[];
+}
+
+type Category = "popular" | "new";
+
+const categories: { id: Category; label: string; icon: React.ElementType; sort: string }[] = [
+    { id: "popular", label: "Popular", icon: Star, sort: "stars_desc" },
+    { id: "new", label: "New", icon: Sparkles, sort: "id_desc" },
 ];
 
-const timeRanges = [
-    { id: "today", label: "Today" },
-    { id: "week", label: "This week" },
-    { id: "month", label: "This month" },
-];
-
-const languages = [
-    { id: "all", label: "All languages" },
-    { id: "rust", label: "Rust" },
-    { id: "typescript", label: "TypeScript" },
-    { id: "python", label: "Python" },
-    { id: "go", label: "Go" },
-    { id: "javascript", label: "JavaScript" },
-];
-
-const categories = [
-    { id: "trending", label: "Trending", icon: Flame },
-    { id: "new", label: "New", icon: Sparkles },
-    { id: "popular", label: "Popular", icon: Star },
-];
+function getPrimaryLanguage(languages: Record<string, number>): string | null {
+    const entries = Object.entries(languages);
+    if (entries.length === 0) {
+        return null;
+    }
+    return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+}
 
 function formatNumber(num: number): string {
     if (num >= 1000) {
@@ -170,71 +65,80 @@ function formatNumber(num: number): string {
     return num.toString();
 }
 
-function RepoRow({ repo, rank }: { repo: Repository; rank: number }) {
+function RepoRow({ repo, rank }: { repo: ExploreRepo; rank: number }) {
+    const primaryLang = getPrimaryLanguage(repo.languages);
+
     return (
-        <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors group">
+        <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors">
             <div className="shrink-0 w-8 text-lg font-medium text-muted-foreground/50 text-center">{rank}</div>
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <Link href={`/${repo.org}/${repo.name}`} className="font-medium hover:underline truncate">
-                        <span className="text-muted-foreground">{repo.org}</span>
+                    <Link href={`/${repo.ownerName}/${repo.name}`} className="font-medium hover:underline truncate">
+                        <span className="text-muted-foreground">{repo.ownerName}</span>
                         <span className="text-muted-foreground mx-0.5">/</span>
                         <span>{repo.name}</span>
                     </Link>
+                    {repo.visibility === "private" && (
+                        <Badge variant="secondary" className="shrink-0">
+                            <Lock className="h-3 w-3" />
+                            Private
+                        </Badge>
+                    )}
+                    {repo.visibility === "internal" && (
+                        <Badge variant="outline" className="shrink-0">
+                            <Globe className="h-3 w-3" />
+                            Internal
+                        </Badge>
+                    )}
                 </div>
-                <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>
+                {repo.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>}
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 shrink-0 w-28">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: repo.languageColor }} />
-                <span className="text-sm text-muted-foreground truncate">{repo.language}</span>
-            </div>
+            {primaryLang && (
+                <div className="hidden sm:flex items-center gap-2 shrink-0 w-28">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: languageColor(primaryLang) }} />
+                    <span className="text-sm text-muted-foreground truncate">{primaryLang}</span>
+                </div>
+            )}
 
             <div className="flex items-center gap-4 shrink-0 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                     <Star className="h-4 w-4" />
                     <span>{formatNumber(repo.stars)}</span>
                 </div>
-                <div className="hidden sm:flex items-center gap-1">
-                    <GitFork className="h-4 w-4" />
-                    <span>{formatNumber(repo.forks)}</span>
-                </div>
-                {repo.starsToday && (
-                    <div className="hidden md:flex items-center gap-1 text-foreground">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>{repo.starsToday}</span>
-                    </div>
-                )}
             </div>
+        </div>
+    );
+}
 
-            <Button variant="secondary" size="sm" className="shrink-0 h-8 gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Star className="h-3.5 w-3.5" />
-                Star
-            </Button>
+function RepoRowSkeleton({ rank }: { rank: number }) {
+    return (
+        <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+            <div className="shrink-0 w-8 text-lg font-medium text-muted-foreground/50 text-center">{rank}</div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-72 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="hidden sm:block h-3 w-20 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-10 bg-muted animate-pulse rounded" />
         </div>
     );
 }
 
 export default function ExplorePage() {
-    const [searchQuery] = useState("");
-    const [timeRange, setTimeRange] = useState("today");
-    const [language, setLanguage] = useState("all");
-    const [category, setCategory] = useState("trending");
+    const [category, setCategory] = useState<Category>("popular");
+    const activeCategory = categories.find((c) => c.id === category)!;
+    const sort = activeCategory.sort;
 
-    const filteredRepos = trendingRepos.filter((repo) => {
-        if (language !== "all" && repo.language.toLowerCase() !== language) {
-            return false;
-        }
-        if (
-            searchQuery &&
-            !repo.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !repo.description.toLowerCase().includes(searchQuery.toLowerCase())
-        ) {
-            return false;
-        }
-        return true;
-    });
+    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<ExploreResponse>(
+        (index) => `/api/explore?sort=${sort}&offset=${index * PAGE_SIZE}`,
+        jsonFetcher
+    );
+
+    const allRepos = data?.flatMap((page) => page.repositories) ?? [];
+    const lastPage = data?.[data.length - 1];
+    const hasMore = !isLoading && lastPage != null && lastPage.repositories.length === PAGE_SIZE;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -259,7 +163,10 @@ export default function ExplorePage() {
                                     return (
                                         <button
                                             key={cat.id}
-                                            onClick={() => setCategory(cat.id)}
+                                            onClick={() => {
+                                                setCategory(cat.id);
+                                                setSize(1);
+                                            }}
                                             className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                                                 category === cat.id
                                                     ? "bg-accent/50 text-foreground"
@@ -273,52 +180,6 @@ export default function ExplorePage() {
                                 })}
                             </div>
                         </div>
-
-                        <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-3">Resources</h3>
-                            <div className="space-y-1">
-                                <Link
-                                    href="#"
-                                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
-                                >
-                                    <Users className="h-4 w-4" />
-                                    Organizations
-                                </Link>
-                                <Link
-                                    href="#"
-                                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
-                                >
-                                    <Code className="h-4 w-4" />
-                                    Topics
-                                </Link>
-                                <Link
-                                    href="#"
-                                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
-                                >
-                                    <Globe className="h-4 w-4" />
-                                    Collections
-                                </Link>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-3">Languages</h3>
-                            <div className="space-y-1">
-                                {languages.slice(1).map((lang) => (
-                                    <button
-                                        key={lang.id}
-                                        onClick={() => setLanguage(language === lang.id ? "all" : lang.id)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
-                                            language === lang.id
-                                                ? "bg-accent/50 text-foreground"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
-                                        }`}
-                                    >
-                                        {lang.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
                     </div>
                 </aside>
 
@@ -326,63 +187,44 @@ export default function ExplorePage() {
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <Flame className="h-6 w-6 text-orange-500" />
-                                <h1 className="text-xl font-semibold">Trending repositories</h1>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="secondary" size="sm" className="h-9 gap-2">
-                                            <Clock className="h-4 w-4" />
-                                            {timeRanges.find((t) => t.id === timeRange)?.label}
-                                            <ChevronDown className="h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {timeRanges.map((range) => (
-                                            <DropdownMenuItem key={range.id} onClick={() => setTimeRange(range.id)}>
-                                                {range.label}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="secondary" size="sm" className="h-9 gap-2 lg:hidden">
-                                            {languages.find((l) => l.id === language)?.label}
-                                            <ChevronDown className="h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {languages.map((lang) => (
-                                            <DropdownMenuItem key={lang.id} onClick={() => setLanguage(lang.id)}>
-                                                {lang.label}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <activeCategory.icon className="h-6 w-6 text-orange-500" />
+                                <h1 className="text-xl font-semibold">{activeCategory.label} repositories</h1>
                             </div>
                         </div>
 
                         <div className="border border-border rounded-lg overflow-hidden bg-card/30">
-                            {filteredRepos.length > 0 ? (
-                                filteredRepos.map((repo, index) => <RepoRow key={repo.id} repo={repo} rank={index + 1} />)
+                            {error ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                                    <Search className="h-12 w-12 mb-4 opacity-30" />
+                                    <p className="text-lg font-medium">Failed to load repositories</p>
+                                    <p className="mt-1 text-sm">{error.message}</p>
+                                </div>
+                            ) : isLoading ? (
+                                Array.from({ length: 10 }, (_, i) => <RepoRowSkeleton key={i} rank={i + 1} />)
+                            ) : allRepos.length > 0 ? (
+                                allRepos.map((repo, index) => <RepoRow key={repo.id} repo={repo} rank={index + 1} />)
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                                     <Search className="h-12 w-12 mb-4 opacity-30" />
                                     <p className="text-lg font-medium">No repositories found</p>
-                                    <p className="mt-1">Try adjusting your filters</p>
                                 </div>
                             )}
                         </div>
 
-                        {filteredRepos.length > 0 && (
+                        {hasMore && (
                             <div className="flex justify-center mt-6">
-                                <Button variant="secondary" className="gap-2">
-                                    Load more
-                                    <ChevronDown className="h-4 w-4" />
+                                <Button variant="secondary" className="gap-2" onClick={() => setSize(size + 1)} disabled={isValidating}>
+                                    {isValidating ? (
+                                        <>
+                                            <Clock className="h-4 w-4 animate-spin" />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Load more
+                                            <ChevronDown className="h-4 w-4" />
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         )}
