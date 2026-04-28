@@ -1,6 +1,7 @@
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::api::ApiInfoResponse;
+use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
@@ -46,6 +47,7 @@ impl Modify for CookieAuth {
 #[openapi(
     paths(
         crate::routes::api::api,
+        crate::routes::explore::explore,
         crate::routes::repository::api::create_repo::create,
         crate::routes::repository::api::import_repo::import,
         crate::routes::repository::api::repo_meta::meta,
@@ -63,6 +65,8 @@ impl Modify for CookieAuth {
     ),
     components(schemas(
         ApiInfoResponse,
+        ExploreResponse,
+        ExploreRepo,
         RepoVisibility,
         Repository,
         CreateJsonRequest,
@@ -84,6 +88,7 @@ impl Modify for CookieAuth {
     modifiers(&CookieAuth),
     tags(
         (name = "api", description = "General API endpoints"),
+        (name = "explore", description = "Explore public repositories"),
         (name = "repository", description = "Repository management"),
         (name = "user", description = "User account management"),
     )
