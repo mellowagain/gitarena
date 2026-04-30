@@ -24,9 +24,11 @@ use sqlx::{FromRow, Transaction};
 use tracing::{debug, instrument};
 
 #[derive(FromRow, Display, Serialize)]
+#[serde(rename_all = "camelCase")]
 #[display(fmt = "{email}")]
 pub(crate) struct Email {
     pub(crate) id: i32,
+    #[serde(skip)]
     pub(crate) owner: i32,
     pub(crate) email: String,
 

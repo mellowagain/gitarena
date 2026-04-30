@@ -46,6 +46,7 @@ ipnetwork = { workspace = true }
 itertools = "0.10.3"
 linguist = "0.1.9"
 lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1", "tokio1-native-tls"] }
+maxminddb = "0.24"
 md5 = "0.7.0"
 memmem = "0.1.1"
 multimap = { version = "0.8.3", features = ["serde"] }

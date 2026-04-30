@@ -6,7 +6,7 @@ use gitarena_common::ipc::{IpcPacket, PacketId, ipc_path};
 use parity_tokio_ipc::{Connection, Endpoint};
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
-use tracing::{Instrument, debug, error, info, info_span, instrument, warn};
+use tracing::{Instrument, error, info, info_span, instrument, warn, trace};
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct Ipc {
@@ -66,7 +66,7 @@ pub(crate) fn spawn_connection_task(data: RwLock<Ipc>) {
             loop {
                 interval.tick().await;
 
-                debug!("Trying to re-establish connection to workhorse");
+                trace!("Trying to re-establish connection to workhorse");
 
                 match Ipc::connect().await {
                     Ok(connection) => {
@@ -78,7 +78,7 @@ pub(crate) fn spawn_connection_task(data: RwLock<Ipc>) {
                         info!("Successfully connected to workhorse at {ipc_path}");
                         break;
                     }
-                    Err(err) => debug!("Failed to re-establish connection to workhorse, retrying in 60 seconds: {err}"),
+                    Err(err) => trace!(?err, "Failed to re-establish connection to workhorse, retrying in 60 seconds"),
                 }
             }
         }

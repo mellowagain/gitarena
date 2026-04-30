@@ -93,6 +93,42 @@ export async function postJsonVoidFetcher<TArg>(url: string, { arg }: { arg: TAr
 }
 
 /**
+ * SWR mutation fetcher for PATCH requests with a JSON body.
+ */
+export async function patchJsonFetcher<TArg, TResult>(url: string, { arg }: { arg: TArg }): Promise<TResult> {
+    const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+    });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+
+    return res.json();
+}
+
+/**
+ * SWR mutation fetcher for PUT requests with a JSON body.
+ */
+export async function putJsonFetcher<TArg, TResult>(url: string, { arg }: { arg: TArg }): Promise<TResult> {
+    const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+    });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+
+    return res.json();
+}
+
+/**
  * Fetcher for DELETE requests.
  */
 export async function deleteFetcher(url: string): Promise<void> {
