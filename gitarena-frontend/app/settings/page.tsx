@@ -199,8 +199,23 @@ function ProfileTab() {
 
     if (isLoading) {
         return (
-            <div className="flex justify-center py-16">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="space-y-0">
+                <SectionHeader title="Profile" description="This information will be visible to other users on GitArena." />
+                <div className="mb-6">
+                    <FieldLabel>Avatar</FieldLabel>
+                    <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
+                        <div className="flex flex-col gap-2">
+                            <div className="h-8 w-28 bg-muted animate-pulse rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                {[180, 120, 160, 140].map((w, i) => (
+                    <div key={i} className="mb-6">
+                        <div className="h-3 w-16 bg-muted animate-pulse rounded mb-2" />
+                        <div className={`h-9 bg-muted animate-pulse rounded-md`} style={{ width: `${w}px` }} />
+                    </div>
+                ))}
             </div>
         );
     }
@@ -335,9 +350,19 @@ function EmailsTab() {
 
             <div className="border border-border rounded-md overflow-hidden mb-6">
                 {isLoading && (
-                    <div className="px-4 py-8 flex justify-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
+                    [0, 1, 2].map((i) => (
+                        <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                            <div className="mt-1 h-2 w-2 rounded-full bg-muted animate-pulse shrink-0" />
+                            <div className="flex-1 min-w-0 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+                                    <div className="h-4 w-14 bg-muted animate-pulse rounded" />
+                                </div>
+                                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                            </div>
+                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                        </div>
+                    ))
                 )}
                 {!isLoading && emails && emails.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No email addresses added.</div>
@@ -565,9 +590,16 @@ function AuthenticationTab() {
 
             <div className="border border-border rounded-md overflow-hidden mb-0">
                 {passkeysLoading && (
-                    <div className="px-4 py-8 flex justify-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
+                    [0, 1].map((i) => (
+                        <div key={i} className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                                <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                            </div>
+                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                        </div>
+                    ))
                 )}
                 {!passkeysLoading &&
                     passkeys &&
@@ -627,9 +659,15 @@ function SessionsTab() {
 
             <div className="border border-border rounded-md overflow-hidden mb-6">
                 {isLoading && (
-                    <div className="px-4 py-8 flex justify-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
+                    [0, 1].map((i) => (
+                        <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="h-4 w-36 bg-muted animate-pulse rounded" />
+                                <div className="h-3 w-56 bg-muted animate-pulse rounded" />
+                            </div>
+                        </div>
+                    ))
                 )}
                 {!isLoading && sessions && sessions.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No active sessions.</div>
@@ -732,9 +770,17 @@ function KeysTab() {
 
             <div className="border border-border rounded-md overflow-hidden mb-4">
                 {sshLoading && (
-                    <div className="px-4 py-8 flex justify-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
+                    [0, 1].map((i) => (
+                        <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                                <div className="h-3 w-64 bg-muted animate-pulse rounded font-mono" />
+                                <div className="h-3 w-28 bg-muted animate-pulse rounded" />
+                            </div>
+                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                        </div>
+                    ))
                 )}
                 {!sshLoading && sshKeys && sshKeys.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No SSH keys added yet.</div>
