@@ -11,6 +11,7 @@ use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsSta
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
+use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sso::SSOProvidersResponse;
 
 use actix_web::web::ServiceConfig;
@@ -62,6 +63,7 @@ impl Modify for CookieAuth {
         crate::routes::user::api::auth::login::post_login,
         crate::routes::user::api::auth::logout::post_logout,
         crate::routes::user::api::auth::me::get_me,
+        crate::routes::user::api::profile::get_user_profile,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -84,6 +86,9 @@ impl Modify for CookieAuth {
         SSOProvidersResponse,
         LoginJsonRequest,
         MeResponse,
+        UserProfileResponse,
+        UserProfileRepo,
+        UserProfileStats,
     )),
     modifiers(&CookieAuth),
     tags(
