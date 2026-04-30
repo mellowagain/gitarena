@@ -7,6 +7,7 @@ use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 
 #[derive(FromRow, Display, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 #[display(fmt = "{title}")]
 pub(crate) struct SshKey {
     pub(crate) id: i32,
@@ -14,6 +15,7 @@ pub(crate) struct SshKey {
     pub(crate) title: String,
     pub(crate) fingerprint: String,
     pub(crate) algorithm: KeyType,
+    #[serde(skip)]
     key: Vec<u8>,
     pub(crate) created_at: DateTime<Utc>,
     pub(crate) expires_at: Option<DateTime<Utc>>,

@@ -38,6 +38,7 @@ mod captcha;
 mod config;
 mod crypto;
 mod error;
+mod geoip;
 mod git;
 mod ipc;
 mod issue;
