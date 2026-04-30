@@ -6,7 +6,7 @@ use gitarena_common::ipc::{IpcPacket, PacketId, ipc_path};
 use parity_tokio_ipc::{Connection, Endpoint};
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
-use tracing::{Instrument, error, info, info_span, instrument, warn, trace};
+use tracing::{Instrument, error, info, info_span, instrument, trace, warn};
 use tracing_unwrap::ResultExt;
 
 pub(crate) struct Ipc {

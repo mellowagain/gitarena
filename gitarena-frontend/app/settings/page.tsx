@@ -349,7 +349,7 @@ function EmailsTab() {
             <SectionHeader title="Emails" description="Manage email addresses associated with your account." />
 
             <div className="border border-border rounded-md overflow-hidden mb-6">
-                {isLoading && (
+                {isLoading &&
                     [0, 1, 2].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
                             <div className="mt-1 h-2 w-2 rounded-full bg-muted animate-pulse shrink-0" />
@@ -362,8 +362,7 @@ function EmailsTab() {
                             </div>
                             <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
                         </div>
-                    ))
-                )}
+                    ))}
                 {!isLoading && emails && emails.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No email addresses added.</div>
                 )}
@@ -589,7 +588,7 @@ function AuthenticationTab() {
             </div>
 
             <div className="border border-border rounded-md overflow-hidden mb-0">
-                {passkeysLoading && (
+                {passkeysLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
                             <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
@@ -599,8 +598,7 @@ function AuthenticationTab() {
                             </div>
                             <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
                         </div>
-                    ))
-                )}
+                    ))}
                 {!passkeysLoading &&
                     passkeys &&
                     passkeys.length > 0 &&
@@ -658,7 +656,7 @@ function SessionsTab() {
             <SectionHeader title="Sessions" description="Devices and clients currently signed in to your account." />
 
             <div className="border border-border rounded-md overflow-hidden mb-6">
-                {isLoading && (
+                {isLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
                             <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
@@ -667,8 +665,7 @@ function SessionsTab() {
                                 <div className="h-3 w-56 bg-muted animate-pulse rounded" />
                             </div>
                         </div>
-                    ))
-                )}
+                    ))}
                 {!isLoading && sessions && sessions.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No active sessions.</div>
                 )}
@@ -769,7 +766,7 @@ function KeysTab() {
             <SectionHeader title="SSH Keys" description="SSH keys are used to authenticate your Git operations over SSH." />
 
             <div className="border border-border rounded-md overflow-hidden mb-4">
-                {sshLoading && (
+                {sshLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
                             <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
@@ -780,8 +777,7 @@ function KeysTab() {
                             </div>
                             <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
                         </div>
-                    ))
-                )}
+                    ))}
                 {!sshLoading && sshKeys && sshKeys.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-muted-foreground">No SSH keys added yet.</div>
                 )}
