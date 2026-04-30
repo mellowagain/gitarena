@@ -3,310 +3,86 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import {
     Plus,
     Compass,
     GitMerge,
     Star,
     AlertCircle,
-    CheckCircle2,
     ChevronRight,
     Lock,
     GitPullRequest,
     Activity,
     Globe,
     ExternalLink,
-    Users,
+    BookOpen,
+    FileCode2,
+    Construction,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
-import { useAuth, type AuthUser } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 
-const repositories = [
-    {
-        id: 1,
-        name: "gitarena",
-        org: "mellowagain",
-        description: "A lightweight git hosting solution",
-        language: "Rust",
-        languageColor: "#dea584",
-        stars: 128,
-        forks: 12,
-        updatedAt: "2h ago",
-        isPrivate: false,
-    },
-    {
-        id: 2,
-        name: "pastemyst",
-        org: "mellowagain",
-        description: "Powerful code pasting service",
-        language: "D",
-        languageColor: "#ba595e",
-        stars: 256,
-        forks: 34,
-        updatedAt: "5h ago",
-        isPrivate: false,
-    },
-    {
-        id: 3,
-        name: "config-files",
-        org: "mellowagain",
-        description: "Personal dotfiles and configurations",
-        language: "Shell",
-        languageColor: "#89e051",
-        stars: 8,
-        forks: 1,
-        updatedAt: "1d ago",
-        isPrivate: true,
-    },
-    {
-        id: 4,
-        name: "website",
-        org: "gitarena",
-        description: "GitArena marketing website",
-        language: "TypeScript",
-        languageColor: "#3178c6",
-        stars: 24,
-        forks: 5,
-        updatedAt: "3d ago",
-        isPrivate: false,
-    },
-    {
-        id: 5,
-        name: "docs",
-        org: "gitarena",
-        description: "Official documentation site",
-        language: "Markdown",
-        languageColor: "#083fa1",
-        stars: 11,
-        forks: 2,
-        updatedAt: "5d ago",
-        isPrivate: false,
-    },
-];
+import * as allLangs from "linguist-languages";
 
-const activityFeed = [
-    {
-        id: 1,
-        type: "push",
-        repo: "mellowagain/gitarena",
-        repoOrg: "mellowagain",
-        repoName: "gitarena",
-        branch: "main",
-        commits: 3,
-        message: "feat: add webhook support",
-        time: "2h ago",
-        user: "mellowagain",
-    },
-    {
-        id: 2,
-        type: "issue_opened",
-        repo: "mellowagain/pastemyst",
-        repoOrg: "mellowagain",
-        repoName: "pastemyst",
-        issueNumber: 42,
-        title: "Add syntax highlighting for Zig",
-        time: "5h ago",
-        user: "mellowagain",
-    },
-    {
-        id: 3,
-        type: "merge",
-        repo: "gitarena/website",
-        repoOrg: "gitarena",
-        repoName: "website",
-        mrNumber: 15,
-        title: "Update landing page design",
-        time: "1d ago",
-        user: "mellowagain",
-    },
-    {
-        id: 4,
-        type: "star",
-        repo: "mellowagain/gitarena",
-        repoOrg: "mellowagain",
-        repoName: "gitarena",
-        user: "torvalds",
-        time: "2d ago",
-    },
-    {
-        id: 5,
-        type: "fork",
-        repo: "mellowagain/pastemyst",
-        repoOrg: "mellowagain",
-        repoName: "pastemyst",
-        user: "dhh",
-        time: "3d ago",
-    },
-    {
-        id: 6,
-        type: "push",
-        repo: "gitarena/docs",
-        repoOrg: "gitarena",
-        repoName: "docs",
-        branch: "main",
-        commits: 1,
-        message: "docs: update API reference",
-        time: "4d ago",
-        user: "mellowagain",
-    },
-];
-
-const assignedIssues = [
-    {
-        id: 1,
-        number: 42,
-        title: "Fix authentication flow for OAuth providers",
-        repo: "mellowagain/gitarena",
-        repoOrg: "mellowagain",
-        repoName: "gitarena",
-        labels: [
-            { name: "bug", color: "#f87171" },
-            { name: "priority::high", color: "#fbbf24" },
-        ],
-        updatedAt: "3h ago",
-    },
-    {
-        id: 2,
-        number: 15,
-        title: "Add dark mode support for email templates",
-        repo: "gitarena/website",
-        repoOrg: "gitarena",
-        repoName: "website",
-        labels: [{ name: "enhancement", color: "#a2eeef" }],
-        updatedAt: "1d ago",
-    },
-    {
-        id: 3,
-        number: 8,
-        title: "Implement rate limiting for API endpoints",
-        repo: "mellowagain/pastemyst",
-        repoOrg: "mellowagain",
-        repoName: "pastemyst",
-        labels: [{ name: "component::security", color: "#ef4444" }],
-        updatedAt: "2d ago",
-    },
-];
-
-const pendingMergeRequests = [
-    {
-        id: 1,
-        number: 23,
-        title: "Add webhook notification system",
-        repo: "mellowagain/gitarena",
-        repoOrg: "mellowagain",
-        repoName: "gitarena",
-        status: "review_required" as const,
-        updatedAt: "1h ago",
-    },
-    {
-        id: 2,
-        number: 7,
-        title: "Refactor database connection pooling",
-        repo: "mellowagain/pastemyst",
-        repoOrg: "mellowagain",
-        repoName: "pastemyst",
-        status: "approved" as const,
-        updatedAt: "4h ago",
-    },
-    {
-        id: 3,
-        number: 31,
-        title: "Migrate CI pipeline to new runner",
-        repo: "gitarena/website",
-        repoOrg: "gitarena",
-        repoName: "website",
-        status: "draft" as const,
-        updatedAt: "2d ago",
-    },
-];
-
-function LabelBadge({ label }: { label: { name: string; color: string } }) {
-    const idx = label.name.indexOf("::");
-    if (idx !== -1) {
-        const key = label.name.slice(0, idx);
-        const val = label.name.slice(idx + 2);
-        return (
-            <span className="inline-flex items-center text-[10px] rounded overflow-hidden shrink-0">
-                <span className="px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${label.color}35`, color: label.color }}>
-                    {key}
-                </span>
-                <span className="px-1.5 py-0.5" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-                    {val}
-                </span>
-            </span>
-        );
+function languageColor(name: string): string {
+    const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
+    if (color) {
+        return color;
     }
-    return (
-        <span className="px-1.5 py-0.5 text-[10px] rounded shrink-0" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-            {label.name}
-        </span>
-    );
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `hsl(${Math.abs(hash) % 360}, 60%, 55%)`;
 }
 
-function ActivityRow({ item, currentUser }: { item: (typeof activityFeed)[0]; currentUser: AuthUser }) {
-    const borderColor =
-        item.type === "merge"
-            ? "border-purple-500/50"
-            : item.type === "issue_opened"
-              ? "border-green-500/50"
-              : item.type === "push"
-                ? "border-blue-500/50"
-                : item.type === "star"
-                  ? "border-yellow-500/50"
-                  : "border-border";
+interface UserProfileRepo {
+    id: number;
+    name: string;
+    description: string;
+    visibility: "public" | "internal" | "private";
+    archived: boolean;
+    languages: Record<string, number>;
+    stars: number;
+}
 
+interface UserProfileResponse {
+    id: number;
+    username: string;
+    admin: boolean;
+    createdAt: string;
+    repos: UserProfileRepo[];
+    stats: {
+        repos: number;
+        starsEarned: number;
+        starsGiven: number;
+    };
+}
+
+/** Returns the primary language (most bytes) from the languages map. */
+function getPrimaryLanguage(languages: Record<string, number>): { name: string; color: string } | null {
+    let best: string | null = null;
+    let bestBytes = 0;
+    for (const [lang, bytes] of Object.entries(languages)) {
+        if (bytes > bestBytes) {
+            best = lang;
+            bestBytes = bytes;
+        }
+    }
+    if (!best) {
+        return null;
+    }
+    return { name: best, color: languageColor(best) };
+}
+
+function WipBadge() {
     return (
-        <div className={`pl-4 border-l-2 ${borderColor} py-0.5`}>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{item.user ?? currentUser.username}</span>
-                <span className="opacity-40">·</span>
-                <Link href={`/${item.repoOrg}/${item.repoName}`} className="font-mono hover:text-foreground transition-colors">
-                    {item.repo}
-                </Link>
-                <span className="ml-auto tabular-nums opacity-60">{item.time}</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-                {item.type === "push" && (
-                    <>
-                        Pushed{" "}
-                        <span className="text-foreground">
-                            {item.commits} {item.commits === 1 ? "commit" : "commits"}
-                        </span>{" "}
-                        to <span className="font-mono text-xs">{item.branch}</span> —{" "}
-                        <span className="opacity-70 text-xs">{item.message}</span>
-                    </>
-                )}
-                {item.type === "issue_opened" && (
-                    <>
-                        Opened issue{" "}
-                        <Link href="#" className="text-foreground hover:underline">
-                            #{item.issueNumber}
-                        </Link>{" "}
-                        — <span className="opacity-70 text-xs">{item.title}</span>
-                    </>
-                )}
-                {item.type === "merge" && (
-                    <>
-                        Merged{" "}
-                        <Link href="#" className="text-foreground hover:underline">
-                            !{item.mrNumber}
-                        </Link>{" "}
-                        — <span className="opacity-70 text-xs">{item.title}</span>
-                    </>
-                )}
-                {item.type === "star" && (
-                    <>
-                        <span className="text-foreground">{item.user}</span> starred this repository
-                    </>
-                )}
-                {item.type === "fork" && (
-                    <>
-                        <span className="text-foreground">{item.user}</span> forked this repository
-                    </>
-                )}
-            </p>
-        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+            <Construction className="h-3 w-3" />
+            WIP
+        </span>
     );
 }
 
@@ -322,10 +98,15 @@ export default function DashboardPage() {
 
     const [repoFilter, setRepoFilter] = useState<"all" | "owned" | "starred">("all");
 
-    const filteredRepos = repositories.filter((r) => {
-        if (repoFilter === "owned") {
-            return r.org === user?.username;
+    const { data: profile, isLoading: profileLoading } = useSWR<UserProfileResponse>(user ? `/api/users/${user.username}` : null);
+
+    const repos = profile?.repos ?? [];
+    const filteredRepos = repos.filter(() => {
+        // "starred" filter not yet supported by API — show all for now
+        if (repoFilter === "starred") {
+            return true;
         }
+        // "owned" and "all" both show all repos from the user profile endpoint
         return true;
     });
 
@@ -358,276 +139,247 @@ export default function DashboardPage() {
                 hasNotifications
             />
 
-            <div className="flex flex-1 min-h-0">
-                <aside className="w-64 shrink-0 border-r border-border flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
-                        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Repositories</span>
-                        <Link href="/new" className="h-5 w-5 flex items-center justify-center rounded hover:bg-accent transition-colors">
-                            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Link>
-                    </div>
-
-                    <div className="flex items-center border-b border-border shrink-0">
-                        {(["all", "owned", "starred"] as const).map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setRepoFilter(f)}
-                                className={`flex-1 py-2 text-xs border-b-2 -mb-px transition-colors capitalize ${
-                                    repoFilter === f
-                                        ? "border-foreground text-foreground"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                {f}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto">
-                        {filteredRepos.map((repo) => (
-                            <Link
-                                key={repo.id}
-                                href={`/${repo.org}/${repo.name}`}
-                                className="group flex items-start gap-3 px-4 py-3 border-b border-border hover:bg-accent/40 transition-colors"
-                            >
-                                <div className="mt-0.5 shrink-0">
-                                    {repo.isPrivate ? (
-                                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                                    ) : (
-                                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium truncate">
-                                        <span className="text-muted-foreground font-normal">{repo.org}/</span>
-                                        {repo.name}
-                                    </div>
-                                    {repo.description && (
-                                        <p className="text-xs text-muted-foreground truncate mt-0.5">{repo.description}</p>
-                                    )}
-                                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1">
-                                            <span
-                                                className="w-2 h-2 rounded-full shrink-0"
-                                                style={{ backgroundColor: repo.languageColor }}
-                                            />
-                                            {repo.language}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Star className="h-3 w-3" />
-                                            {repo.stars}
-                                        </span>
-                                        <span className="ml-auto">{repo.updatedAt}</span>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </aside>
-
-                <main className="flex-1 min-w-0 overflow-y-auto">
-                    <div className="flex items-center divide-x divide-border border-b border-border text-sm">
-                        <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5">
-                            <span className="font-semibold tabular-nums">{repositories.length}</span>
-                            <span className="text-muted-foreground">repositories</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5">
-                            <span className="font-semibold tabular-nums">{assignedIssues.length}</span>
-                            <span className="text-muted-foreground">open issues</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5">
-                            <span className="font-semibold tabular-nums">{pendingMergeRequests.length}</span>
-                            <span className="text-muted-foreground">pending MRs</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5">
-                            <span className="font-semibold tabular-nums">3</span>
-                            <span className="text-muted-foreground">organizations</span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
-                        <div>
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                                <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <AlertCircle className="h-3.5 w-3.5" />
-                                    Assigned to you
-                                </span>
-                                <Link
-                                    href="#"
-                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                                >
-                                    View all <ChevronRight className="h-3 w-3" />
-                                </Link>
-                            </div>
-                            {assignedIssues.map((issue) => (
-                                <Link
-                                    key={issue.id}
-                                    href={`/${issue.repoOrg}/${issue.repoName}/issues/${issue.number}`}
-                                    className="group flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/40 transition-colors"
-                                >
-                                    <AlertCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm truncate">{issue.title}</div>
-                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                            <span className="text-xs text-muted-foreground font-mono">
-                                                {issue.repo}#{issue.number}
-                                            </span>
-                                            {issue.labels.map((l) => (
-                                                <LabelBadge key={l.name} label={l} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">{issue.updatedAt}</span>
-                                </Link>
-                            ))}
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+                <main className="flex-1 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+                        {/* Welcome header */}
+                        <div className="mb-6 sm:mb-8">
+                            <h1 className="text-xl sm:text-2xl font-semibold">
+                                Welcome back, <span className="text-muted-foreground">{user.username}</span>
+                            </h1>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Here&apos;s what&apos;s happening across your repositories.
+                            </p>
                         </div>
 
-                        <div>
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                                <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <GitPullRequest className="h-3.5 w-3.5" />
-                                    Merge Requests
-                                </span>
-                                <Link
-                                    href="#"
-                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                                >
-                                    View all <ChevronRight className="h-3 w-3" />
-                                </Link>
-                            </div>
-                            {pendingMergeRequests.map((mr) => (
-                                <Link
-                                    key={mr.id}
-                                    href={`/${mr.repoOrg}/${mr.repoName}/merge-requests/${mr.number}`}
-                                    className="group flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/40 transition-colors"
-                                >
-                                    {mr.status === "approved" ? (
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                                    ) : mr.status === "draft" ? (
-                                        <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                    ) : (
-                                        <GitMerge className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm truncate">{mr.title}</div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-xs text-muted-foreground font-mono">
-                                                {mr.repo}!{mr.number}
-                                            </span>
-                                            <span
-                                                className={`px-1.5 py-0.5 text-[10px] rounded ${
-                                                    mr.status === "approved"
-                                                        ? "bg-green-500/10 text-green-500"
-                                                        : mr.status === "draft"
-                                                          ? "bg-secondary text-muted-foreground"
-                                                          : "bg-yellow-500/10 text-yellow-500"
+                        {/* Repositories */}
+                        <section className="mb-8">
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Repositories</h2>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-0.5">
+                                        {(["all", "owned", "starred"] as const).map((f) => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setRepoFilter(f)}
+                                                className={`px-2.5 py-1 text-xs rounded-md transition-colors capitalize ${
+                                                    repoFilter === f
+                                                        ? "bg-secondary text-foreground"
+                                                        : "text-muted-foreground hover:text-foreground"
                                                 }`}
                                             >
-                                                {mr.status === "approved"
-                                                    ? "Approved"
-                                                    : mr.status === "draft"
-                                                      ? "Draft"
-                                                      : "Review required"}
-                                            </span>
-                                        </div>
+                                                {f}
+                                            </button>
+                                        ))}
                                     </div>
-                                    <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">{mr.updatedAt}</span>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
+                                    <Link
+                                        href="/new"
+                                        className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-colors"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Link>
+                                </div>
+                            </div>
+                            <div className="border border-border rounded-md divide-y divide-border">
+                                {profileLoading ? (
+                                    [1, 2, 3].map((i) => (
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                                            <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                            <div className="flex-1 space-y-1.5">
+                                                <div className="h-3.5 w-48 rounded bg-accent" />
+                                                <div className="h-3 w-64 rounded bg-accent" />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : filteredRepos.length === 0 ? (
+                                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                        No repositories yet.{" "}
+                                        <Link href="/new" className="text-foreground hover:underline">
+                                            Create one
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    filteredRepos.map((repo) => {
+                                        const primaryLang = getPrimaryLanguage(repo.languages);
+                                        return (
+                                            <Link
+                                                key={repo.id}
+                                                href={`/${user.username}/${repo.name}`}
+                                                className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-4 py-3 hover:bg-accent transition-colors first:rounded-t-md last:rounded-b-md"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="shrink-0">
+                                                        {repo.visibility === "private" ? (
+                                                            <Lock className="h-4 w-4 text-muted-foreground" />
+                                                        ) : (
+                                                            <Globe className="h-4 w-4 text-muted-foreground" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-medium">
+                                                            <span className="text-muted-foreground font-normal">{user.username}/</span>
+                                                            {repo.name}
+                                                            {repo.archived && (
+                                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-secondary text-muted-foreground">
+                                                                    archived
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {repo.description && (
+                                                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                                                {repo.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 pl-7 sm:pl-0 sm:ml-auto">
+                                                    {primaryLang && (
+                                                        <span className="flex items-center gap-1">
+                                                            <span
+                                                                className="w-2 h-2 rounded-full shrink-0"
+                                                                style={{ backgroundColor: primaryLang.color }}
+                                                            />
+                                                            {primaryLang.name}
+                                                        </span>
+                                                    )}
+                                                    <span className="flex items-center gap-1">
+                                                        <Star className="h-3 w-3" />
+                                                        {repo.stars}
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </section>
 
-                    <div>
-                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        {/* Assigned Issues */}
+                        <section className="mb-8">
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    Assigned to you
+                                    <WipBadge />
+                                </h2>
+                            </div>
+                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+                                Assigned issues will appear here once the API is available.
+                            </div>
+                        </section>
+
+                        {/* Merge Requests */}
+                        <section className="mb-8">
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <GitPullRequest className="h-3.5 w-3.5" />
+                                    Merge Requests
+                                    <WipBadge />
+                                </h2>
+                            </div>
+                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+                                Merge requests will appear here once the API is available.
+                            </div>
+                        </section>
+
+                        {/* Recent Activity */}
+                        <section>
+                            <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
                                 <Activity className="h-3.5 w-3.5" />
                                 Recent Activity
-                            </span>
-                        </div>
-                        <div className="px-4 py-4 space-y-4">
-                            {activityFeed.map((item) => (
-                                <ActivityRow key={item.id} item={item} currentUser={user} />
-                            ))}
-                        </div>
+                                <WipBadge />
+                            </h2>
+                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+                                Activity feed will appear here once the API is available.
+                            </div>
+                        </section>
                     </div>
                 </main>
 
-                <aside className="w-56 shrink-0 border-l border-border overflow-y-auto p-4">
-                    <div className="mb-4">
-                        <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Quick Actions</h3>
-                        <div className="space-y-0.5 -mx-2">
-                            <Link
-                                href="/new"
-                                className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <Plus className="h-3.5 w-3.5 shrink-0" />
-                                New repository
-                            </Link>
-                            <Link
-                                href="/import"
-                                className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                Import repository
-                            </Link>
-                            <button className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors">
-                                <Users className="h-3.5 w-3.5 shrink-0" />
-                                New organization
-                            </button>
+                {/* Right sidebar */}
+                <aside className="w-full border-t border-border lg:w-72 lg:border-t-0 lg:border-l shrink-0 overflow-y-auto p-4 sm:p-5">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-1">
+                        <div>
+                            <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Quick Actions</h3>
+                            <div className="space-y-1">
+                                <Link
+                                    href="/new"
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    New repository
+                                </Link>
+                                <Link
+                                    href="/new/import"
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    Import repository
+                                </Link>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="pt-4 border-t border-border mb-4">
-                        <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Explore</h3>
-                        <div className="space-y-0.5 -mx-2">
-                            <Link
-                                href="/explore"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>Trending repos</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>Topics</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>Collections</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
+                        <div>
+                            <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Explore</h3>
+                            <div className="space-y-1">
+                                <Link
+                                    href="/explore"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span className="flex items-center gap-2.5">
+                                        <Compass className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        Trending repos
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                                <Link
+                                    href="#"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span className="flex items-center gap-2.5">
+                                        <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        Topics
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                                <Link
+                                    href="#"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span className="flex items-center gap-2.5">
+                                        <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        Collections
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="pt-4 border-t border-border">
-                        <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Resources</h3>
-                        <div className="space-y-0.5 -mx-2">
-                            <Link
-                                href="/about"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>About GitArena</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>Documentation</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center justify-between px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
-                            >
-                                <span>API Reference</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
+                        <div>
+                            <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Resources</h3>
+                            <div className="space-y-1">
+                                <Link
+                                    href="/about"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span>About GitArena</span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                                <Link
+                                    href="/docs"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span>Documentation</span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                                <Link
+                                    href="/docs/api-reference"
+                                    className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                    <span>API Reference</span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </aside>
@@ -647,86 +399,76 @@ export function DashboardSkeleton() {
                 ]}
                 hasNotifications
             />
-            <div className="flex flex-1 min-h-0 animate-pulse">
-                {/* Left sidebar */}
-                <aside className="w-64 shrink-0 border-r border-border flex flex-col">
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                        <div className="h-3 w-24 rounded bg-accent" />
-                    </div>
-                    <div className="flex border-b border-border">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex-1 py-2 mx-3 my-2 h-3 rounded bg-accent" />
-                        ))}
-                    </div>
-                    <div className="flex-1 divide-y divide-border">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-start gap-3 px-4 py-3">
-                                <div className="h-3.5 w-3.5 rounded bg-accent shrink-0 mt-0.5" />
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-3 w-3/4 rounded bg-accent" />
-                                    <div className="h-2.5 w-full rounded bg-accent" />
-                                    <div className="h-2.5 w-1/2 rounded bg-accent" />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0 animate-pulse">
                 {/* Main content */}
-                <main className="flex-1 min-w-0">
-                    <div className="flex divide-x divide-border border-b border-border">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-2.5">
-                                <div className="h-4 w-8 rounded bg-accent" />
-                                <div className="h-3 w-20 rounded bg-accent" />
-                            </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
-                        {[1, 2].map((col) => (
-                            <div key={col}>
-                                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                                    <div className="h-3 w-32 rounded bg-accent" />
+                <main className="flex-1 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+                        {/* Welcome header skeleton */}
+                        <div className="mb-6 sm:mb-8 space-y-2">
+                            <div className="h-7 w-72 rounded bg-accent" />
+                            <div className="h-4 w-56 rounded bg-accent" />
+                        </div>
+
+                        {/* Repos section skeleton */}
+                        <div className="mb-8">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="h-3 w-24 rounded bg-accent" />
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="h-6 w-12 rounded-md bg-accent" />
+                                    ))}
                                 </div>
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-0">
-                                        <div className="h-3.5 w-3.5 rounded-full bg-accent shrink-0 mt-0.5" />
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-3 w-5/6 rounded bg-accent" />
-                                            <div className="h-2.5 w-1/3 rounded bg-accent" />
+                            </div>
+                            <div className="border border-border rounded-md divide-y divide-border">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                        <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-3.5 w-48 rounded bg-accent" />
+                                            <div className="h-3 w-64 rounded bg-accent" />
                                         </div>
-                                        <div className="h-2.5 w-10 rounded bg-accent shrink-0" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-3 w-12 rounded bg-accent" />
+                                            <div className="h-3 w-8 rounded bg-accent" />
+                                            <div className="h-3 w-10 rounded bg-accent" />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        ))}
-                    </div>
-                    <div className="px-4 py-4 space-y-4">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="pl-4 border-l-2 border-border py-0.5 space-y-1.5">
-                                <div className="h-3 w-2/5 rounded bg-accent" />
-                                <div className="h-3 w-3/4 rounded bg-accent" />
-                            </div>
-                        ))}
+                        </div>
+
+                        {/* Issues skeleton */}
+                        <div className="mb-8">
+                            <div className="h-3 w-28 rounded bg-accent mb-3" />
+                            <div className="h-16 rounded-md bg-accent" />
+                        </div>
+
+                        {/* MRs skeleton */}
+                        <div className="mb-8">
+                            <div className="h-3 w-28 rounded bg-accent mb-3" />
+                            <div className="h-16 rounded-md bg-accent" />
+                        </div>
+
+                        {/* Activity skeleton */}
+                        <div>
+                            <div className="h-3 w-28 rounded bg-accent mb-3" />
+                            <div className="h-16 rounded-md bg-accent" />
+                        </div>
                     </div>
                 </main>
 
-                {/* Right sidebar */}
-                <aside className="w-56 shrink-0 border-l border-border p-4 space-y-4">
-                    <div className="h-3 w-24 rounded bg-accent" />
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-7 rounded bg-accent" />
-                    ))}
-                    <div className="pt-4 border-t border-border space-y-3">
-                        <div className="h-3 w-16 rounded bg-accent" />
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-7 rounded bg-accent" />
-                        ))}
-                    </div>
-                    <div className="pt-4 border-t border-border space-y-3">
-                        <div className="h-3 w-20 rounded bg-accent" />
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-7 rounded bg-accent" />
+                {/* Right sidebar skeleton */}
+                <aside className="w-full border-t border-border lg:w-72 lg:border-t-0 lg:border-l shrink-0 p-4 sm:p-5">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-1">
+                        {[1, 2, 3].map((section) => (
+                            <div key={section}>
+                                <div className="h-3 w-24 rounded bg-accent mb-3" />
+                                <div className="space-y-1">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="h-9 rounded-md bg-accent" />
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </aside>
