@@ -1,12 +1,12 @@
 {
-  "rewrites": [
-    {
-      "source": "/docs",
-      "destination": "https://gitarena.mintlify.dev/docs"
-    },
-    {
-      "source": "/docs/:match*",
-      "destination": "https://gitarena.mintlify.dev/docs/:match*"
-    }
-  ]
+    "rewrites": [
+        {
+            "source": "/docs",
+            "destination": "https://gitarena.mintlify.dev/docs"
+        },
+        {
+            "source": "/docs/:match*",
+            "destination": "https://gitarena.mintlify.dev/docs/:match*"
+        }
+    ]
 }
