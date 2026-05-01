@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, WrapText, MoreHorizontal, History } from "lucide-react";
+import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, WrapText, MoreHorizontal, History, GitBranch } from "lucide-react";
 import { use, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { FileContent, type FileCommit } from "@/components/file-content";
 import prettyBytes from "pretty-bytes";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
+import { useInstanceConfig } from "@/components/instance-config-provider";
 
 export interface RepoMetadata {
     id: number;
@@ -26,6 +27,7 @@ export interface RepoMetadata {
     visibility: string;
     defaultBranch: string;
 
+    empty: boolean;
     readme?: string;
     license?: string;
     languages: Record<string, number>;
@@ -76,7 +78,50 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
         return <ErrorDisplay failed={"repo"} error={error} />;
     }
 
-    return <RepoPageContent user={user} repo={repo} meta={data} defaultFile={data.readme} />;
+    return data.empty ? (
+        <EmptyRepoContent user={user} repo={repo} meta={data} />
+    ) : (
+        <RepoPageContent user={user} repo={repo} meta={data} defaultFile={data.readme} />
+    );
+}
+
+function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; meta: RepoMetadata }) {
+    const instanceConfig = useInstanceConfig();
+    const baseUrl = instanceConfig?.baseUrl ?? "";
+    const cloneUrl = `${baseUrl}/${user}/${repo}.git`;
+
+    return (
+        <div className="min-h-screen bg-background flex flex-col">
+            <RepoTopBar user={user} repo={repo} />
+
+            <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 items-center justify-center">
+                    <div className="flex flex-col items-center gap-6 text-center max-w-lg px-6">
+                        <GitBranch className="h-12 w-12 text-muted-foreground" />
+                        <div>
+                            <h2 className="text-xl font-semibold">Repository is empty</h2>
+                            <p className="text-sm text-muted-foreground mt-1">Push your existing code to get started.</p>
+                        </div>
+                        <div className="w-full rounded-md border border-border bg-muted/50 p-4 text-left font-mono text-sm leading-relaxed">
+                            <div>git remote add origin {cloneUrl}</div>
+                            <div>git branch -M {meta.defaultBranch}</div>
+                            <div>git push -u origin {meta.defaultBranch}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <RepoSidebar
+                    user={user}
+                    repo={repo}
+                    description={meta.description}
+                    projectId={meta.id}
+                    license={meta.license}
+                    topics={[]}
+                    languages={meta.languages}
+                />
+            </div>
+        </div>
+    );
 }
 
 function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo: string; meta: RepoMetadata; defaultFile?: string }) {

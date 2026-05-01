@@ -18,6 +18,8 @@ use utoipa::ToSchema;
 struct RepoMetaResponse {
     #[serde(flatten)]
     repo: Repository,
+    /// Whether the repository has no content yet
+    empty: bool,
     /// File name of the readme on the default branch
     #[serde(skip_serializing_if = "Option::is_none")]
     readme: Option<String>,
@@ -41,14 +43,14 @@ struct RepoMetaResponse {
 pub(crate) async fn meta(repo: Repository, db: Data<Pool>) -> Result<impl Responder> {
     let mut tx = db.begin().await?;
 
-    let readme = find_readme_file_name(&repo, &mut tx).await?;
+    let (empty, readme) = find_readme_file_name(&repo, &mut tx).await?;
 
     tx.commit().await?;
 
-    Ok(HttpResponse::Ok().json(RepoMetaResponse { repo, readme }))
+    Ok(HttpResponse::Ok().json(RepoMetaResponse { repo, empty, readme }))
 }
 
-async fn find_readme_file_name(repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<Option<String>> {
+async fn find_readme_file_name(repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<(bool, Option<String>)> {
     let gitoxide_repo = repo.gitoxide(tx).await?;
 
     let mut buffer = Vec::<u8>::new();
@@ -57,16 +59,18 @@ async fn find_readme_file_name(repo: &Repository, tx: &mut Transaction<'_, Datab
     let reference = match gitoxide_repo.refs.find_loose(repo.default_branch.as_str()) {
         Ok(reference) => reference,
         Err(GitoxideFindError::Find(err)) => bail!(err),
-        Err(GitoxideFindError::NotFound { .. }) => return Ok(None),
+        Err(GitoxideFindError::NotFound { .. }) => return Ok((true, None)),
     };
 
     let tree_ref = repo_files_at_ref(&reference, store, &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree_ref);
 
-    Ok(tree
+    let readme = tree
         .entries
         .iter()
         .find(|entry| entry.filename.to_lowercase().starts_with(b"readme"))
         .and_then(|entry| entry.filename.to_str().ok())
-        .map(ToOwned::to_owned))
+        .map(ToOwned::to_owned);
+
+    Ok((false, readme))
 }

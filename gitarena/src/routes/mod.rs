@@ -31,7 +31,6 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(explore::explore);
 }
 
-/// Adds the `cookieAuth` security scheme (session cookie `gitarena-auth`) to the spec.
 struct CookieAuth;
 
 impl Modify for CookieAuth {

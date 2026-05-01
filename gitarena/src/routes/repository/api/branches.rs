@@ -3,6 +3,7 @@ use crate::repository::Repository;
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
+use git2::ErrorCode;
 use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Serialize;
@@ -48,7 +49,13 @@ pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Resu
     transaction.commit().await?;
 
     let default_ref = format!("refs/heads/{}", repo.default_branch);
-    let default_oid = libgit2_repo.find_reference(&default_ref)?.peel_to_commit()?.id();
+    let default_oid = match libgit2_repo.find_reference(&default_ref) {
+        Ok(r) => r.peel_to_commit()?.id(),
+        Err(err) if err.code() == ErrorCode::NotFound => {
+            return Ok(HttpResponse::Ok().json(BranchesResponse { branches: vec![] }));
+        }
+        Err(err) => return Err(err.into()),
+    };
 
     let mut branches = Vec::<BranchInfo>::new();
 
