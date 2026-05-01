@@ -1,0 +1,106 @@
+---
+title: "Setup"
+description: "Clone the repository, install dependencies, and run GitArena locally."
+---
+
+This guide gets your development environment running from scratch. For a broader overview of the development workflow, see the [development setup guide](/development).
+
+## Prerequisites
+
+| Tool | How to install |
+|------|---------------|
+| Rust (stable) | [rustup.rs](https://rustup.rs) |
+| Node.js 18+ | [nodejs.org](https://nodejs.org) or `nvm` |
+| pnpm | `npm install -g pnpm` |
+| PostgreSQL 14+ | System package manager or Docker |
+| sqlx-cli | `cargo install sqlx-cli --no-default-features --features postgres` |
+
+## Getting started
+
+<Steps>
+  <Step title="Clone and build">
+    ```bash
+    git clone https://github.com/mellowagain/gitarena.git
+    cd gitarena
+    cargo build
+    ```
+
+    The first build takes a while — Cargo downloads and compiles all dependencies. Later builds are much faster.
+  </Step>
+
+  <Step title="Set up the database">
+    Create a development database and a `.env` file in the project root:
+
+    ```bash
+    createdb gitarena_dev
+    ```
+
+    ```bash .env
+    DATABASE_URL=postgres://your_user@localhost/gitarena_dev
+    BIND_ADDRESS=127.0.0.1:8080
+    ```
+
+    `sqlx` uses `DATABASE_URL` at compile time to verify queries. Run `cargo build` again to confirm the connection works.
+  </Step>
+
+  <Step title="Install frontend dependencies">
+    ```bash
+    cd gitarena-frontend
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Run everything">
+    Open three terminals:
+
+    <CodeGroup>
+      ```bash Backend
+      cargo run -p gitarena
+      ```
+
+      ```bash Frontend
+      cd gitarena-frontend
+      pnpm run dev
+      ```
+
+      ```bash Workhorse (optional)
+      mkdir -p /run/gitarena
+      cargo run -p gitarena-workhorse
+      ```
+    </CodeGroup>
+
+    Open `http://localhost:3000`. The frontend proxies API calls to the backend on port 8080.
+
+    The workhorse is only needed if you're working on repository import functionality.
+  </Step>
+</Steps>
+
+## Running tests
+
+```bash
+# All tests
+cargo test
+
+# A specific crate
+cargo test -p gitarena
+
+# A specific test by name
+cargo test -p gitarena your_test_name
+```
+
+## Before submitting a PR
+
+<CodeGroup>
+  ```bash Backend
+  cargo fmt
+  cargo clippy
+  ```
+
+  ```bash Frontend
+  cd gitarena-frontend
+  pnpm run format
+  pnpm run lint
+  ```
+</CodeGroup>
+
+Only fix lint warnings in files you changed — don't clean up pre-existing warnings in unrelated code.

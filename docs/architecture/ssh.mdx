@@ -1,0 +1,55 @@
+---
+title: "SSH"
+description: "How GitArena integrates with OpenSSH for public key authentication."
+---
+
+`gitarena-ssh` is a CLI tool that integrates GitArena's user SSH keys with OpenSSH's `AuthorizedKeysCommand` directive. It is not a long-running daemon — OpenSSH invokes it as a subprocess each time it needs to authenticate a connection.
+
+## How it works
+
+When a user attempts to push or pull over SSH, OpenSSH looks up their public key by calling the configured `AuthorizedKeysCommand`. GitArena provides this command:
+
+```
+openssh → gitarena-ssh authorized-keys → PostgreSQL → stdout
+```
+
+1. OpenSSH calls `gitarena-ssh authorized-keys`.
+2. The CLI opens a single PostgreSQL connection (pool size: 1).
+3. It queries all non-expired SSH public keys for all users from the `ssh_keys` table.
+4. It prints the keys in `authorized_keys` format to stdout.
+5. OpenSSH uses the output to authenticate the connecting user.
+
+## OpenSSH configuration
+
+Add the following to `/etc/ssh/sshd_config`:
+
+```sshd_config /etc/ssh/sshd_config
+AuthorizedKeysCommand /path/to/gitarena-ssh authorized-keys
+AuthorizedKeysCommandUser gitarena
+```
+
+`gitarena-ssh` needs access to the database. Set `DATABASE_URL` in the environment where it's invoked, or use a wrapper script.
+
+<Warning>
+  SSH-based git operations (push/pull) are not yet fully implemented. The CLI currently only handles key lookup for authentication. Git over SSH will fall back to an error message.
+</Warning>
+
+## SSH key management
+
+Users add and delete SSH keys through their account settings in the web UI:
+
+| Action | API endpoint |
+|--------|-------------|
+| List keys | `GET /api/ssh-keys` |
+| Add a key | `POST /api/ssh-keys` |
+| Delete a key | `DELETE /api/ssh-keys/{id}` |
+
+Keys are stored in the `ssh_keys` table and associated with a user account. The `gitarena-ssh` CLI reads all keys from this table without filtering by user — OpenSSH matches the connecting key against the full list.
+
+## Building
+
+```bash
+cargo build -p gitarena-ssh --release
+```
+
+The binary is at `target/release/gitarena-ssh`.

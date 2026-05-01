@@ -1,0 +1,163 @@
+---
+title: "Frontend"
+description: "Add pages, fetch data with SWR, and use the component library in the Next.js frontend."
+---
+
+This guide covers the patterns used in `gitarena-frontend` so you can add features consistently.
+
+## Adding a page
+
+Pages live under `gitarena-frontend/app/`. Follow the Next.js App Router convention:
+
+```
+app/
+└── my-feature/
+    └── page.tsx
+```
+
+A basic page:
+
+```tsx
+"use client";
+
+import useSWR from "swr";
+
+interface MyData {
+  id: number;
+  name: string;
+}
+
+export default function MyFeaturePage() {
+  const { data, isLoading, error } = useSWR<MyData>("/api/my-resource/1");
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Failed to load.</div>;
+  }
+
+  return <h1>{data?.name}</h1>;
+}
+```
+
+## Data fetching
+
+All data fetching goes through SWR. Never use `fetch` directly in a component.
+
+```tsx
+// Reading data
+const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repositories/${user}/${repo}`);
+
+// Mutations (POST, PATCH, DELETE)
+const { trigger, isMutating } = useSWRMutation(
+  "/api/repositories",
+  (url, { arg }: { arg: CreateRepoInput }) =>
+    fetch(url, { method: "POST", body: JSON.stringify(arg) }).then(r => r.json())
+);
+```
+
+Always use the `{ data, isLoading, error }` tuple. Don't use `!data` as a loading check — it hides empty states.
+
+Check `lib/fetchers.ts` for existing fetchers before writing a custom one. Add generalized fetchers there rather than inlining them in components.
+
+## Defining API response types
+
+Define a TypeScript interface for every API response shape:
+
+```typescript
+// lib/types.ts or at the top of the page file
+interface RepoMeta {
+  id: number;
+  name: string;
+  description: string | null;
+  starCount: number;
+  language: string | null;
+}
+```
+
+Backend responses use `camelCase` (set via `#[serde(rename_all = "camelCase")]`). Match that in your interfaces.
+
+## Using components
+
+Use components from `components/ui/` for all standard elements. These follow the shadcn/ui new-york style.
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+
+function MyForm() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Create repository</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Input placeholder="Repository name" />
+        <Button>Create</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Forms
+
+Use `react-hook-form` with Zod validation:
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const schema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+type FormData = z.infer<typeof schema>;
+
+function CreateRepoForm() {
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = (data: FormData) => {
+    // trigger SWR mutation
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("name")} />
+      {errors.name && <span>{errors.name.message}</span>}
+    </form>
+  );
+}
+```
+
+## Code style rules
+
+- Always use curly braces around `if` bodies — the `curly` ESLint rule is enforced.
+- Use `pnpm run lint`, not `pnpm lint`.
+- Run `pnpm run format` before committing.
+
+```tsx
+// Correct
+if (condition) {
+  doSomething();
+}
+
+// Rejected by ESLint
+if (condition) doSomething();
+```
+
+## Theming
+
+Colors are defined as CSS variables in `app/globals.css` using Tailwind CSS v4's CSS configuration. Use Tailwind utility classes for styling; avoid inline styles. The `cn()` utility from `lib/utils.ts` merges class names:
+
+```tsx
+import { cn } from "@/lib/utils";
+
+<div className={cn("base-class", isActive && "active-class", className)} />
+```

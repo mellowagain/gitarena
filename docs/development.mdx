@@ -1,0 +1,138 @@
+---
+title: "Development setup"
+description: "Run GitArena locally for development and testing."
+---
+
+GitArena consists of a Rust backend and a Next.js frontend. Both need to be running during development.
+
+## Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Rust | stable (latest) | Backend compilation |
+| Node.js | 18+ | Frontend |
+| pnpm | latest | Frontend package manager |
+| PostgreSQL | 14+ | Database |
+
+Install the Rust toolchain via [rustup](https://rustup.rs):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Install pnpm:
+
+```bash
+npm install -g pnpm
+```
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/mellowagain/gitarena.git
+cd gitarena
+```
+
+## 2. Set up the database
+
+Create a Postgres database for development:
+
+```bash
+createdb gitarena_dev
+```
+
+GitArena reads the connection string from an environment variable. The easiest approach is a `.env` file in the project root:
+
+```bash .env
+DATABASE_URL=postgres://your_user@localhost/gitarena_dev
+BIND_ADDRESS=127.0.0.1:8080
+```
+
+<Note>
+  Migrations run automatically when GitArena starts. You do not need to run `sqlx migrate run` manually.
+</Note>
+
+## 3. Build and run the backend
+
+```bash
+cargo build
+cargo run -p gitarena
+```
+
+For faster iteration, use `cargo check` to type-check without producing a binary:
+
+```bash
+cargo check
+```
+
+The backend starts at `http://127.0.0.1:8080` and logs to the console in debug mode.
+
+## 4. Set up and run the frontend
+
+```bash
+cd gitarena-frontend
+pnpm install
+pnpm run dev
+```
+
+The Next.js dev server starts at `http://localhost:3000` and proxies API requests to the backend at port 8080.
+
+## 5. Run the workhorse (optional)
+
+The workhorse handles background tasks such as repository imports. Only needed if you're working on import functionality:
+
+```bash
+cargo run -p gitarena-workhorse
+```
+
+The workhorse listens on a Unix socket at `/run/gitarena/workhorse`. The socket directory must exist and be writable:
+
+```bash
+sudo mkdir -p /run/gitarena
+sudo chown $USER /run/gitarena
+```
+
+## Available commands
+
+### Backend (Rust)
+
+| Command | Description |
+|---------|-------------|
+| `cargo build` | Debug build |
+| `cargo build --release` | Release build with LTO |
+| `cargo build -p gitarena` | Build a single crate |
+| `cargo test` | Run all tests |
+| `cargo test -p gitarena` | Test a single crate |
+| `cargo clippy` | Lint |
+| `cargo fmt` | Format (max width 160, set in `rustfmt.toml`) |
+| `cargo fmt -- --check` | Check formatting without changes |
+
+### Frontend (TypeScript)
+
+| Command | Description |
+|---------|-------------|
+| `pnpm run dev` | Start dev server |
+| `pnpm run build` | Production build |
+| `pnpm run lint` | Run ESLint |
+| `pnpm run format` | Run Prettier |
+| `pnpm run format:check` | Check formatting |
+
+<Warning>
+  Always use `pnpm run lint`, not `pnpm lint`. The `run` keyword is required.
+</Warning>
+
+## Logs
+
+In debug builds, GitArena writes logs to the console. In release builds, logs go to a file in the `logs/` directory named after the current date.
+
+## Project layout
+
+```
+gitarena/              # Main HTTP binary (Actix-Web)
+gitarena-common/       # Shared library: DB pool, models, IPC, packets
+gitarena-macros/       # Proc-macro crate
+gitarena-ssh/          # SSH authorized-keys CLI
+gitarena-workhorse/    # Background daemon
+gitarena-frontend/     # Next.js SPA
+migrations/            # SQL migrations (run automatically on startup)
+```

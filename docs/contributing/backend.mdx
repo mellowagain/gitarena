@@ -1,0 +1,130 @@
+---
+title: "Backend"
+description: "Add routes, run migrations, handle errors, and annotate with OpenAPI in the Rust backend."
+---
+
+This guide covers the patterns used in the `gitarena` crate so you can add features consistently.
+
+## Adding a route
+
+Routes live under `gitarena/src/routes/`. Create a new file or add a handler to an existing one.
+
+A typical handler looks like:
+
+```rust
+use actix_web::{get, web, HttpResponse};
+use anyhow::Result;
+use sqlx::PgPool;
+use utoipa::ToSchema;
+use serde::Serialize;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct MyResponse {
+    pub id: i64,
+    pub display_name: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/my-resource/{id}",
+    responses(
+        (status = 200, description = "Success", body = MyResponse),
+        (status = 404, description = "Not found")
+    )
+)]
+#[get("/api/my-resource/{id}")]
+pub async fn get_my_resource(
+    path: web::Path<i64>,
+    pool: web::Data<PgPool>,
+) -> Result<impl actix_web::Responder> {
+    let id = path.into_inner();
+
+    let row = sqlx::query_as!(MyResponse,
+        "SELECT id, display_name FROM my_table WHERE id = $1",
+        id
+    )
+    .fetch_optional(pool.as_ref())
+    .await?;
+
+    match row {
+        Some(r) => Ok(HttpResponse::Ok().json(r)),
+        None => die!(NOT_FOUND, "Resource not found"),
+    }
+}
+```
+
+Register the handler in `gitarena/src/main.rs` inside the `HttpServer::new` closure.
+
+## Error handling
+
+Use `die!` for user-facing errors with a specific HTTP status:
+
+```rust
+die!(BAD_REQUEST, "Name cannot be empty");
+die!(FORBIDDEN, "You do not have permission to do this");
+die!(NOT_FOUND, "Repository not found");
+```
+
+Use `err!` to map a `Result` error to a user-facing response:
+
+```rust
+some_fallible_call().map_err(|_| err!(INTERNAL_SERVER_ERROR, "Failed to process request"))?;
+```
+
+Use `bail!` (from `anyhow`) for unexpected server errors that should not expose details to the user:
+
+```rust
+bail!("Unexpected state: queue was empty after lock");
+```
+
+`bail!` results in a 500 response with no body. The message appears in the server log only.
+
+## Database migrations
+
+Add a new migration:
+
+```bash
+sqlx migrate add describe_your_change
+```
+
+This creates a new `.sql` file in `migrations/`. Write your DDL there. Migrations run automatically on startup — do not run `sqlx migrate run` manually.
+
+Write migrations to be safe to re-run where possible, using `IF NOT EXISTS` guards:
+
+```sql
+CREATE TABLE IF NOT EXISTS my_table (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+```
+
+## OpenAPI annotations
+
+All routes must have `#[utoipa::path(...)]` annotations. All response types must derive `ToSchema`:
+
+```rust
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RepoMeta {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub star_count: i64,
+}
+```
+
+Register new schemas and paths in `gitarena/src/openapi.rs` so they appear in the generated spec.
+
+## Config access
+
+Access instance settings through the generated config accessors from `gitarena-macros`. Check existing usage in the codebase for the calling convention — the macro generates a typed getter per setting key that reads from the database.
+
+## Formatting and linting
+
+```bash
+cargo fmt          # format
+cargo clippy       # lint
+```
+
+Max line width is 160 characters, set in `rustfmt.toml`.

@@ -1,0 +1,56 @@
+---
+title: "Authentication"
+description: "Sessions, passkeys, SSH keys, SSO, and per-device session management."
+---
+
+GitArena supports multiple authentication methods: password login, passkeys (WebAuthn), and OAuth2 SSO through GitHub, GitLab, and Bitbucket.
+
+<Frame>
+  <img src="/readme_screenshots/login.png" alt="GitArena login page" />
+</Frame>
+
+## Cookie sessions
+
+After a successful login, GitArena creates a session and sets a cookie named `gitarena-auth`. The cookie value is `{user_id}${session_hash}`, which maps to a row in the `sessions` table.
+
+Each session stores the user ID, IP address, user agent (truncated to 256 characters), and created/last-seen timestamps.
+
+Cookie properties:
+
+| Property | Value |
+|----------|-------|
+| Name | `gitarena-auth` |
+| Max age | 10 days |
+| HttpOnly | Yes |
+| SameSite | Lax |
+| Secure | Yes (when HTTPS is enabled in instance settings) |
+
+## Session management
+
+Users can view all active sessions on the settings page — device, IP, and last-seen time for each — and revoke them individually or all at once. See the [API reference](/api-reference/introduction) for the sessions endpoints.
+
+## Passkeys (WebAuthn)
+
+GitArena supports passkeys via the [webauthn-rs](https://github.com/kanidm/webauthn-rs) library. Users can register a passkey (fingerprint, Face ID, hardware key) as an alternative to a password.
+
+Registration and login each follow a two-step challenge/response flow using the browser's WebAuthn API. Passkeys are stored in the `passkeys` table as JSON. Challenges are stored in `webauthn_challenges` with an expiry time.
+
+The WebAuthn origin is configurable via the `webauthn.origin` setting — it must match the URL users access GitArena at.
+
+## SSH keys
+
+Users add public SSH keys for pushing to repositories over SSH. Keys are stored in the `ssh_keys` table and read by the `gitarena-ssh` CLI for OpenSSH integration.
+
+See the [SSH architecture page](/architecture/ssh) for how OpenSSH integration works, and the [API reference](/api-reference/introduction) for the SSH key endpoints.
+
+## SSO (OAuth2)
+
+Users can sign in with GitHub, GitLab, or Bitbucket via a standard OAuth2 authorization code flow. Each provider must be individually enabled in the instance settings.
+
+See the [SSO setup guide](/self-hosting/sso) for configuration steps.
+
+## Email addresses
+
+Users can have multiple email addresses on their account; one is marked as primary. New addresses require verification before becoming active — GitArena sends a verification link that expires after 24 hours.
+
+See the [API reference](/api-reference/introduction) for the email endpoints.

@@ -87,4 +87,11 @@ Explore:
 
 ![Explore](docs/readme_screenshots/explore.png)
 
+## Thank you
+
+![Mintlify](https://mintcdn.com/mintlify/ZmWpbGQa5yv5AElR/logo/dark.svg?fit=max&auto=format&n=ZmWpbGQa5yv5AElR&q=85&s=a7088b08f6fc6783eb007b3de67d4c39)
+
+GitArena is part of the [Mintlify OSS Program](https://www.mintlify.com/oss-program), meaning we receive gracious support from them
+in the form of a free Mintlify Pro plan (normally $300/month) to host our [documentation](https://git.mari.zip/docs).
+
 [postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6

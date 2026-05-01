@@ -1,0 +1,37 @@
+---
+title: "Admin panel"
+description: "Manage your GitArena instance, settings, and logs from the admin dashboard."
+---
+
+The admin panel at `/admin` is only accessible to users with `admin = true` in the `users` table. It provides instance management, live log streaming, and settings control.
+
+## Granting admin access
+
+Admin access is set directly in the database — there is no web UI for this, which prevents privilege escalation through the application layer.
+
+```bash
+# Using Docker
+docker compose exec postgres psql -U gitarena -c \
+  "UPDATE users SET admin = true WHERE username = 'your_username';"
+
+# Using psql directly
+psql -U gitarena -c "UPDATE users SET admin = true WHERE username = 'your_username';"
+```
+
+Restart GitArena after updating the database.
+
+## Dashboard
+
+The dashboard shows a summary of the instance: total user count, repository count, uptime, and active sessions.
+
+## Settings
+
+Instance settings are stored in the `settings` table and editable from the admin panel. See the [configuration reference](/self-hosting/configuration) for all available keys and their descriptions.
+
+## Live log streaming
+
+The admin panel includes a real-time log viewer that streams server logs via Server-Sent Events (SSE). Logs appear as they are written, without refreshing.
+
+## API
+
+Admin endpoints are documented in the [API reference](/api-reference/introduction).

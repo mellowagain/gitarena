@@ -1,0 +1,69 @@
+---
+title: "Email"
+description: "Configure SMTP so GitArena can send email verification and notification messages."
+---
+
+GitArena sends transactional emails for account verification. Without SMTP configured, verification emails aren't delivered and new accounts can't confirm their email addresses.
+
+## SMTP configuration
+
+Configure your SMTP server in the `settings` table or from the admin panel:
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| `smtp.host` | SMTP server hostname | `smtp.example.com` |
+| `smtp.port` | SMTP server port | `587` |
+| `smtp.username` | SMTP login username | `noreply@example.com` |
+| `smtp.password` | SMTP login password | — |
+| `smtp.from` | From address for outgoing emails | `GitArena <noreply@example.com>` |
+
+```sql
+UPDATE settings SET value = 'smtp.example.com'              WHERE key = 'smtp.host';
+UPDATE settings SET value = '587'                           WHERE key = 'smtp.port';
+UPDATE settings SET value = 'noreply@example.com'           WHERE key = 'smtp.username';
+UPDATE settings SET value = 'your_password'                 WHERE key = 'smtp.password';
+UPDATE settings SET value = 'GitArena <noreply@example.com>' WHERE key = 'smtp.from';
+```
+
+### Port selection
+
+| Port | Protocol | Use when |
+|------|----------|---------|
+| 587 | STARTTLS | Most providers; connection starts unencrypted and upgrades to TLS |
+| 465 | TLS | Implicit TLS from the start |
+| 25 | Plain | Avoid — blocked by most ISPs and cloud providers |
+
+## Email verification flow
+
+When a user adds an email address (during registration or from account settings), GitArena:
+
+1. Creates a record in the `user_verifications` table with a random hex token.
+2. Sends a verification email containing a link: `https://your-instance/api/verify/{token}`.
+3. The token expires after 24 hours.
+
+When the user clicks the link:
+
+1. GitArena looks up the token in `user_verifications`.
+2. If valid and not expired, the email address is marked as verified.
+3. The verification record is deleted.
+
+Users can request a new verification email from their account settings if the link has expired.
+
+## Testing your configuration
+
+After saving SMTP settings, add an email address to a test account and check that the verification email arrives. If it doesn't:
+
+1. Check the GitArena logs for SMTP errors.
+2. Verify the credentials and port against your mail provider's documentation.
+3. Confirm your server can reach the SMTP host — some cloud providers block outbound ports 25 and 465.
+
+## Using a mail relay service
+
+If your server's IP is on a blocklist or your provider restricts SMTP, use a transactional mail service such as [Postmark](https://postmarkapp.com), [Mailgun](https://www.mailgun.com), or [Amazon SES](https://aws.amazon.com/ses/). These services provide SMTP credentials that work the same way:
+
+```sql
+UPDATE settings SET value = 'smtp.postmarkapp.com' WHERE key = 'smtp.host';
+UPDATE settings SET value = '587'                  WHERE key = 'smtp.port';
+UPDATE settings SET value = 'your_api_token'       WHERE key = 'smtp.username';
+UPDATE settings SET value = 'your_api_token'       WHERE key = 'smtp.password';
+```

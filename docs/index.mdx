@@ -1,0 +1,71 @@
+---
+title: "GitArena"
+description: "A self-hosted software development platform with built-in version control, issue tracking, and code review."
+icon: "git-alt"
+---
+
+GitArena is a lightweight, performant alternative to GitLab and Gitea, built for self-hosting across platforms and architectures. It gives your team a full development platform — git hosting, issues, merge requests, and user management — without the operational overhead of heavier solutions.
+
+<Frame>
+  <img src="/readme_screenshots/repo.png" alt="GitArena repository view" />
+</Frame>
+
+<Card
+  title="Deploy in minutes"
+  icon="rocket"
+  href="/quickstart"
+  horizontal
+>
+  Get GitArena running with Docker Compose in three steps.
+</Card>
+
+## What GitArena includes
+
+<Columns cols={2}>
+  <Card title="Git hosting" icon="code-branch">
+    Push and pull over HTTP (smart protocol) and SSH. Create, import, and fork repositories. Language and license detection run automatically after each push.
+  </Card>
+  <Card title="Issue tracking" icon="circle-dot">
+    Create and manage issues directly on your repositories, with labels and assignees to keep work organized.
+  </Card>
+  <Card title="Merge requests" icon="code-merge">
+    Open merge requests to review and discuss code changes before merging them into your main branch.
+  </Card>
+  <Card title="User accounts" icon="user">
+    Cookie-based sessions, passkey (WebAuthn) authentication, SSH key management, and per-session device tracking with revocation.
+  </Card>
+  <Card title="SSO" icon="key">
+    Sign in with GitHub, GitLab, or Bitbucket. Each provider is individually enabled in the settings table.
+  </Card>
+  <Card title="Admin panel" icon="shield">
+    Manage instance settings and stream live logs from the admin dashboard. Grant admin access directly in the database.
+  </Card>
+</Columns>
+
+## How it's built
+
+GitArena is split into several components, each responsible for a specific part of the system.
+
+| Component | Role |
+|-----------|------|
+| `gitarena` | Main HTTP server built on Actix-Web |
+| `gitarena-frontend` | Next.js SPA frontend |
+| `gitarena-common` | Shared library: database pool, models, IPC |
+| `gitarena-macros` | Proc-macro crate for config and route helpers |
+| `gitarena-ssh` | CLI for OpenSSH `AuthorizedKeysCommand` integration |
+| `gitarena-workhorse` | Background daemon for async tasks (git imports) |
+
+<Columns cols={2}>
+  <Card title="Architecture overview" icon="diagram-project" href="/architecture/overview">
+    How the components fit together and communicate.
+  </Card>
+  <Card title="Self-hosting guide" icon="server" href="/self-hosting/docker">
+    Deploy GitArena on your own infrastructure.
+  </Card>
+  <Card title="API reference" icon="terminal" href="/api-reference/introduction">
+    Browse and test the REST API.
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/contributing/setup">
+    Set up a local development environment and start contributing.
+  </Card>
+</Columns>

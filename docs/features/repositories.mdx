@@ -1,0 +1,59 @@
+---
+title: "Repositories"
+description: "Create, import, fork, and manage git repositories in GitArena."
+---
+
+Repositories are the core of GitArena. Each repository stores a bare git clone on disk and its metadata in PostgreSQL.
+
+## Creating a repository
+
+<Frame>
+  <img src="/readme_screenshots/new-repo.png" alt="Create new repository form" />
+</Frame>
+
+Users create repositories at `/new`. The form accepts a name, an optional description, and visibility (public or private). On submit, the backend creates the database record and initializes a bare git repository on disk at the configured repositories path.
+
+## Importing a repository
+
+<Frame>
+  <img src="/readme_screenshots/import-repo.png" alt="Import repository form" />
+</Frame>
+
+GitArena can import an existing repository from any remote URL at `/import`. The import is non-blocking — the HTTP response returns immediately while the clone runs in the background via the workhorse daemon.
+
+## Repository view
+
+<Frame>
+  <img src="/readme_screenshots/repo.png" alt="Repository overview page" />
+</Frame>
+
+The repository page shows the file tree, README, language breakdown, and commit history. The sidebar provides navigation to issues, merge requests, and settings.
+
+## Git over HTTP
+
+GitArena implements the git smart HTTP protocol. Standard git clients work without any special configuration:
+
+```bash
+git clone http://your-instance/username/repo.git
+git push origin main
+git pull origin main
+```
+
+Authentication for push operations uses HTTP Basic Auth — provide your GitArena username and password when prompted.
+
+## Post-push hooks
+
+After each push, GitArena runs background analysis:
+
+- **Language detection** — scans the files and computes a language breakdown, stored per repository.
+- **License detection** — reads the root `LICENSE` or `LICENSE.txt` file and identifies the license type.
+
+These results appear in the repository UI (the language bar and license badge).
+
+## Starring
+
+Users can star repositories to save them for later. Star counts are included in repository metadata.
+
+## API
+
+All repository endpoints are documented in the [API reference](/api-reference/introduction).

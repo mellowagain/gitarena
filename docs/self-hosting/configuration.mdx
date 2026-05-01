@@ -1,0 +1,98 @@
+---
+title: "Configuration"
+description: "Environment variables and instance settings for GitArena."
+---
+
+GitArena is configured through two mechanisms: environment variables (read at startup) and instance settings (stored in the `settings` table in PostgreSQL, editable from the admin panel).
+
+## Environment variables
+
+Set these before starting GitArena. In Docker, pass them under `environment:` in your Compose file.
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `BIND_ADDRESS` | Socket address to listen on, e.g. `0.0.0.0:8080` or `127.0.0.1:8080`. The port is required. |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@host/dbname`. Either this or `DATABASE_URL_FILE` must be set. |
+
+### Credentials as files
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL_FILE` | Path to a file containing the full `DATABASE_URL`. Useful with Docker secrets. |
+| `DATABASE_PASSWORD_FILE` | Path to a file containing only the database password. Use when the rest of `DATABASE_URL` is set but the password is in a secret file. |
+
+### Optional
+
+| Variable | Description |
+|----------|-------------|
+| `MAX_POOL_CONNECTIONS` | Maximum number of Postgres connections to keep open. Defaults to a sensible value based on available system resources. |
+| `SERVE_STATIC_FILES` | When set to any value, GitArena serves `/static` resources directly. Experimental — use a reverse proxy for static files instead. |
+
+## Instance settings
+
+Instance settings live in the `settings` table. Edit them from the admin panel at `/admin`, or directly with SQL:
+
+```sql
+-- Read a setting
+SELECT value FROM settings WHERE key = 'instance.name';
+
+-- Update a setting
+UPDATE settings SET value = 'My GitArena' WHERE key = 'instance.name';
+```
+
+After changing settings directly in the database, restart GitArena. Changes made through the admin panel apply immediately where possible.
+
+### Instance
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `instance.name` | `GitArena` | Display name shown in the UI and emails |
+| `instance.description` | — | Short description shown on the landing page |
+| `https` | `false` | Enable HTTPS mode. Adds the `Secure` flag to session cookies. Set to `true` when behind a TLS-terminating reverse proxy. |
+| `registration.enabled` | `true` | Allow new users to register. Set to `false` to close registrations. |
+
+### WebAuthn (passkeys)
+
+| Key | Description |
+|-----|-------------|
+| `webauthn.origin` | The origin for WebAuthn operations, e.g. `https://git.example.com`. Must match the URL users access GitArena at. |
+
+### GeoIP
+
+| Key | Description |
+|-----|-------------|
+| `geoip.enabled` | Enable GeoIP lookups for session location display. |
+| `geoip.database` | Path to a MaxMind GeoLite2 database file. |
+
+### SMTP (email)
+
+| Key | Description |
+|-----|-------------|
+| `smtp.host` | SMTP server hostname |
+| `smtp.port` | SMTP server port (typically 587 for STARTTLS, 465 for TLS) |
+| `smtp.username` | SMTP login username |
+| `smtp.password` | SMTP login password |
+| `smtp.from` | From address for outgoing emails, e.g. `GitArena <noreply@example.com>` |
+
+### hCaptcha
+
+| Key | Description |
+|-----|-------------|
+| `hcaptcha.site_key` | hCaptcha site key. When set, CAPTCHA is shown on the registration form. |
+| `hcaptcha.secret_key` | hCaptcha secret key used for server-side verification. |
+
+### SSO
+
+| Key | Description |
+|-----|-------------|
+| `sso.github.enabled` | Enable GitHub OAuth2 sign-in |
+| `sso.github.client_id` | GitHub OAuth app client ID |
+| `sso.github.client_secret` | GitHub OAuth app client secret |
+| `sso.gitlab.enabled` | Enable GitLab OAuth2 sign-in |
+| `sso.gitlab.client_id` | GitLab OAuth app client ID |
+| `sso.gitlab.client_secret` | GitLab OAuth app client secret |
+| `sso.bitbucket.enabled` | Enable Bitbucket OAuth2 sign-in |
+| `sso.bitbucket.client_id` | Bitbucket OAuth app client ID |
+| `sso.bitbucket.client_secret` | Bitbucket OAuth app client secret |

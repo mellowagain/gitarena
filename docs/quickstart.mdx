@@ -1,0 +1,75 @@
+---
+title: "Quickstart"
+description: "Deploy GitArena with Docker Compose in minutes."
+---
+
+## Prerequisites
+
+- Docker and Docker Compose installed on your server
+- A domain or IP address you control (for the reverse proxy)
+
+<Steps>
+  <Step title="Download the Compose file">
+    Fetch the official `docker-compose.yml` directly from GitArena's distribution endpoint:
+
+    ```bash
+    wget https://get.git.mari.zip/docker-compose.yml
+    ```
+
+    Open the file and replace the two `change_me` placeholders with a strong, unique password — one in the `postgres` service definition and one in the `gitarena` service definition.
+
+    <Warning>
+      Don't expose port 8080 directly to the internet. The file binds GitArena to `127.0.0.1:8080` by default, so only a local reverse proxy can reach it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
+    </Warning>
+  </Step>
+
+  <Step title="Start GitArena">
+    ```bash
+    docker compose up -d
+    ```
+
+    Docker pulls the images, starts Postgres, waits for the health check to pass, then starts GitArena. Migrations run automatically on first start.
+
+    ```bash
+    docker compose ps
+    ```
+
+    GitArena is reachable at `http://your-server:8080` once both services show `running`.
+  </Step>
+
+  <Step title="Create your admin account">
+    Open GitArena in your browser and click **Sign up** to register your first account.
+
+    Then grant yourself admin access:
+
+    ```bash
+    docker compose exec postgres psql -U gitarena -c \
+      "UPDATE users SET admin = true WHERE username = 'your_username';"
+    ```
+
+    Restart GitArena:
+
+    ```bash
+    docker compose restart gitarena
+    ```
+
+    Your account now has access to the admin panel at `/admin`.
+  </Step>
+</Steps>
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Configuration" icon="sliders" href="/self-hosting/configuration">
+    Set up your instance name, SMTP, SSH, and more through the settings table.
+  </Card>
+  <Card title="Reverse proxy" icon="shield-halved" href="/self-hosting/reverse-proxy">
+    Put Nginx or Caddy in front of GitArena for TLS termination.
+  </Card>
+  <Card title="SSO" icon="key" href="/self-hosting/sso">
+    Let users sign in with GitHub, GitLab, or Bitbucket.
+  </Card>
+  <Card title="SSH keys" icon="terminal" href="/features/authentication">
+    Configure OpenSSH so users can push over SSH.
+  </Card>
+</Columns>

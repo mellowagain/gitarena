@@ -1,0 +1,95 @@
+---
+title: "Backend"
+description: "How the Actix-Web HTTP server is structured: routes, middleware, error handling, and OpenAPI."
+---
+
+The main `gitarena` crate is an [Actix-Web](https://actix.rs) HTTP server. It handles all REST API endpoints, git smart HTTP protocol, and static file serving (optional).
+
+## Entry point
+
+`gitarena/src/main.rs` bootstraps the server:
+
+1. Loads environment variables and connects to PostgreSQL.
+2. Runs database migrations via `sqlx::migrate!`.
+3. Registers middleware (identity/sessions, CORS, compression).
+4. Mounts all route handlers.
+5. Binds to `BIND_ADDRESS` and starts accepting connections.
+
+## Route layout
+
+Routes live under `gitarena/src/routes/`. They are grouped by domain:
+
+```
+routes/
+├── admin/       # Admin panel and settings
+├── git/         # Smart HTTP git protocol (fetch/push)
+├── repository/  # Repository CRUD, files, commits, stars
+└── user/
+    ├── api/     # User REST API (auth, sessions, SSH keys, SSO)
+    └── ...
+```
+
+Each route file registers its handlers with Actix-Web's `web::scope` or `web::resource`.
+
+## Middleware
+
+| Middleware | Purpose |
+|-----------|---------|
+| `actix-identity` | Cookie-based session identity (`gitarena-auth` cookie) |
+| CORS | Cross-origin resource sharing for the frontend SPA |
+| Compression | Response compression (gzip/brotli) |
+
+The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 10-day max age. When `https` is set in the instance settings, the `Secure` flag is added. Each session maps to a row in the `sessions` table, storing the user ID, IP address, and user agent.
+
+## Error handling
+
+GitArena uses two error macros from the `gitarena-macros` crate:
+
+```rust
+// Early exit with an HTTP status code and a message shown to the user
+die!(BAD_REQUEST, "Repository name cannot be empty");
+
+// Convert a Result error with a status code and user-facing message
+some_func().map_err(|_| err!(NOT_FOUND, "Repository not found"))?;
+```
+
+For errors that should not expose details to the user, use the standard `anyhow` macros:
+
+```rust
+// Results in a 500 Internal Server Error; message goes to the log only
+bail!("Unexpected state in import handler");
+```
+
+Most return types are `anyhow::Result<impl Responder>`. Actix-Web's error handling converts these to HTTP responses.
+
+## OpenAPI
+
+All routes are annotated with `#[utoipa::path]` and all response types derive `#[derive(utoipa::ToSchema)]`. The OpenAPI spec is generated at startup and served at `/api-docs/openapi.json`. An interactive RapiDoc UI is available at `/rapidoc`.
+
+Example route annotation:
+
+```rust
+#[utoipa::path(
+    get,
+    path = "/api/repositories/{user}/{repo}",
+    responses(
+        (status = 200, description = "Repository metadata", body = RepositoryMeta),
+        (status = 404, description = "Repository not found")
+    )
+)]
+```
+
+## Config system
+
+Instance configuration is stored in the `settings` table in PostgreSQL. The `gitarena-macros` crate generates typed accessors for each setting key via a proc-macro, so settings are read with a single function call rather than raw SQL.
+
+## Database access
+
+All database access uses `sqlx` with compile-time-verified queries. The connection pool (`PgPool`) is shared across all request handlers via Actix-Web's `web::Data`.
+
+```rust
+// Example: fetch a user by username
+let user = sqlx::query_as!(User, "SELECT * FROM users WHERE username = $1", username)
+    .fetch_optional(&pool)
+    .await?;
+```

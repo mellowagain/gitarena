@@ -1,0 +1,119 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "GitArena",
+  "colors": {
+    "primary": "#EDEDED",
+    "light": "#EDEDED",
+    "dark": "#C8C8C8"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index",
+              "quickstart",
+              "development"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/backend",
+              "architecture/frontend",
+              "architecture/workhorse",
+              "architecture/ssh"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/repositories",
+              "features/authentication",
+              "features/issues-and-merge-requests",
+              "features/admin",
+              "features/explore"
+            ]
+          },
+          {
+            "group": "Self-hosting",
+            "pages": [
+              "self-hosting/docker",
+              "self-hosting/configuration",
+              "self-hosting/reverse-proxy",
+              "self-hosting/sso",
+              "self-hosting/email",
+              "self-hosting/captcha"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/setup",
+              "contributing/backend",
+              "contributing/frontend",
+              "contributing/ipc-protocol"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "API documentation",
+            "pages": [
+              "api-reference/introduction"
+            ]
+          }
+        ],
+        "openapi": "https://api.git.mari.zip/api-docs/openapi.json"
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/mellowagain/gitarena",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/mellowagain/gitarena"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "/quickstart"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/mellowagain/gitarena"
+    }
+  }
+}

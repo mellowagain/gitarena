@@ -1,0 +1,121 @@
+---
+title: "Docker"
+description: "Deploy GitArena with Docker Compose: full configuration reference."
+---
+
+GitArena ships as a Docker image. The recommended deployment method is Docker Compose.
+
+## Full Compose file
+
+```yaml docker-compose.yml
+services:
+  postgres:
+    image: postgres:trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gitarena
+      POSTGRES_USER: gitarena
+      POSTGRES_PASSWORD: change_me
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitarena"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  gitarena:
+    image: ghcr.io/mellowagain/gitarena:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BIND_ADDRESS: "0.0.0.0:8080"
+      DATABASE_URL: "postgres://gitarena:change_me@postgres/gitarena"
+    volumes:
+      - repos:/repositories
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  postgres_data:
+  repos:
+```
+
+<Warning>
+  Binding to `127.0.0.1:8080` (instead of `0.0.0.0:8080`) means only your reverse proxy can reach GitArena. Do not expose port 8080 directly to the internet — put a reverse proxy in front of it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
+</Warning>
+
+## Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `postgres_data` | PostgreSQL data directory |
+| `repos` | Bare git repositories on disk |
+
+The `repos` volume is mounted at `/repositories` inside the container. Back this up along with your database.
+
+## Using Docker secrets for the database password
+
+Instead of putting the password in plain text in the `DATABASE_URL`, use Docker secrets:
+
+```yaml docker-compose.yml
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+
+  gitarena:
+    environment:
+      DATABASE_URL: "postgres://gitarena@postgres/gitarena"
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+```
+
+Create the secret file:
+
+```bash
+mkdir -p secrets
+echo "your_strong_password" > secrets/db_password.txt
+chmod 600 secrets/db_password.txt
+```
+
+## Upgrading
+
+Pull the latest image and restart:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Migrations run automatically on startup.
+
+## Health check
+
+GitArena exposes a health check endpoint at `/healthz`:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+A 200 response means GitArena is up and connected to the database.
+
+## Logs
+
+In release mode, GitArena writes logs to files in a `logs/` directory inside the container. To access them:
+
+```bash
+docker compose exec gitarena ls /app/logs
+docker compose exec gitarena cat /app/logs/$(date +%Y-%m-%d).log
+```
+
+Or stream them in real time from the admin panel at `/admin`.

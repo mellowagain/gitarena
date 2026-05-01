@@ -1,0 +1,116 @@
+---
+title: "IPC protocol"
+description: "Add new packet types to the workhorse IPC protocol."
+---
+
+The main server and workhorse communicate over a Unix socket using TLV framing with bincode serialization. Adding a new background task means adding a packet type on both sides.
+
+## Protocol overview
+
+Each message is a three-part frame:
+
+| Field | Size | Description |
+|-------|------|-------------|
+| Type | 8 bytes | `PacketId` discriminant (u64, little-endian) |
+| Length | 8 bytes | Byte length of the payload (u64, little-endian) |
+| Payload | variable | bincode-encoded packet struct |
+
+The maximum payload size is 1 MB. The protocol is defined in `gitarena-common/src/ipc.rs`.
+
+## Step 1: Define the packet ID
+
+Open `gitarena-common/src/packets/mod.rs`. Add your variant to `PacketId`. Assign it the next available ID in the appropriate category range.
+
+```rust
+pub enum PacketId {
+    // Git category: 1000-1999
+    GitImport = 1001,
+    GitMirror = 1002,  // example new entry
+
+    // Add new categories starting from the next thousand
+    // Notification category: 2000-2999
+    SendEmail = 2001,
+}
+```
+
+## Step 2: Define the packet struct
+
+Create a new file or add to an existing one in `gitarena-common/src/packets/`. Derive `IpcPacket` from `gitarena-macros` — this generates the serialization glue.
+
+```rust
+// gitarena-common/src/packets/notification.rs
+use gitarena_macros::IpcPacket;
+
+#[derive(IpcPacket)]
+pub struct SendEmail {
+    pub to: String,
+    pub subject: String,
+    pub body: String,
+}
+```
+
+Export it from `gitarena-common/src/packets/mod.rs`:
+
+```rust
+pub mod notification;
+pub use notification::SendEmail;
+```
+
+## Step 3: Handle the packet in the workhorse
+
+Open `gitarena-workhorse/src/main.rs`. Add a match arm for the new packet ID:
+
+```rust
+PacketId::SendEmail => {
+    let packet: SendEmail = bincode::deserialize(&payload)
+        .context("Failed to deserialize SendEmail packet")?;
+    handle_send_email(packet, &pool).await?;
+}
+```
+
+Write the handler function:
+
+```rust
+async fn handle_send_email(packet: SendEmail, pool: &PgPool) -> anyhow::Result<()> {
+    // Implementation here
+    Ok(())
+}
+```
+
+## Step 4: Send the packet from the main server
+
+Use the `IpcPacket` wrapper to serialize and send:
+
+```rust
+use gitarena_common::ipc::{IpcPacket, ipc_path};
+use gitarena_common::packets::SendEmail;
+
+let packet = IpcPacket::new(SendEmail {
+    to: "user@example.com".into(),
+    subject: "Welcome".into(),
+    body: "Thanks for joining.".into(),
+});
+
+packet.send(&ipc_path()).await
+    .context("Failed to send SendEmail packet to workhorse")?;
+```
+
+## Testing IPC
+
+The easiest way to test a new packet type during development:
+
+1. Start the workhorse: `cargo run -p gitarena-workhorse`
+2. Add a test that sends the packet via the socket and checks the database state afterward.
+
+Use the `tokio::test` attribute for async tests:
+
+```rust
+#[tokio::test]
+async fn test_send_email_packet() {
+    // set up pool, send packet, assert outcome
+}
+```
+
+## Error handling in the workhorse
+
+The workhorse uses `anyhow` for error propagation. Errors are logged but do not crash the daemon — the main loop continues accepting new connections after a handler error.

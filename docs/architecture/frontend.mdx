@@ -1,0 +1,101 @@
+---
+title: "Frontend"
+description: "How the Next.js SPA is structured: routing, data fetching, components, and theming."
+---
+
+The `gitarena-frontend` crate is a [Next.js](https://nextjs.org) 16 SPA. It handles all user-facing UI, fetches data from the backend's REST API via SWR, and renders it using a Radix UI + shadcn/ui component library on top of Tailwind CSS v4.
+
+## Tech stack
+
+| Layer | Library |
+|-------|---------|
+| Framework | Next.js 16, React 19, TypeScript 5 |
+| UI primitives | Radix UI (25+ packages) |
+| Component library | shadcn/ui (new-york style) |
+| Styling | Tailwind CSS v4 |
+| Data fetching | SWR |
+| Forms | react-hook-form + Zod |
+| Icons | lucide-react |
+| Themes | next-themes |
+| Font | Geist (Vercel) |
+| Passkeys | @simplewebauthn/browser |
+| Markdown | react-markdown + remark-gfm |
+| Syntax highlighting | react-syntax-highlighter |
+
+## App Router structure
+
+Pages live under `gitarena-frontend/app/` and use the Next.js App Router:
+
+| Route | File |
+|-------|------|
+| `/` | `app/page.tsx` |
+| `/login` | `app/login/page.tsx` |
+| `/register` | `app/register/page.tsx` |
+| `/explore` | `app/explore/page.tsx` |
+| `/new` | `app/new/page.tsx` |
+| `/import` | `app/import/page.tsx` |
+| `/settings` | `app/settings/page.tsx` |
+| `/admin` | `app/admin/page.tsx` |
+| `/about` | `app/about/page.tsx` |
+| `/:user` | `app/[user]/page.tsx` |
+| `/:user/:repo` | `app/[user]/[repo]/page.tsx` |
+| `/:user/:repo/commits/:branch` | `app/[user]/[repo]/commits/[branch]/page.tsx` |
+| `/:user/:repo/issues` | `app/[user]/[repo]/issues/page.tsx` |
+| `/:user/:repo/issues/:id` | `app/[user]/[repo]/issues/[id]/page.tsx` |
+| `/:user/:repo/merge-requests` | `app/[user]/[repo]/merge-requests/page.tsx` |
+| `/:user/:repo/merge-requests/:id` | `app/[user]/[repo]/merge-requests/[id]/page.tsx` |
+
+The root layout (`app/layout.tsx`) wraps all pages with the top bar, theme provider, and instance config provider.
+
+## Data fetching
+
+All data fetching goes through [SWR](https://swr.vercel.app). Never use `fetch` directly in components.
+
+```typescript
+// Reading data
+const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repositories/${user}/${repo}`);
+
+// Mutations
+const { trigger } = useSWRMutation('/api/repositories', createRepo);
+```
+
+Always use the `{ data, isLoading, error }` return values from SWR — don't manage loading state with `useState` or `!data` checks. This keeps loading skeletons and error states consistent.
+
+Shared fetchers live in `lib/fetchers.ts`. Use one of those before writing a custom fetcher. If the existing fetchers don't cover your use case, add a generalized one there rather than inlining it.
+
+## Component structure
+
+```
+components/
+├── ui/              # 57-file shadcn/ui component library
+├── top-bar.tsx      # Site header and navigation
+├── client-layout.tsx
+├── theme-provider.tsx
+├── navigation-progress.tsx
+├── repo-sidebar.tsx        # Repository navigation sidebar
+├── repo-file-sidebar.tsx   # File tree sidebar
+├── branch-bar.tsx
+├── language-bar.tsx        # Language breakdown bar
+├── code-block.tsx
+├── file-content.tsx
+├── markdown-renderer.tsx
+├── error-display.tsx
+├── instance-config-provider.tsx
+└── landing/         # Landing page sections
+```
+
+Use components from `components/ui/` for all basic UI elements. They follow the shadcn/ui new-york style with CSS variables for theming.
+
+## Theming
+
+Dark and light mode are supported via `next-themes`. The theme provider wraps the app in `components/theme-provider.tsx`. Color tokens are defined as CSS variables in `app/globals.css` using Tailwind CSS v4's CSS-based configuration (no `tailwind.config.*` file).
+
+## Instance configuration
+
+Each GitArena instance exposes its public configuration (instance name, enabled features, etc.) through an API endpoint. The `InstanceConfigProvider` component fetches this on load and makes it available to all pages via React context, accessed through `lib/instance-config.ts`.
+
+## Code style rules
+
+- The ESLint `curly` rule is enabled — always use curly braces around `if` statement bodies, even for one-liners.
+- Use `pnpm run lint`, not `pnpm lint`.
+- Format with `pnpm run format` before committing.
