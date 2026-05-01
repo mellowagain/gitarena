@@ -309,7 +309,7 @@ export default async function AboutPage() {
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                             <Link
-                                href="/docs/getting-started/quickstart"
+                                href="/docs/quickstart"
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
                             >
                                 Deploy your own

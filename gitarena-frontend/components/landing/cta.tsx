@@ -39,7 +39,7 @@ export function CTA() {
                                     <ArrowRight className="w-4 h-4" />
                                 </Button>
                             </Link>
-                            <Link href="/docs/getting-started/quickstart">
+                            <Link href="/docs/quickstart">
                                 <Button size="lg" variant="outline" className="gap-2">
                                     <Terminal className="w-4 h-4" />
                                     Install Guide

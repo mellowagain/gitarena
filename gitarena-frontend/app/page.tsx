@@ -373,7 +373,7 @@ export default function DashboardPage() {
                                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Link>
                                 <Link
-                                    href="/docs/api-reference"
+                                    href="/docs/api-reference/introduction"
                                     className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <span>API Reference</span>
