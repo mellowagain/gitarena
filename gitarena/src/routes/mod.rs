@@ -4,6 +4,9 @@ use crate::routes::api::ApiInfoResponse;
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
+use crate::routes::repository::api::commit_detail::{
+    CommitDetailResponse, CommitMeta, DiffFile, DiffHunk, DiffLineEntry, DiffLineKind, DiffStats, DiffStatus, FileStats, SignatureInfo,
+};
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
@@ -57,6 +60,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,
         crate::routes::repository::api::branch_files::branch_files,
+        crate::routes::repository::api::commit_detail::commit_detail,
         crate::routes::user::api::add_key::put_ssh_key,
         crate::routes::user::api::sso::get_sso_providers,
         crate::routes::user::api::auth::login::post_login,
@@ -80,6 +84,16 @@ impl Modify for CookieAuth {
         FileEntry,
         FileCommitInfo,
         FileType,
+        CommitDetailResponse,
+        CommitMeta,
+        SignatureInfo,
+        DiffStats,
+        FileStats,
+        DiffLineKind,
+        DiffLineEntry,
+        DiffHunk,
+        DiffStatus,
+        DiffFile,
         AddKeyJsonRequest,
         AddKeyJsonResponse,
         SSOProvidersResponse,

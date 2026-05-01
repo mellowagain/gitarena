@@ -6,24 +6,12 @@ import { useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { formatDistanceToNow, format } from "date-fns";
-import {
-    ArrowLeft,
-    ArrowDown,
-    ArrowUp,
-    FolderOpen,
-    GitCommit,
-    Check,
-    Copy,
-    ChevronDown,
-    ChevronUp,
-    Code,
-    AlertCircle,
-    GitMerge,
-} from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, FolderOpen, GitCommit, ChevronDown, ChevronUp, Code, AlertCircle, GitMerge } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ErrorDisplay } from "@/components/error-display";
+import { HashCopy } from "@/components/hash-copy";
 import type { FileCommitInfo } from "@/components/repo-file-sidebar";
 import type { BranchesResponse } from "@/components/branch-bar";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
@@ -33,30 +21,6 @@ interface BranchCommitsResponse {
 }
 
 const PAGE_SIZE = 20;
-
-function HashCopy({ shortHash, fullHash }: { shortHash: string; fullHash: string }) {
-    const [copied, setCopied] = useState(false);
-    function copy(e: React.MouseEvent) {
-        e.preventDefault();
-        navigator.clipboard.writeText(fullHash);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    }
-    return (
-        <button
-            onClick={copy}
-            title="Copy full hash"
-            className="group/hash flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded bg-secondary border border-border/60 hover:border-border shrink-0"
-        >
-            {copied ? (
-                <Check className="h-3 w-3 text-green-500 shrink-0" />
-            ) : (
-                <Copy className="h-3 w-3 hidden group-hover/hash:block shrink-0" />
-            )}
-            {shortHash}
-        </button>
-    );
-}
 
 function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: string; repo: string }) {
     const [expanded, setExpanded] = useState(false);

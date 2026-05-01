@@ -165,6 +165,12 @@ const EXT_TO_LANGUAGE = buildExtMap();
 
 const FILENAME_TO_LANGUAGE = buildFilenameMap();
 
+export function detectLanguage(filename: string): string {
+    const basename = filename.split("/").pop() ?? filename;
+    const ext = basename.split(".").pop()?.toLowerCase() ?? "";
+    return FILENAME_TO_LANGUAGE.get(basename) ?? EXT_TO_LANGUAGE.get(ext) ?? ext;
+}
+
 export function CodeBlockContent({ content, filename, wrapLines = false }: { content: string; filename: string; wrapLines?: boolean }) {
     const basename = filename.split("/").pop() ?? filename;
     const ext = basename.split(".").pop()?.toLowerCase() ?? "";
