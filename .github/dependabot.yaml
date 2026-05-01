@@ -21,6 +21,27 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: "/gitarena-frontend"
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    labels:
+      - "cause::dependency"
+      - "type::chore"
+      - "automation::dependabot"
+      - "ecosystem::npm"
+    groups:
+      all:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
