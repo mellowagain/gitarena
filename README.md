@@ -65,34 +65,26 @@ Repository commits:
 
 File view:
 
-![File](https://i.cutegirl.tech/cjqzyh1lre07.png)
-
-Directory view:
-
-![Directory](https://i.cutegirl.tech/kxgv64zjneoz.png)
+![File](docs/readme_screenshots/file-view.png)
 
 Create repository:
 
-![Create](https://i.cutegirl.tech/2xfz586doi0q.png)
+![Create](docs/readme_screenshots/new-repo.png)
 
 Import repository:
 
-![Import](https://i.cutegirl.tech/ya0rkuv0py0c.png)
+![Import](docs/readme_screenshots/import-repo.png)
 
 Login:
 
-![Login](https://i.cutegirl.tech/8biqtc0a7fhi.png)
+![Login](docs/readme_screenshots/login.png)
 
 Sign up:
 
-![Sign up](https://i.cutegirl.tech/xiuba03gdmkv.png)
+![Sign up](docs/readme_screenshots/register.png)
 
 Explore:
 
-![Explore](https://i.cutegirl.tech/c6uba7e0os35.png)
-
-Admin panel:
-
-![Admin panel](https://i.cutegirl.tech/b5g9vx54fnae.png)
+![Explore](docs/readme_screenshots/explore.png)
 
 [postgres]: https://www.postgresql.org/docs/12/libpq-connect.html#id-1.7.3.8.3.6
