@@ -1,4 +1,5 @@
-name: CI
+name: Backend CI
+
 on:
   - push
   - pull_request_target
