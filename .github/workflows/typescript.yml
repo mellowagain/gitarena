@@ -25,15 +25,16 @@ jobs:
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
-          cache: true
+          package_json_file: gitarena-frontend/package.json
           run_install: |
-            - args: [--frozen-lockfile]
+            - cwd: gitarena-frontend
+              args: [--frozen-lockfile]
 
       - name: next.js cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
-            ${{ github.workspace }}/.next/cache
+            ${{ github.workspace }}/gitarena-frontend/.next/cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
