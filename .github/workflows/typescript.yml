@@ -12,7 +12,7 @@ env:
 
 defaults:
   run:
-    working-directory: ${{ github.workspace }}/gitarena-frontend
+    working-directory: gitarena-frontend
 
 jobs:
   build:
@@ -45,4 +45,4 @@ jobs:
         run: pnpm run format:check
 
       - name: lint
-        run: pnpm lint
+        run: pnpm run lint
