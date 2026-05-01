@@ -10,6 +10,10 @@ permissions:
 env:
   NEXT_TELEMETRY_DISABLED: 1
 
+defaults:
+  run:
+    working-directory: ${{ github.workspace }}/gitarena-frontend
+
 jobs:
   build:
     runs-on: ubuntu-latest
