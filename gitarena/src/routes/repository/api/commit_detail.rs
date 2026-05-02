@@ -363,7 +363,13 @@ pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, Str
         .filter(|r| {
             r.peel_to_commit()
                 .ok()
-                .and_then(|tip| libgit2_repo.graph_descendant_of(tip.id(), commit_oid).ok())
+                .and_then(|tip| {
+                    if tip.id() == commit_oid {
+                        Some(true)
+                    } else {
+                        libgit2_repo.graph_descendant_of(tip.id(), commit_oid).ok()
+                    }
+                })
                 .unwrap_or(false)
         })
         .min_by_key(|r| i32::from(r.name().unwrap_or("") != default_ref))

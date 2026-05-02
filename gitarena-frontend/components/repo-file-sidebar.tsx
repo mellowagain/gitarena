@@ -128,7 +128,10 @@ function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo:
                     </Tooltip>
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-xs">
-                    <Link href="#" className="font-mono hover:text-foreground transition-colors flex items-center gap-1">
+                    <Link
+                        href={`/${user}/${repo}/commit/${commit.sha1}`}
+                        className="font-mono hover:text-foreground transition-colors flex items-center gap-1"
+                    >
                         <GitCommit className="h-3.5 w-3.5" />
                         {commit.sha1.slice(0, 7)}
                     </Link>
