@@ -12,7 +12,7 @@ use tracing_unwrap::OptionExt;
 pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool) -> Result<()> {
     assert!(user.id >= 0);
 
-    let hash = crypto::random_hex_string(32);
+    let hash = crypto::random_hex_string(32)?;
     let mut transaction = db_pool.begin().await?;
 
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")

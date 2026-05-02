@@ -3,8 +3,7 @@ use crate::user::User;
 use anyhow::{Context, Result};
 use argon2::{Config, ThreadMode, Variant, Version};
 use once_cell::sync::Lazy;
-use rand::distributions::Distribution;
-use rand::distributions::Uniform;
+use rand::distr::{Distribution, Uniform};
 
 static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     ad: &[],
@@ -18,38 +17,38 @@ static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     version: Version::Version13,
 });
 
-pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> String {
-    let mut rng = rand::thread_rng();
-    let uniform = Uniform::new(0, charset.len());
+pub(crate) fn random_string_charset(length: usize, charset: &'static [u8]) -> Result<String> {
+    let mut rng = rand::rng();
+    let uniform = Uniform::new(0, charset.len()).context("failed to create uniform distribution")?;
 
-    (0..length)
+    Ok((0..length)
         .map(|_| {
             let index = uniform.sample(&mut rng);
             charset[index] as char
         })
-        .collect()
+        .collect())
 }
 
-pub(crate) fn random_string(length: usize) -> String {
+pub(crate) fn random_string(length: usize) -> Result<String> {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 
     random_string_charset(length, CHARSET)
 }
 
-pub(crate) fn random_numeric_ascii_string(length: usize) -> String {
+pub(crate) fn random_numeric_ascii_string(length: usize) -> Result<String> {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     random_string_charset(length, CHARSET)
 }
 
-pub(crate) fn random_hex_string(length: usize) -> String {
+pub(crate) fn random_hex_string(length: usize) -> Result<String> {
     const CHARSET: &[u8] = b"abcdef0123456789";
 
     random_string_charset(length, CHARSET)
 }
 
 pub(crate) fn hash_password(password: &str) -> Result<String> {
-    let salt = random_string(16);
+    let salt = random_string(16)?;
 
     argon2::hash_encoded(password.as_bytes(), salt.as_bytes(), &ARGON_CONFIG).context("Failed to hash password")
 }

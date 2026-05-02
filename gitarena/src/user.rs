@@ -24,7 +24,7 @@ use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
-#[derive(FromRow, Display, Serialize)]
+#[derive(FromRow, Display, Serialize, Clone)]
 #[display(fmt = "{username}")]
 pub(crate) struct User {
     pub(crate) id: i32,
@@ -50,6 +50,16 @@ impl Debug for User {
 }
 
 impl User {
+    #[instrument(skip(tx))]
+    pub(crate) async fn find_using_id(id: i32, tx: &mut Transaction<'_, Database>) -> Option<User> {
+        sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await
+            .ok()
+            .flatten()
+    }
+
     #[instrument(skip(tx))]
     pub(crate) async fn find_using_name<S>(name: S, tx: &mut Transaction<'_, Database>) -> Option<User>
     where

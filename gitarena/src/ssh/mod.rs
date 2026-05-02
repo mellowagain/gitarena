@@ -1,0 +1,88 @@
+use crate::config::Setting;
+use crate::ssh::server::SshServer;
+use anyhow::{Context, Result};
+use gitarena_common::database::Pool;
+use gitarena_macros::from_config;
+use russh::keys::ssh_encoding::LineEnding;
+use russh::keys::{Algorithm, PrivateKey};
+use russh::server::{Config, Server};
+use russh::{MethodKind, MethodSet, SshId};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::net::TcpListener;
+use tokio::sync::RwLock;
+use tracing::{Instrument, info, info_span, instrument, warn};
+
+pub(crate) mod key;
+mod server;
+
+#[instrument(skip_all)]
+pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
+    let (enabled, port, auth_rejection_time): (bool, i32, i32) = from_config!(
+        "ssh.enabled" => bool,
+        "ssh.port" => i32,
+        "ssh.auth_rejection_time_seconds" => i32,
+    );
+
+    let key = {
+        let new_key = PrivateKey::random(&mut rand::rng(), Algorithm::Ed25519).context("failed to generate ed25519 private key for server")?;
+
+        let encoded = new_key
+            .to_openssh(LineEnding::LF)
+            .context("failed to serialize ed25519 private key to string")?;
+
+        let mut tx = db_pool.begin().await?;
+
+        let setting = sqlx::query_as::<_, Setting>("update settings set value = coalesce(value, $1) where key = 'ssh.private_key' returning *")
+            .bind(encoded.as_str())
+            .fetch_one(&mut *tx)
+            .await
+            .context("unable to read/write setting ssh.private_key from database")?;
+
+        tx.commit().await?;
+
+        let key = setting.value.expect("the value we just set to be non-null");
+        PrivateKey::from_openssh(key.as_bytes()).context("failed to parse ssh private key")?
+    };
+
+    if !enabled {
+        warn!("SSH server is disabled. Only HTTP(s) will allow Git CLI access.");
+        return Ok(());
+    }
+
+    let mut methods = MethodSet::empty();
+    methods.push(MethodKind::PublicKey);
+
+    let config = Arc::new(Config {
+        server_id: SshId::Standard(Cow::Borrowed("SSH-2.0-gitarena")),
+        methods,
+        auth_rejection_time: Duration::from_secs(u64::try_from(auth_rejection_time)?),
+        auth_rejection_time_initial: Some(Duration::from_secs(0)),
+        keys: vec![key],
+        ..Default::default()
+    });
+
+    let address = bind_address
+        .rsplit_once(':')
+        .map_or_else(|| bind_address.to_string(), |(address, _)| address.to_string());
+
+    let port = u16::try_from(port).context("port needs to be within 0-65535")?;
+
+    let mut server = SshServer { db_pool };
+
+    let socket = TcpListener::bind((address.as_str(), port))
+        .await
+        .with_context(|| format!("failed to bind ssh server to {address}:{port}"))?;
+
+    tokio::spawn(
+        async move {
+            info!("running ssh server on {address}:{port}");
+            server.run_on_socket(config, &socket).await.expect("to be able to run the ssh server");
+        }
+        .instrument(info_span!("ssh")),
+    );
+
+    Ok(())
+}

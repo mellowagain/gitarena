@@ -1,4 +1,4 @@
-use crate::ssh::SshKey;
+use crate::ssh::key::SshKey;
 use crate::user::WebUser;
 use crate::{die, err};
 use gitarena_common::database::Pool;
@@ -50,11 +50,11 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
         die!(BAD_REQUEST, "Key requires a title");
     };
 
-    let fingerprint = public_key.fingerprint_md5();
+    let fingerprint = public_key.fingerprint();
 
-    if fingerprint.len() != 47 {
-        warn!(length = fingerprint.len(), fingerprint, "Calculated md5 fingerprint is the wrong length",);
-        die!(UNPROCESSABLE_ENTITY, "Calculated md5 fingerprint did not end up being 47 characters long");
+    if fingerprint.len() != 43 {
+        warn!(length = fingerprint.len(), fingerprint, "Calculated sha256 fingerprint is the wrong length",);
+        die!(UNPROCESSABLE_ENTITY, "Calculated sha256 fingerprint did not end up being 43 characters long");
     }
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from ssh_keys where fingerprint = $1 limit 1)")

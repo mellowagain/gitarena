@@ -110,6 +110,8 @@ async fn main() -> Result<()> {
         ipc::spawn_connection_task(ipc.clone());
     }
 
+    ssh::init(db_pool.clone(), &bind_address).await?;
+
     let server = HttpServer::new(move || {
         let identity_service = IdentityService::new(
             CookieIdentityPolicy::new(secret.as_bytes())

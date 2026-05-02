@@ -20,6 +20,7 @@ opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki
 opentelemetry-semantic-conventions = "0.31.0"
 opentelemetry-appender-tracing = { version = "0.31.1", default-features = false, features = ["log"] }
 tracing-opentelemetry = "0.32.1"
+russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

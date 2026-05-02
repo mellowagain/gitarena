@@ -1,4 +1,4 @@
-use crate::ssh::SshKey;
+use crate::ssh::key::SshKey;
 use crate::user::User;
 use actix_web::{Responder, web};
 use gitarena_common::database::Pool;

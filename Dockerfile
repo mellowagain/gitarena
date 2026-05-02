@@ -27,5 +27,7 @@ COPY --from=builder /usr/src/gitarena/gitarena/templates/ /app/gitarena/template
 COPY --from=builder /usr/src/gitarena/gitarena/static/ /app/gitarena/static/
 
 EXPOSE 8080
+EXPOSE 2222
+
 ENV BIND_ADDRESS="0.0.0.0:8080"
 ENTRYPOINT ["/app/gitarena-bin"]

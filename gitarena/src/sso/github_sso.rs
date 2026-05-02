@@ -122,7 +122,7 @@ impl SSOProvider for GitHubSSO {
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitHub API json response"))?;
 
         while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
-            username = crypto::random_numeric_ascii_string(16);
+            username = crypto::random_numeric_ascii_string(16)?;
         }
 
         let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")

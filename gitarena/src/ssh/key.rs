@@ -1,12 +1,15 @@
 use crate::user::User;
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use gitarena_common::database::Database;
 use gitarena_common::database::models::KeyType;
+use russh::keys::Algorithm;
+use russh::keys::ssh_key::Fingerprint;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 
-#[derive(FromRow, Display, Debug, Serialize)]
+#[derive(FromRow, Display, Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[display(fmt = "{title}")]
 pub(crate) struct SshKey {
@@ -28,6 +31,19 @@ impl SshKey {
             .fetch_all(&mut **tx)
             .await
             .ok()
+    }
+
+    pub(crate) async fn find(algorithm: &Algorithm, fingerprint: &Fingerprint, tx: &mut Transaction<'_, Database>) -> Result<Option<SshKey>> {
+        let algorithm = KeyType::try_from(algorithm)?;
+
+        let fingerprint_str = fingerprint.to_string();
+        let fingerprint = fingerprint_str.strip_prefix("SHA256:").unwrap_or(&fingerprint_str);
+
+        Ok(sqlx::query_as::<_, SshKey>("select * from ssh_keys where algorithm = $1 and fingerprint = $2")
+            .bind(algorithm)
+            .bind(fingerprint)
+            .fetch_optional(&mut **tx)
+            .await?)
     }
 
     pub(crate) fn as_string(&self) -> String {

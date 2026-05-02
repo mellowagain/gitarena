@@ -1,5 +1,5 @@
 use crate::die;
-use crate::ssh::SshKey;
+use crate::ssh::key::SshKey;
 use crate::user::WebUser;
 use gitarena_common::database::Pool;
 
