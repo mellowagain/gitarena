@@ -284,7 +284,7 @@ export default async function AboutPage() {
                     { label: "Documentation", href: "/docs", icon: <BookOpen className="h-[18px] w-[18px]" /> },
                     {
                         label: "Source code",
-                        href: "https://git.mari.zip/mellowagain/gitarena",
+                        href: "https://github.com/mellowagain/gitarena",
                         icon: <GitBranch className="h-[18px] w-[18px]" />,
                     },
                 ]}

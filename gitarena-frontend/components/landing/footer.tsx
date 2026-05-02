@@ -63,8 +63,8 @@ export function Footer({ apiInfo }: FooterProps) {
                         <Link href="/terms" className="hover:text-foreground transition-colors">
                             Terms of service
                         </Link>
-                        <Link href="/dmca" className="hover:text-foreground transition-colors">
-                            DMCA
+                        <Link href="/takedown" className="hover:text-foreground transition-colors">
+                            Takedown
                         </Link>
                     </div>
                 </div>
