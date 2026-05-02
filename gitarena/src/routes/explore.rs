@@ -163,10 +163,10 @@ impl Display for ExploreOptions<'_> {
 
 #[derive(Display, Debug, Serialize)]
 enum Order {
-    #[display(fmt = "asc")]
+    #[display("asc")]
     #[serde(rename(serialize = "asc"))]
     Ascending,
-    #[display(fmt = "desc")]
+    #[display("desc")]
     #[serde(rename(serialize = "desc"))]
     Descending,
 }

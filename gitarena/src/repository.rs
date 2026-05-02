@@ -5,7 +5,6 @@ use crate::user::{User, WebUser};
 use crate::{die, err};
 
 use std::collections::HashMap;
-use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -29,8 +28,8 @@ use tracing::{Level, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 
-#[derive(FromRow, Display, Serialize, ToSchema)]
-#[display(fmt = "{name}")]
+#[derive(FromRow, Display, derive_more::Debug, Serialize, ToSchema)]
+#[display("{name}")]
 #[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct Repository {
     /// ID
@@ -49,34 +48,18 @@ pub(crate) struct Repository {
     pub(crate) license: Option<String>,
     /// Auto-detected programming language stats of the main branch in the format of (Language, Byte count).
     /// Caveat: SVG files are the amount of files instead of the total byte count to avoid skewing repository stats
+    #[debug("{}", languages.len())]
     #[schema(value_type = HashMap<String, u64>)]
     pub(crate) languages: Json<HashMap<String, u64>>,
     /// ID of the repo from which this one was forked from
     pub(crate) forked_from: Option<i32>,
     /// URL of the repo from which this one is mirrored from
+    #[debug("{}", mirrored_from.is_some())]
     pub(crate) mirrored_from: Option<String>,
     /// Archived flag
     pub(crate) archived: bool,
     /// Disabled flag
     pub(crate) disabled: bool,
-}
-
-impl fmt::Debug for Repository {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Repository")
-            .field("id", &self.id)
-            .field("owner", &self.owner)
-            .field("name", &self.name)
-            .field("description", &self.description)
-            .field("default_branch", &self.default_branch)
-            .field("license", &self.license)
-            .field("languages", &self.languages.0.len())
-            .field("forked_from", &self.forked_from)
-            .field("mirrored", &self.mirrored_from.is_some())
-            .field("archived", &self.archived)
-            .field("disabled", &self.disabled)
-            .finish()
-    }
 }
 
 impl Repository {
@@ -211,11 +194,11 @@ async fn extract_repo_from_request(db_pool: Data<Pool>, web_user: WebUser, usern
 
 /// Will only be part of [Extensions](actix_web::Extensions) if [Repository] is in the handler arguments
 #[derive(Display, Debug, Deref)]
-#[display(fmt = "{}", .0)]
+#[display("{_0}")]
 pub(crate) struct RepoOwner(pub(crate) String);
 
 #[derive(Display, Debug)]
-#[display(fmt = "{tree}")]
+#[display("{tree}")]
 pub(crate) struct Branch {
     pub(crate) gitoxide_repo: GitoxideRepository,
     pub(crate) tree: String,

@@ -29,7 +29,7 @@ pub(crate) struct Broadcaster {
 
 #[derive(Clone, Copy, Debug, Display, PartialEq, Eq, Hash)]
 pub(crate) enum Category {
-    #[display(fmt = "log")]
+    #[display("log")]
     AdminLog,
 }
 

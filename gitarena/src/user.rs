@@ -3,7 +3,6 @@ use crate::session::Session;
 use crate::{die, err, session};
 
 use std::convert::TryFrom;
-use std::fmt;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -24,29 +23,17 @@ use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
-#[derive(FromRow, Display, Serialize, Clone)]
-#[display(fmt = "{username}")]
+#[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
+#[display("{username}")]
 pub(crate) struct User {
     pub(crate) id: i32,
     pub(crate) username: String,
     #[serde(skip_serializing)]
+    #[debug("[redacted]")]
     pub(crate) password: String,
     pub(crate) disabled: bool,
     pub(crate) admin: bool,
     pub(crate) created_at: DateTime<Utc>,
-}
-
-impl Debug for User {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("User")
-            .field("id", &self.id)
-            .field("username", &self.username)
-            .field("password", &"[redacted]")
-            .field("disabled", &self.disabled)
-            .field("admin", &self.admin)
-            .field("created_at", &self.created_at)
-            .finish()
-    }
 }
 
 impl User {

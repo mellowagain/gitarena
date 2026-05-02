@@ -13,7 +13,6 @@ use gitarena_macros::route;
 use openssh_keys::PublicKey;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
-
 use utoipa::ToSchema;
 
 #[utoipa::path(

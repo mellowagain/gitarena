@@ -94,7 +94,7 @@ where
 }
 
 #[derive(FromRow, Debug, Deserialize, Serialize, Display)]
-#[display(fmt = "{key}")]
+#[display("{key}")]
 pub(crate) struct Setting {
     pub(crate) key: String,
     pub(crate) value: Option<String>,

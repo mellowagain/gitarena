@@ -8,10 +8,11 @@ use russh::keys::Algorithm;
 use russh::keys::ssh_key::Fingerprint;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
+use tracing::instrument;
 
-#[derive(FromRow, Display, Debug, Serialize, Clone)]
+#[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-#[display(fmt = "{title}")]
+#[display("{title}")]
 pub(crate) struct SshKey {
     pub(crate) id: i32,
     pub(crate) owner: i32,
@@ -19,12 +20,14 @@ pub(crate) struct SshKey {
     pub(crate) fingerprint: String,
     pub(crate) algorithm: KeyType,
     #[serde(skip)]
+    #[debug(skip)]
     key: Vec<u8>,
     pub(crate) created_at: DateTime<Utc>,
     pub(crate) expires_at: Option<DateTime<Utc>>,
 }
 
 impl SshKey {
+    #[instrument(skip(tx))]
     pub(crate) async fn all_from_user(user: &User, tx: &mut Transaction<'_, Database>) -> Option<Vec<SshKey>> {
         sqlx::query_as::<_, SshKey>("select * from ssh_keys where owner = $1")
             .bind(user.id)
@@ -33,6 +36,7 @@ impl SshKey {
             .ok()
     }
 
+    #[instrument(skip(tx))]
     pub(crate) async fn find(algorithm: &Algorithm, fingerprint: &Fingerprint, tx: &mut Transaction<'_, Database>) -> Result<Option<SshKey>> {
         let algorithm = KeyType::try_from(algorithm)?;
 

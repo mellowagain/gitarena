@@ -6,7 +6,7 @@ use sqlx::FromRow;
 
 /// Contains issues and their corresponding data; Does *not* contain the actual text content
 #[derive(FromRow, Display, Debug, Serialize)]
-#[display(fmt = "{title}")]
+#[display("{title}")]
 pub(crate) struct Issue {
     pub(crate) id: i32,
 
