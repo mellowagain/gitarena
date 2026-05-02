@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::{Result, bail};
 use gix::hash::Kind;
 use once_cell::sync::Lazy;
 use std::process::Command;
+use std::str::FromStr;
 use tracing::{error, info, info_span};
 
 pub(crate) mod basic_auth;
@@ -37,3 +38,21 @@ pub(crate) static GIT_CLI_AVAILABLE: Lazy<bool> = Lazy::new(|| {
         }
     }
 });
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum GitProtocol {
+    V1,
+    V2,
+}
+
+impl FromStr for GitProtocol {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "1" => GitProtocol::V1,
+            "2" => GitProtocol::V2,
+            _ => bail!("unknown git protocol version {s} received"),
+        })
+    }
+}

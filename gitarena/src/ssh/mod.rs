@@ -8,11 +8,9 @@ use russh::keys::{Algorithm, PrivateKey};
 use russh::server::{Config, Server};
 use russh::{MethodKind, MethodSet, SshId};
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
 use tracing::{Instrument, info, info_span, instrument, warn};
 
 pub(crate) mod key;
@@ -56,7 +54,7 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
     methods.push(MethodKind::PublicKey);
 
     let config = Arc::new(Config {
-        server_id: SshId::Standard(Cow::Borrowed("SSH-2.0-gitarena")),
+        server_id: SshId::Standard(Cow::Borrowed(concat!("SSH-2.0-gitarena-v", env!("CARGO_PKG_VERSION")))),
         methods,
         auth_rejection_time: Duration::from_secs(u64::try_from(auth_rejection_time)?),
         auth_rejection_time_initial: Some(Duration::from_secs(0)),

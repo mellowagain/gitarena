@@ -154,7 +154,7 @@ impl FromRequest for Repository {
                 Box::pin(async move {
                     let web_user = web_user_future.await?;
 
-                    extract_repo_from_request(db_pool, web_user, username.as_str(), repository.as_str())
+                    extract_repo_from_request(&db_pool, web_user.as_ref(), username.as_str(), repository.as_str())
                         .await
                         .map_err(|err| GitArenaError {
                             source: Arc::new(err),
@@ -173,7 +173,7 @@ impl FromRequest for Repository {
 }
 
 #[instrument(err, skip(db_pool))]
-async fn extract_repo_from_request(db_pool: Data<Pool>, web_user: WebUser, username: &str, repository: &str) -> Result<Repository> {
+pub(crate) async fn extract_repo_from_request(db_pool: &Pool, actor: Option<&User>, username: &str, repository: &str) -> Result<Repository> {
     let mut transaction = db_pool.begin().await?;
 
     let user = User::find_using_name(username, &mut transaction)
@@ -183,7 +183,7 @@ async fn extract_repo_from_request(db_pool: Data<Pool>, web_user: WebUser, usern
         .await
         .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
-    if !privilege::check_access(&repo, web_user.as_ref(), &mut transaction).await? {
+    if !privilege::check_access(&repo, actor, &mut transaction).await? {
         die!(NOT_FOUND, "Not found");
     }
 
