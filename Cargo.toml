@@ -13,7 +13,7 @@ readme = "README.md"
 
 [workspace.dependencies]
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] }
-ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
+ipnetwork = { version = "=0.21.1", features = ["serde"] } # needs to be in sync with the version sqlx uses^
 opentelemetry = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki-roots", "http-proto", "http-json", "reqwest-rustls-webpki-roots"] }
