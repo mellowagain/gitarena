@@ -49,7 +49,7 @@ Use these terms consistently:
 - No marketing language ("powerful", "seamless", "robust")
 - No filler phrases ("it's important to note", "in order to")
 - NEVER make ASCII graphs. Instead, use Mermaid graphs.
-- NEVER make manual steps (1. 2. 3. etc.). Instead use the <Steps> component.
+- NEVER make manual steps (1. 2. 3. etc.). Instead, use the `<Steps />` component.
 
 ## Content boundaries
 
