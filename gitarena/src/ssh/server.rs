@@ -1,3 +1,4 @@
+use std::io;
 use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
@@ -34,7 +35,14 @@ impl Server for SshServer {
     }
 
     fn handle_session_error(&mut self, err: <Self::Handler as Handler>::Error) {
-        error!(?err, "SSH session error");
+        match err.downcast_ref::<russh::Error>() {
+            Some(russh::Error::Disconnect) => debug!(?err, "SSH client disconnected from user side"),
+            Some(russh::Error::ConnectionTimeout) => debug!(?err, "SSH client connection timed out"),
+            Some(russh::Error::KeepaliveTimeout) => debug!(?err, "SSH client connection keep alive timed out"),
+            Some(russh::Error::InactivityTimeout) => debug!(?err, "SSH client connection inactivity timed out"),
+            Some(russh::Error::IO(io)) if io.kind() == io::ErrorKind::UnexpectedEof => debug!(?err, "SSH client disconnected early"),
+            _ => error!(?err, "SSH session error")
+        }
     }
 }
 
@@ -68,7 +76,7 @@ impl Handler for SshHandler {
     type Error = anyhow::Error;
 
     #[instrument]
-    async fn auth_publickey(&mut self, user: &str, public_key: &PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey_offered(&mut self, user: &str, public_key: &PublicKey) -> Result<Auth, Self::Error> {
         if user != "git" {
             debug!(?user, "received ssh login from unknown user, should be `git`");
             return Ok(Auth::reject());
@@ -77,12 +85,12 @@ impl Handler for SshHandler {
         let algorithm = public_key.algorithm();
         let fingerprint = public_key.fingerprint(HashAlg::Sha256);
 
-        debug!(?algorithm, ?fingerprint, "ssh public key login received");
+        debug!(?algorithm, ?fingerprint, "ssh public key offered");
 
         let mut tx = self.db_pool.begin().await?;
 
         let Some(key) = SshKey::find(&algorithm, &fingerprint, &mut tx).await? else {
-            debug!(?algorithm, ?fingerprint, "received ssh login from unknown public key");
+            debug!(?algorithm, ?fingerprint, "offered ssh key not found");
             return Ok(Auth::reject());
         };
 
@@ -92,12 +100,20 @@ impl Handler for SshHandler {
 
         tx.commit().await?;
 
-        debug!(?user.id, ?user.username, ?key.id, ?key.title, "ssh public key login succeeded");
+        debug!(?user.id, ?user.username, "ssh key accepted, awaiting signature");
 
         self.user = Some(user);
         self.key = Some(key);
-
         Ok(Auth::Accept)
+    }
+
+    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth, Self::Error> {
+        // key was already validated in auth_publickey_offered
+        if self.user.is_some() && self.key.is_some() {
+            Ok(Auth::Accept)
+        } else {
+            Ok(Auth::reject())
+        }
     }
 
     #[instrument(skip(session))]
@@ -185,6 +201,7 @@ impl Handler for SshHandler {
     async fn exec_request(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
         let Ok(command) = str::from_utf8(data) else {
             session.channel_failure(channel)?;
+            session.exit_status_request(channel, 1)?;
             session.data(channel, "error: exec request data should be UTF-8")?;
             session.close(channel)?;
 
@@ -197,6 +214,7 @@ impl Handler for SshHandler {
 
         let Some((command, path)) = command.split_once(' ') else {
             session.channel_failure(channel)?;
+            session.exit_status_request(channel, 1)?;
             session.data(channel, "error: malformed exec request")?;
             session.close(channel)?;
 
@@ -212,6 +230,7 @@ impl Handler for SshHandler {
             .and_then(|p| p.split_once('/'))
         else {
             session.channel_failure(channel)?;
+            session.exit_status_request(channel, 1)?;
             session.data(channel, "error: malformed repository name (expected `'/user/repo.git'`)")?;
             session.close(channel)?;
 
@@ -221,6 +240,7 @@ impl Handler for SshHandler {
 
         let Ok(repo) = extract_repo_from_request(&self.db_pool, self.user.as_ref(), username, repo_name).await else {
             session.channel_failure(channel)?;
+            session.exit_status_request(channel, 1)?;
             session.data(channel, "error: repository not found")?;
             session.close(channel)?;
 

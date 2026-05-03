@@ -25,3 +25,26 @@ jobs:
             cd ~/gitarena/
             docker compose pull
             docker compose up -d
+
+      - name: wait for deploy
+        run: sleep 5
+
+      - name: check if update succeeded
+        run: |
+          response=$(curl -sf https://api.git.mari.zip/api)
+          
+          echo "Curl response:" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "$response" | jq >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          
+          commit=$(echo "$response" | jq -r '.commit')
+          
+          if [ "$commit" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "::error::hash mismatched."
+            echo "::error::deployed: $commit"
+            echo "::error::expected: ${{ github.event.workflow_run.head_sha }}"
+            exit 1
+          else
+            echo "hash matched. deploy success."
+          fi
