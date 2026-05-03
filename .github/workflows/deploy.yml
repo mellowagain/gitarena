@@ -32,10 +32,11 @@ jobs:
       - name: check if update succeeded
         run: |
           response=$(curl -sf https://api.git.mari.zip/api)
+          parsed=$(echo "$response" | jq)
           
           echo "Curl response:" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
-          echo "$response" | jq >> $GITHUB_STEP_SUMMARY
+          echo "$parsed" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
           
           commit=$(echo "$response" | jq -r '.commit')

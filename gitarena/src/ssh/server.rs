@@ -1,4 +1,3 @@
-use std::io;
 use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
@@ -15,6 +14,7 @@ use opentelemetry::KeyValue;
 use russh::keys::{HashAlg, PublicKey};
 use russh::server::{Auth, Handler, Msg, Server, Session};
 use russh::{Channel, ChannelId};
+use std::io;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Instant;
@@ -41,7 +41,7 @@ impl Server for SshServer {
             Some(russh::Error::KeepaliveTimeout) => debug!(?err, "SSH client connection keep alive timed out"),
             Some(russh::Error::InactivityTimeout) => debug!(?err, "SSH client connection inactivity timed out"),
             Some(russh::Error::IO(io)) if io.kind() == io::ErrorKind::UnexpectedEof => debug!(?err, "SSH client disconnected early"),
-            _ => error!(?err, "SSH session error")
+            _ => error!(?err, "SSH session error"),
         }
     }
 }
