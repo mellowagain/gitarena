@@ -25,6 +25,9 @@ const eslintConfig = defineConfig([
     {
         rules: {
             curly: ["error", "all"],
+            // /docs is a Vercel rewrite to an external host (Mintlify), not a Next.js page.
+            // <a> is intentional here to force a full page load through Vercel's rewrite layer.
+            "@next/next/no-html-link-for-pages": "off",
         },
     },
 ]);

@@ -281,7 +281,7 @@ export default async function AboutPage() {
         <div className="min-h-screen bg-background text-foreground font-sans">
             <TopBar
                 navLinks={[
-                    { label: "Documentation", href: "/docs", icon: <BookOpen className="h-[18px] w-[18px]" />, reloadDocument: true },
+                    { label: "Documentation", href: "/docs", icon: <BookOpen className="h-[18px] w-[18px]" />, external: true },
                     {
                         label: "Source code",
                         href: "https://github.com/mellowagain/gitarena",
@@ -308,13 +308,12 @@ export default async function AboutPage() {
                                 Explore instance
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
-                            <Link
+                            <a
                                 href="/docs/quickstart"
-                                reloadDocument
                                 className="flex items-center gap-2 px-5 py-2.5 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
                             >
                                 Deploy your own
-                            </Link>
+                            </a>
                         </div>
 
                         <p className="text-xs text-muted-foreground">

@@ -342,7 +342,6 @@ function LoginContent() {
 
                                 {error && <ErrorDisplay failed="SSO providers" error={error} />}
 
-                                {/* eslint-disable @next/next/no-html-link-for-pages */}
                                 {anySsoEnabled && (
                                     <div className="flex items-center justify-center gap-3">
                                         {data?.github && (
@@ -374,7 +373,6 @@ function LoginContent() {
                                         )}
                                     </div>
                                 )}
-                                {/* eslint-enable @next/next/no-html-link-for-pages */}
                             </>
                         )}
 

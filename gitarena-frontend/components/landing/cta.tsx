@@ -39,12 +39,12 @@ export function CTA() {
                                     <ArrowRight className="w-4 h-4" />
                                 </Button>
                             </Link>
-                            <Link href="/docs/quickstart" reloadDocument>
+                            <a href="/docs/quickstart">
                                 <Button size="lg" variant="outline" className="gap-2">
                                     <Terminal className="w-4 h-4" />
                                     Install Guide
                                 </Button>
-                            </Link>
+                            </a>
                         </div>
                     </div>
 

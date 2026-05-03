@@ -22,7 +22,7 @@ export type NavLink = {
     href: string;
     icon: React.ReactNode;
     active?: boolean;
-    reloadDocument?: boolean;
+    external?: boolean;
 };
 
 type TopBarProps = {
@@ -90,18 +90,31 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
 
                 <nav className="flex items-center gap-1 shrink-0 ml-auto">
                     {navLinks &&
-                        navLinks.map((link, i) => (
-                            <Link key={i} href={link.href} reloadDocument={link.reloadDocument}>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={`${link.active ? "text-foreground" : "text-muted-foreground"} h-10 px-4 gap-2.5 text-base`}
-                                >
-                                    {link.icon}
-                                    <span className="hidden sm:inline">{link.label}</span>
-                                </Button>
-                            </Link>
-                        ))}
+                        navLinks.map((link, i) =>
+                            link.external ? (
+                                <a key={i} href={link.href}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`${link.active ? "text-foreground" : "text-muted-foreground"} h-10 px-4 gap-2.5 text-base`}
+                                    >
+                                        {link.icon}
+                                        <span className="hidden sm:inline">{link.label}</span>
+                                    </Button>
+                                </a>
+                            ) : (
+                                <Link key={i} href={link.href}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`${link.active ? "text-foreground" : "text-muted-foreground"} h-10 px-4 gap-2.5 text-base`}
+                                    >
+                                        {link.icon}
+                                        <span className="hidden sm:inline">{link.label}</span>
+                                    </Button>
+                                </Link>
+                            )
+                        )}
 
                     {navLinks && navLinks.length > 0 && <div className="w-px h-7 bg-border mx-2" />}
 

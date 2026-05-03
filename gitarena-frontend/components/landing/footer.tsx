@@ -54,9 +54,9 @@ export function Footer({ apiInfo }: FooterProps) {
 
                     {/* Links */}
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                        <Link href="/docs/api-reference/introduction" reloadDocument className="hover:text-foreground transition-colors">
+                        <a href="/docs/api-reference/introduction" className="hover:text-foreground transition-colors">
                             API reference
-                        </Link>
+                        </a>
                         <Link href="/privacy" className="hover:text-foreground transition-colors">
                             Privacy policy
                         </Link>

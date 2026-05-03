@@ -330,7 +330,6 @@ export default function RegisterPage() {
 
                                 {error && <ErrorDisplay failed="SSO providers" error={error} />}
 
-                                {/* eslint-disable @next/next/no-html-link-for-pages */}
                                 {anySsoEnabled && (
                                     <div className="flex items-center justify-center gap-3">
                                         {data?.github && (
@@ -362,7 +361,6 @@ export default function RegisterPage() {
                                         )}
                                     </div>
                                 )}
-                                {/* eslint-enable @next/next/no-html-link-for-pages */}
                             </>
                         )}
 

@@ -365,22 +365,20 @@ export default function DashboardPage() {
                                     <span>About GitArena</span>
                                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Link>
-                                <Link
+                                <a
                                     href="/docs"
-                                    reloadDocument
                                     className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <span>Documentation</span>
                                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                </Link>
-                                <Link
+                                </a>
+                                <a
                                     href="/docs/api-reference/introduction"
-                                    reloadDocument
                                     className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <span>API Reference</span>
                                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                </Link>
+                                </a>
                             </div>
                         </div>
                     </div>
