@@ -58,12 +58,13 @@ export function MarkdownRenderer({
                     pre: ({ children }) => <>{children}</>,
                     code: ({ className, children }) => {
                         const match = /language-(\w+)/.exec(className ?? "");
-                        if (match) {
+                        const isBlock = match || String(children).includes("\n");
+                        if (isBlock) {
                             return (
                                 <SyntaxHighlighter
-                                    language={match[1]}
+                                    language={match ? match[1] : "text"}
                                     style={gitarenaTheme}
-                                    customStyle={{ borderRadius: "0.375rem", fontSize: "0.875rem", border: "1px solid var(--border)" }}
+                                    customStyle={{ borderRadius: "0.375rem", fontSize: "0.875rem", border: "1px solid var(--border)", padding: "1rem 1.25rem", marginBottom: "1rem" }}
                                     PreTag="div"
                                 >
                                     {String(children).replace(/\n$/, "")}
