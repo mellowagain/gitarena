@@ -21,6 +21,8 @@ pub(crate) struct ApiInfoResponse {
     repository: &'static str,
     /// Short git commit SHA of the running build
     commit: &'static str,
+    /// Port of the SSH server, if running
+    ssh_port: Option<i32>,
 }
 
 #[utoipa::path(
@@ -33,7 +35,11 @@ pub(crate) struct ApiInfoResponse {
 )]
 #[route("/api", method = "GET", err = "json")]
 pub(crate) async fn api(db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let domain = from_config!("domain" => String);
+    let (domain, ssh_enabled, ssh_port) = from_config!(
+        "domain" => String,
+        "ssh.enabled" => bool,
+        "ssh.port" => i32
+    );
 
     Ok(HttpResponse::Ok().json(ApiInfoResponse {
         app: "GitArena",
@@ -42,5 +48,6 @@ pub(crate) async fn api(db_pool: web::Data<Pool>) -> Result<impl Responder> {
         documentation: "https://git.mari.zip/rapidoc",
         repository: env!("CARGO_PKG_REPOSITORY"),
         commit: env!("VERGEN_GIT_SHA"),
+        ssh_port: if ssh_enabled { Some(ssh_port) } else { None },
     }))
 }

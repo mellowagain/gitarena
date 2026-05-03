@@ -107,10 +107,14 @@ export function RepoSidebar({
 }: RepoSidebarProps) {
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
     const instanceConfig = useInstanceConfig();
-    const cloneUrl =
-        protocol === "https"
-            ? `${instanceConfig?.baseUrl ?? ""}/${user}/${repo}.git`
-            : `git@${instanceConfig?.baseUrl?.replace(/^https?:\/\//, "") ?? ""}:${user}/${repo}.git`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+    const host = apiUrl.replace(/^https?:\/\//, "");
+    const sshEnabled = instanceConfig?.sshPort != null;
+    const sshCloneUrl =
+        instanceConfig?.sshPort === 22
+            ? `git@${host}:${user}/${repo}.git`
+            : `ssh://git@${host}:${instanceConfig?.sshPort}/${user}/${repo}.git`;
+    const cloneUrl = protocol === "https" ? `${apiUrl}/${user}/${repo}.git` : sshCloneUrl;
 
     const { data, error, isLoading } = useSWR<RepoStats>(`/api/repos/${user}/${repo}/stats`);
 
@@ -141,7 +145,7 @@ export function RepoSidebar({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => setProtocol("https")}>HTTPS</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setProtocol("ssh")}>SSH</DropdownMenuItem>
+                                {sshEnabled && <DropdownMenuItem onClick={() => setProtocol("ssh")}>SSH</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

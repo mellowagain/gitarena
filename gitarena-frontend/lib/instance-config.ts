@@ -5,4 +5,5 @@ export interface InstanceConfig {
     documentation: string;
     repository: string;
     commit: string;
+    sshPort?: number;
 }
