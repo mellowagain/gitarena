@@ -1,55 +1,82 @@
 ---
 title: "SSH"
-description: "How GitArena integrates with OpenSSH for public key authentication."
+description: "How GitArena handles git operations over SSH."
 ---
 
-`gitarena-ssh` is a CLI tool that integrates GitArena's user SSH keys with OpenSSH's `AuthorizedKeysCommand` directive. It is not a long-running daemon — OpenSSH invokes it as a subprocess each time it needs to authenticate a connection.
+The main `gitarena` binary includes a built-in SSH server that handles git push and pull over SSH. It runs alongside the HTTP server as part of the same process.
 
 ## How it works
 
-When a user attempts to push or pull over SSH, OpenSSH looks up their public key by calling the configured `AuthorizedKeysCommand`. GitArena provides this command:
+When a client connects, the server authenticates the user by their public key and then processes the git command (`git-upload-pack` or `git-receive-pack`) directly:
 
-```
-openssh → gitarena-ssh authorized-keys → PostgreSQL → stdout
-```
+```mermaid
+flowchart LR
+    Client["git client"]
+    SSH["gitarena SSH server"]
+    DB[(PostgreSQL)]
+    Repo[("git repository\n(disk)")]
 
-1. OpenSSH calls `gitarena-ssh authorized-keys`.
-2. The CLI opens a single PostgreSQL connection (pool size: 1).
-3. It queries all non-expired SSH public keys for all users from the `ssh_keys` table.
-4. It prints the keys in `authorized_keys` format to stdout.
-5. OpenSSH uses the output to authenticate the connecting user.
-
-## OpenSSH configuration
-
-Add the following to `/etc/ssh/sshd_config`:
-
-```sshd_config /etc/ssh/sshd_config
-AuthorizedKeysCommand /path/to/gitarena-ssh authorized-keys
-AuthorizedKeysCommandUser gitarena
+    Client -->|TCP| SSH
+    SSH -->|key lookup + auth| DB
+    SSH -->|read / write| Repo
 ```
 
-`gitarena-ssh` needs access to the database. Set `DATABASE_URL` in the environment where it's invoked, or use a wrapper script.
+<Steps>
+  <Step title="Connect and authenticate">
+    The client connects and presents a public key. The server looks up the key in the `ssh_keys` table and resolves the associated user.
+  </Step>
+  <Step title="Exec request">
+    The client sends a `git-upload-pack` or `git-receive-pack` exec request. The server checks repository access and push permissions.
+  </Step>
+  <Step title="Ref advertisement">
+    The server sends the ref advertisement to the client.
+  </Step>
+  <Step title="Data exchange">
+    The client streams its request (object negotiation or pack data). The server processes it and streams the response back.
+  </Step>
+</Steps>
 
-<Warning>
-  SSH-based git operations (push/pull) are not yet fully implemented. The CLI currently only handles key lookup for authentication. Git over SSH will fall back to an error message.
-</Warning>
+## Git protocol versions
 
-## SSH key management
-
-Users add and delete SSH keys through their account settings in the web UI:
-
-| Action | API endpoint |
-|--------|-------------|
-| List keys | `GET /api/ssh-keys` |
-| Add a key | `POST /api/ssh-keys` |
-| Delete a key | `DELETE /api/ssh-keys/{id}` |
-
-Keys are stored in the `ssh_keys` table and associated with a user account. The `gitarena-ssh` CLI reads all keys from this table without filtering by user — OpenSSH matches the connecting key against the full list.
-
-## Building
+The SSH transport defaults to protocol v1. To use v2, the client must set the `GIT_PROTOCOL` environment variable explicitly before connecting:
 
 ```bash
-cargo build -p gitarena-ssh --release
+GIT_PROTOCOL=version=2 git clone git@your-instance:username/repo.git
 ```
 
-The binary is at `target/release/gitarena-ssh`.
+To make this permanent, add it to your shell profile or git config:
+
+```bash
+git config --global protocol.version 2
+```
+
+| Version | How to enable                | Upload-pack advertisement       |
+|---------|------------------------------|---------------------------------|
+| v1      | Default                      | Full ref list with capabilities |
+| v2      | Set `GIT_PROTOCOL=version=2` | Capabilities only (no refs)     |
+
+## Authentication
+
+Only public key authentication is accepted. Password authentication is rejected. The SSH username must be `git` — this is standard practice for git hosting services:
+
+```bash
+git clone git@your-instance:username/repo.git
+```
+
+Users manage their SSH keys through account settings in the web UI. See the [API reference](/api-reference/introduction) for the key management endpoints.
+
+## Configuration
+
+The SSH server reads its settings from the `settings` table:
+
+| Setting                           | Default | Description                                  |
+|-----------------------------------|---------|----------------------------------------------|
+| `ssh.enabled`                     | `true`  | Enable or disable the SSH server             |
+| `ssh.port`                        | `2222`  | Port the server binds to                     |
+| `ssh.auth_rejection_time_seconds` | `5`     | Delay before rejecting a failed auth attempt |
+
+The server host key is generated automatically on first start and stored in the `ssh.private_key` setting. It persists across restarts and cannot be overridden from the environment.
+
+## Shell access
+
+If a user connects without issuing a git command (e.g. by opening an interactive SSH session), the server greets them by name and closes the connection. Shell access is not provided.

@@ -41,6 +41,18 @@ git pull origin main
 
 Authentication for push operations uses HTTP Basic Auth — provide your GitArena username and password when prompted.
 
+## Git over SSH
+
+GitArena includes a built-in SSH server for git push and pull. Add your SSH public key in account settings, then use the `git@` URL format:
+
+```bash
+git clone git@your-instance:username/repo.git
+git push origin main
+git pull origin main
+```
+
+See [SSH architecture](/architecture/ssh) for details on the server and key management API.
+
 ## Post-push hooks
 
 After each push, GitArena runs background analysis:

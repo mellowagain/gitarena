@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["gitarena", "gitarena-common", "gitarena-macros", "gitarena-ssh", "gitarena-workhorse"]
+members = ["gitarena", "gitarena-common", "gitarena-macros", "gitarena-workhorse"]
 
 [workspace.package]
 version = "0.0.0"

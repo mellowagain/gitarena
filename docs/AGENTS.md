@@ -34,10 +34,10 @@ Use these terms consistently:
 
 ## Site structure
 
-| Tab | What it covers |
-|-----|---------------|
-| Guides | Getting started, architecture, features, self-hosting, contributing |
-| API reference | REST API (auto-generated from OpenAPI + intro page) |
+| Tab           | What it covers                                                      |
+|---------------|---------------------------------------------------------------------|
+| Guides        | Getting started, architecture, features, self-hosting, contributing |
+| API reference | REST API (auto-generated from OpenAPI + intro page)                 |
 
 ## Style preferences
 
@@ -48,6 +48,8 @@ Use these terms consistently:
 - Code formatting for file names, commands, paths, variables, and settings keys
 - No marketing language ("powerful", "seamless", "robust")
 - No filler phrases ("it's important to note", "in order to")
+- NEVER make ASCII graphs. Instead, use Mermaid graphs.
+- NEVER make manual steps (1. 2. 3. etc.). Instead use the <Steps> component.
 
 ## Content boundaries
 
@@ -58,7 +60,6 @@ Document:
 
 Note clearly with a `<Note>` callout:
 - Features that are under active development or not yet complete
-- SSH git access (key lookup works; git over SSH is not yet fully implemented)
 
 Do not document:
 - Planned features not yet started
