@@ -4,13 +4,13 @@ use crate::repository::Repository;
 use crate::user::User;
 use crate::{crypto, die, err};
 
+use crate::mail::Email;
 use actix_web::http::header::{CONTENT_TYPE, WWW_AUTHENTICATE};
 use actix_web::{Either, HttpRequest, HttpResponse};
 use anyhow::Result;
 use gitarena_common::database::Database;
 use sqlx::Transaction;
-use tracing::instrument;
-use tracing_unwrap::OptionExt;
+use tracing::{debug, instrument};
 
 #[instrument(skip(request, tx), err)]
 pub(crate) async fn validate_repo_access(
@@ -55,42 +55,44 @@ pub(crate) async fn prompt(content_type: &str) -> HttpResponse {
 
 #[instrument(skip_all, err)]
 pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transaction<'_, Database>) -> Result<User> {
-    // TODO: Add more verbose logging to this function similar to frontend login (for usage by fail2ban)
-
     match request.get_header("authorization") {
         Some(auth_header) => {
-            let (username, password) = parse_basic_auth(auth_header).await?;
+            let (identifier, password) = parse_basic_auth(auth_header).await?;
 
-            if username.is_empty() || password.is_empty() {
+            if identifier.is_empty() || password.is_empty() {
                 die!(UNAUTHORIZED, "Username and password cannot be empty");
             }
 
-            let option: Option<User> = sqlx::query_as::<_, User>("select * from users where username = $1 limit 1")
-                .bind(&username)
-                .fetch_optional(&mut **transaction)
-                .await?;
+            let option = if identifier.contains('@') {
+                User::find_using_email(&identifier, transaction).await
+            } else {
+                User::find_using_name(&identifier, transaction).await
+            };
 
-            if option.is_none() {
-                die!(UNAUTHORIZED, "User does not exist");
+            let Some(user) = option else {
+                debug!(identifier, "Received git http login request for non-existent user");
+                die!(UNAUTHORIZED, "Invalid credentials");
+            };
+
+            if user.password == "sso-login" {
+                debug!(user.username, user.id, "Received git http password login request for an SSO-registered user");
+                die!(UNAUTHORIZED, "This account was registered with SSO. Only Git operations via SSH are supported.");
             }
-
-            let user = option.unwrap_or_log();
 
             if !crypto::check_password(&user, &password)? {
-                die!(UNAUTHORIZED, "Incorrect password");
+                die!(UNAUTHORIZED, "Invalid credentials");
             }
 
-            // TODO: Check for allowed login
-            /*let primary_email = Email::find_primary_email(&user, transaction)
-            .await?
-            .ok_or_else(|| anyhow!("No primary email".to_owned()))?;*/
+            let primary_email = Email::find_primary_email(&user, transaction)
+                .await?
+                .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
-            if user.disabled
-            /* || !primary_email.is_allowed_login()*/
-            {
-                die!(UNAUTHORIZED, "Account has been disabled. Please contact support.");
+            if user.disabled || !primary_email.is_allowed_login() {
+                debug!(user.username, user.id, "Received login request for disabled user");
+                die!(FORBIDDEN, "Account has been disabled. Please contact support.");
             }
 
+            debug!(user.username, user.id, "User authenticated in git http");
             Ok(user)
         }
         None => die!(UNAUTHORIZED),
