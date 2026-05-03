@@ -367,6 +367,7 @@ export default function DashboardPage() {
                                 </Link>
                                 <Link
                                     href="/docs"
+                                    reloadDocument
                                     className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <span>Documentation</span>
@@ -374,6 +375,7 @@ export default function DashboardPage() {
                                 </Link>
                                 <Link
                                     href="/docs/api-reference/introduction"
+                                    reloadDocument
                                     className="flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <span>API Reference</span>

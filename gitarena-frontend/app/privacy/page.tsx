@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { GitBranch, Shield, Eye, Database, Lock, Bell, UserX, Mail, Server, ChevronRight } from "lucide-react";
 
@@ -14,7 +12,7 @@ const tldrPoints = [
     },
     {
         icon: Database,
-        text: "Request logs, metrics, and traces are sent to New Relic and deleted after 30 days. Account data is kept until you delete your account.",
+        text: "Logs are sent to New Relic (EU region) and kept for 30 days. Traces and metrics are kept for 8 days. Infrastructure metadata (no PII) is kept for 395 days. Account data is kept until you delete your account.",
     },
     {
         icon: Lock,
@@ -49,7 +47,7 @@ const sections: Section[] = [
             "Session data — a random session token stored as a cookie, plus your IP address and the User-Agent string sent by your browser. These are recorded each time you make an authenticated request and are used for security monitoring and abuse prevention.",
             "SSH keys and passkeys — the public half of any SSH key you upload, and the public-key credential for any WebAuthn/passkey you register. Private keys never leave your device.",
             "Repository content — code, commits, and git objects are stored as bare repositories on disk on the backend server. Issues, merge request comments, and repository metadata are stored in the database. This content is used solely to provide the Service and is not used for any other purpose.",
-            "Operational telemetry — HTTP request traces, performance metrics, and application logs are exported via OpenTelemetry to New Relic. These records may contain IP addresses and request paths. They are deleted automatically after 30 days.",
+            "Operational telemetry — HTTP request traces, performance metrics, and application logs are exported via OpenTelemetry to New Relic. These records may contain IP addresses and request paths. Retention periods on New Relic: logs 30 days, traces 8 days, metrics 8 days. Infrastructure metadata (host-level, no PII) is retained for 395 days.",
             "We do not use tracking pixels, third-party analytics scripts, or behavioural-advertising technologies of any kind.",
         ],
     },
@@ -71,7 +69,7 @@ const sections: Section[] = [
             "Frontend — hosted on Vercel, Inc. (US). Vercel serves the static frontend application only. No personal data is stored persistently on Vercel infrastructure; all data requests are proxied to the Frankfurt backend. The transfer of any incidental personal data (such as IP addresses in request logs) to the US is governed by Vercel's Data Processing Agreement incorporating EU Standard Contractual Clauses (Art. 46(2)(c) GDPR).",
             "Backend — the application server is hosted on Tencent Cloud in Frankfurt am Main, Germany (EU/EEA). Repository contents (the actual files, commits, and git objects) are stored on disk on this server as bare git repositories. Tencent Cloud acts as a data processor under Art. 28 GDPR.",
             "Database — account data, sessions, SSH keys, passkeys, issues, merge request comments, and repository metadata are stored in an Aiven-managed PostgreSQL 17 instance running on DigitalOcean in Amsterdam, the Netherlands (EU/EEA). Both Aiven and DigitalOcean act as sub-processors under Art. 28 GDPR.",
-            "Observability — logs, metrics, and traces are sent to New Relic, Inc. (US). Retention is 30 days. New Relic is certified under the EU-US Data Privacy Framework and processes data under a Data Processing Agreement.",
+            "Observability — logs, metrics, and traces are sent to New Relic, Inc., EU data region (data stored within the EU/EEA). New Relic processes data under a Data Processing Agreement.",
             "We do not sell, rent, or trade personal data to any third party. We will disclose data to law-enforcement authorities only when required by a valid legal process, and will notify you beforehand where permitted by law.",
         ],
     },
@@ -81,7 +79,7 @@ const sections: Section[] = [
         content: [
             "Account data (username, email, SSH keys, passkeys, repository content) is retained for as long as your account is active. When you delete your account, we remove your personal data and all repository data within 30 days.",
             "Session records (IP address, user agent, session token) are deleted when a session expires or is revoked, and in any case when the associated account is deleted.",
-            "Operational telemetry (logs, metrics, traces on New Relic) is deleted after 30 days.",
+            "Operational telemetry on New Relic is retained as follows: logs 30 days, traces 8 days, metrics 8 days. Infrastructure metadata (no PII) is retained for 395 days.",
             "Retention may be extended where required by applicable law or to defend against a legal claim.",
         ],
     },
@@ -279,7 +277,7 @@ export default function PrivacyPage() {
                             </Link>
                         ))}
                     </nav>
-                    <p className="text-xs">&copy; 2026 GitArena. AGPL-3.0.</p>
+                    <p className="text-xs">&copy; 2020 - present GitArena. MIT License.</p>
                 </div>
             </footer>
         </div>

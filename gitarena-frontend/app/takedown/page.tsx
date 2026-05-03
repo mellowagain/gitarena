@@ -454,7 +454,7 @@ export default function TakedownPage() {
                             </Link>
                         ))}
                     </nav>
-                    <p className="text-xs">&copy; 2026 GitArena. AGPL-3.0.</p>
+                    <p className="text-xs">&copy; 2020 - present GitArena. MIT License.</p>
                 </div>
             </footer>
         </div>

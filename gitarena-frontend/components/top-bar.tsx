@@ -22,6 +22,7 @@ export type NavLink = {
     href: string;
     icon: React.ReactNode;
     active?: boolean;
+    reloadDocument?: boolean;
 };
 
 type TopBarProps = {
@@ -90,7 +91,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                 <nav className="flex items-center gap-1 shrink-0 ml-auto">
                     {navLinks &&
                         navLinks.map((link, i) => (
-                            <Link key={i} href={link.href}>
+                            <Link key={i} href={link.href} reloadDocument={link.reloadDocument}>
                                 <Button
                                     variant="ghost"
                                     size="sm"

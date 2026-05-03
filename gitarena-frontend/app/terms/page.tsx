@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { GitBranch, FileText, ChevronRight, ShieldCheck, Ban, Gavel, TriangleAlert, Mail } from "lucide-react";
 
@@ -258,7 +256,7 @@ export default function TermsPage() {
                             </Link>
                         ))}
                     </nav>
-                    <p className="text-xs">&copy; 2026 GitArena. AGPL-3.0.</p>
+                    <p className="text-xs">&copy; 2020 - present GitArena. MIT License.</p>
                 </div>
             </footer>
         </div>
