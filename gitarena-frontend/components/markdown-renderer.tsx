@@ -64,7 +64,13 @@ export function MarkdownRenderer({
                                 <SyntaxHighlighter
                                     language={match ? match[1] : "text"}
                                     style={gitarenaTheme}
-                                    customStyle={{ borderRadius: "0.375rem", fontSize: "0.875rem", border: "1px solid var(--border)", padding: "1rem 1.25rem", marginBottom: "1rem" }}
+                                    customStyle={{
+                                        borderRadius: "0.375rem",
+                                        fontSize: "0.875rem",
+                                        border: "1px solid var(--border)",
+                                        padding: "1rem 1.25rem",
+                                        marginBottom: "1rem",
+                                    }}
                                     PreTag="div"
                                 >
                                     {String(children).replace(/\n$/, "")}
