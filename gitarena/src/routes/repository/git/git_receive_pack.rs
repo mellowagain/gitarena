@@ -1,11 +1,6 @@
 use crate::die;
-use crate::git::hooks::post_update;
-use crate::git::io::band::Band;
-use crate::git::io::reader::read_data_lines;
-use crate::git::io::writer::GitWriter;
-use crate::git::receive_pack::{process_create_update, process_delete};
-use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{GIT_CLI_AVAILABLE, basic_auth, ref_update};
+use crate::git::basic_auth;
+use crate::git::receive_pack::execute_receive_pack;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
 use crate::privileges::privilege;
@@ -13,23 +8,14 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use gitarena_common::database::Pool;
 
-use std::io::Write;
-use std::path::Path;
-use std::process::Stdio;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use futures::StreamExt;
 use gitarena_macros::route;
-use gix::protocol::transport::packetline::PacketLineRef;
-use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
-use memmem::{Searcher, TwoWaySearcher};
 use opentelemetry::KeyValue;
-use tokio::process::Command;
-use tokio::time::timeout;
-use tracing::warn;
 
 #[route("/{username}/{repository}.git/git-receive-pack", method = "POST", err = "git")]
 pub(crate) async fn git_receive_pack(
@@ -81,6 +67,8 @@ pub(crate) async fn git_receive_pack(
         die!(UNAUTHORIZED, "Repository is archived and thus read-only");
     }
 
+    transaction.commit().await?;
+
     let mut bytes = web::BytesMut::new();
 
     while let Some(item) = body.next().await {
@@ -88,115 +76,26 @@ pub(crate) async fn git_receive_pack(
         bytes.extend_from_slice(&item);
     }
 
-    let frozen_bytes = bytes.freeze();
-    let vec = &frozen_bytes[..];
+    let data = bytes.freeze();
+    let output_writer = execute_receive_pack(&db_pool, &mut repo, &data).await?;
+    let output = output_writer.serialize().await?;
 
-    let mut readable_iter = StreamingPeekableIter::new(vec, &[PacketLineRef::Flush], false);
-    readable_iter.fail_on_err_lines(true);
-
-    let git_body = read_data_lines(&mut readable_iter).await?;
-    let mut updates = Vec::<RefUpdate>::new();
-
-    for line in git_body {
-        updates.push(ref_update::parse_line(line).await?);
-    }
-
-    if updates.is_empty() {
-        warn!("Upload pack ref update list provided by client is empty");
-
+    if output.is_empty() {
         return Ok(HttpResponse::NoContent().append_header((CONTENT_TYPE, accept_header)).finish());
     }
 
-    ref_update::propagate_capabilities(&mut updates);
-
-    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
-    let store = gitoxide_repo.objects.store().clone();
-
-    let mut output_writer = GitWriter::new();
-
-    let searcher = TwoWaySearcher::new(b"PACK");
-
-    match searcher.search_in(vec) {
-        Some(pos) => {
-            {
-                let git2_repo = repo.libgit2(&mut transaction).await?;
-                let odb = git2_repo.odb()?;
-                let mut pack_writer = odb.packwriter()?;
-                pack_writer.write_all(&vec[pos..])?;
-                pack_writer.commit()?;
-            }
-
-            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
-
-            for update in updates {
-                match RefUpdateType::determinate(&update.old, &update.new)? {
-                    RefUpdateType::Create | RefUpdateType::Update => process_create_update(&update, &repo, store.clone(), &db_pool, &mut output_writer).await?,
-                    RefUpdateType::Delete => process_delete(&update, &repo, &mut transaction, &mut output_writer).await?,
-                }
-            }
-        }
-        None => {
-            if !ref_update::is_only_deletions(updates.as_slice())? {
-                warn!("Client sent no PACK file despite having more than just deletions");
-                die!(BAD_REQUEST, "No PACK payload was sent");
-            }
-
-            // There wasn't actually something to unpack
-            output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
-
-            for update in updates {
-                process_delete(&update, &repo, &mut transaction, &mut output_writer).await?;
-            }
-        }
-    }
-
-    let repo_dir_str = repo.get_fs_path(&mut transaction).await?;
-    let repo_dir = Path::new(&repo_dir_str);
-
-    // Let Git collect garbage to optimize repo size
-    if *GIT_CLI_AVAILABLE {
-        let command = Command::new("git")
-            .args(["gc", "--auto", "--quiet"])
-            .current_dir(repo_dir)
-            .kill_on_drop(true)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-
-        match timeout(Duration::from_secs(10), command).await {
-            Ok(Ok(status)) => {
-                if !status.success() {
-                    let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
-                    warn!(exit_code, "Git garbage collector exited with non-zero status");
-                }
-            }
-            Ok(Err(err)) => warn!(?err, "Failed to execute Git garbage collector"),
-            Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
-        }
-    }
-
-    output_writer.flush_sideband(Band::Data).await?;
-    output_writer.flush().await?;
-
-    // Run post update hooks
-    post_update::run(store, &mut repo, &mut transaction)
-        .await
-        .with_context(|| format!("Failed to run post update hook for newest commit in {}/{}", &uri.username, repo.name))?;
-
-    sqlx::query("update repositories set license = $1, languages = $2 where id = $3")
-        .bind(&repo.license)
-        .bind(&repo.languages)
-        .bind(repo.id)
-        .execute(&mut *transaction)
-        .await?;
-
-    transaction.commit().await?;
-
     let elapsed = start.elapsed().as_secs_f64();
-    OPERATION_COUNT.add(1, &[KeyValue::new("operation", "push"), KeyValue::new("status", "ok")]);
-    OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "push")]);
 
-    Ok(HttpResponse::Ok()
-        .append_header((CONTENT_TYPE, accept_header))
-        .body(output_writer.serialize().await?))
+    OPERATION_COUNT.add(
+        1,
+        &[
+            KeyValue::new("operation", "push"),
+            KeyValue::new("transport", "http"),
+            KeyValue::new("status", "ok"),
+        ],
+    );
+
+    OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "push"), KeyValue::new("transport", "http")]);
+
+    Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, accept_header)).body(output))
 }

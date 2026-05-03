@@ -28,7 +28,7 @@ use tracing::{Level, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 
-#[derive(FromRow, Display, derive_more::Debug, Serialize, ToSchema)]
+#[derive(FromRow, Display, Clone, derive_more::Debug, Serialize, ToSchema)]
 #[display("{name}")]
 #[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct Repository {

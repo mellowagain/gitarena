@@ -1,6 +1,7 @@
 use crate::git::io::writer::GitWriter;
 
 use core::result::Result as CoreResult;
+use std::fmt::Write as _;
 use std::sync::Once;
 
 use actix_web::web::Bytes;
@@ -107,7 +108,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
             if options.peel
                 && let Some(peel) = reference.target_peel()
             {
-                line.push_str(&format!(" peeled:{peel}"));
+                let _ = write!(line, " peeled:{peel}");
             }
 
             Some(line)
@@ -122,13 +123,28 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
     };
 }
 
-// Used by git-receive-pack ref discovery
-#[instrument(err, skip(repo))]
-pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
+pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
+    ls_refs_all_inner(repo, service_header, |_| receive_pack_capabilities().to_string()).await
+}
+
+pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
+    let head_symref = repo.find_reference("HEAD")?.symbolic_target().map(ToString::to_string);
+
+    ls_refs_all_inner(repo, service_header, |_| {
+        let symref = head_symref.as_deref().map(|target| format!(" symref=HEAD:{target}")).unwrap_or_default();
+        upload_pack_v1_capabilities(&symref)
+    })
+    .await
+}
+
+#[instrument(err, skip(repo, capabilities))]
+async fn ls_refs_all_inner(repo: &Git2Repository, service_header: Option<&str>, capabilities: impl Fn(&str) -> String) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 
-    writer.write_text("# service=git-receive-pack").await?;
-    writer.flush().await?;
+    if let Some(service) = service_header {
+        writer.write_text(format!("# service={service}")).await?;
+        writer.flush().await?;
+    }
 
     let once = Once::new();
 
@@ -142,7 +158,7 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
 
                     // Git ignores capabilities written after the first line
                     once.call_once(|| {
-                        line.push_str(receive_pack_capabilities());
+                        line.push_str(&capabilities(name));
                     });
 
                     writer.write_text(line).await?;
@@ -154,13 +170,9 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
         }
     }
 
-    // If we didn't tell the client our capabilities in the previous ref list, send a null ref with them
     if !once.is_completed() {
         writer
-            .write_text(format!(
-                "0000000000000000000000000000000000000000 capabilities^{{}}{}",
-                receive_pack_capabilities()
-            ))
+            .write_text(format!("0000000000000000000000000000000000000000 capabilities^{{}}{}", capabilities("")))
             .await?;
     }
 
@@ -171,6 +183,13 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository) -> Result<Bytes> {
 const fn receive_pack_capabilities() -> &'static str {
     concat!(
         "\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+fn upload_pack_v1_capabilities(symref_cap: &str) -> String {
+    format!(
+        "\x00multi_ack thin-pack side-band side-band-64k ofs-delta shallow no-progress include-tag multi_ack_detailed no-done{symref_cap} object-format=sha1 agent=git/gitarena-{}",
         env!("CARGO_PKG_VERSION")
     )
 }

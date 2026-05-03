@@ -78,7 +78,7 @@ async fn upload_pack_info_refs(
 
     Ok(HttpResponse::Ok()
         .append_header((CONTENT_TYPE, "application/x-git-upload-pack-advertisement"))
-        .body(capabilities(service).await?))
+        .body(capabilities(Some(service)).await?))
 }
 
 #[instrument(err, skip(request, db_pool))]
@@ -97,7 +97,7 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
     };
 
     let git2repo = repo.libgit2(&mut transaction).await?;
-    let output = ls_refs_all(&git2repo).await?;
+    let output = ls_refs_all(&git2repo, Some("git-receive-pack")).await?;
 
     transaction.commit().await?;
 

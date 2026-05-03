@@ -59,6 +59,9 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
         auth_rejection_time: Duration::from_secs(u64::try_from(auth_rejection_time)?),
         auth_rejection_time_initial: Some(Duration::from_secs(0)),
         keys: vec![key],
+        window_size: 16 * 1024 * 1024,   // 16mb
+        maximum_packet_size: 256 * 1024, // 256kib
+        event_buffer_size: 256,
         ..Default::default()
     });
 

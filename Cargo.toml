@@ -28,6 +28,7 @@ missing_errors_doc = "allow"
 used_underscore_binding = "allow"
 enum_glob_use = "allow"
 items_after_statements = "allow"
+doc_markdown = "allow"
 
 [profile.release]
 lto = true

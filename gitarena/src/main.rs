@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 use crate::error::error_renderer_middleware;
 use crate::ipc::Ipc;

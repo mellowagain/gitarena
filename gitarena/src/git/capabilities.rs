@@ -6,12 +6,14 @@ use tracing::instrument;
 
 // https://git-scm.com/docs/protocol-v2#_capabilities
 #[instrument(err)]
-pub(crate) async fn capabilities(service: &str) -> Result<Bytes> {
+pub(crate) async fn capabilities(service_header: Option<&str>) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 
-    writer.write_text(format!("# service={service}")).await?;
+    if let Some(service) = service_header {
+        writer.write_text(format!("# service={service}")).await?;
+        writer.flush().await?;
+    }
 
-    writer.flush().await?;
     writer.write_text("version 2").await?;
 
     writer.write_text(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION"))).await?;

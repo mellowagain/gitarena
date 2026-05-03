@@ -1,15 +1,22 @@
+use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
+use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
-use crate::git::ref_update::RefUpdate;
+use crate::git::ref_update::{RefUpdate, RefUpdateType};
+use crate::git::{GIT_CLI_AVAILABLE, ref_update};
 use crate::prelude::*;
 use crate::repository::Repository;
 use crate::utils::oid;
 use crate::{die, err};
 
 use std::convert::TryInto;
+use std::io::Write;
+use std::path::Path;
+use std::process::Stdio;
 use std::sync::Arc;
+use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use bstr::BString;
 use gitarena_common::database::Database;
 use gitarena_common::database::Pool;
@@ -19,10 +26,15 @@ use gix::lock::acquire::Fail;
 use gix::objs::{CommitRef, Kind, TagRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
+use memmem::{Searcher, TwoWaySearcher};
 use sqlx::Transaction;
-use tracing::instrument;
+use tokio::process::Command;
+use tokio::time::timeout;
+use tracing::{instrument, warn};
 
 #[instrument(err, skip(writer, store))]
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, store: Arc<Store>, db_pool: &Pool, writer: &mut GitWriter) -> Result<()> {
@@ -127,4 +139,103 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
     }
 
     Ok(())
+}
+
+#[instrument(err, skip(db_pool, data))]
+pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &mut Repository, data: &[u8]) -> Result<GitWriter> {
+    let mut tx = db_pool.begin().await?;
+
+    let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
+    readable_iter.fail_on_err_lines(true);
+
+    let git_body = read_data_lines(&mut readable_iter).await?;
+    let mut updates = Vec::<RefUpdate>::new();
+
+    for line in git_body {
+        updates.push(ref_update::parse_line(line).await?);
+    }
+
+    if updates.is_empty() {
+        warn!("Receive-pack ref update list provided by client is empty");
+        return Ok(GitWriter::new());
+    }
+
+    ref_update::propagate_capabilities(&mut updates);
+
+    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let store = gitoxide_repo.objects.store().clone();
+
+    let mut output_writer = GitWriter::new();
+    let searcher = TwoWaySearcher::new(b"PACK");
+
+    if let Some(pos) = searcher.search_in(data) {
+        {
+            let git2_repo = repo.libgit2(&mut tx).await?;
+            let odb = git2_repo.odb()?;
+            let mut pack_writer = odb.packwriter()?;
+            pack_writer.write_all(&data[pos..])?;
+            pack_writer.commit()?;
+        }
+
+        output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
+
+        for update in &updates {
+            match RefUpdateType::determinate(&update.old, &update.new)? {
+                RefUpdateType::Create | RefUpdateType::Update => process_create_update(update, repo, store.clone(), db_pool, &mut output_writer).await?,
+                RefUpdateType::Delete => process_delete(update, repo, &mut tx, &mut output_writer).await?,
+            }
+        }
+    } else {
+        if !ref_update::is_only_deletions(updates.as_slice())? {
+            die!(BAD_REQUEST, "No PACK payload was sent");
+        }
+
+        output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
+
+        for update in &updates {
+            process_delete(update, repo, &mut tx, &mut output_writer).await?;
+        }
+    }
+
+    let repo_dir_str = repo.get_fs_path(&mut tx).await?;
+    let repo_dir = Path::new(&repo_dir_str).to_owned();
+
+    if *GIT_CLI_AVAILABLE {
+        let command = Command::new("git")
+            .args(["gc", "--auto", "--quiet"])
+            .current_dir(&repo_dir)
+            .kill_on_drop(true)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+
+        match timeout(Duration::from_secs(10), command).await {
+            Ok(Ok(status)) => {
+                if !status.success() {
+                    let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
+                    warn!(exit_code, "Git garbage collector exited with non-zero status");
+                }
+            }
+            Ok(Err(err)) => warn!(?err, "Failed to execute Git garbage collector"),
+            Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
+        }
+    }
+
+    output_writer.flush_sideband(Band::Data).await?;
+    output_writer.flush().await?;
+
+    post_update::run(store, repo, &mut tx)
+        .await
+        .with_context(|| format!("Failed to run post update hook for repo {}", repo.name))?;
+
+    sqlx::query("update repositories set license = $1, languages = $2 where id = $3")
+        .bind(&repo.license)
+        .bind(&repo.languages)
+        .bind(repo.id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(output_writer)
 }

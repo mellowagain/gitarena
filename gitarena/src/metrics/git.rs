@@ -6,7 +6,8 @@ use opentelemetry::metrics::{Counter, Histogram};
 ///
 /// # Attributes
 ///
-/// - `operation` (fetch|push|ls-refs)
+/// - `operation` (upload-pack|push)
+/// - `transport` (http|ssh)
 /// - `status` (ok|error)
 pub static OPERATION_COUNT: Lazy<Counter<u64>> = Lazy::new(|| {
     global::meter("gitarena")
@@ -20,7 +21,8 @@ pub static OPERATION_COUNT: Lazy<Counter<u64>> = Lazy::new(|| {
 ///
 /// # Attributes
 ///
-/// - `operation` (fetch|push|ls-refs)
+/// - `operation` (upload-pack|push)
+/// - `transport` (http|ssh)
 pub static OPERATION_DURATION: Lazy<Histogram<f64>> = Lazy::new(|| {
     global::meter("gitarena")
         .f64_histogram("git.operation.duration")

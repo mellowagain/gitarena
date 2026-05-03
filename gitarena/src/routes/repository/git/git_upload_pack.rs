@@ -1,8 +1,6 @@
 use crate::die;
 use crate::git::basic_auth;
-use crate::git::fetch::fetch;
-use crate::git::io::reader::{read_data_lines, read_until_command};
-use crate::git::ls_refs::ls_refs;
+use crate::git::upload_pack::execute_upload_pack_v2;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
 use crate::privileges::privilege;
@@ -17,8 +15,6 @@ use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use futures::StreamExt;
 use gitarena_macros::route;
-use gix::protocol::transport::packetline::PacketLineRef;
-use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use opentelemetry::KeyValue;
 
 #[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
@@ -74,42 +70,24 @@ pub(crate) async fn git_upload_pack(
         bytes.extend_from_slice(&item);
     }
 
-    let frozen_bytes = bytes.freeze();
-    let vec = frozen_bytes.to_vec();
-
-    let mut readable_iter = StreamingPeekableIter::new(vec.as_slice(), &[PacketLineRef::Flush], false);
-    readable_iter.fail_on_err_lines(true);
-
-    let git_body = read_data_lines(&mut readable_iter).await?;
-    let (command, body) = read_until_command(git_body).await?;
-    let command = command.clone();
-
     let start = Instant::now();
 
-    let response = match command.as_str() {
-        "ls-refs" => {
-            let output = ls_refs(body, &git2repo).await?;
-
-            HttpResponse::Ok().append_header((CONTENT_TYPE, accept_header)).body(output)
-        }
-        "fetch" => {
-            let output = fetch(body, &git2repo).await?;
-
-            HttpResponse::Ok().append_header((CONTENT_TYPE, accept_header)).body(output)
-        }
-        _ => {
-            HttpResponse::Unauthorized() // According to spec we have to send unauthorized for commands we don't understand
-                .append_header((CONTENT_TYPE, accept_header))
-                .finish()
-        }
-    };
+    let output = execute_upload_pack_v2(bytes.as_ref(), &git2repo).await?;
 
     let elapsed = start.elapsed().as_secs_f64();
-    let op_attr = KeyValue::new("operation", command);
-    OPERATION_COUNT.add(1, &[op_attr.clone(), KeyValue::new("status", "ok")]);
-    OPERATION_DURATION.record(elapsed, &[op_attr]);
+
+    OPERATION_COUNT.add(
+        1,
+        &[
+            KeyValue::new("operation", "upload-pack"),
+            KeyValue::new("transport", "http"),
+            KeyValue::new("status", "ok"),
+        ],
+    );
+
+    OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "upload-pack"), KeyValue::new("transport", "http")]);
 
     transaction.commit().await?;
 
-    Ok(response)
+    Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, accept_header)).body(output))
 }
