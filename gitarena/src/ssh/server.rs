@@ -363,13 +363,6 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version:
 async fn run_receive_pack(db_pool: Pool, mut repo: Repository, vec: Vec<u8>) -> Result<Vec<u8>> {
     let start = Instant::now();
 
-    {
-        let mut tx = db_pool.begin().await?;
-        limits::check_push_payload_size(&vec, &mut tx).await?;
-        limits::check_disk_space(vec.len() as u64, &mut tx).await?;
-        tx.commit().await?;
-    }
-
     let output_writer = execute_receive_pack(&db_pool, &mut repo, vec.as_slice()).await?;
     let output = output_writer.serialize().await.map(|b| b.to_vec())?;
 
