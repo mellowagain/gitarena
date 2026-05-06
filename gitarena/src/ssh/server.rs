@@ -1,6 +1,5 @@
 use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
-use crate::git::limits;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
