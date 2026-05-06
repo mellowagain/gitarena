@@ -1,9 +1,70 @@
 "use client";
 
 import React from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import * as prismLanguages from "react-syntax-highlighter/dist/esm/languages/prism/index.js";
 import * as linguistLanguages from "linguist-languages";
 import type { Language } from "linguist-languages";
+
+// Register all bundled Prism languages. Some grammars depend on others and may fail if registered
+// out of order; those are silently skipped (they're uncommon and will fall back to plain text).
+for (const [name, syntax] of Object.entries(prismLanguages)) {
+    try {
+        SyntaxHighlighter.registerLanguage(name, syntax as Parameters<typeof SyntaxHighlighter.registerLanguage>[1]);
+    } catch {
+        // dependency not yet registered — skip
+    }
+}
+
+// Register Svelte grammar (markup-based with Svelte-specific block/expression patterns)
+function svelte(Prism: {
+    languages: {
+        svelte?: unknown;
+        extend: (base: string, def: object) => object;
+    };
+}) {
+    if (Prism.languages.svelte) {
+        return;
+    }
+    const blocks = "(if|else if|await|then|catch|each|html|debug)";
+    Prism.languages.svelte = Prism.languages.extend("markup", {
+        each: {
+            pattern: new RegExp("{[#/]each(?:(?:\\{(?:(?:\\{(?:[^{}])*\\})|(?:[^{}]))*\\})|(?:[^{}]))*}"),
+            inside: {
+                keyword: /[#/]each|as/,
+                punctuation: /{|}/,
+            },
+        },
+        block: {
+            pattern: new RegExp("{[#:/@]" + blocks + "(?:(?:\\{(?:(?:\\{(?:[^{}])*\\})|(?:[^{}]))*\\})|(?:[^{}]))*}"),
+            inside: {
+                punctuation: /^{|}$/,
+                keyword: [new RegExp("[#:/@]" + blocks + "( )*"), /as/, /then/],
+            },
+        },
+        tag: {
+            pattern:
+                /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?:"[^"]*"|'[^']*'|{[\s\S]+?}(?=[\s/>])))|(?=[\s/>])))+)?\s*\/?>/i,
+            greedy: true,
+            inside: {
+                tag: { pattern: /^<\/?[^\s>\/]+/i, inside: { punctuation: /^<\/?/, namespace: /^[^\s>\/:]+:/ } },
+                "attr-value": {
+                    pattern: /=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+)/i,
+                    inside: { punctuation: [/^=/, { pattern: /^(\s*)["']|["']$/, lookbehind: true }] },
+                },
+                punctuation: /\/?>/,
+                "attr-name": { pattern: /[^\s>\/]+/, inside: { namespace: /^[^\s>\/:]+:/ } },
+            },
+        },
+        "language-javascript": {
+            pattern: /\{(?:(?:\{(?:(?:\{(?:[^{}])*\})|(?:[^{}]))*\})|(?:[^{}]))*\}/,
+            lookbehind: true,
+        },
+    });
+}
+svelte.displayName = "svelte";
+svelte.aliases = [] as string[];
+SyntaxHighlighter.registerLanguage("svelte", svelte as Parameters<typeof SyntaxHighlighter.registerLanguage>[1]);
 
 export const gitarenaTheme: Record<string, React.CSSProperties> = {
     'code[class*="language-"]': { color: "var(--foreground)", background: "none" },
@@ -64,6 +125,7 @@ const PRISM_NAME_OVERRIDES: Record<string, string> = {
     "c++": "cpp",
     "c#": "csharp",
     shell: "bash",
+    html: "markup",
     sqlpl: "sql",
     tsql: "sql",
     plpgsql: "sql",

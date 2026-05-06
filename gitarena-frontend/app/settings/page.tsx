@@ -19,12 +19,15 @@ import {
     AlertCircle,
     Loader2,
     Info,
+    Palette,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
 import { postEmptyFetcher, postJsonVoidFetcher, postJsonFetcher, patchJsonFetcher, putJsonFetcher, deleteFetcher } from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { Switch } from "@/components/ui/switch";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { formatDistanceToNow } from "date-fns";
@@ -101,12 +104,13 @@ function parseDevice(userAgent: string): { label: string; isMobile: boolean } {
     }
 }
 
-type Tab = "profile" | "emails" | "authentication" | "sessions" | "keys" | "repositories" | "api-keys";
+type Tab = "profile" | "emails" | "authentication" | "sessions" | "keys" | "repositories" | "api-keys" | "appearance";
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
 
 const navItems: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "profile", label: "Profile", icon: User },
+    { id: "appearance", label: "Appearance", icon: Palette },
     { id: "emails", label: "Emails", icon: Mail },
     { id: "authentication", label: "Authentication", icon: KeyRound },
     { id: "sessions", label: "Sessions", icon: Monitor },
@@ -877,6 +881,28 @@ function APIKeysTab() {
     );
 }
 
+function AppearanceTab() {
+    const [groupedLanguages, setGroupedLanguages] = useLocalStorage<boolean>("gitarena:language-grouping", true);
+
+    return (
+        <div>
+            <SectionHeader title="Appearance" description="Customize how GitArena looks and behaves for you." />
+
+            <div className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <p className="text-sm font-medium">Group languages</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            Merge related languages in repository language bars (e.g. TSX into TypeScript), matching GitHub&apos;s behavior.
+                        </p>
+                    </div>
+                    <Switch checked={groupedLanguages} onCheckedChange={setGroupedLanguages} />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -887,6 +913,7 @@ export default function SettingsPage() {
 
     const tabContent: Record<Tab, React.ReactNode> = {
         profile: <ProfileTab />,
+        appearance: <AppearanceTab />,
         emails: <EmailsTab />,
         authentication: <AuthenticationTab />,
         sessions: <SessionsTab />,

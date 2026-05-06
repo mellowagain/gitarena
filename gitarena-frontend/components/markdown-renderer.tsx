@@ -13,24 +13,38 @@ export function isMarkdown(filename: string): boolean {
     return MARKDOWN_EXTENSIONS.has(filename.split(".").pop()?.toLowerCase() ?? "");
 }
 
-function proxyImageUrl(url: string): string {
+function resolveImageUrl(url: string, user: string, repo: string, branch: string, filePath: string): string {
     if (/^data:image\//.test(url)) {
         return url;
     }
-    const hex = Array.from(url)
-        .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join("");
-    return `/api/proxy/${hex}`;
+    if (/^https?:\/\//.test(url)) {
+        const hex = Array.from(url)
+            .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+            .join("");
+        return `/api/proxy/${hex}`;
+    }
+    // Relative path — resolve against the directory of the markdown file
+    const dir = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
+    const resolved = dir ? `${dir}/${url}` : url;
+    return `/api/repos/${user}/${repo}/branch/${branch}/files/${resolved}`;
 }
 
 export function MarkdownRenderer({
     content,
     fileName,
+    user,
+    repo,
+    branch,
+    filePath,
     showSource = false,
     wrapLines = false,
 }: {
     content: string;
     fileName: string;
+    user: string;
+    repo: string;
+    branch: string;
+    filePath: string;
     showSource?: boolean;
     wrapLines?: boolean;
 }) {
@@ -95,7 +109,7 @@ export function MarkdownRenderer({
                     img: ({ src, alt }) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                            src={typeof src === "string" ? proxyImageUrl(src) : undefined}
+                            src={typeof src === "string" ? resolveImageUrl(src, user, repo, branch, filePath) : undefined}
                             alt={alt}
                             className="inline-block align-middle"
                         />

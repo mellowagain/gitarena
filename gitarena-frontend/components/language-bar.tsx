@@ -3,6 +3,11 @@
 import { useState } from "react";
 import * as allLangs from "linguist-languages";
 
+type LinguistEntry = {
+    color?: string;
+    group?: string;
+};
+
 type Language = {
     name: string;
     percentage: number;
@@ -17,6 +22,22 @@ function languageFallbackColor(name: string): string {
     return `hsl(${Math.abs(hash) % 360}, 60%, 55%)`;
 }
 
+function languageColor(name: string): string {
+    return (allLangs as Record<string, LinguistEntry>)[name]?.color ?? languageFallbackColor(name);
+}
+
+function groupLanguages(raw: Record<string, number>): Record<string, number> {
+    const grouped: Record<string, number> = {};
+
+    for (const [name, bytes] of Object.entries(raw)) {
+        const entry = (allLangs as Record<string, LinguistEntry>)[name];
+        const parent = entry?.group ?? name;
+        grouped[parent] = (grouped[parent] ?? 0) + bytes;
+    }
+
+    return grouped;
+}
+
 function computeLanguages(raw: Record<string, number>): Language[] {
     const total = Object.values(raw).reduce((sum, bytes) => sum + bytes, 0);
     if (total === 0) {
@@ -28,13 +49,14 @@ function computeLanguages(raw: Record<string, number>): Language[] {
         .map(([name, bytes]) => ({
             name,
             percentage: Math.round((bytes / total) * 1000) / 10,
-            color: (allLangs as Record<string, { color?: string }>)[name]?.color ?? languageFallbackColor(name),
+            color: languageColor(name),
         }));
 }
 
-export function LanguageBar({ languages }: { languages: Record<string, number> }) {
+export function LanguageBar({ languages, grouped = true }: { languages: Record<string, number>; grouped?: boolean }) {
     const [hoveredLang, setHoveredLang] = useState<string | null>(null);
-    const computed = computeLanguages(languages);
+    const resolved = grouped ? groupLanguages(languages) : languages;
+    const computed = computeLanguages(resolved);
 
     return (
         <div className="space-y-2.5">

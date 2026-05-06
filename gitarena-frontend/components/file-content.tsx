@@ -109,7 +109,16 @@ export function FileContent({
         return (
             <>
                 {truncatedWarning}
-                <MarkdownRenderer content={content} fileName={filename} showSource={showSource} wrapLines={wrapLines} />
+                <MarkdownRenderer
+                    content={content}
+                    fileName={filename}
+                    user={user}
+                    repo={repo}
+                    branch={branch}
+                    filePath={filename}
+                    showSource={showSource}
+                    wrapLines={wrapLines}
+                />
             </>
         );
     }
