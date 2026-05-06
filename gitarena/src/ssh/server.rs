@@ -1,5 +1,6 @@
 use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
+use crate::git::limits;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
@@ -225,7 +226,7 @@ impl Handler for SshHandler {
         let Some((username, repo_name)) = path
             .strip_prefix('\'')
             .and_then(|p| p.strip_suffix('\''))
-            .and_then(|p| p.strip_prefix('/'))
+            .map(|p| p.trim_matches('/'))
             .and_then(|p| p.strip_suffix(".git"))
             .and_then(|p| p.split_once('/'))
         else {
@@ -361,6 +362,13 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version:
 #[instrument(err, skip(db_pool, vec))]
 async fn run_receive_pack(db_pool: Pool, mut repo: Repository, vec: Vec<u8>) -> Result<Vec<u8>> {
     let start = Instant::now();
+
+    {
+        let mut tx = db_pool.begin().await?;
+        limits::check_push_payload_size(&vec, &mut tx).await?;
+        limits::check_disk_space(vec.len() as u64, &mut tx).await?;
+        tx.commit().await?;
+    }
 
     let output_writer = execute_receive_pack(&db_pool, &mut repo, vec.as_slice()).await?;
     let output = output_writer.serialize().await.map(|b| b.to_vec())?;
