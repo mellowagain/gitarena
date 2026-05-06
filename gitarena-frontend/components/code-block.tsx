@@ -126,6 +126,7 @@ const PRISM_NAME_OVERRIDES: Record<string, string> = {
     "c#": "csharp",
     shell: "bash",
     html: "markup",
+    ecmarkup: "markup",
     sqlpl: "sql",
     tsql: "sql",
     plpgsql: "sql",
