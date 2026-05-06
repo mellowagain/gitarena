@@ -80,6 +80,7 @@ tracing = "0.1.29"
 tracing-appender = "0.2.0"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std"] }
 tracing-unwrap = "0.9.2"
+trust-dns-resolver = { version = "0.23.2", features = ["dnssec-ring"] }
 url = "2.2.2"
 utoipa = { version = "4", features = ["actix_extras", "chrono", "url"] }
 uuid = { version = "1", features = ["v4", "v5", "v7", "serde"] }

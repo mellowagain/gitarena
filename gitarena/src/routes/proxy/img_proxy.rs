@@ -1,16 +1,31 @@
 use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::{die, err};
+use std::net::{IpAddr, SocketAddr};
+use std::time::Duration;
 
+use crate::utils::DNS_RESOLVER;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use awc::Client;
-use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH};
+use awc::http::StatusCode;
+use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH, USER_AGENT};
 use gitarena_macros::route;
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::Deserialize;
-use tracing::debug;
+use tracing::{debug, instrument};
+use url::Url;
 
-const PASSTHROUGH_HEADERS: [&str; 6] = ["cache-control", "content-encoding", "etag", "expires", "last-modified", "transfer-encoding"];
+const REQUEST_PASSTHROUGH_HEADERS: &[&str] = &["if-modified-since", "if-none-match", "cache-control", "pragma"];
+const RESPONSE_PASSTHROUGH_HEADERS: &[&str] = &[
+    "cache-control",
+    "content-length",
+    "etag",
+    "expires",
+    "last-modified",
+    "vary",
+    "content-encoding",
+    "transfer-encoding",
+];
 
 // Source: https://github.com/atmos/camo/blob/master/mime-types.json
 const ACCEPTED_MIME_TYPES: [&str; 43] = [
@@ -59,6 +74,13 @@ const ACCEPTED_MIME_TYPES: [&str; 43] = [
     "image/x-xwindowdump",
 ];
 
+const NO_BODY_STATUS_CODES: &[StatusCode] = &[StatusCode::NO_CONTENT, StatusCode::RESET_CONTENT, StatusCode::NOT_MODIFIED];
+
+#[derive(Deserialize)]
+pub(crate) struct ProxyRequest {
+    pub(crate) url: String, // Hex Digest
+}
+
 #[route("/api/proxy/{url}", method = "GET", err = "text")]
 pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) -> Result<impl Responder> {
     let url = &uri.url;
@@ -68,40 +90,71 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
     }
 
     let bytes = hex::decode(url)?;
-    let url = String::from_utf8(bytes)?;
+    let string = String::from_utf8(bytes)?;
 
-    let mut client = Client::gitarena().get(&url);
+    let url = Url::parse(&string).map_err(|_| err!(BAD_REQUEST, "invalid url supplied"))?;
+    let host = url.host().ok_or_else(|| err!(BAD_REQUEST, "invalid url supplied"))?;
 
-    if let Some(header_value) = request.get_header("if-modified-since") {
-        client = client.append_header((IF_MODIFIED_SINCE, header_value));
+    let lookup_ip = DNS_RESOLVER.lookup_ip(format!("{host}.")).await?;
+    let mut peekable = lookup_ip.iter().peekable();
+
+    while let Some(addr) = peekable.next() {
+        if is_private_ip(addr) {
+            continue;
+        }
+
+        let response = request_ip(url.as_str(), addr, url.port_or_known_default().unwrap_or(80), &request).await;
+        let is_last = peekable.peek().is_none();
+
+        if response.is_ok() || is_last {
+            return response;
+        }
     }
 
-    if let Some(header_value) = request.get_header("if-none-match") {
-        client = client.append_header((IF_NONE_MATCH, header_value));
-    }
+    // should theoretically never happen
+    die!(BAD_GATEWAY, "unable to reach upstream server");
+}
 
-    if let Some(header_value) = request.get_header("cache-control") {
-        client = client.append_header((CACHE_CONTROL, header_value));
+// TODO: cache this
+#[instrument(skip(request))]
+async fn request_ip(url: &str, address: IpAddr, port: u16, request: &HttpRequest) -> Result<HttpResponse> {
+    let mut client = Client::gitarena().get(url);
+
+    for (name, value) in request
+        .headers()
+        .iter()
+        .map(|(name, value)| (name.as_str().to_lowercase(), value))
+        .filter(|(name, _)| REQUEST_PASSTHROUGH_HEADERS.contains(&name.as_str()))
+    {
+        client = client.append_header((name, value));
     }
 
     debug!(?url, "Image proxy request");
 
-    let gateway_response = client
+    let upstream_response = client
+        .address(SocketAddr::new(address, port))
+        .timeout(Duration::from_secs(5))
+        .insert_header((
+            USER_AGENT,
+            concat!(
+                "GitArena v",
+                env!("CARGO_PKG_VERSION"),
+                "/ImageProxy (https://github.com/mellowagain/gitarena/)"
+            ),
+        ))
         .trace_request()
         .send()
         .await
-        .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to gateway: {}", err))?;
-    let mut response = HttpResponse::build(gateway_response.status());
+        .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to upstream: {err}"))?;
 
-    /*if length > 5242880 {
-        die!(BAD_GATEWAY, "Content too big");
-    }*/
+    let status = upstream_response.status();
+    let mut response = HttpResponse::build(status);
 
-    for (name, value) in gateway_response.headers() {
+    for (name, value) in upstream_response.headers() {
         let lowered_name = name.as_str().to_lowercase();
         let value_str = value.to_str()?;
 
-        if PASSTHROUGH_HEADERS.contains(&lowered_name.as_str()) {
+        if RESPONSE_PASSTHROUGH_HEADERS.contains(&lowered_name.as_str()) {
             response.append_header((name.as_str(), value_str));
         }
 
@@ -110,10 +163,24 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
         }
     }
 
-    Ok(response.streaming(gateway_response))
+    Ok(if NO_BODY_STATUS_CODES.contains(&status) {
+        response.finish()
+    } else {
+        response.streaming(upstream_response)
+    })
 }
 
-#[derive(Deserialize)]
-pub(crate) struct ProxyRequest {
-    pub(crate) url: String, // Hex Digest
+fn is_private_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback() || v4.is_private() || v4.is_link_local() || v4.is_broadcast() || v4.is_unspecified() || (u32::from(v4) >> 22 == 0x1910_0000 >> 22) // carrier-grade NAT: 100.64.0.0/10
+        }
+        IpAddr::V6(v6) => {
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || (v6.segments()[0] & 0xfe00) == 0xfc00 // fc00::/7
+                || (v6.segments()[0] & 0xffc0) == 0xfe80 // fe80::/10
+                || v6.to_ipv4_mapped().is_some_and(|v4| is_private_ip(IpAddr::V4(v4)))
+        }
+    }
 }
