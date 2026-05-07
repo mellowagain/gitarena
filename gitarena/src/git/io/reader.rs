@@ -9,8 +9,8 @@ use tracing_unwrap::OptionExt;
 pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String, Vec<Vec<u8>>)> {
     for (index, raw_line) in body.iter().enumerate() {
         match String::from_utf8(raw_line.clone()) {
-            Ok(line) => match line.split_once('=') {
-                Some((key, value)) => {
+            Ok(line) => {
+                if let Some((key, value)) = line.split_once('=') {
                     if key != "command" {
                         continue;
                     }
@@ -21,8 +21,7 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
 
                     return Ok((value.to_owned(), body));
                 }
-                None => {}
-            },
+            }
             Err(err) => {
                 warn!(?err, "Failed to read line into UTF-8 vec");
             }
@@ -45,7 +44,7 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
                     }
 
                     // We can safely unwrap() as we checked above that the slice is not empty
-                    let length = data.len() - (data.last().unwrap_or_log() == &10_u8) as usize;
+                    let length = data.len() - usize::from(data.last().unwrap_or_log() == &10_u8);
 
                     body.push(data[..length].to_vec());
                 }

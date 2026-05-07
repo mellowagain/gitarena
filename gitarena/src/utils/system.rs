@@ -8,7 +8,7 @@ use tracing::{Instrument, info_span};
 pub(crate) static SYSTEM_INFO: Lazy<RwLock<System>> = Lazy::new(init);
 
 fn init() -> RwLock<System> {
-    let mut interval = tokio::time::interval(Duration::from_secs(5 * 60));
+    let mut interval = tokio::time::interval(Duration::from_mins(5));
 
     let system = System::new_with_specifics(RefreshKind::new().with_memory());
     let lock = RwLock::new(system);

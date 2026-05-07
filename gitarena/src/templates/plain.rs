@@ -8,15 +8,15 @@ pub(crate) type Template = (String, HashMap<String, String>);
 pub(crate) type TemplateContext = HashMap<String, String>;
 
 #[instrument]
-pub(crate) fn parse(template_path: String) -> Result<Template> {
+pub(crate) fn parse(template_path: &str) -> Result<Template> {
     let template_dir = Path::new("./gitarena/templates/");
-    let path = template_dir.join(&template_path);
+    let path = template_dir.join(template_path);
 
     let content = fs::read_to_string(path)?;
     let mut skip_lines = 0;
 
     let mut tags = HashMap::new();
-    tags.insert("template_name".to_owned(), template_path.clone());
+    tags.insert("template_name".to_owned(), template_path.to_string());
 
     for (index, line) in content.lines().enumerate() {
         if line == "---" {

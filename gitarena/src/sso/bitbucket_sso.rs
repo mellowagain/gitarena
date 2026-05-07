@@ -148,9 +148,9 @@ impl SSOProvider for BitBucketSSO {
             if email_exists {
                 if primary {
                     bail!("Primary email is already assigned to a different account");
-                } else {
-                    continue;
                 }
+
+                continue;
             }
 
             // All email addresses have already been verified by Bitbucket, so we also mark them as verified

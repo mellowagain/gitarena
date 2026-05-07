@@ -8,6 +8,7 @@ use rand::distr::{Distribution, Uniform};
 static ARGON_CONFIG: Lazy<Config> = Lazy::new(|| Config {
     ad: &[],
     hash_length: 32,
+    #[allow(clippy::cast_possible_truncation)]
     lanes: num_cpus::get() as u32,
     mem_cost: 65536,
     secret: &[],

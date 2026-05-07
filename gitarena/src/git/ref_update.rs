@@ -24,23 +24,24 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
         .ok_or_else::<Error, _>(|| anyhow!("Failed to parse ref update payload. Expected target ref, got: {}", line.clone()))?;
 
     if !target_ref.starts_with("refs/") {
-        bail!("Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {target_ref}",);
+        bail!("Received target ref which does not start with \"refs/\", is this a partial ref instead of a FQN? Got: {target_ref}");
     }
 
-    ref_update.target_ref = target_ref.to_owned();
+    target_ref.clone_into(&mut ref_update.target_ref);
 
     for option in split.by_ref() {
         match option {
             "report-status" => ref_update.report_status = true,
             "report-status-v2" => ref_update.report_status_v2 = true,
             "side-band-64k" => ref_update.side_band_64k = true,
-            _ => match ref_update.push_options {
-                Some(ref mut options) => options.push(option.to_owned()),
-                None => {
+            _ => {
+                if let Some(ref mut options) = ref_update.push_options {
+                    options.push(option.to_owned());
+                } else {
                     let vec = vec![option.to_owned()];
                     ref_update.push_options = Some(vec);
                 }
-            },
+            }
         }
     }
 

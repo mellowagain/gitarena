@@ -6,7 +6,6 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use git2::PackBuilderStage;
-use tracing::instrument;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ProgressWriter {

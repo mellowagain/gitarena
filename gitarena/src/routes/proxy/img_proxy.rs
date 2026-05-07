@@ -1,4 +1,4 @@
-use crate::prelude::{AwcExtensions, HttpRequestExtensions};
+use crate::prelude::AwcExtensions;
 use crate::{die, err};
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
@@ -8,7 +8,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use awc::Client;
 use awc::http::StatusCode;
-use awc::http::header::{CACHE_CONTROL, IF_MODIFIED_SINCE, IF_NONE_MATCH, USER_AGENT};
+use awc::http::header::USER_AGENT;
 use gitarena_macros::route;
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::Deserialize;

@@ -75,7 +75,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
             .bind(user.id)
             .bind(name)
             .bind(description)
-            .bind(&body.visibility)
+            .bind(body.visibility)
             .fetch_one(&mut *transaction)
             .await?;
 

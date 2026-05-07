@@ -83,7 +83,7 @@ fn get_max_connections() -> Result<u32> {
         Ok(env_str) => env_str
             .parse::<u32>()
             .context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
-        Err(VarError::NotPresent) => num_cpus::get() as u32,
+        Err(VarError::NotPresent) => u32::try_from(num_cpus::get()).context("too many cpu threads to fit into u32")?,
         Err(VarError::NotUnicode(_)) => {
             bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
         }

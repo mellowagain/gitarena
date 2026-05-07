@@ -49,7 +49,7 @@ impl GitWriter {
     #[instrument(err, skip(self, text))]
     pub(crate) async fn write_text_sideband_pktline<S: AsRef<str>>(&mut self, band: Band, text: S) -> Result<&mut GitWriter> {
         let str_ref = text.as_ref();
-        let hex_prefix = &u16_to_hex((str_ref.len() + 4 + 1) as u16); // 4 for length, 1 for newline
+        let hex_prefix = &u16_to_hex(u16::try_from(str_ref.len() + 4 + 1).context("hex prefix larger than u16")?); // 4 for length, 1 for newline
         let with_band = [band.serialize(), hex_prefix, str_ref.as_bytes()].concat();
 
         self.inner

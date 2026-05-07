@@ -61,9 +61,9 @@ async fn render(
                 context.try_insert("files", &Vec::<()>::new())?;
 
                 return render_template!("repo/index.html", context, transaction);
-            } else {
-                die!(NOT_FOUND, "Not found")
             }
+
+            die!(NOT_FOUND, "Not found");
         }
     }?; // Handle 404
 

@@ -37,12 +37,12 @@ async fn web_not_found(request: HttpRequest, web_user: WebUser, db_pool: web::Da
 pub(crate) async fn default_handler(request: HttpRequest, web_user: WebUser, db_pool: web::Data<Pool>) -> ActixResult<impl Responder> {
     debug!(path = request.path(), "Got request for non-existent route");
 
-    Ok(if !request.path().starts_with("/api") {
+    Ok(if request.path().starts_with("/api") {
+        Ok(api_not_found())
+    } else {
         web_not_found(request, web_user, db_pool).await.map_err(|err| GitArenaError {
             source: Arc::new(err),
             display_type: ErrorDisplayType::Html,
         })
-    } else {
-        Ok(api_not_found())
     })
 }

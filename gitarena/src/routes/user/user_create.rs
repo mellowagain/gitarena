@@ -1,5 +1,4 @@
 use crate::config::{get_optional_setting, get_setting};
-use crate::prelude::*;
 use crate::session::Session;
 use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_username_taken, validate_username};
@@ -10,7 +9,7 @@ use gitarena_common::database::Pool;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_macros::{from_config, from_optional_config, route};
+use gitarena_macros::{from_config, route};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 

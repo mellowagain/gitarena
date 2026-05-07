@@ -50,10 +50,10 @@ pub(crate) async fn validate(web_user: WebUser, query: web::Query<ValidateQuery>
         }
     }
 
-    if let Some(description) = &query.description {
-        if description.len() > 256 {
-            description_error = Some("Description may only be up to 256 characters long".to_string());
-        }
+    if let Some(description) = &query.description
+        && description.len() > 256
+    {
+        description_error = Some("Description may only be up to 256 characters long".to_string());
     }
 
     transaction.commit().await?;

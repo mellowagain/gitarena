@@ -30,6 +30,7 @@ pub(crate) struct Email {
     pub(crate) id: i32,
     #[serde(skip)]
     pub(crate) owner: i32,
+    #[allow(clippy::struct_field_names)]
     pub(crate) email: String,
 
     // Flags are not mutually exclusive, meaning that a single email address may have set `true` on more than one of these fields
@@ -174,12 +175,12 @@ async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
     let transporter = if tls {
         AsyncSmtpTransport::<Tokio1Executor>::relay(server.as_str())
             .context("Unable to create TLS connection")?
-            .port(port as u16)
+            .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
             .build()
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(server.as_str())
-            .port(port as u16)
+            .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
             .build()
     };

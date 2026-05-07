@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
@@ -41,7 +39,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                     sanitized_first_arg = Some(meta);
                 }
             }
-            _ => { /* ignored - actix web will error if the attribute is invalid */ }
+            NestedMeta::Lit(_) => { /* ignored - actix web will error if the attribute is invalid */ }
         }
     }
 
@@ -97,7 +95,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                     _ => unimplemented!(),
                 }
             }
-            _ => unimplemented!(),
+            FnArg::Receiver(_) => unimplemented!(),
         };
         idents_vec.push(ident_ts);
     }
@@ -107,7 +105,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     for arg in func_args {
         if let FnArg::Typed(typed_arg) = arg {
             let boxed = &mut typed_arg.pat;
-            let pattern = boxed.deref_mut();
+            let pattern = &mut **boxed;
 
             if let Pat::Ident(ident) = pattern
                 && ident.mutability.is_some()

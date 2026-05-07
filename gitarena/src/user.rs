@@ -182,7 +182,7 @@ impl FromRequest for WebUser {
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
         match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
-                let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req.clone());
+                let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req);
                 let id_future = Identity::from_request(req, payload);
 
                 let db_pool = db_pool.clone();
@@ -219,22 +219,19 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
         Some(identity) => {
             let mut transaction = db_pool.begin().await?;
 
-            let result = match Session::from_identity(Some(identity), &mut transaction).await? {
-                Some(session) => {
-                    session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
+            let result = if let Some(session) = Session::from_identity(Some(identity), &mut transaction).await? {
+                session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
 
-                    let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                        .bind(session.user_id)
-                        .fetch_optional(&mut *transaction)
-                        .await?;
+                let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
+                    .bind(session.user_id)
+                    .fetch_optional(&mut *transaction)
+                    .await?;
 
-                    user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
-                }
-                None => {
-                    id.forget();
+                user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
+            } else {
+                id.forget();
 
-                    WebUser::Anonymous
-                }
+                WebUser::Anonymous
             };
 
             transaction.commit().await?;

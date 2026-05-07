@@ -37,16 +37,15 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
                             }
                             "id" => {
                                 if let Lit::Int(value) = value {
-                                    packet_id = match value.base10_parse::<u64>() {
-                                        Ok(id) => Some(id),
-                                        Err(_) => {
-                                            emit_error! {
-                                                value.span(),
-                                                "id argument could not be parsed into u64"
-                                            }
-
-                                            None
+                                    packet_id = if let Ok(id) = value.base10_parse::<u64>() {
+                                        Some(id)
+                                    } else {
+                                        emit_error! {
+                                            value.span(),
+                                            "id argument could not be parsed into u64"
                                         }
+
+                                        None
                                     };
                                 } else {
                                     emit_error! {
@@ -70,39 +69,36 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
         true
     });
 
-    match (category, packet_id) {
-        (Some(category), Some(packet_id)) => {
-            let uppercased_category = {
-                // https://stackoverflow.com/a/53570840
-                let mut chars = category.chars();
+    if let (Some(category), Some(packet_id)) = (category, packet_id) {
+        let uppercased_category = {
+            // https://stackoverflow.com/a/53570840
+            let mut chars = category.chars();
 
-                match chars.next() {
-                    Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
-                    None => String::new(),
-                }
-            };
-
-            let enum_identifier = Ident::new(uppercased_category.as_str(), Span::call_site());
-
-            TokenStream::from(quote! {
-                use gitarena_macros::ipc;
-
-                impl crate::ipc::PacketId for #identifier {
-                    #[inline]
-                    fn id(&self) -> u64 {
-                        crate::packets::PacketCategory::#enum_identifier as u64 + #packet_id
-                    }
-                }
-            })
-        }
-        (_, _) => {
-            emit_call_site_error! {
-                "#[ipc] requires both `packet` and `id` arguments";
-                help = "example: #[ipc(packet = \"git\", id = 1)]";
-                help = "this will result in packet id 1001 (category git = 1000 + id 1)";
+            match chars.next() {
+                Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
             }
+        };
 
-            TokenStream::new()
+        let enum_identifier = Ident::new(uppercased_category.as_str(), Span::call_site());
+
+        TokenStream::from(quote! {
+            use gitarena_macros::ipc;
+
+            impl crate::ipc::PacketId for #identifier {
+                #[inline]
+                fn id(&self) -> u64 {
+                    crate::packets::PacketCategory::#enum_identifier as u64 + #packet_id
+                }
+            }
+        })
+    } else {
+        emit_call_site_error! {
+            "#[ipc] requires both `packet` and `id` arguments";
+            help = "example: #[ipc(packet = \"git\", id = 1)]";
+            help = "this will result in packet id 1001 (category git = 1000 + id 1)";
         }
+
+        TokenStream::new()
     }
 }

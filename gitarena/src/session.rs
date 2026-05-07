@@ -117,9 +117,9 @@ pub(crate) fn extract_ip_and_ua(request: &HttpRequest) -> (IpNetwork, &str) {
     (ip_address, user_agent)
 }
 
-pub(crate) fn extract_ip_and_ua_owned(request: HttpRequest) -> (IpNetwork, String) {
-    let ip_address = extract_ip(&request);
-    let user_agent = request.get_header("user-agent").unwrap_or("No user agent sent");
+pub(crate) fn extract_ip_and_ua_owned(request: &HttpRequest) -> (IpNetwork, String) {
+    let ip_address = extract_ip(request);
+    let user_agent = request.get_header("user-agent").unwrap_or_default();
 
     (ip_address, user_agent.to_owned())
 }

@@ -164,9 +164,9 @@ impl SSOProvider for GitHubSSO {
             if email_exists {
                 if primary {
                     bail!("Primary email is already assigned to a different account");
-                } else {
-                    continue;
                 }
+
+                continue;
             }
 
             let public = github_email.visibility.as_ref().map_or_else(|| false, |v| v == "public");

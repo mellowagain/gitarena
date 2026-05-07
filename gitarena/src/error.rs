@@ -5,7 +5,6 @@ use crate::templates;
 use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::future::Future;
-use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
@@ -175,13 +174,13 @@ impl GitArenaError {
 
 impl Debug for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Debug::fmt(self.source.deref(), f)
+        Debug::fmt(&*self.source, f)
     }
 }
 
 impl Display for GitArenaError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Display::fmt(self.source.deref(), f)
+        Display::fmt(&*self.source, f)
     }
 }
 

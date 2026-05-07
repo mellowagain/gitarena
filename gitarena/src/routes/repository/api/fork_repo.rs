@@ -56,7 +56,7 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
             .bind(user.id)
             .bind(&repo.name)
             .bind(&repo.description)
-            .bind(&repo.visibility)
+            .bind(repo.visibility)
             .bind(repo.id)
             .fetch_one(&mut *transaction)
             .await?;

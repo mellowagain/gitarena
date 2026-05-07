@@ -3,7 +3,7 @@ use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_recursion::async_recursion;
 use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use tracing::instrument;
@@ -126,7 +126,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let (buffer, object_count, _written) = {
         let mut pack_builder = repo.packbuilder()?;
 
-        pack_builder.set_threads(num_cpus::get() as u32);
+        pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
         pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
 
         for wanted_obj in &options.want {

@@ -108,7 +108,7 @@ pub(crate) async fn dashboard(web_user: WebUser, db_pool: web::Data<Pool>) -> Re
 }
 
 fn format_uptime(seconds: u64) -> String {
-    let duration = Duration::seconds(seconds as i64);
+    let duration = Duration::seconds(seconds.cast_signed());
     let human_time = HumanTime::from(duration);
 
     human_time.to_text_en(Accuracy::Rough, Tense::Present)

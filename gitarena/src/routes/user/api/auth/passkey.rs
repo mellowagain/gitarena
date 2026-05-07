@@ -308,7 +308,7 @@ pub(crate) async fn post_login_finish(
         .finish_discoverable_authentication(&body.credential, auth_state, &discoverable_keys)
         .map_err(|e| anyhow!("Passkey authentication failed: {e:?}"))?;
 
-    let new_counter = auth_result.counter() as i64;
+    let new_counter = i64::from(auth_result.counter());
     sqlx::query(
         "update passkeys \
          set credential = jsonb_set(credential, '{cred,counter}', to_jsonb($1::bigint)) \

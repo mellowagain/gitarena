@@ -7,7 +7,6 @@ use crate::user::{User, WebUser};
 use crate::{die, err};
 use gitarena_common::database::Pool;
 
-use std::ops::Deref;
 use std::str::FromStr;
 
 use crate::mail::Email;

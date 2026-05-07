@@ -28,7 +28,7 @@ pub fn init_logger(
 ) -> Result<Vec<WorkerGuard>> {
     let mut guards = Vec::new();
 
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(err, directives));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(&err, directives));
 
     let stdout_layer = stdout().map(|(layer, guard)| {
         guards.push(guard);
@@ -109,7 +109,7 @@ pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(filter: EnvFilter) 
 }
 
 #[must_use]
-pub fn default_env(err: FromEnvError, directives: &[&str]) -> EnvFilter {
+pub fn default_env(err: &FromEnvError, directives: &[&str]) -> EnvFilter {
     let not_found = err
         .source()
         .is_some_and(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)));

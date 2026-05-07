@@ -19,6 +19,7 @@ pub struct TelemetryGuards {
 
 impl TelemetryGuards {
     /// Whether this guard even guards something lol
+    #[must_use]
     pub fn is_guarding(&self) -> bool {
         self.tracer.is_some() && self.meter.is_some()
     }

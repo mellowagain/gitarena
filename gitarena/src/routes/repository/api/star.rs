@@ -1,10 +1,9 @@
 use crate::die;
-use crate::prelude::HttpRequestExtensions;
-use crate::repository::{RepoOwner, Repository};
+use crate::repository::Repository;
 use crate::user::{User, WebUser};
 
-use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Result, anyhow};
+use actix_web::{HttpResponse, Responder, web};
+use anyhow::Result;
 use gitarena_common::database::Database;
 use gitarena_common::database::Pool;
 use gitarena_macros::route;

@@ -41,7 +41,7 @@ async fn handle<T: AsyncRead + AsyncWrite + Unpin + 'static>(connection: Result<
 
     let id: PacketId = PacketId::from_u64(type_).with_context(|| format!("Received unknown packet id: {type_}"))?;
 
-    let mut buffer: Vec<u8> = Vec::with_capacity(length as usize);
+    let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(length).context("length is larger than usize")?);
     let read_length = connection.read(buffer.as_mut_slice()).await.context("Failed to read payload")? as u64;
 
     if read_length != length {

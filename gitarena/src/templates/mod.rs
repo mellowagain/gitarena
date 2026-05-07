@@ -34,7 +34,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
 
     let elapsed = time_function(|| async {
         VERIFY_EMAIL
-            .set(parse_template("email/user/verify_email.txt".to_owned()))
+            .set(parse_template("email/user/verify_email.txt"))
             .expect_or_log("Verify email template should only be initialized once");
 
         // This additionally checks the templates for errors
@@ -73,7 +73,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
                 match path.file_name() {
                     Some(file_name) => match file_name.to_str() {
                         Some(file_name) => {
-                            if !file_name.ends_with(".html") {
+                            if !Path::new(file_name).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("html")) {
                                 return;
                             }
                         }
@@ -106,7 +106,7 @@ pub(crate) async fn init() -> Result<TemplateInitResult> {
     Ok(())
 }
 
-fn parse_template(template_path: String) -> Template {
+fn parse_template(template_path: &str) -> Template {
     match plain::parse(template_path) {
         Ok(template) => template,
         Err(err) => panic!("Failed to parse template: {err}"),

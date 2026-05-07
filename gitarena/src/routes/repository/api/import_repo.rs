@@ -96,7 +96,7 @@ pub(crate) async fn import(
             .bind(user.id)
             .bind(name)
             .bind(description)
-            .bind(&body.visibility)
+            .bind(body.visibility)
             .fetch_one(&mut *transaction)
             .await?;
 
