@@ -28,6 +28,7 @@ import { postEmptyFetcher, postJsonVoidFetcher, postJsonFetcher, patchJsonFetche
 import { useAuth } from "@/hooks/use-auth";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { formatDistanceToNow } from "date-fns";
@@ -62,6 +63,7 @@ interface SshKeyResponse {
     title: string;
     fingerprint: string;
     algorithm: string;
+    pubkey: string;
     createdAt: string;
     expiresAt: string | null;
 }
@@ -792,7 +794,18 @@ function KeysTab() {
                             <Key className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium mb-0.5">{key.title}</p>
-                                <p className="font-mono text-xs text-muted-foreground truncate mb-0.5">{key.fingerprint}</p>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <p className="font-mono text-xs text-muted-foreground truncate mb-0.5 cursor-default">
+                                            SHA256:{key.fingerprint}
+                                        </p>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span className="font-mono">
+                                            {key.algorithm} {key.pubkey}
+                                        </span>
+                                    </TooltipContent>
+                                </Tooltip>
                                 <p className="text-xs text-muted-foreground">
                                     Added {formatDistanceToNow(new Date(key.createdAt), { addSuffix: true })}
                                     {key.expiresAt && ` · Expires ${new Date(key.expiresAt).toLocaleDateString()}`}

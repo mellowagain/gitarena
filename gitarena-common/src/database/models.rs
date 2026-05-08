@@ -8,6 +8,7 @@ use sqlx::Type;
 
 #[derive(Type, Debug, Deserialize, Serialize, Copy, Clone)]
 #[sqlx(type_name = "ssh_key_type", rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum KeyType {
     SshRsa,
     EcdsaSha2Nistp256,

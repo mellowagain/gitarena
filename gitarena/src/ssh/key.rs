@@ -6,7 +6,7 @@ use gitarena_common::database::Database;
 use gitarena_common::database::models::KeyType;
 use russh::keys::Algorithm;
 use russh::keys::ssh_key::Fingerprint;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 
@@ -19,7 +19,7 @@ pub(crate) struct SshKey {
     pub(crate) title: String,
     pub(crate) fingerprint: String,
     pub(crate) algorithm: KeyType,
-    #[serde(skip)]
+    #[serde(rename = "pubkey", serialize_with = "serialize_key_as_base64")]
     #[debug(skip)]
     key: Vec<u8>,
     pub(crate) created_at: DateTime<Utc>,
@@ -53,4 +53,8 @@ impl SshKey {
     pub(crate) fn as_string(&self) -> String {
         format!("{} {}", &self.algorithm, base64::encode(&self.key))
     }
+}
+
+fn serialize_key_as_base64<S: Serializer>(key: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&base64::encode(key))
 }
