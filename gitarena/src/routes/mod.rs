@@ -3,6 +3,7 @@ use crate::repository::Repository;
 use crate::routes::api::ApiInfoResponse;
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::blame::{BlameHunk, BlameResponse};
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
 use crate::routes::repository::api::commit_detail::{
     CommitDetailResponse, CommitMeta, DiffFile, DiffHunk, DiffLineEntry, DiffLineKind, DiffStats, DiffStatus, FileStats, SignatureInfo,
@@ -60,6 +61,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,
         crate::routes::repository::api::branch_files::branch_files,
+        crate::routes::repository::api::blame::blame,
         crate::routes::repository::api::commit_detail::commit_detail,
         crate::routes::user::api::add_key::put_ssh_key,
         crate::routes::user::api::sso::get_sso_providers,
@@ -84,6 +86,8 @@ impl Modify for CookieAuth {
         FileEntry,
         FileCommitInfo,
         FileType,
+        BlameResponse,
+        BlameHunk,
         CommitDetailResponse,
         CommitMeta,
         SignatureInfo,

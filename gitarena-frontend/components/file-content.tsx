@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import useSWR from "swr";
 import { CodeBlockContent, CodeBlockSkeleton } from "@/components/code-block";
 import { MarkdownRenderer, isMarkdown } from "@/components/markdown-renderer";
+import { BlameView, type BlameHunk } from "@/components/blame-view";
 import { ErrorDisplay } from "@/components/error-display";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, BinaryIcon, ExternalLink } from "lucide-react";
@@ -14,6 +15,10 @@ interface FileContentResponse {
     isBinary: boolean;
     isTruncated: boolean;
     commit: FileCommit;
+}
+
+interface BlameResponse {
+    hunks: BlameHunk[];
 }
 
 export interface FileCommit {
@@ -31,9 +36,11 @@ interface FileContentProps {
     branch: string;
     filename: string;
     showSource?: boolean;
+    showBlame?: boolean;
     wrapLines?: boolean;
     setFileSize?: (size: number | null) => void;
     setCommit?: (commit: FileCommit | null) => void;
+    setIsBinary?: (isBinary: boolean) => void;
 }
 
 export function FileContent({
@@ -42,11 +49,16 @@ export function FileContent({
     branch,
     filename,
     showSource = false,
+    showBlame = false,
     wrapLines = false,
     setFileSize,
     setCommit,
+    setIsBinary,
 }: FileContentProps) {
     const { data, error, isLoading } = useSWR<FileContentResponse>(`/api/repos/${user}/${repo}/branch/${branch}/files/${filename}`);
+    const { data: blameData, isLoading: isBlameLoading } = useSWR<BlameResponse>(
+        showBlame && data && !data.isBinary ? `/api/repos/${user}/${repo}/branch/${branch}/blame/${filename}` : null
+    );
 
     useEffect(() => {
         if (data && setFileSize) {
@@ -58,7 +70,10 @@ export function FileContent({
         if (!data && setCommit) {
             setCommit(null);
         }
-    }, [data, setFileSize, setCommit]);
+        if (data && setIsBinary) {
+            setIsBinary(data.isBinary);
+        }
+    }, [data, setFileSize, setCommit, setIsBinary]);
 
     if (isLoading || !branch) {
         return <CodeBlockSkeleton />;
@@ -104,6 +119,13 @@ export function FileContent({
             </span>
         </div>
     );
+
+    if (showBlame) {
+        if (isBlameLoading || !blameData) {
+            return <CodeBlockSkeleton />;
+        }
+        return <BlameView user={user} repo={repo} hunks={blameData.hunks} content={content} filename={filename} wrapLines={wrapLines} />;
+    }
 
     if (isMarkdown(filename)) {
         return (

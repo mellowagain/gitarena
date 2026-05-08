@@ -25,7 +25,7 @@ support in mind.
     - [ ] Semantic version tagging UI 
 - [x] Web-based code browser
   - [x] Syntax-highlighted file view
-  - [ ] Blame
+  - [x] Blame
   - [x] View raw
   - [x] Commit history with diffs
 - [x] User auth

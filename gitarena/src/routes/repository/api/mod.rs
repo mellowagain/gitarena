@@ -2,6 +2,7 @@ use actix_web::web::ServiceConfig;
 use serde::Serialize;
 use utoipa::ToSchema;
 
+pub(crate) mod blame;
 pub(crate) mod branch_commits;
 pub(crate) mod branch_files;
 pub(crate) mod branches;
@@ -23,6 +24,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(repo_meta::meta);
     config.service(repo_readme::readme);
     config.service(file_content::file_content);
+    config.service(blame::blame);
     config.service(branch_commits::branch_commits);
     config.service(commit_detail::commit_detail);
     config.service(branch_files::branch_files);

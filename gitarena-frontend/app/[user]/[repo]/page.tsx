@@ -1,6 +1,18 @@
 "use client";
 
-import { FileText, AlertCircle, GitMerge, ExternalLink, Code, BookOpen, WrapText, MoreHorizontal, History, GitBranch } from "lucide-react";
+import {
+    FileText,
+    AlertCircle,
+    GitMerge,
+    ExternalLink,
+    Code,
+    BookOpen,
+    WrapText,
+    MoreHorizontal,
+    History,
+    GitBranch,
+    GitCommitHorizontal,
+} from "lucide-react";
 import { use, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -127,15 +139,19 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
 function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo: string; meta: RepoMetadata; defaultFile?: string }) {
     const [selectedFile, setSelectedFile] = useState<string | null>(defaultFile ?? null);
     const [showSource, setShowSource] = useState(false);
+    const [showBlame, setShowBlame] = useState(false);
     const [wrapLines, setWrapLines] = useState(false);
     const [branch, setBranch] = useState(meta.defaultBranch);
     const [fileSize, setFileSize] = useState<number | null>(null);
     const [fileCommit, setFileCommit] = useState<FileCommit | null>(null);
+    const [isBinary, setIsBinary] = useState(false);
 
     function handleSelectFile(file: string | null) {
         setSelectedFile(file);
         setFileSize(null);
         setFileCommit(null);
+        setShowBlame(false);
+        setIsBinary(false);
     }
 
     return (
@@ -237,6 +253,17 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                                 <WrapText className="h-3.5 w-3.5" />
                                                 Wrap
                                             </Button>
+                                            {!isBinary && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setShowBlame((b) => !b)}
+                                                    className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${showBlame ? "text-foreground" : "text-muted-foreground"}`}
+                                                >
+                                                    <GitCommitHorizontal className="h-3.5 w-3.5" />
+                                                    Blame
+                                                </Button>
+                                            )}
                                             <Button
                                                 asChild
                                                 variant="ghost"
@@ -303,9 +330,11 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                     branch={branch}
                                     filename={selectedFile}
                                     showSource={showSource}
+                                    showBlame={showBlame}
                                     wrapLines={wrapLines}
                                     setFileSize={setFileSize}
                                     setCommit={setFileCommit}
+                                    setIsBinary={setIsBinary}
                                 />
                             </div>
                         </>
