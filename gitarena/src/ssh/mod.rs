@@ -18,10 +18,9 @@ mod server;
 
 #[instrument(skip_all)]
 pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
-    let (enabled, port, auth_rejection_time): (bool, i32, i32) = from_config!(
+    let (enabled, port): (bool, i32) = from_config!(
         "ssh.enabled" => bool,
-        "ssh.port" => i32,
-        "ssh.auth_rejection_time_seconds" => i32,
+        "ssh.port" => i32
     );
 
     let key = {
@@ -56,7 +55,7 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
     let config = Arc::new(Config {
         server_id: SshId::Standard(Cow::Borrowed(concat!("SSH-2.0-gitarena-v", env!("CARGO_PKG_VERSION")))),
         methods,
-        auth_rejection_time: Duration::from_secs(u64::try_from(auth_rejection_time)?),
+        auth_rejection_time: Duration::from_secs(0),
         auth_rejection_time_initial: Some(Duration::from_secs(0)),
         keys: vec![key],
         window_size: 16 * 1024 * 1024,  // 16mb
