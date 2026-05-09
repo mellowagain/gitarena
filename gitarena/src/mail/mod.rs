@@ -8,8 +8,6 @@
 
 use crate::user::User;
 
-use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
-
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
@@ -17,11 +15,19 @@ use gitarena_common::database::Database;
 use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
+use lettre::transport::smtp::PoolConfig;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use once_cell::sync::{Lazy, OnceCell};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
+use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
+use std::time::Duration;
 use tracing::{debug, instrument};
+
+pub(crate) mod task;
+
+pub(crate) static TRANSPORTER: OnceCell<AsyncSmtpTransport<Tokio1Executor>> = OnceCell::new();
 
 #[derive(FromRow, Display, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,11 +156,11 @@ pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_
         .body(body)
         .context("Unable to build email.")?;
 
-    send_mail(message, db_pool).await
+    //send_mail(message, db_pool).await
+    todo!()
 }
 
-#[instrument(err, skip(db_pool))]
-async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
+pub(crate) async fn create_transport(db_pool: &Pool) -> Result<()> {
     let enabled = from_config!("smtp.enabled" => bool);
 
     if !enabled {
@@ -177,15 +183,18 @@ async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
             .context("Unable to create TLS connection")?
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
+            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(server.as_str())
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
+            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     };
 
-    transporter.send(message).await.context("Unable to send email")?;
-
+    TRANSPORTER
+        .set(transporter)
+        .map_err(|_| anyhow!("email transport was initialized more than once"))?;
     Ok(())
 }

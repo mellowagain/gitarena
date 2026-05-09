@@ -22,6 +22,7 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
+use fang::{AsyncQueue, AsyncWorkerPool};
 use futures_locks::RwLock;
 use gitarena_common::database::create_postgres_pool;
 use gitarena_common::log::init_logger;
@@ -48,6 +49,7 @@ mod metrics;
 mod passkey;
 mod prelude;
 mod privileges;
+mod queue;
 mod repository;
 mod routes;
 mod session;
@@ -102,6 +104,10 @@ async fn main() -> Result<()> {
     let webauthn_domain = domain.unwrap_or_else(|| "http://localhost:8320".to_owned());
     let webauthn = passkey::build_webauthn(&webauthn_domain, webauthn_origin.as_deref())?;
 
+    mail::create_transport(&db_pool).await?;
+
+    let queue = queue::init().await?;
+
     let ipc = RwLock::new(Ipc::new().await?);
 
     if !ipc.read().await.is_connected() {
@@ -125,6 +131,7 @@ async fn main() -> Result<()> {
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
             .app_data(Data::new(webauthn.clone()))
+            .app_data(Data::new(queue.clone()))
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
@@ -139,9 +146,7 @@ async fn main() -> Result<()> {
                         // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
                         res.headers_mut()
                             .insert(CACHE_CONTROL, HeaderValue::from_static("no-cache, max-age=0, must-revalidate"));
-                    }
-
-                    if res.request().path().starts_with("/api") {
+                    } else {
                         res.headers_mut().insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
                     }
 
