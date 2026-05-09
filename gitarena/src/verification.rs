@@ -1,16 +1,15 @@
 use crate::config::get_setting;
-use crate::templates::plain::render;
 use crate::user::User;
-use crate::{crypto, mail, template_context, templates};
+use crate::{crypto, mail};
 
 use anyhow::{Context, Result};
 use gitarena_common::database::Pool;
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
 
-#[instrument(err, skip(db_pool))]
-pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool) -> Result<()> {
-    assert!(user.id >= 0);
+#[instrument(err, skip(_db_pool))]
+pub(crate) async fn send_verification_mail(_user: &User, _db_pool: &Pool) -> Result<()> {
+    /*assert!(user.id >= 0);
 
     let hash = crypto::random_hex_string(32)?;
     let mut transaction = db_pool.begin().await?;
@@ -38,5 +37,6 @@ pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool) -> Resul
 
     transaction.commit().await?;
 
-    Ok(())
+    Ok(())*/
+    todo!()
 }

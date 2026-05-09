@@ -10,7 +10,7 @@ use anyhow::Result;
 use gitarena_macros::route;
 use tracing::debug;
 
-#[route("/logout", method = "POST", err = "htmx+html")]
+#[route("/logout", method = "POST", err = "text")]
 pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?
@@ -28,12 +28,5 @@ pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Dat
 
     transaction.commit().await?;
 
-    Ok(if request.is_htmx() {
-        HttpResponse::Ok()
-            .append_header(("hx-redirect", "/"))
-            .append_header(("hx-refresh", "true"))
-            .finish()
-    } else {
-        HttpResponse::Found().append_header((LOCATION, "/")).finish()
-    })
+    Ok(HttpResponse::Found().append_header((LOCATION, "/")).finish())
 }

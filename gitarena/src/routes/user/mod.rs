@@ -4,18 +4,13 @@ pub(crate) mod api;
 mod avatar;
 mod user_create;
 mod user_keys;
-mod user_login;
 mod user_logout;
 mod user_verify;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
     api::init(config);
 
-    config.service(user_create::get_register);
     config.service(user_create::post_register);
-
-    config.service(user_login::get_login);
-    config.service(user_login::post_login);
 
     config.service(user_logout::logout);
     config.service(user_verify::verify);

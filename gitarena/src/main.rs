@@ -54,7 +54,6 @@ mod session;
 mod sse;
 mod ssh;
 mod sso;
-mod templates;
 mod user;
 mod utils;
 mod verification;
@@ -92,7 +91,6 @@ async fn main() -> Result<()> {
 
     // read the `Lazy` to initialize it but immediately drop the returned guard to prevent a deadlock
     let _ = SYSTEM_INFO.read().await;
-    let _watcher = templates::init().await?;
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
@@ -152,7 +150,6 @@ async fn main() -> Result<()> {
             })
             .wrap_fn(error_renderer_middleware)
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
-            .service(routes::admin::all())
             .configure(routes::init)
             .configure(routes::proxy::init)
             .configure(routes::user::init)

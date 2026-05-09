@@ -3,7 +3,7 @@ use crate::session::Session;
 use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_username_taken, validate_username};
 use crate::verification::send_verification_mail;
-use crate::{captcha, crypto, die, render_template};
+use crate::{captcha, crypto, die};
 use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
@@ -14,27 +14,6 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use tera::Context;
-
-#[route("/register", method = "GET", err = "html")]
-pub(crate) async fn get_register(web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-
-    if matches!(web_user, WebUser::Authenticated(_)) {
-        die!(UNAUTHORIZED, "Already logged in");
-    }
-
-    let mut context = Context::new();
-
-    if !get_setting::<bool>("allow_registrations", &mut transaction).await? {
-        die!(FORBIDDEN, "User registrations are disabled");
-    }
-
-    if let Some(site_key) = get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await? {
-        context.try_insert("hcaptcha_site_key", &site_key)?;
-    }
-
-    render_template!("user/register.html", context, transaction)
-}
 
 #[route("/api/user", method = "POST", err = "json")]
 pub(crate) async fn post_register(
