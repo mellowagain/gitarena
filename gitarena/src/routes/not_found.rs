@@ -1,4 +1,4 @@
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder};
 use serde_json::json;
 use tracing::debug;
 use tracing::instrument;

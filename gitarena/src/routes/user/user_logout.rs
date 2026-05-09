@@ -1,5 +1,4 @@
 use crate::die;
-use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
 use gitarena_common::database::Pool;
 
@@ -11,7 +10,7 @@ use gitarena_macros::route;
 use tracing::debug;
 
 #[route("/logout", method = "POST", err = "text")]
-pub(crate) async fn logout(request: HttpRequest, id: Identity, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn logout(_request: HttpRequest, id: Identity, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if id.identity().is_none() {
         // Maybe just redirect to home page?
         die!(UNAUTHORIZED, "Already logged out");

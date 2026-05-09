@@ -1,6 +1,6 @@
-use crate::config::{get_optional_setting, get_setting};
+use crate::config::get_optional_setting;
 use crate::session::Session;
-use crate::user::{User, WebUser};
+use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
@@ -12,8 +12,6 @@ use anyhow::Result;
 use gitarena_macros::{from_config, route};
 use serde::{Deserialize, Serialize};
 use tracing::info;
-
-use tera::Context;
 
 #[route("/api/user", method = "POST", err = "json")]
 pub(crate) async fn post_register(

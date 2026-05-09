@@ -18,7 +18,6 @@ use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use derive_more::{Display, Error};
 use serde_json::json;
-use tera::Context;
 use tracing::error;
 
 /// Returns early with an error. This macro is similar to the `bail!` macro which can be found in `anyhow`.

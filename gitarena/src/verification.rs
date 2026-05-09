@@ -1,11 +1,8 @@
-use crate::config::get_setting;
 use crate::user::User;
-use crate::{crypto, mail};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use gitarena_common::database::Pool;
 use tracing::instrument;
-use tracing_unwrap::OptionExt;
 
 #[instrument(err, skip(_db_pool))]
 pub(crate) async fn send_verification_mail(_user: &User, _db_pool: &Pool) -> Result<()> {

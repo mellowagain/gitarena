@@ -1,6 +1,5 @@
 use crate::config::get_optional_setting;
 use crate::die;
-use crate::prelude::HttpRequestExtensions;
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::user::WebUser;

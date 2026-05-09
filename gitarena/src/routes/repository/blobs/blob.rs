@@ -1,9 +1,6 @@
-use crate::git::history::{all_branches, all_tags, last_commit_for_blob};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
-use crate::user::WebUser;
 use crate::{die, err};
 use gitarena_common::database::Pool;
 
@@ -19,10 +16,6 @@ use gix::objs::tree::{EntryKind, EntryMode};
 use gix::objs::{Tree, TreeRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
-use infer::MatcherType;
-
-use tera::Context;
-use tracing_unwrap::OptionExt;
 
 #[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
 pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
