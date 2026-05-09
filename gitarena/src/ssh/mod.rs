@@ -55,12 +55,15 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
     let config = Arc::new(Config {
         server_id: SshId::Standard(Cow::Borrowed(concat!("SSH-2.0-gitarena-v", env!("CARGO_PKG_VERSION")))),
         methods,
-        auth_rejection_time: Duration::from_secs(0),
-        auth_rejection_time_initial: Some(Duration::from_secs(0)),
+        auth_rejection_time: Duration::ZERO, // all public keys of users are public anyway so key existence confidentiality is not broken (because it doesn't exist) by setting this to 0
         keys: vec![key],
         window_size: 16 * 1024 * 1024,  // 16mb
         maximum_packet_size: 32 * 1024, // 32kib (russh warns if > 65535)
         event_buffer_size: 256,
+        inactivity_timeout: Some(Duration::from_mins(5)),
+        keepalive_interval: Some(Duration::from_secs(10)),
+        keepalive_max: 6,
+        nodelay: true,
         ..Default::default()
     });
 
