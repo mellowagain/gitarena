@@ -36,17 +36,17 @@ interface OrgInfo {
 }
 
 interface OrgMemberRaw {
-    userId: number;
+    userId: string;
     role: "owner" | "admin" | "member";
 }
 
 interface UserByIdResponse {
-    id: number;
+    id: string;
     username: string;
 }
 
 interface OrgMemberResolved {
-    userId: number;
+    userId: string;
     username: string;
     role: "owner" | "admin" | "member";
 }

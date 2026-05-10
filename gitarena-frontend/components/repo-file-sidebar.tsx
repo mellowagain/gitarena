@@ -43,7 +43,7 @@ export interface FileCommitInfo {
     time: number;
     authorName: string;
     authorEmail: string;
-    authorUid?: number;
+    authorUid?: string;
 }
 
 function buildFileTree(files: BranchFile[]): FileNode[] {

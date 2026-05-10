@@ -47,12 +47,12 @@ interface OrgInfo {
 }
 
 interface OrgMemberRaw {
-    userId: number;
+    userId: string;
     role: "owner" | "admin" | "member";
 }
 
 interface OrgMember {
-    userId: number;
+    userId: string;
     username: string;
     role: "owner" | "admin" | "member";
 }
@@ -312,7 +312,7 @@ const roleColors: Record<string, string> = {
     member: "text-muted-foreground border-border bg-secondary",
 };
 
-function OrgProfilePage({ name, authUserId }: { name: string; authUserId: number | null }) {
+function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string | null }) {
     const { data: org, error, isLoading } = useSWR<OrgInfo>(`/api/orgs/${name}`, jsonFetcher);
     const { data: rawMembers, isLoading: membersLoading } = useSWR<OrgMemberRaw[]>(`/api/orgs/${name}/members`, jsonFetcher);
 
@@ -326,7 +326,7 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: number
                 try {
                     const res = await fetch(`/api/users/by-id/${m.userId}`);
                     if (res.ok) {
-                        const data: { id: number; username: string } = await res.json();
+                        const data: { id: string; username: string } = await res.json();
                         setResolvedNames((prev) => new Map(prev).set(m.userId, data.username));
                     }
                 } catch {
