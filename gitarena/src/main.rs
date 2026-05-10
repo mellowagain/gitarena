@@ -126,7 +126,7 @@ async fn main() -> Result<()> {
                 .secure(secure),
         );
 
-        let mut app = App::new()
+        App::new()
             .app_data(Data::new(db_pool.clone()))
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
@@ -164,21 +164,7 @@ async fn main() -> Result<()> {
             .route(
                 "/favicon.ico",
                 to(|| async { HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish() }),
-            );
-
-        let debug_mode = cfg!(debug_assertions);
-        let serve_static = matches!(env::var("SERVE_STATIC_FILES"), Ok(_) | Err(VarError::NotUnicode(_))) || debug_mode;
-
-        if serve_static {
-            app = app.service(
-                Files::new("/static", "./gitarena/static")
-                    .use_etag(!debug_mode)
-                    .use_last_modified(!debug_mode)
-                    .use_hidden_files(),
-            );
-        }
-
-        app
+            )
     })
     .bind(bind_address.as_str())
     .context("Unable to bind HTTP server.")?;
