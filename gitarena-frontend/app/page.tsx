@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -89,24 +89,31 @@ function WipBadge() {
     );
 }
 
-export default function DashboardPage() {
+function VerifiedNotice({ onShow }: { onShow: () => void }) {
     const router = useRouter();
     const searchParams = useSearchParams();
+
+    useEffect(() => {
+        if (searchParams.get("verified") === "true") {
+            onShow();
+            router.replace("/");
+        }
+    }, [searchParams, router, onShow]);
+
+    return null;
+}
+
+export default function DashboardPage() {
+    const router = useRouter();
     const { user, error, isLoading } = useAuth();
 
-    const [showVerifiedNotice, setShowVerifiedNotice] = useState(() => searchParams.get("verified") === "true");
+    const [showVerifiedNotice, setShowVerifiedNotice] = useState(false);
 
     useEffect(() => {
         if (!isLoading && !user) {
             router.push("/about");
         }
     }, [isLoading, user, router]);
-
-    useEffect(() => {
-        if (searchParams.get("verified") === "true") {
-            router.replace("/");
-        }
-    }, [searchParams, router]);
 
     const [repoFilter, setRepoFilter] = useState<"all" | "owned" | "starred">("all");
 
@@ -155,6 +162,10 @@ export default function DashboardPage() {
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
                         {/* Email verified notice */}
+                        <Suspense>
+                            <VerifiedNotice onShow={() => setShowVerifiedNotice(true)} />
+                        </Suspense>
+
                         {showVerifiedNotice && (
                             <Alert className="mb-6 border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">
                                 <CheckCircle2 className="h-4 w-4" />
