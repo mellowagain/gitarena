@@ -13,7 +13,6 @@ use gix::actor::Signature;
 use gix::date::Time;
 use qstring::QString;
 use sqlx::Transaction;
-use tera::Context;
 use tracing::warn;
 
 pub(crate) trait HttpRequestExtensions {
@@ -189,29 +188,6 @@ impl GitoxideSignatureExtensions for Signature {
                 offset: 0,
             },
         }
-    }
-}
-
-pub(crate) trait ContextExtensions {
-    /// Inserts a [`WebUser`] into the current context, if authenticated (not [Anonymous][WebUser::Anonymous]).
-    fn insert_web_user(&mut self, user: &WebUser) -> Result<()>;
-
-    /// Inserts a [`User`] into the current context. The template can then access the User via the `user` Tera variable.
-    fn insert_user(&mut self, user: &User) -> Result<()>;
-}
-
-impl ContextExtensions for Context {
-    fn insert_web_user(&mut self, web_user: &WebUser) -> Result<()> {
-        match web_user {
-            WebUser::Authenticated(user) => self.insert_user(user),
-            WebUser::Anonymous => Ok(()),
-        }
-    }
-
-    fn insert_user(&mut self, user: &User) -> Result<()> {
-        self.try_insert("user", user)?;
-
-        Ok(())
     }
 }
 

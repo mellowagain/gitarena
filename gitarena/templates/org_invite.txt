@@ -1,0 +1,8 @@
+{{ inviter }} has invited you to join {{ org }} as a {{ role }}.
+
+Accept invite: {{ link }}
+
+This invite expires in 7 days.
+
+--
+{{ instance_name }} | {{ domain }}

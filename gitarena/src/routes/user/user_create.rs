@@ -1,4 +1,4 @@
-use crate::config::get_optional_setting;
+use crate::config::{get_optional_setting, get_setting};
 use crate::session::Session;
 use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
@@ -6,9 +6,11 @@ use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
 use gitarena_common::database::Pool;
 
+use crate::mail::Email;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
+use fang::AsyncQueue;
 use gitarena_macros::{from_config, route};
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -18,6 +20,7 @@ pub(crate) async fn post_register(
     body: web::Json<RegisterJsonRequest>,
     id: Identity,
     request: HttpRequest,
+    queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     if id.identity().is_some() {
@@ -25,12 +28,9 @@ pub(crate) async fn post_register(
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
-    let (allow_registrations, smtp_enabled) = from_config!(
-        "allow_registrations" => bool,
-        "smtp.enabled" => bool
-    );
+    let allow_registrations: bool = get_setting("allow_registrations", &mut tx).await?;
 
     if !allow_registrations {
         die!(FORBIDDEN, "User registrations are disabled");
@@ -40,7 +40,7 @@ pub(crate) async fn post_register(
 
     validate_username(username.as_str())?;
 
-    if is_username_taken(username.as_str(), &mut transaction).await? {
+    if is_username_taken(username.as_str(), &mut tx).await? {
         die!(CONFLICT, "Username already in use");
     }
 
@@ -54,7 +54,7 @@ pub(crate) async fn post_register(
 
     let (email_exists,): (bool,) = sqlx::query_as("select exists(select 1 from emails where lower(email) = lower($1) limit 1)")
         .bind(email)
-        .fetch_one(&mut *transaction)
+        .fetch_one(&mut *tx)
         .await?;
 
     if email_exists {
@@ -71,9 +71,9 @@ pub(crate) async fn post_register(
 
     let password = crypto::hash_password(raw_password)?;
 
-    if get_optional_setting::<String>("hcaptcha.site_key", &mut transaction).await?.is_some() {
+    if get_optional_setting::<String>("hcaptcha.site_key", &mut tx).await?.is_some() {
         if let Some(h_captcha_response) = &body.h_captcha_response {
-            let captcha_success = captcha::verify_captcha(h_captcha_response, &mut transaction).await?;
+            let captcha_success = captcha::verify_captcha(h_captcha_response, &mut tx).await?;
 
             if !captcha_success {
                 die!(UNPROCESSABLE_ENTITY, "Captcha verification failed");
@@ -86,27 +86,28 @@ pub(crate) async fn post_register(
     let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
         .bind(username)
         .bind(&password)
-        .fetch_one(&mut *transaction)
+        .fetch_one(&mut *tx)
         .await?;
 
-    sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true)")
-        .bind(user.id)
-        .bind(email)
-        .execute(&mut *transaction)
-        .await?;
+    let email = sqlx::query_as::<_, Email>(
+        "insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true) returning *",
+    )
+    .bind(user.id)
+    .bind(email)
+    .fetch_one(&mut *tx)
+    .await?;
 
-    // Close the transaction so the email gets committed (above) and then immediatly start a new one for `session` below
-    transaction.commit().await?;
-    let mut transaction = db_pool.begin().await?;
+    send_verification_mail(&user, email.email, &queue, &db_pool).await?;
 
-    if smtp_enabled {
-        send_verification_mail(&user, &db_pool).await?;
-    }
+    // Close the transaction so the email gets committed (above) and then immediately start a new one for `session` below
+    tx.commit().await?;
 
-    let session = Session::new(&request, &user, &mut transaction).await?;
+    let mut tx = db_pool.begin().await?;
+
+    let session = Session::new(&request, &user, &mut tx).await?;
     id.remember(session.to_string());
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
     info!(user.username, user.id, "New user signed up");
 

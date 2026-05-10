@@ -1,12 +1,22 @@
+use crate::crypto;
+use crate::mail::task::MailTask;
+use crate::mail::templates::VerifyEmailTemplate;
 use crate::user::User;
-
-use anyhow::Result;
+use anyhow::{Context, Result};
+use askama::Template;
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
 use gitarena_common::database::Pool;
+use gitarena_macros::from_config;
 use tracing::instrument;
 
-#[instrument(err, skip(_db_pool))]
-pub(crate) async fn send_verification_mail(_user: &User, _db_pool: &Pool) -> Result<()> {
-    /*assert!(user.id >= 0);
+#[instrument(err, skip(db_pool))]
+pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
+    assert!(user.id >= 0);
+
+    let (domain, smtp_address) = from_config!(
+        "domain" => String,
+        "smtp.address" => String,
+    );
 
     let hash = crypto::random_hex_string(32)?;
     let mut transaction = db_pool.begin().await?;
@@ -17,23 +27,22 @@ pub(crate) async fn send_verification_mail(_user: &User, _db_pool: &Pool) -> Res
         .execute(&mut *transaction)
         .await?;
 
-    let domain: String = get_setting("domain", &mut transaction).await?;
-    let url = format!("{domain}/api/verify/{hash}");
+    let template = VerifyEmailTemplate {
+        link: &format!("{domain}/api/verify/{hash}"),
+        instance_name: "GitArena",
+        domain: &domain,
+    };
 
-    let template = &templates::VERIFY_EMAIL.get().unwrap_or_log();
-    let body = &template.0;
-    let tags = &template.1;
+    let task = MailTask {
+        from: ("GitArena".to_string(), smtp_address),
+        to: (user.username.clone(), email),
+        subject: template.subject(),
+        body: template.render().context("failed to render verify email template")?,
+    };
 
-    let subject = tags.get("subject").context("Template does not contain subject")?;
-    let email_body = render(
-        body.clone(),
-        template_context!([("username".to_owned(), user.username.clone()), ("link".to_owned(), url)]),
-    );
-
-    mail::send_user_mail(user, subject, email_body, db_pool).await?;
+    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
 
     transaction.commit().await?;
 
-    Ok(())*/
-    todo!()
+    Ok(())
 }
