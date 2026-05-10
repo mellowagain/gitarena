@@ -62,7 +62,7 @@ impl Email {
 
         match self.verified_at {
             Some(_) => true,
-            None => self.created_at.signed_duration_since(Local::now()).num_hours() < 24,
+            None => Local::now().signed_duration_since(self.created_at).num_hours() < 24,
         }
     }
 }

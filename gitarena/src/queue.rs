@@ -30,7 +30,7 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
 
     // users expect emails to arrive fast so the email worker pool has low sleep params
     let mut email_worker_pool = AsyncWorkerPool::<AsyncQueue>::builder()
-        .number_of_workers(u32::try_from(num_cpus::get()).context("cpu cores too big for u32")?)
+        .number_of_workers(2_u32)
         .sleep_params(
             SleepParams::builder()
                 .sleep_period(Duration::from_secs(1))

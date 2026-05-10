@@ -1,3 +1,4 @@
+use crate::config::get_setting;
 use crate::mail::task::MailTask;
 use crate::mail::templates::VerifyEmailTemplate;
 use crate::prelude::MapToFangError;
@@ -15,13 +16,19 @@ use tracing::{info, instrument};
 pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
     assert!(user.id >= 0);
 
-    let (domain, smtp_address) = from_config!(
+    let (smtp_enabled, domain) = from_config!(
+        "smtp.enabled" => bool,
         "domain" => String,
-        "smtp.address" => String,
     );
+
+    if !smtp_enabled {
+        return Ok(());
+    }
 
     let hash = crypto::random_hex_string(32)?;
     let mut transaction = db_pool.begin().await?;
+
+    let smtp_address = get_setting("smtp.address", &mut transaction).await?;
 
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
         .bind(user.id)
@@ -42,9 +49,9 @@ pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &A
         body: template.render().context("failed to render verify email template")?,
     };
 
-    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
-
     transaction.commit().await?;
+
+    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
 
     Ok(())
 }
