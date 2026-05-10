@@ -1,4 +1,5 @@
 use crate::user::{User, WebUser};
+use std::fmt;
 
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow, bail};
@@ -7,6 +8,7 @@ use awc::http::header::USER_AGENT;
 use awc::{Client, ClientBuilder};
 use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
+use fang::FangError;
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use gitarena_common::database::Database;
 use gix::actor::Signature;
@@ -201,5 +203,15 @@ pub(crate) trait AwcExtensions {
 impl AwcExtensions for Client {
     fn gitarena() -> Client {
         ClientBuilder::new().add_default_header((USER_AGENT, USER_AGENT_STR)).finish()
+    }
+}
+
+pub(crate) trait MapToFangError<T> {
+    fn fang(self) -> Result<T, FangError>;
+}
+
+impl<T, E: fmt::Display> MapToFangError<T> for Result<T, E> {
+    fn fang(self) -> Result<T, FangError> {
+        self.map_err(|err| FangError { description: err.to_string() })
     }
 }

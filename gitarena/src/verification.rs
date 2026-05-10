@@ -1,15 +1,17 @@
-use crate::crypto;
 use crate::mail::task::MailTask;
 use crate::mail::templates::VerifyEmailTemplate;
+use crate::prelude::MapToFangError;
 use crate::user::User;
+use crate::{TASK_DB_POOL, crypto};
 use anyhow::{Context, Result};
 use askama::Template;
-use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
+use async_trait::async_trait;
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
-use tracing::instrument;
+use tracing::{info, instrument};
 
-#[instrument(err, skip(db_pool))]
+#[instrument(err, skip(queue, db_pool))]
 pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
     assert!(user.id >= 0);
 
@@ -45,4 +47,40 @@ pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &A
     transaction.commit().await?;
 
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "fang::serde")]
+pub(crate) struct ExpiredVerifyLinkRemovalTask {}
+
+#[async_trait]
+#[typetag::serde]
+impl AsyncRunnable for ExpiredVerifyLinkRemovalTask {
+    #[instrument(skip(_client))]
+    async fn run(&self, _client: &dyn AsyncQueueable) -> Result<(), FangError> {
+        let db_pool = TASK_DB_POOL.get().ok_or_else(|| FangError {
+            description: "task db pool OnceCell is empty".to_string(),
+        })?;
+
+        let mut tx = db_pool.begin().await.fang()?;
+
+        let result = sqlx::query("delete from user_verifications where expires < now()")
+            .execute(&mut *tx)
+            .await
+            .fang()?;
+
+        tx.commit().await.fang()?;
+
+        info!(count = %result.rows_affected(), "deleted expired user verification links");
+        Ok(())
+    }
+
+    fn uniq(&self) -> bool {
+        true
+    }
+
+    fn cron(&self) -> Option<Scheduled> {
+        // daily at 3am
+        Some(Scheduled::CronPattern("0 3 * * *".to_string()))
+    }
 }

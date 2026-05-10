@@ -11,6 +11,7 @@ use crate::utils::system::SYSTEM_INFO;
 use std::env;
 use std::env::VarError;
 
+use crate::verification::ExpiredVerifyLinkRemovalTask;
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
@@ -22,14 +23,15 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
-use fang::{AsyncQueue, AsyncWorkerPool};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool};
 use futures_locks::RwLock;
-use gitarena_common::database::create_postgres_pool;
+use gitarena_common::database::{Pool, create_postgres_pool};
 use gitarena_common::log::init_logger;
 use gitarena_common::telemetry;
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use time::Duration as TimeDuration;
+use tokio::sync::OnceCell;
 use tracing::{info, warn};
 use tracing_subscriber::Layer;
 use utoipa::OpenApi;
@@ -60,6 +62,8 @@ mod user;
 mod utils;
 mod verification;
 
+pub(crate) static TASK_DB_POOL: OnceCell<Pool> = OnceCell::const_new();
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let (telemetry_guards, logger_provider) = telemetry::init("gitarena")?;
@@ -87,6 +91,10 @@ async fn main() -> Result<()> {
     }
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
+    TASK_DB_POOL
+        .set(db_pool.clone())
+        .map_err(|_| anyhow!("task db pool should not be set more than once"))?;
+
     let _task_handle = spawn_db_pool_metrics_task(db_pool.clone());
 
     licenses::init();
@@ -107,6 +115,12 @@ async fn main() -> Result<()> {
     mail::create_transport(&db_pool).await?;
 
     let queue = queue::init().await?;
+
+    let cron = ExpiredVerifyLinkRemovalTask {};
+    queue
+        .schedule_task(&cron as &dyn AsyncRunnable)
+        .await
+        .context("failed to schedule remove expired verify link cron job")?;
 
     let ipc = RwLock::new(Ipc::new().await?);
 
