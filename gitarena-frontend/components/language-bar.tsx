@@ -6,6 +6,7 @@ import * as allLangs from "linguist-languages";
 type LinguistEntry = {
     color?: string;
     group?: string;
+    type?: string;
 };
 
 type Language = {
@@ -38,6 +39,28 @@ function groupLanguages(raw: Record<string, number>): Record<string, number> {
     return grouped;
 }
 
+function filterLanguages(raw: Record<string, number>): Record<string, number> {
+    const filtered: Record<string, number> = {};
+    let otherBytes = 0;
+
+    for (const [name, bytes] of Object.entries(raw)) {
+        const entry = (allLangs as Record<string, LinguistEntry>)[name];
+        const type = entry?.type;
+
+        if (type === "programming" || type === "markup") {
+            filtered[name] = (filtered[name] ?? 0) + bytes;
+        } else {
+            otherBytes += bytes;
+        }
+    }
+
+    if (otherBytes > 0) {
+        filtered["Other"] = otherBytes;
+    }
+
+    return filtered;
+}
+
 function computeLanguages(raw: Record<string, number>): Language[] {
     const total = Object.values(raw).reduce((sum, bytes) => sum + bytes, 0);
     if (total === 0) {
@@ -53,9 +76,9 @@ function computeLanguages(raw: Record<string, number>): Language[] {
         }));
 }
 
-export function LanguageBar({ languages, grouped = true }: { languages: Record<string, number>; grouped?: boolean }) {
+export function LanguageBar({ languages, allLanguages = false }: { languages: Record<string, number>; allLanguages?: boolean }) {
     const [hoveredLang, setHoveredLang] = useState<string | null>(null);
-    const resolved = grouped ? groupLanguages(languages) : languages;
+    const resolved = allLanguages ? languages : filterLanguages(groupLanguages(languages));
     const computed = computeLanguages(resolved);
 
     return (

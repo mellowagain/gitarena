@@ -107,7 +107,7 @@ export function RepoSidebar({
     contributors,
 }: RepoSidebarProps) {
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
-    const [groupedLanguages] = useLocalStorage<boolean>("gitarena:language-grouping", true);
+    const [allLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
     const instanceConfig = useInstanceConfig();
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     const host = apiUrl.replace(/^https?:\/\//, "");
@@ -241,7 +241,7 @@ export function RepoSidebar({
                 {Object.keys(languages).length > 0 && (
                     <div className="pt-4 border-t border-border">
                         <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">Languages</h3>
-                        <LanguageBar languages={languages} grouped={groupedLanguages} />
+                        <LanguageBar languages={languages} allLanguages={allLanguages} />
                     </div>
                 )}
 
