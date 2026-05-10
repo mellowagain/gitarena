@@ -130,4 +130,3 @@ pub(crate) struct RegisterJsonRequest {
     #[serde(rename = "h-captcha-response")]
     h_captcha_response: Option<String>,
 }
-

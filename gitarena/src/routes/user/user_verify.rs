@@ -7,8 +7,8 @@ use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
-use uuid::Uuid;
 use tracing_unwrap::OptionExt;
+use uuid::Uuid;
 
 #[route("/api/verify/{token}", method = "GET", err = "json")]
 pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {

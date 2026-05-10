@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { formatDistanceToNow, addHours, format } from "date-fns";
+import { uuidToDate } from "@/lib/utils";
 import * as allLangs from "linguist-languages";
 
 function languageColor(name: string): string {
@@ -44,10 +45,9 @@ function languageColor(name: string): string {
 }
 
 interface EmailResponse {
-    id: number;
+    id: string;
     email: string;
     primary: boolean;
-    createdAt: string;
     verifiedAt: string | null;
 }
 
@@ -65,7 +65,6 @@ interface UserProfileResponse {
     id: string;
     username: string;
     admin: boolean;
-    createdAt: string;
     repos: UserProfileRepo[];
     stats: {
         repos: number;
@@ -133,9 +132,9 @@ export default function DashboardPage() {
 
     const primaryEmail = emails?.find((e) => e.primary) ?? null;
     const emailUnverified = primaryEmail !== null && primaryEmail?.verifiedAt === null;
-    const verifyDeadline = primaryEmail ? addHours(new Date(primaryEmail.createdAt), 24) : null;
+    const verifyDeadline = primaryEmail ? addHours(uuidToDate(primaryEmail.id), 24) : null;
     const verifyExpired = emailUnverified && verifyDeadline !== null && verifyDeadline < new Date();
-    const deletionDate = primaryEmail ? addHours(new Date(primaryEmail.createdAt), 24 * 8) : null; // 24h verify deadline + 7 days
+    const deletionDate = primaryEmail ? addHours(uuidToDate(primaryEmail.id), 24 * 8) : null; // 24h verify deadline + 7 days
 
     const repos = profile?.repos ?? [];
     const filteredRepos = repos.filter(() => {

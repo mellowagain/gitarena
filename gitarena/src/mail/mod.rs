@@ -60,13 +60,24 @@ impl Email {
     pub(crate) fn is_allowed_login(&self) -> bool {
         assert!(self.primary);
 
-        self.verified_at.is_some()
+        match self.verified_at {
+            Some(_) => true,
+            None => {
+                // Allow login within 24 hours of account creation (timestamp embedded in UUIDv7)
+                let created_at = self.id.get_timestamp().map(|ts| {
+                    let (secs, nanos) = ts.to_unix();
+                    DateTime::<Local>::from(std::time::UNIX_EPOCH + std::time::Duration::new(secs, nanos))
+                });
+
+                created_at.map(|t| Local::now().signed_duration_since(t).num_hours() < 24).unwrap_or(false)
+            }
+        }
     }
 }
 
 macro_rules! generate_find {
     ($method_name:ident, $field:literal) => {
-        pub(crate) async fn $method_name(user: impl Into<Uuid>, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
+        pub(crate) async fn $method_name(user: Uuid, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
             let query = concat!("select * from emails where owner = $1 and ", $field, " = true limit 1");
             Email::find_specific_email(user, query, tx).await
         }
@@ -80,8 +91,8 @@ impl Email {
     generate_find!(find_public_email, "public");
 
     // Private helper called by the functions defined using the `generate_find!` macro
-    async fn find_specific_email(user: impl Into<Uuid>, query: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
-        let email: Option<Email> = sqlx::query_as(query).bind(user.into()).fetch_optional(&mut **tx).await?;
+    async fn find_specific_email(user: Uuid, query: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
+        let email: Option<Email> = sqlx::query_as(query).bind(user).fetch_optional(&mut **tx).await?;
 
         Ok(email)
     }

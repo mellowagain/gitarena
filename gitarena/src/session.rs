@@ -57,7 +57,12 @@ impl Session {
         match identity {
             Some(identity) => {
                 let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
-                let user_id = user_id_str.parse::<Uuid>()?;
+
+                // Old sessions used i32 user IDs; if parsing as UUID fails, treat as expired and force logout
+                let user_id = match user_id_str.parse::<Uuid>() {
+                    Ok(id) => id,
+                    Err(_) => return Ok(None),
+                };
 
                 let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
                     .bind(user_id)

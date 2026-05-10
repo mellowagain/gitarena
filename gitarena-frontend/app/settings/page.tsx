@@ -32,6 +32,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { formatDistanceToNow } from "date-fns";
+import { uuidToDate } from "@/lib/utils";
 import { toast } from "sonner";
 import DeviceDetector from "device-detector-js";
 
@@ -44,7 +45,6 @@ interface EmailResponse {
     commit: boolean;
     notification: boolean;
     public: boolean;
-    createdAt: string;
     verifiedAt: string | null;
 }
 
@@ -64,7 +64,6 @@ interface SshKeyResponse {
     fingerprint: string;
     algorithm: string;
     pubkey: string;
-    createdAt: string;
     expiresAt: string | null;
 }
 
@@ -807,7 +806,7 @@ function KeysTab() {
                                     </TooltipContent>
                                 </Tooltip>
                                 <p className="text-xs text-muted-foreground">
-                                    Added {formatDistanceToNow(new Date(key.createdAt), { addSuffix: true })}
+                                    Added {formatDistanceToNow(uuidToDate(key.id), { addSuffix: true })}
                                     {key.expiresAt && ` · Expires ${new Date(key.expiresAt).toLocaleDateString()}`}
                                 </p>
                             </div>
