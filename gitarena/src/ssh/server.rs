@@ -57,6 +57,8 @@ pub(crate) struct SshHandler {
 
     operation: Option<SshOperation>,
     buffer: Vec<u8>,
+
+    cancelled: bool,
 }
 
 impl SshHandler {
@@ -68,6 +70,7 @@ impl SshHandler {
             version: GitProtocol::V1,
             operation: None,
             buffer: Vec::new(),
+            cancelled: false,
         }
     }
 }
@@ -117,6 +120,20 @@ impl Handler for SshHandler {
     }
 
     #[instrument(skip(session))]
+    async fn channel_close(&mut self, channel: ChannelId, session: &mut Session) -> Result<(), Self::Error> {
+        if self.operation.is_some() {
+            debug!("SSH channel closed mid-operation, cancelling");
+
+            self.cancelled = true;
+            self.operation = None;
+            self.buffer.clear();
+        }
+
+        session.close(channel).context("failed to close ssh channel after client close")?;
+        Ok(())
+    }
+
+    #[instrument(skip(session))]
     async fn channel_eof(&mut self, channel: ChannelId, session: &mut Session) -> Result<(), Self::Error> {
         let Some(operation) = self.operation.take() else {
             session.close(channel).context("failed to close ssh channel during eof")?;
@@ -159,8 +176,11 @@ impl Handler for SshHandler {
     }
 
     #[instrument(skip(_session))]
-    async fn data(&mut self, channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
-        self.buffer.extend_from_slice(data);
+    async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
+        if !self.cancelled {
+            self.buffer.extend_from_slice(data);
+        }
+
         Ok(())
     }
 
@@ -320,6 +340,18 @@ impl Handler for SshHandler {
             }
         }
 
+        Ok(())
+    }
+
+    #[instrument(skip(session))]
+    async fn signal(&mut self, channel: ChannelId, signal: russh::Sig, session: &mut Session) -> Result<(), Self::Error> {
+        debug!(?signal, "SSH client sent signal, cancelling operation");
+
+        self.cancelled = true;
+        self.operation = None;
+        self.buffer.clear();
+
+        session.close(channel).context("failed to close ssh channel after signal")?;
         Ok(())
     }
 }
