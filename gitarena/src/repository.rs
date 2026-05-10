@@ -1,4 +1,5 @@
 use crate::error::{ErrorDisplayType, GitArenaError};
+use crate::organization::Organization;
 use crate::privileges::privilege;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::{User, WebUser};
@@ -35,7 +36,7 @@ use uuid::Uuid;
 pub(crate) struct Repository {
     /// ID
     pub(crate) id: Uuid,
-    /// User ID of the repository owner
+    /// UUID of the repository owner (either a user ID or an organization ID)
     pub(crate) owner: Uuid,
     /// Name of the repository
     pub(crate) name: String,
@@ -64,11 +65,11 @@ pub(crate) struct Repository {
 }
 
 impl Repository {
-    pub(crate) async fn open(user_id: Uuid, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
+    pub(crate) async fn open(owner_id: Uuid, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
         let repo_name = repo_name.as_ref();
 
         let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
-            .bind(user_id)
+            .bind(owner_id)
             .bind(repo_name)
             .fetch_optional(&mut **tx)
             .await
@@ -101,19 +102,34 @@ impl Repository {
 
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
     pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
-        // Instead of using `config::get_optional_setting`, we run our own query to get both username and repo base dir in one query
+        // Instead of using `config::get_optional_setting`, we run our own query to get both namespace and repo base dir in one query
         // https://stackoverflow.com/a/16364390
-        let (base_dir, username): (String, String) = sqlx::query_as(
+        // The owner UUID may refer to either a user or an organization; try both tables.
+        let user_result: Option<(String, String)> = sqlx::query_as(
             "select * from \
             (select value from settings where key = 'repositories.base_dir' limit 1) A \
             cross join \
-            (select username from users where id = $1 limit 1) B",
+            (select username as namespace from users where id = $1 limit 1) B",
         )
         .bind(self.owner)
-        .fetch_one(&mut **tx)
+        .fetch_optional(&mut **tx)
         .await?;
 
-        Ok(format!("{}/{}/{}", base_dir, username, &self.name))
+        let (base_dir, namespace) = if let Some(row) = user_result {
+            row
+        } else {
+            sqlx::query_as(
+                "select * from \
+                (select value from settings where key = 'repositories.base_dir' limit 1) A \
+                cross join \
+                (select name as namespace from organizations where id = $1 limit 1) B",
+            )
+            .bind(self.owner)
+            .fetch_one(&mut **tx)
+            .await?
+        };
+
+        Ok(format!("{}/{}/{}", base_dir, namespace, &self.name))
     }
 
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
@@ -129,21 +145,22 @@ impl FromRequest for Repository {
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
         let match_info = req.match_info();
 
-        // If this method gets called from a handler that does not have username or repository in the match info
+        // If this method gets called from a handler that does not have namespace or repository in the match info
         // it is safe to assume the programmer made a mistake, thus .expect_or_log is OK
-        let username = match_info
-            .get("username")
-            .expect_or_log("from_request called on Repository despite not having username argument")
+        let namespace = match_info
+            .get("namespace")
+            .or_else(|| match_info.get("username"))
+            .expect_or_log("from_request called on Repository despite not having namespace/username argument")
             .to_owned();
+
         let repository = match_info
             .get("repository")
             .expect_or_log("from_request called on Repository despite not having repository argument")
             .to_owned();
-        //let tree = match_info.get("tree");
 
         // Allows one to receive the repo owner name without having to manually search the database
         // This .clone is most likely unnecessary as the previous value is only used as-ref below
-        req.extensions_mut().insert(RepoOwner(username.clone()));
+        req.extensions_mut().insert(RepoOwner(namespace.clone()));
 
         let web_user_future = WebUser::from_request(req, payload);
 
@@ -154,7 +171,7 @@ impl FromRequest for Repository {
                 Box::pin(async move {
                     let web_user = web_user_future.await?;
 
-                    extract_repo_from_request(&db_pool, web_user.as_ref(), username.as_str(), repository.as_str())
+                    extract_repo_from_request(&db_pool, web_user.as_ref(), namespace.as_str(), repository.as_str())
                         .await
                         .map_err(|err| GitArenaError {
                             source: Arc::new(err),
@@ -173,21 +190,27 @@ impl FromRequest for Repository {
 }
 
 #[instrument(err, skip(db_pool))]
-pub(crate) async fn extract_repo_from_request(db_pool: &Pool, actor: Option<&User>, username: &str, repository: &str) -> Result<Repository> {
-    let mut transaction = db_pool.begin().await?;
+pub(crate) async fn extract_repo_from_request(db_pool: &Pool, actor: Option<&User>, namespace: &str, repository: &str) -> Result<Repository> {
+    let mut tx = db_pool.begin().await?;
 
-    let user = User::find_using_name(username, &mut transaction)
+    // The namespace may refer to either a user or an organization.
+    let owner_id: Uuid = if let Some(user) = User::find_using_name(namespace, &mut tx).await {
+        user.id
+    } else if let Some(org) = Organization::find_by_name(namespace, &mut tx).await {
+        org.id
+    } else {
+        die!(NOT_FOUND, "Repository not found");
+    };
+
+    let repo = Repository::open(owner_id, repository, &mut tx)
         .await
         .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(user.id, repository, &mut transaction)
-        .await
-        .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 
-    if !privilege::check_access(&repo, actor, &mut transaction).await? {
-        die!(NOT_FOUND, "Not found");
+    if !privilege::check_access(&repo, actor, &mut tx).await? {
+        die!(NOT_FOUND, "Repository not found");
     }
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
     Ok(repo)
 }

@@ -15,7 +15,7 @@ use utoipa::ToSchema;
 
 #[derive(Deserialize)]
 struct BlameRequest {
-    username: String,
+    namespace: String,
     repository: String,
     tree: String,
     file_path: String,
@@ -46,9 +46,9 @@ pub(crate) struct BlameResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/branch/{tree}/blame/{file_path}",
+    path = "/api/repos/{namespace}/{repository}/branch/{tree}/blame/{file_path}",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("tree" = String, Path, description = "Branch name or full ref"),
         ("file_path" = String, Path, description = "File path relative to the repository root"),
@@ -60,7 +60,7 @@ pub(crate) struct BlameResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/branch/{tree}/blame/{file_path:.*}", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/branch/{tree}/blame/{file_path:.*}", method = "GET", err = "json")]
 pub(crate) async fn blame(repo: Repository, branch: Branch, uri: web::Path<BlameRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

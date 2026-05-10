@@ -3,7 +3,7 @@ use crate::sso::oauth_request::{OAuthRequest, SerdeMap};
 use crate::sso::sso_provider::{DatabaseSSOProvider, SSOProvider};
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
-use crate::utils::identifiers::{is_username_taken, validate_username};
+use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::{config, crypto, err};
 
 use anyhow::{Result, anyhow, bail};
@@ -122,7 +122,7 @@ impl SSOProvider for GitHubSSO {
             .cloned()
             .ok_or_else(|| anyhow!("Failed to retrieve username from GitHub API json response"))?;
 
-        while validate_username(username.as_str()).is_err() || is_username_taken(username.as_str(), &mut transaction).await? {
+        while validate_namespace(username.as_str()).is_err() || is_namespace_taken(username.as_str(), &mut transaction).await? {
             username = crypto::random_numeric_ascii_string(16)?;
         }
 

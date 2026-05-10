@@ -1,4 +1,5 @@
 use crate::config::{get_optional_setting, get_setting};
+use crate::organization::{OrgMember, Organization};
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
@@ -15,7 +16,6 @@ use gitarena_common::packets::git::GitImport;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
-
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -82,20 +82,32 @@ pub(crate) async fn import(
         die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");
     }
 
+    // Resolve namespace to either the authenticated user or an org the user has access to
+    let (owner_id, owner_name) = if body.namespace == user.username {
+        (user.id, user.username.clone())
+    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut transaction).await {
+        if OrgMember::get_role(org.id, user.id, &mut transaction).await?.is_none() {
+            die!(FORBIDDEN, "You are not a member of this organization");
+        }
+        (org.id, org.name.clone())
+    } else {
+        die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
+    };
+
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(user.id)
+        .bind(owner_id)
         .bind(name)
         .fetch_one(&mut *transaction)
         .await?;
 
     if exists {
-        die!(CONFLICT, "Repository name already in use for your account");
+        die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
     let repo: Repository =
         sqlx::query_as::<_, Repository>("insert into repositories (id, owner, name, description, visibility) values ($1, $2, $3, $4, $5) returning *")
             .bind(Uuid::now_v7())
-            .bind(user.id)
+            .bind(owner_id)
             .bind(name)
             .bind(description)
             .bind(body.visibility)
@@ -115,13 +127,13 @@ pub(crate) async fn import(
     ipc.write().await.send(packet).await.context("Failed to send import packet to workhorse")?;
 
     let domain: String = get_optional_setting("domain", &mut transaction).await?.unwrap_or_default();
-    let path = format!("/{}/{}", &user.username, &repo.name);
+    let path = format!("/{}/{}", &owner_name, &repo.name);
 
     transaction.commit().await?;
 
     info!(
         target.id = %repo.id,
-        target.owner = user.username,
+        target.owner = owner_name,
         target.name = repo.name,
         source.url = %url,
         "New repository created for importing",
@@ -141,7 +153,8 @@ pub(crate) async fn import(
 
 #[derive(Deserialize, ToSchema)]
 pub(crate) struct ImportJsonRequest {
-    //owner: String,
+    /// Namespace (username or org name) under which the imported repo should be created
+    namespace: String,
     /// Repository name
     #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
     name: String,

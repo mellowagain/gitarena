@@ -1,3 +1,4 @@
+use crate::die;
 use crate::err;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::{User, WebUser};
@@ -93,7 +94,7 @@ async fn get_user_repos(user_id: Uuid, is_self: bool, can_see_internal: bool, tx
          count(distinct stars.stargazer) as stars \
          from repositories \
          left join stars on repositories.id = stars.repo \
-         where repositories.owner = $1 \
+         where repositories.owner_user = $1 \
          and repositories.disabled = false"
         .to_string();
 
@@ -113,8 +114,8 @@ async fn get_user_repos(user_id: Uuid, is_self: bool, can_see_internal: bool, tx
 async fn get_user_stats(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<UserProfileStats> {
     let row: (i64, i64, i64) = sqlx::query_as(
         "select \
-         (select count(*) from repositories where owner = $1 and disabled = false) as repos, \
-         (select count(*) from stars join repositories on stars.repo = repositories.id where repositories.owner = $1) as stars_earned, \
+         (select count(*) from repositories where owner_user = $1 and disabled = false) as repos, \
+         (select count(*) from stars join repositories on stars.repo = repositories.id where repositories.owner_user = $1) as stars_earned, \
          (select count(*) from stars where stargazer = $1) as stars_given",
     )
     .bind(user_id)
@@ -126,4 +127,42 @@ async fn get_user_stats(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Re
         stars_earned: row.1,
         stars_given: row.2,
     })
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UserByIdResponse {
+    id: i32,
+    username: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/users/by-id/{id}",
+    params(
+        ("id" = i32, Path, description = "User ID to look up"),
+    ),
+    responses(
+        (status = 200, description = "User info", body = UserByIdResponse),
+        (status = 404, description = "User not found"),
+    ),
+    security((), ("cookieAuth" = [])),
+    tag = "user"
+)]
+#[route("/api/users/by-id/{id}", method = "GET", err = "json")]
+pub(crate) async fn get_user_by_id(path: web::Path<i32>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+    let id = path.into_inner();
+    let mut tx = db_pool.begin().await?;
+
+    let user = sqlx::query_as::<_, (i32, String)>("select id, username from users where id = $1")
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    match user {
+        Some((id, username)) => Ok(HttpResponse::Ok().json(UserByIdResponse { id, username })),
+        None => die!(NOT_FOUND, "User not found"),
+    }
 }

@@ -172,9 +172,9 @@ fn collect_entries(tree: Tree, path_prefix: &str, store: &Arc<Store>, files: &mu
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/branch/{tree}/files",
+    path = "/api/repos/{namespace}/{repository}/branch/{tree}/files",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("tree" = String, Path, description = "Branch name (short form like 'main', or full ref like 'refs/heads/main')"),
     ),
@@ -185,7 +185,7 @@ fn collect_entries(tree: Tree, path_prefix: &str, store: &Arc<Store>, files: &mu
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/branch/{tree}/files", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/branch/{tree}/files", method = "GET", err = "json")]
 pub(crate) async fn branch_files(repo: Repository, branch: Branch, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

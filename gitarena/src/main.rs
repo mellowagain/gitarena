@@ -46,6 +46,7 @@ mod issue;
 mod licenses;
 mod mail;
 mod metrics;
+mod organization;
 mod passkey;
 mod prelude;
 mod privileges;
@@ -170,6 +171,7 @@ async fn main() -> Result<()> {
             .configure(routes::init)
             .configure(routes::proxy::init)
             .configure(routes::user::init)
+            .configure(routes::organization::init)
             .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/healthz", web::get().to(|| async { "healthy" }))

@@ -33,6 +33,7 @@ chrono = { version = "0.4.19", features = ["serde"] }
 chrono-humanize = "0.2.1"
 console-subscriber = { version = "0.1.3", features = ["parking_lot"] }
 derive_more = { version = "2.1.1", features = ["debug"] }
+either = "1.15.0"
 fang = { version = "0.11.0-rc1", default-features = false, features = ["asynk-postgres"], git = "https://github.com/ayrat555/fang", rev = "f7b5cac" }
 fs_extra = "1.2.0"
 futures = "0.3.19"

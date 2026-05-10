@@ -17,7 +17,7 @@ use gix::objs::{Tree, TreeRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
 
-#[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
+#[route("/{namespace}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
 pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let transaction = db_pool.begin().await?;
 

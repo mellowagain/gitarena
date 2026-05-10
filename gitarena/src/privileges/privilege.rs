@@ -21,7 +21,7 @@ macro_rules! generate_check {
         #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
         pub(crate) async fn $name(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<bool> {
             Ok(if let Some(user) = user {
-                if &user.id != &repo.owner && !user.admin {
+                if !is_repo_owner(repo, user) && !user.admin {
                     get_repo_privilege(repo, user, tx)
                         .await
                         .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
@@ -45,7 +45,7 @@ pub(crate) async fn check_access(repo: &Repository, user: Option<&User>, tx: &mu
     Ok(match repo.visibility {
         RepoVisibility::Private => {
             if let Some(user) = user {
-                if user.id != repo.owner && !user.admin {
+                if !is_repo_owner(repo, user) && !user.admin {
                     get_repo_privilege(repo, user, tx)
                         .await
                         .with_context(|| format!("Unable to get repo privileges for user {} in repo {}", &user.id, &repo.id))?
@@ -60,6 +60,10 @@ pub(crate) async fn check_access(repo: &Repository, user: Option<&User>, tx: &mu
         RepoVisibility::Internal => user.is_some(),
         RepoVisibility::Public => true,
     })
+}
+
+fn is_repo_owner(repo: &Repository, user: &User) -> bool {
+    repo.owner == user.id
 }
 
 generate_check!(check_manage_issues, can_manage_issues);

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { toast } from "sonner";
 import { TopBar } from "@/components/top-bar";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     ChevronDown,
@@ -24,10 +25,11 @@ import {
     CheckCircle2,
     AlertCircle,
     Loader2,
+    Building2,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { postJsonFetcher, validationFetcher } from "@/lib/fetchers";
+import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -47,10 +49,16 @@ const gitignoreTemplates = [
 
 type Visibility = "public" | "internal" | "private";
 
+interface UserOrgEntry {
+    id: string;
+    name: string;
+}
+
 interface CreateRepoRequest {
     name: string;
     description: string;
     visibility: Visibility;
+    namespace: string;
     readme?: boolean;
     defaultBranch: string;
     license?: string;
@@ -63,8 +71,32 @@ interface CreateRepoResponse {
 }
 
 export default function NewRepositoryPage() {
+    return (
+        <Suspense>
+            <NewRepositoryForm />
+        </Suspense>
+    );
+}
+
+function NewRepositoryForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user } = useAuth();
+
+    const { data: userOrgs } = useSWR<UserOrgEntry[]>(user ? `/api/users/${user.username}/orgs` : null, jsonFetcher, {
+        shouldRetryOnError: false,
+    });
+
+    // Namespace: default to user, or org if passed via query param.
+    // Track an explicit override — when null, fall back to the query param or the logged-in user.
+    const initialNamespace = searchParams.get("namespace") ?? "";
+    const [namespaceOverride, setNamespaceOverride] = useState<string | null>(null);
+    const selectedNamespace = ((namespaceOverride ?? initialNamespace) || user?.username) ?? "";
+
+    const namespaceOptions: Array<{ value: string; label: string; isOrg: boolean }> = [
+        ...(user ? [{ value: user.username, label: user.username, isOrg: false }] : []),
+        ...(userOrgs ?? []).map((org) => ({ value: org.name, label: org.name, isOrg: true })),
+    ];
 
     const [repoName, setRepoName] = useState("");
     const [description, setDescription] = useState("");
@@ -89,7 +121,7 @@ export default function NewRepositoryPage() {
     // Single validate call covers name rules, reserved names, duplicate check, and description length
     const validateUrl =
         user && debouncedName
-            ? `/api/repo/validate?name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
+            ? `/api/repo/validate?namespace=${encodeURIComponent(selectedNamespace)}&name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
             : null;
 
     const { data: validation, isLoading: isValidating } = useSWR(validateUrl, validationFetcher, {
@@ -106,7 +138,7 @@ export default function NewRepositoryPage() {
 
     const { trigger, isMutating } = useSWRMutation<CreateRepoResponse, Error, string, CreateRepoRequest>("/api/repo", postJsonFetcher);
 
-    const canSubmit = !!user && !!repoName && nameValid && !descriptionError && !isPending && !isMutating;
+    const canSubmit = !!user && !!repoName && !!selectedNamespace && nameValid && !descriptionError && !isPending && !isMutating;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -119,16 +151,19 @@ export default function NewRepositoryPage() {
                 name: repoName,
                 description,
                 visibility,
+                namespace: selectedNamespace,
                 defaultBranch,
                 ...(createReadme ? { readme: true } : {}),
                 ...(selectedLicense !== "none" ? { license: selectedLicense } : {}),
                 ...(selectedGitignore !== "none" ? { gitignore: selectedGitignore } : {}),
             });
-            router.push(`/${user.username}/${repoName}`);
+            router.push(`/${selectedNamespace}/${repoName}`);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to create repository");
         }
     }
+
+    const selectedOption = namespaceOptions.find((o) => o.value === selectedNamespace);
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -154,7 +189,7 @@ export default function NewRepositoryPage() {
                                     New repository
                                 </Link>
                                 <Link
-                                    href="#"
+                                    href="/orgs/new"
                                     className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
                                 >
                                     <Users className="h-4 w-4" />
@@ -199,13 +234,45 @@ export default function NewRepositoryPage() {
                                     Owner <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    {/* Owner is always the current user — no org dropdown for now */}
-                                    <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
-                                        <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                            {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                    {namespaceOptions.length > 1 ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                                    <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium shrink-0">
+                                                        {selectedOption?.isOrg ? (
+                                                            <Building2 className="h-3.5 w-3.5" />
+                                                        ) : (
+                                                            (selectedOption?.label?.[0]?.toUpperCase() ?? "?")
+                                                        )}
+                                                    </div>
+                                                    <span>{selectedNamespace || "Select owner"}</span>
+                                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="start" className="w-52">
+                                                {namespaceOptions.map((opt) => (
+                                                    <DropdownMenuItem key={opt.value} onClick={() => setNamespaceOverride(opt.value)}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center justify-center h-5 w-5 rounded bg-secondary text-xs font-medium shrink-0">
+                                                                {opt.isOrg ? <Building2 className="h-3 w-3" /> : opt.label[0].toUpperCase()}
+                                                            </div>
+                                                            {opt.label}
+                                                            {opt.isOrg && (
+                                                                <span className="ml-auto text-[10px] text-muted-foreground">org</span>
+                                                            )}
+                                                        </div>
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
+                                            <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
+                                                {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                            </div>
+                                            <span>{user?.username ?? "…"}</span>
                                         </div>
-                                        <span>{user?.username ?? "…"}</span>
-                                    </div>
+                                    )}
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
@@ -225,11 +292,11 @@ export default function NewRepositoryPage() {
                                     </div>
                                 </div>
                                 {nameError && <p className="text-sm text-red-500">{nameError}</p>}
-                                {nameValid && user && (
+                                {nameValid && selectedNamespace && (
                                     <p className="text-sm text-muted-foreground">
                                         Your repository will be available at{" "}
                                         <span className="text-foreground font-mono">
-                                            {user.username}/{repoName}
+                                            {selectedNamespace}/{repoName}
                                         </span>
                                     </p>
                                 )}

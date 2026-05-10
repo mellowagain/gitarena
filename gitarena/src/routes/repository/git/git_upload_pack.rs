@@ -6,19 +6,20 @@ use crate::prelude::*;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
+use crate::routes::repository::git::info_refs::resolve_namespace;
 use gitarena_common::database::Pool;
 
 use std::time::Instant;
 
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
+use either::Either;
 use futures::StreamExt;
 use gitarena_macros::route;
 use opentelemetry::KeyValue;
-use uuid::Uuid;
 
-#[route("/{username}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
+#[route("/{namespace}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
 pub(crate) async fn git_upload_pack(
     uri: web::Path<GitRequest>,
     mut body: web::Payload,
@@ -40,18 +41,8 @@ pub(crate) async fn git_upload_pack(
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(Uuid,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
-        .bind(&uri.username)
-        .fetch_optional(&mut *transaction)
-        .await?;
-
-    let Some((user_id,)) = user_option else { die!(NOT_FOUND) };
-
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
-        .bind(user_id)
-        .bind(&uri.repository)
-        .fetch_optional(&mut *transaction)
-        .await?;
+    let owner_id = resolve_namespace(&uri.namespace, &mut transaction).await?;
+    let repo_option = Repository::open(owner_id, &uri.repository, &mut transaction).await;
 
     let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
         Either::Left(tuple) => tuple,

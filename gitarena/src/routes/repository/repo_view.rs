@@ -1,0 +1,189 @@
+use crate::git::GIT_HASH_KIND;
+use crate::git::history::{all_branches, all_commits, all_tags, last_commit_for_blob, last_commit_for_ref};
+use crate::git::utils::{read_blob_content, repo_files_at_ref};
+use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
+use crate::repository::{RepoOwner, Repository};
+use crate::routes::repository::GitTreeRequest;
+use crate::templates::web::{GitCommit, RepoFile};
+use crate::user::WebUser;
+use crate::{die, err, render_template};
+
+use std::cmp::Ordering;
+
+use actix_web::{HttpMessage, HttpRequest, Responder, web};
+use anyhow::{Result, anyhow};
+use bstr::ByteSlice;
+use gitarena_common::database::{Database, Pool};
+use gitarena_macros::route;
+use gix::hash::ObjectId;
+use gix::objs::Tree;
+use gix::objs::tree::EntryKind;
+use gix::refs::file::find::existing::Error as GitoxideFindError;
+use sqlx::Transaction;
+use tera::Context;
+use tracing_unwrap::OptionExt;
+
+async fn render(
+    tree_option: Option<&str>,
+    repo: Repository,
+    username: &str,
+    web_user: WebUser,
+    mut transaction: Transaction<'_, Database>,
+) -> Result<impl Responder + use<>> {
+    let tree_name = tree_option.unwrap_or(repo.default_branch.as_str());
+
+    let mut context = Context::new();
+
+    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+
+    let (issues_count,): (i64,) = sqlx::query_as("select count(*) from issues where repo = $1 and closed = false and confidential = false")
+        .bind(repo.id)
+        .fetch_one(&mut *transaction)
+        .await?;
+
+    context.try_insert("repo", &repo)?;
+    context.try_insert("repo_owner_name", &username)?;
+    context.try_insert("issues_count", &issues_count)?;
+    context.try_insert("merge_requests_count", &0_i32)?;
+    context.try_insert("releases_count", &0_i32)?;
+    context.try_insert("tree", tree_name)?;
+    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
+    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
+    context.try_insert("repo_size", &repo.repo_size(&mut transaction).await?)?;
+    context.insert_web_user(&web_user)?;
+
+    let loose_ref = match gitoxide_repo.refs.find_loose(tree_name) {
+        Ok(loose_ref) => Ok(loose_ref),
+        Err(GitoxideFindError::Find(err)) => Err(err),
+        Err(GitoxideFindError::NotFound { name: _ }) => {
+            if tree_name == repo.default_branch {
+                context.try_insert("files", &Vec::<()>::new())?;
+
+                return render_template!("repo/index.html", context, transaction);
+            }
+
+            die!(NOT_FOUND, "Not found");
+        }
+    }?; // Handle 404
+
+    let full_tree_name = loose_ref.name.as_bstr().to_str()?;
+
+    context.try_insert("full_tree", full_tree_name)?;
+
+    let mut buffer = Vec::<u8>::new();
+    let store = gitoxide_repo.objects.store().clone();
+
+    let tree = repo_files_at_ref(&loose_ref, store.clone(), &gitoxide_repo, &mut buffer).await?;
+    let tree = Tree::from(tree);
+
+    let mut files = Vec::<RepoFile>::with_capacity(tree.entries.len().min(1000));
+
+    for entry in tree.entries.iter().take(1000) {
+        let name = entry.filename.to_str().unwrap_or("Invalid file name");
+
+        let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, name).await?.unwrap_or_log();
+        let commit = libgit2_repo.find_commit(oid)?;
+
+        let submodule_target_oid = if matches!(entry.mode.kind(), EntryKind::Commit) {
+            Some(
+                read_blob_content(entry.oid.as_ref(), store.clone())
+                    .await
+                    .unwrap_or_else(|_| ObjectId::null(GIT_HASH_KIND).to_string()),
+            )
+        } else {
+            None
+        };
+
+        files.push(RepoFile {
+            file_type: entry.mode.value(),
+            file_name: name,
+            submodule_target_oid,
+            commit: GitCommit {
+                oid: format!("{oid}"),
+                message: commit.message().unwrap_or_default().to_owned(),
+                time: commit.time().seconds(),
+                date: None,
+                author_name: String::new(),  // Unused for file listing
+                author_uid: None,            // Unused for file listing
+                author_email: String::new(), // Unused for file listing
+            },
+        });
+    }
+
+    files.sort_by(|lhs, rhs| {
+        // 1. Directory
+        // 2. Submodules
+        // 3. Rest
+
+        if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type != EntryKind::Tree as u16 {
+            Ordering::Less
+        } else if lhs.file_type != EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
+            Ordering::Greater
+        } else if lhs.file_type == EntryKind::Tree as u16 && rhs.file_type == EntryKind::Tree as u16 {
+            lhs.file_name.cmp(rhs.file_name)
+        } else if lhs.file_type == EntryKind::Commit as u16 && rhs.file_type != EntryKind::Commit as u16 {
+            Ordering::Less
+        } else if lhs.file_type != EntryKind::Commit as u16 && rhs.file_type == EntryKind::Commit as u16 {
+            Ordering::Greater
+        } else {
+            lhs.file_name.cmp(rhs.file_name)
+        }
+    });
+
+    if let Some(fork_repo_id) = repo.forked_from {
+        const QUERY: &str = "select coalesce(u.username, o.name), repositories.name from repositories \
+         left join users u on u.id = repositories.owner_user \
+         left join organizations o on o.id = repositories.owner_org \
+         where repositories.id = $1 limit 1";
+
+        let option: Option<(String, String)> = sqlx::query_as(QUERY).bind(fork_repo_id).fetch_optional(&mut *transaction).await?;
+
+        if let Some((username, repo_name)) = option {
+            context.try_insert("repo_fork_owner", &username)?;
+            context.try_insert("repo_fork_name", &repo_name)?;
+        }
+    }
+
+    context.try_insert("files", &files)?;
+    context.try_insert("commits_count", &all_commits(&libgit2_repo, full_tree_name, 0).await?.len())?;
+
+    let last_commit_oid = last_commit_for_ref(&libgit2_repo, full_tree_name)
+        .await?
+        .ok_or_else(|| err!(OK, "Repository is empty"))?;
+    let last_commit = libgit2_repo.find_commit(last_commit_oid)?;
+
+    // TODO: Additionally show last_commit.committer and if doesn't match with author
+    let (author_name, author_uid, author_email) = last_commit.author().try_disassemble(&mut transaction).await;
+
+    context.try_insert(
+        "last_commit",
+        &GitCommit {
+            oid: format!("{last_commit_oid}"),
+            message: last_commit.message().unwrap_or_default().to_owned(),
+            time: last_commit.time().seconds(),
+            date: None,
+            author_name,
+            author_uid,
+            author_email,
+        },
+    )?;
+
+    render_template!("repo/index.html", context, transaction)
+}
+
+#[route("/{namespace}/{repository}/tree/{tree:.*}", method = "GET", err = "html")]
+pub(crate) async fn view_repo_tree(repo: Repository, uri: web::Path<GitTreeRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+    let transaction = db_pool.begin().await?;
+
+    render(Some(uri.tree.as_str()), repo, &uri.namespace, web_user, transaction).await
+}
+
+#[route("/{namespace}/{repository}", method = "GET", err = "html")]
+pub(crate) async fn view_repo(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+    let transaction = db_pool.begin().await?;
+
+    let extensions = request.extensions();
+    let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
+    render(None, repo, &repo_owner.0, web_user, transaction).await
+}

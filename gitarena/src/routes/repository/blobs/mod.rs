@@ -12,7 +12,7 @@ pub(crate) struct BlobRequest {
     // Currently not implemented in actix-web: https://github.com/actix/actix-web/issues/2626
     //#[serde(flatten)]
     //pub(crate) repo: GitRequest,
-    pub(crate) username: String,
+    pub(crate) namespace: String,
     pub(crate) repository: String,
 
     pub(crate) tree: String,

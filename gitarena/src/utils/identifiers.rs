@@ -24,86 +24,86 @@ pub(crate) fn is_valid(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '-' || c == '_'
 }
 
-/// Checks if the string is a reserved username.
+/// Checks if the string is a reserved namespace name.
 ///
-/// This method checks the input string against the list of hardcoded, reserved usernames.
-/// These exist to prevent route mismatches, as user profiles are located at `/<username>`.
+/// This method checks the input string against the list of hardcoded, reserved names.
+/// These exist to prevent route mismatches, as user and org profiles are located at `/<name>`.
 ///
-/// For example: `login` is a reserved username as `/login` is the route used for logging in.
-/// If somebody registered `login` as their username, their profile would not be visitable.
+/// For example: `login` is reserved as `/login` is the route used for logging in.
 ///
 /// # Example
 ///
 /// ```
-/// use crate::utils::identifiers::is_reserved_username;
+/// use crate::utils::identifiers::is_reserved_namespace;
 ///
-/// assert!(is_reserved_username("mellowagain")); // Valid
-/// assert!(!is_reserved_username("login")); // Invalid
+/// assert!(is_reserved_namespace("mellowagain")); // Valid
+/// assert!(!is_reserved_namespace("login")); // Invalid
 /// ```
-pub(crate) fn is_reserved_username(input: &str) -> bool {
-    const ILLEGAL_USERNAMES: [&str; 7] = ["admin", "api", "login", "logout", "new", "register", "static"];
+pub(crate) fn is_reserved_namespace(input: &str) -> bool {
+    const ILLEGAL_NAMES: [&str; 8] = ["admin", "api", "login", "logout", "new", "orgs", "register", "static"];
 
     let lower_case = input.to_lowercase();
-    ILLEGAL_USERNAMES.contains(&lower_case.as_str())
+    ILLEGAL_NAMES.contains(&lower_case.as_str())
 }
 
-/// Checks if the string is a valid username.
+/// Checks if the string is a valid namespace (username or organization name).
 /// Returns `Ok` on success and [HttpError][0] with error string on failure.
 ///
-/// This method checks if the username is:
+/// This method checks if the name is:
 /// - At least 3 characters long
 /// - At max 32 characters long
 /// - [A valid identifier](is_valid)
-/// - [Not a reserved username](is_reserved_username)
+/// - [Not a reserved name](is_reserved_namespace)
 /// - [Legal for the current OS filesystem](is_fs_legal)
 ///
 /// [0]: crate::error::GAErrors::HttpError
-pub(crate) fn validate_username(input: &str) -> Result<()> {
+pub(crate) fn validate_namespace(input: &str) -> Result<()> {
     if input.len() < 3 || input.len() > 32 || !input.chars().all(is_valid) {
         die!(
             BAD_REQUEST,
-            "Username must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -"
+            "Name must be between 3 and 32 characters long and may only contain a-z, 0-9, _ or -"
         );
     }
 
-    if is_reserved_username(input) {
-        die!(CONFLICT, "Username is a reserved identifier");
+    if is_reserved_namespace(input) {
+        die!(CONFLICT, "Name is a reserved identifier");
     }
 
     if !is_fs_legal(input) {
-        die!(BAD_REQUEST, "Username is illegal");
+        die!(BAD_REQUEST, "Name is illegal");
     }
 
     Ok(())
 }
 
-/// Checks if the string is already a taken username.
+/// Checks if the string is already taken as a namespace (checks both users and organizations).
 ///
-/// This method requires a database connection as it will check the provided input against the user table.
-/// `input` _should_ already be checked to be a valid identifier ([is_valid] and [is_reserved_username]).
+/// This method requires a database connection as it will check the provided input against
+/// both the `users` and `organizations` tables, since they share a single namespace.
 ///
-/// # Example
-///
-/// ```
-/// use crate::utils::identifiers::is_username_taken;
-///
-/// assert!(!is_username_taken("mellowagain"));
-/// ```
-pub(crate) async fn is_username_taken(input: &str, tx: &mut Transaction<'_, Database>) -> Result<bool> {
-    let (username_exists,): (bool,) = sqlx::query_as("select exists(select 1 from users where lower(username) = lower($1) limit 1)")
-        .bind(input)
-        .fetch_one(&mut **tx)
-        .await?;
+/// `input` _should_ already be checked to be a valid identifier ([is_valid] and [is_reserved_namespace]).
+pub(crate) async fn is_namespace_taken(input: &str, tx: &mut Transaction<'_, Database>) -> Result<bool> {
+    let (taken,): (bool,) = sqlx::query_as(
+        "select exists(\
+            select 1 from users where lower(username) = lower($1) \
+            union all \
+            select 1 from organizations where lower(name) = lower($1) \
+            limit 1\
+        )",
+    )
+    .bind(input)
+    .fetch_one(&mut **tx)
+    .await?;
 
-    Ok(username_exists)
+    Ok(taken)
 }
 
 /// Checks if the string is a reserved repository name.
 ///
 /// This method checks the input string against the list of hardcoded, reserved repository names.
-/// These exist to prevent route mismatches, as repositories are located at `/<username>/<repo name>`.
+/// These exist to prevent route mismatches, as repositories are located at `/<namespace>/<repo name>`.
 ///
-/// For example: `repositories` is a reserved repo name as `/<username>/repositories` is the route used for viewing a list of an users repositories.
+/// For example: `repositories` is a reserved repo name as `/<namespace>/repositories` is the route used for viewing a list of repositories.
 /// If somebody created a repository with the name `repositories`, their repository would not be visitable.
 ///
 /// # Example

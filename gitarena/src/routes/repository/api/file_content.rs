@@ -25,7 +25,7 @@ const MAX_TEXT_SIZE: usize = 5_000_000; // 5 MB
 
 #[derive(Deserialize)]
 struct FileContentRequest {
-    username: String,
+    namespace: String,
     repository: String,
     tree: String,
     file_path: String,
@@ -48,9 +48,9 @@ struct FileContentResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/branch/{tree}/files/{file_path}",
+    path = "/api/repos/{namespace}/{repository}/branch/{tree}/files/{file_path}",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("tree" = String, Path, description = "Branch name (short form like 'main', or full ref like 'refs/heads/main')"),
         ("file_path" = String, Path, description = "File path relative to the repository root. May contain slashes for files inside directories (e.g. 'src/main.rs' or 'a/b/c/file.txt')"),
@@ -63,7 +63,7 @@ struct FileContentResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/branch/{tree}/files/{file_path:.*}", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/branch/{tree}/files/{file_path:.*}", method = "GET", err = "json")]
 pub(crate) async fn file_content(repo: Repository, branch: Branch, uri: web::Path<FileContentRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

@@ -1,10 +1,11 @@
 use crate::config::get_optional_setting;
 use crate::die;
 use crate::git::write;
+use crate::organization::{OrgMember, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::repository::api::CreateJsonResponse;
-use crate::user::{User, WebUser};
+use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
@@ -15,8 +16,6 @@ use serde::Deserialize;
 use tracing::{info, instrument};
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-// This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
 
 #[utoipa::path(
     post,
@@ -33,10 +32,7 @@ use uuid::Uuid;
 )]
 #[route("/api/repo", method = "POST", err = "json")]
 pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-
     let user = web_user.into_user()?;
-
     let name = &body.name;
 
     if name.is_empty() || name.len() > 32 || !name.chars().all(is_valid) {
@@ -60,29 +56,44 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         die!(BAD_REQUEST, "Description may only be up to 256 characters long");
     }
 
+    let mut tx = db_pool.begin().await?;
+
+    // Resolve namespace to either the authenticated user or an org the user has access to
+    let (owner_id, owner_name) = if body.namespace == user.username {
+        (user.id, user.username.clone())
+    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
+        // User must be a member of the org to create repositories under it
+        if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
+            die!(FORBIDDEN, "You are not a member of this organization");
+        }
+        (org.id, org.name.clone())
+    } else {
+        die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
+    };
+
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(user.id)
+        .bind(owner_id)
         .bind(name)
-        .fetch_one(&mut *transaction)
+        .fetch_one(&mut *tx)
         .await?;
 
     if exists {
-        die!(CONFLICT, "Repository name already in use for your account");
+        die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
     let repo: Repository = sqlx::query_as::<_, Repository>(
         "insert into repositories (id, owner, name, description, visibility, default_branch) values ($1, $2, $3, $4, $5, $6) returning *",
     )
     .bind(Uuid::now_v7())
-    .bind(user.id)
+    .bind(owner_id)
     .bind(name)
     .bind(description)
     .bind(body.visibility)
     .bind(&body.default_branch)
-    .fetch_one(&mut *transaction)
+    .fetch_one(&mut *tx)
     .await?;
 
-    repo.create_fs(&mut transaction).await?;
+    repo.create_fs(&mut tx).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
     if let Some(readme) = body.readme
@@ -100,15 +111,12 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         // todo: include https://github.com/github/gitignore
     }
 
-    let domain = get_optional_setting::<String>("domain", &mut transaction).await?.unwrap_or_default();
-    let path = format!("/{}/{}", &user.username, &repo.name);
+    let domain = get_optional_setting::<String>("domain", &mut tx).await?.unwrap_or_default();
+    let path = format!("/{}/{}", &owner_name, &repo.name);
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
-    let owner = &user.username;
-    let name = &repo.name;
-
-    info!(id = %repo.id, owner, name, "New repository created");
+    info!(id = %repo.id, owner = owner_name, name = repo.name.as_str(), "New repository created");
 
     Ok(HttpResponse::Ok().json(CreateJsonResponse {
         id: repo.id,
@@ -117,7 +125,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 }
 
 #[instrument(err, skip(db_pool))]
-async fn create_file(repo: &Repository, user: &User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
+async fn create_file(repo: &Repository, user: &crate::user::User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
     let libgit2_repo = {
         let mut transaction = db_pool.begin().await?;
         let libgit2_repo = repo.libgit2(&mut transaction).await?;
@@ -131,6 +139,8 @@ async fn create_file(repo: &Repository, user: &User, file_name: &str, content: &
 #[derive(Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateJsonRequest {
+    /// Namespace (username or org name) under which the repo should be created
+    namespace: String,
     /// Repository name
     #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
     name: String,

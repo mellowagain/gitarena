@@ -39,9 +39,9 @@ pub(crate) struct RepoStatsDetailResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/stats",
+    path = "/api/repos/{namespace}/{repository}/stats",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
@@ -51,7 +51,7 @@ pub(crate) struct RepoStatsDetailResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/stats", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/stats", method = "GET", err = "json")]
 pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
@@ -82,9 +82,9 @@ pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web:
 
 #[utoipa::path(
     post,
-    path = "/api/repo/{username}/{repository}/star",
+    path = "/api/repo/{namespace}/{repository}/star",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
@@ -96,7 +96,7 @@ pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web:
     security(("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}/star", method = "POST", err = "json")]
+#[route("/api/repo/{namespace}/{repository}/star", method = "POST", err = "json")]
 pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -115,9 +115,9 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
 
 #[utoipa::path(
     delete,
-    path = "/api/repo/{username}/{repository}/star",
+    path = "/api/repo/{namespace}/{repository}/star",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
@@ -129,7 +129,7 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
     security(("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}/star", method = "DELETE", err = "json")]
+#[route("/api/repo/{namespace}/{repository}/star", method = "DELETE", err = "json")]
 pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -147,7 +147,7 @@ pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: we
 }
 
 // not utopia annotated because its not a json api, but TODO we should change this
-#[route("/api/repo/{username}/{repository}/star", method = "PUT", err = "text")]
+#[route("/api/repo/{namespace}/{repository}/star", method = "PUT", err = "text")]
 pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
