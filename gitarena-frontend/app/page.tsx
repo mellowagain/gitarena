@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -21,12 +21,14 @@ import {
     Construction,
     CheckCircle2,
     X,
+    AlertTriangle,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+import { formatDistanceToNow, addHours } from "date-fns";
 import * as allLangs from "linguist-languages";
 
 function languageColor(name: string): string {
@@ -39,6 +41,14 @@ function languageColor(name: string): string {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     return `hsl(${Math.abs(hash) % 360}, 60%, 55%)`;
+}
+
+interface EmailResponse {
+    id: number;
+    email: string;
+    primary: boolean;
+    createdAt: string;
+    verifiedAt: string | null;
 }
 
 interface UserProfileRepo {
@@ -108,6 +118,7 @@ export default function DashboardPage() {
     const { user, error, isLoading } = useAuth();
 
     const [showVerifiedNotice, setShowVerifiedNotice] = useState(false);
+    const handleVerified = useCallback(() => setShowVerifiedNotice(true), []);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -118,6 +129,12 @@ export default function DashboardPage() {
     const [repoFilter, setRepoFilter] = useState<"all" | "owned" | "starred">("all");
 
     const { data: profile, isLoading: profileLoading } = useSWR<UserProfileResponse>(user ? `/api/users/${user.username}` : null);
+    const { data: emails } = useSWR<EmailResponse[]>(user ? "/api/emails" : null);
+
+    const primaryEmail = emails?.find((e) => e.primary) ?? null;
+    const emailUnverified = primaryEmail !== null && primaryEmail?.verifiedAt === null;
+    const verifyDeadline = primaryEmail ? addHours(new Date(primaryEmail.createdAt), 24) : null;
+    const verifyExpired = emailUnverified && verifyDeadline !== null && verifyDeadline < new Date();
 
     const repos = profile?.repos ?? [];
     const filteredRepos = repos.filter(() => {
@@ -163,7 +180,7 @@ export default function DashboardPage() {
                     <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
                         {/* Email verified notice */}
                         <Suspense>
-                            <VerifiedNotice onShow={() => setShowVerifiedNotice(true)} />
+                            <VerifiedNotice onShow={handleVerified} />
                         </Suspense>
 
                         {showVerifiedNotice && (
@@ -178,6 +195,33 @@ export default function DashboardPage() {
                                         <X className="h-4 w-4" />
                                     </button>
                                 </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {verifyExpired && !showVerifiedNotice && (
+                            <Alert className="mb-6 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400">
+                                <AlertCircle className="h-4 w-4" />
+                                <p className="col-start-2 text-sm text-red-700 dark:text-red-400">
+                                    Your email verification deadline has passed and the link in your email has expired. Please{" "}
+                                    <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
+                                        resend the verification email
+                                    </Link>
+                                    . If you log out you will be blocked from signing back in until your email is verified.
+                                </p>
+                            </Alert>
+                        )}
+
+                        {emailUnverified && !verifyExpired && verifyDeadline && !showVerifiedNotice && (
+                            <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">
+                                <AlertTriangle className="h-4 w-4" />
+                                <p className="col-start-2 text-sm text-yellow-700 dark:text-yellow-400">
+                                    Please verify your email within{" "}
+                                    <span className="font-medium">{formatDistanceToNow(verifyDeadline)}</span> to not lose access to your
+                                    account.{" "}
+                                    <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
+                                        Resend verification email
+                                    </Link>
+                                </p>
                             </Alert>
                         )}
 
