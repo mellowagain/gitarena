@@ -9,6 +9,7 @@ use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 const MAX_LINES_PER_FILE: usize = 5_000;
 
@@ -22,7 +23,7 @@ pub(crate) struct SignatureInfo {
     /// Unix timestamp
     timestamp: i64,
     /// GitArena user ID, if the email matches a registered user
-    uid: Option<i32>,
+    uid: Option<Uuid>,
 }
 
 #[derive(Serialize, ToSchema)]

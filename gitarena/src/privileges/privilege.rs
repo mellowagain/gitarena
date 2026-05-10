@@ -7,12 +7,12 @@ use anyhow::{Context, Result};
 use gitarena_common::database::Database;
 use sqlx::{FromRow, Transaction};
 use tracing::{Level, instrument};
+use uuid::Uuid;
 
 #[derive(FromRow, Debug)]
 pub(crate) struct Privilege {
-    pub(crate) id: i32,
-    pub(crate) user_id: i32,
-    pub(crate) repo_id: i32,
+    pub(crate) user_id: Uuid,
+    pub(crate) repo_id: Uuid,
     pub(crate) access_level: AccessLevel,
 }
 

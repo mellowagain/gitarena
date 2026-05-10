@@ -33,7 +33,7 @@ interface SignatureInfo {
     name: string;
     email: string;
     timestamp: number;
-    uid: number | null;
+    uid: string | null;
 }
 
 interface CommitMeta {

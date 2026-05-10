@@ -8,6 +8,7 @@ use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
 use tracing_unwrap::OptionExt;
+use uuid::Uuid;
 
 #[route("/api/verify/{token}", method = "GET", err = "json")]
 pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
@@ -19,7 +20,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     let mut transaction = db_pool.begin().await?;
 
-    let option: Option<(i32, i32)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
+    let option: Option<(Uuid, Uuid)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
         .bind(token)
         .fetch_optional(&mut *transaction)
         .await?;
@@ -42,7 +43,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     transaction.commit().await?;
 
-    info!(user.id = user_id, "User verified their e-mail");
+    info!(user.id = %user_id, "User verified their e-mail");
 
     Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, "/?verified=true")).finish())
 }

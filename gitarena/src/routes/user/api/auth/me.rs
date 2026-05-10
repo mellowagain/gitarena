@@ -6,6 +6,7 @@ use anyhow::Result;
 use gitarena_macros::route;
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     get,
@@ -33,7 +34,7 @@ pub(crate) async fn get_me(web_user: WebUser) -> Result<impl Responder> {
 
 #[derive(Serialize, ToSchema)]
 pub(crate) struct MeResponse {
-    pub(crate) id: i32,
+    pub(crate) id: Uuid,
     pub(crate) username: String,
     pub(crate) admin: bool,
 }

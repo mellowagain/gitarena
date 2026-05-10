@@ -58,7 +58,7 @@ interface CreateRepoRequest {
 }
 
 interface CreateRepoResponse {
-    id: number;
+    id: string;
     url: string;
 }
 

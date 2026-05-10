@@ -69,7 +69,7 @@ interface ImportRepoRequest {
 }
 
 interface ImportRepoResponse {
-    id: number;
+    id: string;
     url: string;
 }
 

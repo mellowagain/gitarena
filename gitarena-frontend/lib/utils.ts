@@ -21,3 +21,13 @@ export const shortLocale: Locale = {
     ...enUS,
     formatDistance: (token, count) => `${count}${shortDistanceLocale[token]}`,
 };
+
+/**
+ * Extracts the creation timestamp embedded in a UUIDv7 string.
+ * UUIDv7 stores a 48-bit Unix timestamp in milliseconds in the first 12 hex digits.
+ */
+export function uuidToDate(uuid: string): Date {
+    const hex = uuid.replace(/-/g, "").slice(0, 12);
+    const ms = parseInt(hex, 16);
+    return new Date(ms);
+}

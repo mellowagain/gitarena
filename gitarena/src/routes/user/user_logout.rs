@@ -19,7 +19,7 @@ pub(crate) async fn logout(_request: HttpRequest, id: Identity, db_pool: web::Da
     let mut transaction = db_pool.begin().await?;
 
     if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await.ok().flatten() {
-        debug!(user.id = session.user_id, "User logged out");
+        debug!(user.id = %session.user_id, "User logged out");
         session.destroy(&mut transaction).await?;
     }
 

@@ -86,7 +86,7 @@ pub(crate) async fn delete_passkey(path: web::Path<Uuid>, web_user: WebUser, db_
 
     tx.commit().await?;
 
-    debug!(user.username, user.id, %passkey_id, "Deleted passkey");
+    debug!(user.username, user.id = %user.id, %passkey_id, "Deleted passkey");
 
     Ok(HttpResponse::NoContent().finish())
 }
@@ -117,7 +117,7 @@ pub(crate) async fn post_register_start(web_user: WebUser, webauthn: web::Data<W
         .collect();
 
     // we use uuid v5 with the user id because the web authn spec requires a stable user identifier
-    let user_handle = Uuid::new_v5(&Uuid::NAMESPACE_OID, &user.id.to_le_bytes());
+    let user_handle = Uuid::new_v5(&Uuid::NAMESPACE_OID, user.id.as_bytes());
 
     let (ccr, skr) = webauthn
         .start_passkey_registration(user_handle, &user.username, &user.username, Some(exclude_credentials))
@@ -203,7 +203,7 @@ pub(crate) async fn post_register_finish(
 
     tx.commit().await?;
 
-    debug!(user.username, user.id, "Registered new passkey");
+    debug!(user.username, user.id = %user.id, "Registered new passkey");
 
     Ok(HttpResponse::Created().finish())
 }
@@ -326,7 +326,7 @@ pub(crate) async fn post_login_finish(
         .await?
         .ok_or_else(|| err!(NOT_FOUND, "User not found for passkey"))?;
 
-    let primary_email = Email::find_primary_email(&user, &mut tx)
+    let primary_email = Email::find_primary_email(user.id, &mut tx)
         .await?
         .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
@@ -341,7 +341,7 @@ pub(crate) async fn post_login_finish(
     let session = Session::new(&request, &user, &mut tx).await?;
     id.remember(session.to_string());
 
-    debug!(user.username, user.id, "User logged in via passkey");
+    debug!(user.username, user.id = %user.id, "User logged in via passkey");
 
     tx.commit().await?;
 

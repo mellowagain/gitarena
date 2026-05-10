@@ -3,6 +3,7 @@ use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
 use crate::{die, err};
 use gitarena_common::database::Pool;
+use uuid::Uuid;
 
 use std::fs;
 use std::io::Cursor;
@@ -198,5 +199,5 @@ async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpRespons
 
 #[derive(Deserialize)]
 pub(crate) struct AvatarRequest {
-    user_id: i32,
+    user_id: Uuid,
 }

@@ -102,7 +102,7 @@ Closes #42`,
 type ActivityItem =
     | {
           type: "comment";
-          id: number;
+          id: string;
           author: string;
           isBot?: boolean;
           content: string;
@@ -112,7 +112,7 @@ type ActivityItem =
       }
     | {
           type: "diff_comment";
-          id: number;
+          id: string;
           author: string;
           content: string;
           createdAt: string;
@@ -120,7 +120,7 @@ type ActivityItem =
           lines: { lineNo: number; type: "context" | "add" | "remove"; content: string }[];
           reactions: { emoji: string; count: number; reacted: boolean }[];
       }
-    | { type: "event"; id: number; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
+    | { type: "event"; id: string; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
 
 const activity: ActivityItem[] = [
     {

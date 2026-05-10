@@ -9,20 +9,20 @@ use russh::keys::ssh_key::Fingerprint;
 use serde::{Serialize, Serializer};
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
+use uuid::Uuid;
 
 #[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[display("{title}")]
 pub(crate) struct SshKey {
-    pub(crate) id: i32,
-    pub(crate) owner: i32,
+    pub(crate) id: Uuid,
+    pub(crate) owner: Uuid,
     pub(crate) title: String,
     pub(crate) fingerprint: String,
     pub(crate) algorithm: KeyType,
     #[serde(rename = "pubkey", serialize_with = "serialize_key_as_base64")]
     #[debug(skip)]
     key: Vec<u8>,
-    pub(crate) created_at: DateTime<Utc>,
     pub(crate) expires_at: Option<DateTime<Utc>>,
 }
 

@@ -6,6 +6,7 @@ use gitarena_common::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
+use uuid::Uuid;
 
 #[utoipa::path(
     get,
@@ -32,7 +33,7 @@ pub(crate) async fn get_ssh_keys(web_user: WebUser, db_pool: web::Data<Pool>) ->
 #[utoipa::path(
     delete,
     path = "/api/ssh-keys/{id}",
-    params(("id" = i32, Path, description = "SSH key ID")),
+    params(("id" = Uuid, Path, description = "SSH key ID")),
     responses(
         (status = 204, description = "SSH key deleted"),
         (status = 401, description = "Authentication required"),
@@ -42,7 +43,7 @@ pub(crate) async fn get_ssh_keys(web_user: WebUser, db_pool: web::Data<Pool>) ->
     tag = "user"
 )]
 #[route("/api/ssh-keys/{id}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_ssh_key(path: web::Path<i32>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_ssh_key(path: web::Path<Uuid>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let key_id = path.into_inner();

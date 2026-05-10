@@ -20,6 +20,7 @@ use serde_json::Value;
 use sqlx::Transaction;
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
+use uuid::Uuid;
 
 pub(crate) struct BitBucketSSO;
 
@@ -109,7 +110,8 @@ impl SSOProvider for BitBucketSSO {
             username = crypto::random_numeric_ascii_string(16)?;
         }
 
-        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+        let user: User = sqlx::query_as::<_, User>("insert into users (id, username, password) values ($1, $2, $3) returning *")
+            .bind(Uuid::now_v7())
             .bind(username.as_str())
             .bind("sso-login")
             .fetch_one(&mut *transaction)
@@ -155,8 +157,9 @@ impl SSOProvider for BitBucketSSO {
 
             // All email addresses have already been verified by Bitbucket, so we also mark them as verified
             sqlx::query(
-                "insert into emails (owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $3, $3, $3, current_timestamp)",
+                "insert into emails (id, owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $4, $4, $4, $4, current_timestamp)",
             )
+            .bind(Uuid::now_v7())
             .bind(user.id)
             .bind(email)
             .bind(primary)

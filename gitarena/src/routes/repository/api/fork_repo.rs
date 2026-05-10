@@ -12,6 +12,7 @@ use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
 use tracing::info;
+use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -50,15 +51,17 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
         die!(CONFLICT, "Repository name already in use for your account");
     }
 
-    let new_repo =
-        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5) returning *")
-            .bind(user.id)
-            .bind(&repo.name)
-            .bind(&repo.description)
-            .bind(repo.visibility)
-            .bind(repo.id)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let new_repo = sqlx::query_as::<_, Repository>(
+        "insert into repositories (id, owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5, $6) returning *",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user.id)
+    .bind(&repo.name)
+    .bind(&repo.description)
+    .bind(repo.visibility)
+    .bind(repo.id)
+    .fetch_one(&mut *transaction)
+    .await?;
 
     let old_path = repo.get_fs_path(&mut transaction).await?;
     let new_path = new_repo.get_fs_path(&mut transaction).await?;
@@ -76,10 +79,10 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
     let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
 
     info!(
-        target.id = new_repo.id,
+        target.id = %new_repo.id,
         target.owner = user.username,
         target.name = new_repo.name,
-        source.id = repo.id,
+        source.id = %repo.id,
         source.owner = %repo_owner,
         source.name = repo.name,
         "New repository forked"

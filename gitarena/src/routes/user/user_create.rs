@@ -15,6 +15,7 @@ use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
+use uuid::Uuid;
 
 #[route("/api/user", method = "POST", err = "json")]
 pub(crate) async fn post_register(
@@ -84,15 +85,17 @@ pub(crate) async fn post_register(
         }
     }
 
-    let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+    let user: User = sqlx::query_as::<_, User>("insert into users (id, username, password) values ($1, $2, $3) returning *")
+        .bind(Uuid::now_v7())
         .bind(username)
         .bind(&password)
         .fetch_one(&mut *tx)
         .await?;
 
     let email = sqlx::query_as::<_, Email>(
-        "insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, true, true, true, true) returning *",
+        "insert into emails (id, owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, true, true, true, true) returning *",
     )
+    .bind(Uuid::now_v7())
     .bind(user.id)
     .bind(email)
     .fetch_one(&mut *tx)
@@ -110,7 +113,7 @@ pub(crate) async fn post_register(
 
     tx.commit().await?;
 
-    info!(user.username, user.id, "New user signed up");
+    info!(user.username, user.id = %user.id, "New user signed up");
 
     Ok(HttpResponse::Ok().json(MeResponse {
         id: user.id,

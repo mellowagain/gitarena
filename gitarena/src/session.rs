@@ -15,15 +15,15 @@ use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use tracing::{instrument, warn};
 use tracing_unwrap::ResultExt;
+use uuid::Uuid;
 
 #[derive(FromRow, Debug, Serialize)]
 pub(crate) struct Session {
-    pub(crate) user_id: i32,
+    pub(crate) user_id: Uuid,
     #[serde(skip_serializing)]
     pub(crate) hash: String,
     pub(crate) ip_address: IpNetwork,
     pub(crate) user_agent: String, // TODO: Move this to a dedicated table to prevent duplicates
-    created_at: DateTime<Local>,
     pub(crate) updated_at: DateTime<Local>,
 }
 
@@ -57,7 +57,12 @@ impl Session {
         match identity {
             Some(identity) => {
                 let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
-                let user_id = user_id_str.parse::<i32>()?;
+
+                // Old sessions used i32 user IDs; if parsing as UUID fails, treat as expired and force logout
+                let user_id = match user_id_str.parse::<Uuid>() {
+                    Ok(id) => id,
+                    Err(_) => return Ok(None),
+                };
 
                 let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
                     .bind(user_id)

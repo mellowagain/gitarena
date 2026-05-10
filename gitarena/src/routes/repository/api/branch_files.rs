@@ -4,6 +4,7 @@ use crate::git::history::batch_last_commits;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::{Branch, Repository};
+use uuid::Uuid;
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -65,7 +66,7 @@ pub(crate) struct CommitInfo {
     /// Author email address
     pub(crate) author_email: String,
     /// GitArena user ID of the author
-    pub(crate) author_uid: Option<i32>,
+    pub(crate) author_uid: Option<Uuid>,
 }
 
 #[derive(Serialize, ToSchema)]

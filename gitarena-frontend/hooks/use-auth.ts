@@ -3,7 +3,7 @@ import useSWRMutation from "swr/mutation";
 import { authFetcher, postJsonFetcher, postFetcher } from "@/lib/fetchers";
 
 export interface AuthUser {
-    id: number;
+    id: string;
     username: string;
     admin: boolean;
 }

@@ -63,33 +63,33 @@ pub(crate) async fn post_login(
     };
 
     if user.password == "sso-login" {
-        debug!(user.username, user.id, "Received password login request for an SSO-registered user");
+        debug!(user.username, user.id = %user.id, "Received password login request for an SSO-registered user");
         die!(UNAUTHORIZED, "This account was registered with SSO. Use an SSO provider to sign in.");
     }
 
     if !crypto::check_password(&user, password)? {
-        debug!(user.username, user.id, "Received login request with wrong password");
+        debug!(user.username, user.id = %user.id, "Received login request with wrong password");
         die!(UNAUTHORIZED, "Invalid credentials");
     }
 
-    let primary_email = Email::find_primary_email(&user, &mut transaction)
+    let primary_email = Email::find_primary_email(user.id, &mut transaction)
         .await?
         .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
     if user.disabled {
-        debug!(user.username, user.id, "Received login request for disabled user");
+        debug!(user.username, user.id = %user.id, "Received login request for disabled user");
         die!(FORBIDDEN, "Account has been disabled. Please contact support.");
     }
 
     if !primary_email.is_allowed_login() {
-        debug!(user.username, user.id, "Received login request from unverified user");
+        debug!(user.username, user.id = %user.id, "Received login request from unverified user");
         die!(FORBIDDEN, "Verify your email address before logging in.");
     }
 
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
 
-    debug!(user.username, user.id, "User logged in");
+    debug!(user.username, user.id = %user.id, "User logged in");
 
     transaction.commit().await?;
 

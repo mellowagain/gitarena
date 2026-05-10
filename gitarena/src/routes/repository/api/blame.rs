@@ -2,6 +2,7 @@ use crate::err;
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::{Branch, Repository};
 use std::path::Path;
+use uuid::Uuid;
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
@@ -26,7 +27,7 @@ pub(crate) struct BlameHunk {
     commit_id: String,
     author_name: String,
     /// GitArena user ID of the author, if matched
-    author_uid: Option<i32>,
+    author_uid: Option<Uuid>,
     author_email: String,
     /// Unix timestamp of the commit
     timestamp: i64,

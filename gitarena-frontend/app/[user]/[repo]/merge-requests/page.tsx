@@ -31,7 +31,7 @@ type MRStatus = "open" | "merged" | "closed" | "draft";
 type ReviewStatus = "pending" | "approved" | "changes_requested" | "none";
 
 type MergeRequest = {
-    id: number;
+    id: string;
     title: string;
     status: MRStatus;
     reviewStatus: ReviewStatus;

@@ -16,6 +16,7 @@ use anyhow::Result;
 use futures::StreamExt;
 use gitarena_macros::route;
 use opentelemetry::KeyValue;
+use uuid::Uuid;
 
 #[route("/{username}/{repository}.git/git-receive-pack", method = "POST", err = "git")]
 pub(crate) async fn git_receive_pack(
@@ -34,7 +35,7 @@ pub(crate) async fn git_receive_pack(
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
+    let user_option: Option<(Uuid,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
         .bind(&uri.username)
         .fetch_optional(&mut *transaction)
         .await?;

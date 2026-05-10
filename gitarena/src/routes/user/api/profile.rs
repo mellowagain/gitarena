@@ -5,21 +5,20 @@ use gitarena_common::database::Pool;
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use gitarena_common::database::Database;
 use gitarena_macros::route;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 use sqlx::{FromRow, Transaction};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UserProfileResponse {
-    id: i32,
+    id: Uuid,
     username: String,
     admin: bool,
-    created_at: DateTime<Utc>,
     repos: Vec<UserProfileRepo>,
     stats: UserProfileStats,
 }
@@ -35,7 +34,7 @@ pub(crate) struct UserProfileStats {
 #[derive(FromRow, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UserProfileRepo {
-    id: i32,
+    id: Uuid,
     name: String,
     description: String,
     visibility: RepoVisibility,
@@ -79,13 +78,12 @@ pub(crate) async fn get_user_profile(path: web::Path<String>, web_user: WebUser,
         id: target.id,
         username: target.username,
         admin: target.admin,
-        created_at: target.created_at,
         repos,
         stats,
     }))
 }
 
-async fn get_user_repos(user_id: i32, is_self: bool, can_see_internal: bool, tx: &mut Transaction<'_, Database>) -> Result<Vec<UserProfileRepo>> {
+async fn get_user_repos(user_id: Uuid, is_self: bool, can_see_internal: bool, tx: &mut Transaction<'_, Database>) -> Result<Vec<UserProfileRepo>> {
     let mut query = "select repositories.id, \
          repositories.name, \
          repositories.description, \
@@ -112,7 +110,7 @@ async fn get_user_repos(user_id: i32, is_self: bool, can_see_internal: bool, tx:
     Ok(sqlx::query_as(&query).bind(user_id).fetch_all(&mut **tx).await?)
 }
 
-async fn get_user_stats(user_id: i32, tx: &mut Transaction<'_, Database>) -> Result<UserProfileStats> {
+async fn get_user_stats(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<UserProfileStats> {
     let row: (i64, i64, i64) = sqlx::query_as(
         "select \
          (select count(*) from repositories where owner = $1 and disabled = false) as repos, \

@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
+import { uuidToDate } from "@/lib/utils";
 import useSWR from "swr";
 import { Star, Lock, Globe, Calendar, Pin, PinOff, ShieldCheck, Settings, Plus } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -16,7 +17,7 @@ import { jsonFetcher } from "@/lib/fetchers";
 import * as allLangs from "linguist-languages";
 
 interface UserProfileRepo {
-    id: number;
+    id: string;
     name: string;
     description: string;
     visibility: "public" | "internal" | "private";
@@ -32,10 +33,9 @@ interface UserProfileStats {
 }
 
 interface UserProfileResponse {
-    id: number;
+    id: string;
     username: string;
     admin: boolean;
-    createdAt: string;
     repos: UserProfileRepo[];
     stats: UserProfileStats;
 }
@@ -223,7 +223,7 @@ export default function UserProfilePage() {
     }
 
     const isCurrentUser = authUser != null && authUser.username.toLowerCase() === profile.username.toLowerCase();
-    const joinedFormatted = format(new Date(profile.createdAt), "MMMM yyyy");
+    const joinedFormatted = format(uuidToDate(profile.id), "MMMM yyyy");
 
     function togglePin(key: string) {
         setPinnedKeys((prev) => {

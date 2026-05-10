@@ -92,14 +92,14 @@ pub struct SSHKey {
 type ActivityItem =
     | {
           type: "comment";
-          id: number;
+          id: string;
           author: string;
           isBot?: boolean;
           content: string;
           createdAt: string;
           reactions: { emoji: string; count: number; reacted: boolean }[];
       }
-    | { type: "event"; id: number; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
+    | { type: "event"; id: string; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
 
 const activity: ActivityItem[] = [
     {

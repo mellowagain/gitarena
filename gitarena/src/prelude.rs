@@ -1,5 +1,6 @@
 use crate::user::User;
 use std::fmt;
+use uuid::Uuid;
 
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow, bail};
@@ -156,12 +157,12 @@ pub(crate) trait LibGit2SignatureExtensions {
     /// ```
     ///
     /// [signature]: git2::Signature
-    async fn try_disassemble(&self, tx: &mut Transaction<'_, Database>) -> (String, Option<i32>, String);
+    async fn try_disassemble(&self, tx: &mut Transaction<'_, Database>) -> (String, Option<Uuid>, String);
 }
 
 #[async_trait(?Send)]
 impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
-    async fn try_disassemble(&self, tx: &mut Transaction<'_, Database>) -> (String, Option<i32>, String) {
+    async fn try_disassemble(&self, tx: &mut Transaction<'_, Database>) -> (String, Option<Uuid>, String) {
         let email = self.email().unwrap_or("Invalid email address");
 
         User::find_using_email(email, tx).await.map_or_else(
