@@ -106,21 +106,21 @@ update issues set new_author = u.new_id from users u where issues.author = u.id;
 
 -- Phase 3: drop FK constraints
 
-alter table emails drop constraint emails_users_id_fk;
-alter table sessions drop constraint sessions_users_id_fk;
-alter table user_verifications drop constraint user_verifications_user_id_fkey;
-alter table ssh_keys drop constraint ssh_keys_users_id_fk;
-alter table repositories drop constraint repositories_users_id_fk;
-alter table privileges drop constraint privileges_users_id_fk;
-alter table privileges drop constraint privileges_repositories_id_fk;
-alter table stars drop constraint stars_users_id_fk;
-alter table stars drop constraint stars_repositories_id_fk;
-alter table issues drop constraint issues_repositories_id_fk;
-alter table issues drop constraint issues_users_id_fk;
-alter table sso drop constraint sso_users_id_fk;
-alter table passkeys drop constraint passkeys_user_id_fkey;
-alter table webauthn_challenges drop constraint webauthn_challenges_user_id_fkey;
-alter table organization_members drop constraint organization_members_user_id_fkey;
+alter table emails drop constraint if exists emails_users_id_fk;
+alter table sessions drop constraint if exists sessions_users_id_fk;
+alter table user_verifications drop constraint if exists user_verifications_user_id_fkey;
+alter table ssh_keys drop constraint if exists ssh_keys_users_id_fk;
+alter table repositories drop constraint if exists repositories_users_id_fk;
+alter table privileges drop constraint if exists privileges_users_id_fk;
+alter table privileges drop constraint if exists privileges_repositories_id_fk;
+alter table stars drop constraint if exists stars_users_id_fk;
+alter table stars drop constraint if exists stars_repositories_id_fk;
+alter table issues drop constraint if exists issues_repositories_id_fk;
+alter table issues drop constraint if exists issues_users_id_fk;
+alter table sso drop constraint if exists sso_users_id_fk;
+alter table passkeys drop constraint if exists passkeys_user_id_fkey;
+alter table webauthn_challenges drop constraint if exists webauthn_challenges_user_id_fkey;
+alter table organization_members drop constraint if exists organization_members_user_id_fkey;
 
 -- Phase 4: swap columns
 

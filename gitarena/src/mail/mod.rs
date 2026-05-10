@@ -20,7 +20,7 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
-use std::time::Duration;
+use std::time::{Duration, UNIX_EPOCH};
 use tracing::debug;
 use uuid::Uuid;
 
@@ -60,17 +60,16 @@ impl Email {
     pub(crate) fn is_allowed_login(&self) -> bool {
         assert!(self.primary);
 
-        match self.verified_at {
-            Some(_) => true,
-            None => {
-                // Allow login within 24 hours of account creation (timestamp embedded in UUIDv7)
-                let created_at = self.id.get_timestamp().map(|ts| {
-                    let (secs, nanos) = ts.to_unix();
-                    DateTime::<Local>::from(std::time::UNIX_EPOCH + std::time::Duration::new(secs, nanos))
-                });
+        if self.verified_at.is_some() {
+            true
+        } else {
+            // allow login within 24 hours of account creation
+            let created_at = self.id.get_timestamp().map(|ts| {
+                let (secs, nanos) = ts.to_unix();
+                DateTime::<Local>::from(UNIX_EPOCH + Duration::new(secs, nanos))
+            });
 
-                created_at.map(|t| Local::now().signed_duration_since(t).num_hours() < 24).unwrap_or(false)
-            }
+            created_at.is_some_and(|t| Local::now().signed_duration_since(t).num_hours() < 24)
         }
     }
 }

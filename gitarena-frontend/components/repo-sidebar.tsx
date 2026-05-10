@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
 import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
@@ -29,7 +30,7 @@ export type RepoSidebarProps = {
     user: string;
     repo: string;
     description: string;
-    projectId: number;
+    projectId: string;
     license?: string;
     websiteUrl?: string;
     createdAt?: string;
@@ -209,7 +210,14 @@ export function RepoSidebar({
                     <div className="space-y-2 text-sm">
                         <div className="flex items-center justify-between text-muted-foreground">
                             <span>Project ID</span>
-                            <span className="font-mono text-foreground">{projectId}</span>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="font-mono text-foreground cursor-default">{projectId.slice(-7)}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <span className="font-mono">{projectId}</span>
+                                </TooltipContent>
+                            </Tooltip>
                         </div>
                         <div className="flex items-center justify-between text-muted-foreground">
                             <span>Size</span>
