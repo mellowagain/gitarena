@@ -28,7 +28,7 @@ import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { formatDistanceToNow, addHours } from "date-fns";
+import { formatDistanceToNow, addHours, format } from "date-fns";
 import * as allLangs from "linguist-languages";
 
 function languageColor(name: string): string {
@@ -135,6 +135,7 @@ export default function DashboardPage() {
     const emailUnverified = primaryEmail !== null && primaryEmail?.verifiedAt === null;
     const verifyDeadline = primaryEmail ? addHours(new Date(primaryEmail.createdAt), 24) : null;
     const verifyExpired = emailUnverified && verifyDeadline !== null && verifyDeadline < new Date();
+    const deletionDate = primaryEmail ? addHours(new Date(primaryEmail.createdAt), 24 * 8) : null; // 24h verify deadline + 7 days
 
     const repos = profile?.repos ?? [];
     const filteredRepos = repos.filter(() => {
@@ -207,6 +208,13 @@ export default function DashboardPage() {
                                         resend the verification email
                                     </Link>
                                     . If you log out you will be blocked from signing back in until your email is verified.
+                                    {deletionDate && (
+                                        <>
+                                            {" "}
+                                            Your account is scheduled for deletion on{" "}
+                                            <span className="font-medium">{format(deletionDate, "PPP")}</span>.
+                                        </>
+                                    )}
                                 </p>
                             </Alert>
                         )}
