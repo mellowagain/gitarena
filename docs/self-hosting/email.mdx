@@ -1,69 +1,71 @@
 ---
 title: "Email"
-description: "Configure SMTP so GitArena can send email verification and notification messages."
+description: "Configure email delivery so GitArena can send verification messages."
 ---
 
-GitArena sends transactional emails for account verification. Without SMTP configured, verification emails aren't delivered and new accounts can't confirm their email addresses.
+GitArena sends transactional emails for account verification. Without email delivery configured, verification emails aren't delivered and new accounts can't confirm their email addresses.
+
+## How email delivery works
+
+Outgoing emails are queued in the database using an async job queue (powered by [fang](https://github.com/ayrat555/fang)). A dedicated pool of two workers picks up queued messages and sends them over SMTP. This means email delivery is non-blocking — the HTTP request that triggers an email returns immediately, and the message is sent in the background.
+
+Email templates are rendered server-side using [Askama](https://github.com/askama-rs/askama).
 
 ## SMTP configuration
 
-Configure your SMTP server in the `settings` table or from the admin panel:
+GitArena connects to an SMTP server to send emails. Configure the connection in the `settings` table or from the admin panel:
 
-| Key | Description | Example |
-|-----|-------------|---------|
-| `smtp.host` | SMTP server hostname | `smtp.example.com` |
-| `smtp.port` | SMTP server port | `587` |
-| `smtp.username` | SMTP login username | `noreply@example.com` |
-| `smtp.password` | SMTP login password | — |
-| `smtp.from` | From address for outgoing emails | `GitArena <noreply@example.com>` |
+| Key             | Description                      | Example               |
+|-----------------|----------------------------------|-----------------------|
+| `smtp.enabled`  | Enable or disable email delivery | `true`                |
+| `smtp.server`   | SMTP server hostname             | `smtp.resend.com`     |
+| `smtp.port`     | SMTP server port                 | `587`                 |
+| `smtp.username` | SMTP login username              | `resend`              |
+| `smtp.password` | SMTP login password or API key   | `api_key`             |
+| `smtp.address`  | From address for outgoing emails | `noreply@example.com` |
+| `smtp.tls`      | Use implicit TLS                 | `false`               |
 
 ```sql
-UPDATE settings SET value = 'smtp.example.com'              WHERE key = 'smtp.host';
-UPDATE settings SET value = '587'                           WHERE key = 'smtp.port';
-UPDATE settings SET value = 'noreply@example.com'           WHERE key = 'smtp.username';
-UPDATE settings SET value = 'your_password'                 WHERE key = 'smtp.password';
-UPDATE settings SET value = 'GitArena <noreply@example.com>' WHERE key = 'smtp.from';
+UPDATE settings SET value = 'true'                WHERE key = 'smtp.enabled';
+UPDATE settings SET value = 'smtp.resend.com'     WHERE key = 'smtp.server';
+UPDATE settings SET value = '587'                 WHERE key = 'smtp.port';
+UPDATE settings SET value = 'resend'              WHERE key = 'smtp.username';
+UPDATE settings SET value = 'your_api_key'        WHERE key = 'smtp.password';
+UPDATE settings SET value = 'noreply@example.com' WHERE key = 'smtp.address';
+UPDATE settings SET value = 'false'               WHERE key = 'smtp.tls';
 ```
 
-### Port selection
+### TLS selection
 
-| Port | Protocol | Use when |
-|------|----------|---------|
-| 587 | STARTTLS | Most providers; connection starts unencrypted and upgrades to TLS |
-| 465 | TLS | Implicit TLS from the start |
-| 25 | Plain | Avoid — blocked by most ISPs and cloud providers |
+| `smtp.tls` | Protocol     | Use when                                         |
+|------------|--------------|--------------------------------------------------|
+| `false`    | Plain        | Avoid — blocked by most ISPs and cloud providers |
+| `true`     | Implicit TLS | Require TLS from the start                       |
+
+`STARTTLS` is not supported yet. Make your voice heard on the issue tracker if you want this feature.
 
 ## Email verification flow
 
 When a user adds an email address (during registration or from account settings), GitArena:
 
-1. Creates a record in the `user_verifications` table with a random hex token.
-2. Sends a verification email containing a link: `https://your-instance/api/verify/{token}`.
-3. The token expires after 24 hours.
-
-When the user clicks the link:
-
-1. GitArena looks up the token in `user_verifications`.
-2. If valid and not expired, the email address is marked as verified.
-3. The verification record is deleted.
+<Steps>
+  <Step title="Create a verification record">
+    A row is inserted into the `user_verifications` table with a random hex token. The email send is queued in the job queue.
+  </Step>
+  <Step title="Send the verification email">
+    The email worker picks up the queued task and sends an email containing a link: `https://your-instance/api/verify/{token}`.
+  </Step>
+  <Step title="User clicks the link">
+    GitArena looks up the token, marks the email address as verified, and deletes the verification record. Tokens expire after 24 hours.
+  </Step>
+</Steps>
 
 Users can request a new verification email from their account settings if the link has expired.
 
-## Testing your configuration
+## Disabling email
 
-After saving SMTP settings, add an email address to a test account and check that the verification email arrives. If it doesn't:
+Set `smtp.enabled` to `false` to disable all outgoing email. Email tasks will still be queued but the worker will drop them silently. Verification links won't be sent, so new registrations won't be able to confirm their email addresses unless you re-enable email delivery later.
 
-1. Check the GitArena logs for SMTP errors.
-2. Verify the credentials and port against your mail provider's documentation.
-3. Confirm your server can reach the SMTP host — some cloud providers block outbound ports 25 and 465.
-
-## Using a mail relay service
-
-If your server's IP is on a blocklist or your provider restricts SMTP, use a transactional mail service such as [Postmark](https://postmarkapp.com), [Mailgun](https://www.mailgun.com), or [Amazon SES](https://aws.amazon.com/ses/). These services provide SMTP credentials that work the same way:
-
-```sql
-UPDATE settings SET value = 'smtp.postmarkapp.com' WHERE key = 'smtp.host';
-UPDATE settings SET value = '587'                  WHERE key = 'smtp.port';
-UPDATE settings SET value = 'your_api_token'       WHERE key = 'smtp.username';
-UPDATE settings SET value = 'your_api_token'       WHERE key = 'smtp.password';
-```
+<Note>
+  If `smtp.enabled` is `false`, the remaining SMTP settings are ignored and do not need to be configured.
+</Note>
