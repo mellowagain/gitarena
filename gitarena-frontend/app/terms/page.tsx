@@ -80,6 +80,7 @@ const sections: Section[] = [
         title: "8. Termination",
         content: [
             "You may delete your account at any time from your account settings. Deletion is permanent; your personal data and repository data will be removed within 30 days.",
+            "Accounts created without verifying the associated email address within 24 hours will be locked and scheduled for deletion 7 days after registration. You may prevent deletion by verifying your email before the 7-day period expires.",
             "We may suspend or terminate your account if we determine you have violated these Terms. We will aim to give advance notice unless doing so would create a security risk or legal liability.",
             "Provisions that by their nature survive termination — intellectual property, limitation of liability, and governing law — remain in effect after termination.",
         ],

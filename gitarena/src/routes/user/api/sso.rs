@@ -115,7 +115,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         .await?
         .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
-    if user.disabled || !primary_email.is_allowed_login() {
+    if user.disabled {
         debug!(
             %provider,
             user.username,
@@ -124,6 +124,11 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         );
 
         die!(FORBIDDEN, "Account has been disabled. Please contact support.");
+    }
+
+    if !primary_email.is_allowed_login() {
+        debug!(user.username, user.id = %user.id, "Received sso login request from unverified user");
+        die!(FORBIDDEN, "Verify your email address before logging in.");
     }
 
     // We're now doing something *very* illegal: We're changing state in a GET request

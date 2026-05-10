@@ -1,14 +1,13 @@
 use crate::die;
 use gitarena_common::database::Pool;
 
-use actix_web::{Responder, web};
+use actix_web::http::header::LOCATION;
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
-use serde_json::json;
 use tracing::info;
 use uuid::Uuid;
-
 use tracing_unwrap::OptionExt;
 
 #[route("/api/verify/{token}", method = "GET", err = "json")]
@@ -46,10 +45,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     info!(user.id = %user_id, "User verified their e-mail");
 
-    // TODO: Show html success page instead of json
-    Ok(web::Json(json!({
-        "success": true
-    })))
+    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, "/?verified=true")).finish())
 }
 
 #[derive(Deserialize)]

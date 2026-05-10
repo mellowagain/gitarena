@@ -87,9 +87,14 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
                 .await?
                 .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
-            if user.disabled || !primary_email.is_allowed_login() {
+            if user.disabled {
                 debug!(user.username, user.id = %user.id, "Received login request for disabled user");
                 die!(FORBIDDEN, "Account has been disabled. Please contact support.");
+            }
+
+            if !primary_email.is_allowed_login() {
+                debug!(user.username, user.id = %user.id, "Received login request from unverified user");
+                die!(FORBIDDEN, "Verify your email address before logging in.");
             }
 
             debug!(user.username, user.id = %user.id, "User authenticated in git http");

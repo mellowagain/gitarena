@@ -895,7 +895,7 @@ function APIKeysTab() {
 }
 
 function AppearanceTab() {
-    const [groupedLanguages, setGroupedLanguages] = useLocalStorage<boolean>("gitarena:language-grouping", true);
+    const [allLanguages, setAllLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
 
     return (
         <div>
@@ -904,12 +904,13 @@ function AppearanceTab() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <p className="text-sm font-medium">Group languages</p>
+                        <p className="text-sm font-medium">All languages</p>
                         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                            Merge related languages in repository language bars (e.g. TSX into TypeScript), matching GitHub&apos;s behavior.
+                            Show all detected languages in repository language bars, including data and prose files. When off, only
+                            programming and markup languages are shown, with everything else grouped into &quot;Other&quot;.
                         </p>
                     </div>
-                    <Switch checked={groupedLanguages} onCheckedChange={setGroupedLanguages} />
+                    <Switch checked={allLanguages} onCheckedChange={setAllLanguages} />
                 </div>
             </div>
         </div>

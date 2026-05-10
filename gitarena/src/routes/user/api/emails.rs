@@ -1,5 +1,5 @@
 use crate::mail::Email;
-use crate::user::WebUser;
+use crate::user::{User, WebUser};
 use crate::verification::send_verification_mail;
 use crate::{die, err};
 use gitarena_common::database::Pool;
@@ -252,12 +252,11 @@ pub(crate) async fn resend_verify_email(
 
     let email_id = path.into_inner();
 
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
-    let email = sqlx::query_as::<_, Email>("select * from emails where id = $1 and owner = $2 limit 1")
+    let email = sqlx::query_as::<_, Email>("select * from emails where id = $1 limit 1")
         .bind(email_id)
-        .bind(user.id)
-        .fetch_optional(&mut *transaction)
+        .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(|| err!(NOT_FOUND, "Email not found"))?;
 
@@ -265,9 +264,17 @@ pub(crate) async fn resend_verify_email(
         die!(BAD_REQUEST, "Email is already verified");
     }
 
-    transaction.commit().await?;
+    let owner = User::find_using_id(email.owner, &mut tx)
+        .await
+        .ok_or_else(|| err!(NOT_FOUND, "email belongs to unknown user"))?;
 
-    send_verification_mail(&user, email.email.clone(), &queue, &db_pool).await?;
+    if user.id != owner.id && !user.admin {
+        die!(NOT_FOUND, "Email not found");
+    }
+
+    tx.commit().await?;
+
+    send_verification_mail(&owner, email.email.clone(), &queue, &db_pool).await?;
 
     Ok(HttpResponse::NoContent().finish())
 }

@@ -1,4 +1,5 @@
 use crate::config::{get_optional_setting, get_setting};
+use crate::routes::user::api::auth::me::MeResponse;
 use crate::session::Session;
 use crate::user::User;
 use crate::utils::identifiers::{is_username_taken, validate_username};
@@ -12,7 +13,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tracing::info;
 use uuid::Uuid;
 
@@ -114,7 +115,11 @@ pub(crate) async fn post_register(
 
     info!(user.username, user.id = %user.id, "New user signed up");
 
-    Ok(HttpResponse::Ok().json(RegisterJsonResponse { success: true, id: user.id }))
+    Ok(HttpResponse::Ok().json(MeResponse {
+        id: user.id,
+        username: user.username,
+        admin: user.admin,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -126,8 +131,3 @@ pub(crate) struct RegisterJsonRequest {
     h_captcha_response: Option<String>,
 }
 
-#[derive(Serialize)]
-struct RegisterJsonResponse {
-    success: bool,
-    id: Uuid,
-}
