@@ -53,7 +53,7 @@ impl AsyncRunnable for MailTask {
             };
 
             match &result {
-                Ok(_) => debug!("email sent"),
+                Ok(()) => debug!("email sent"),
                 Err(err) => error!(?err, "error occurred during email sending"),
             }
 

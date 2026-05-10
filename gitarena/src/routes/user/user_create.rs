@@ -11,7 +11,7 @@ use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
-use gitarena_macros::{from_config, route};
+use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 

@@ -9,10 +9,8 @@ use crate::utils::admin_panel_layer::AdminPanelLayer;
 use crate::utils::system::SYSTEM_INFO;
 
 use std::env;
-use std::env::VarError;
 
 use crate::verification::ExpiredVerifyLinkRemovalTask;
-use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
@@ -23,7 +21,7 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
-use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool};
+use fang::{AsyncQueueable, AsyncRunnable};
 use futures_locks::RwLock;
 use gitarena_common::database::{Pool, create_postgres_pool};
 use gitarena_common::log::init_logger;

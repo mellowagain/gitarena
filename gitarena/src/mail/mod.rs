@@ -6,8 +6,6 @@
 //! - The **public email** is displayed on the user profile.
 //! - All emails will be used to identify Git commits and incoming emails (e.g. issue creation by email).
 
-use crate::user::User;
-
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
@@ -17,13 +15,13 @@ use gitarena_macros::from_config;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::PoolConfig;
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::{AsyncSmtpTransport, Message, Tokio1Executor};
+use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 use std::time::Duration;
-use tracing::{debug, instrument};
+use tracing::debug;
 
 pub(crate) mod task;
 pub(crate) mod templates;

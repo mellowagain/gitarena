@@ -1,4 +1,4 @@
-use crate::user::{User, WebUser};
+use crate::user::User;
 use std::fmt;
 
 use actix_web::HttpRequest;
