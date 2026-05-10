@@ -51,7 +51,10 @@ interface CreateRepoRequest {
     name: string;
     description: string;
     visibility: Visibility;
-    readme?: string;
+    readme?: boolean;
+    defaultBranch: string;
+    license?: string;
+    gitignore?: string;
 }
 
 interface CreateRepoResponse {
@@ -116,7 +119,10 @@ export default function NewRepositoryPage() {
                 name: repoName,
                 description,
                 visibility,
-                ...(createReadme ? { readme: `# ${repoName}\n\n${description}` } : {}),
+                defaultBranch,
+                ...(createReadme ? { readme: true } : {}),
+                ...(selectedLicense !== "none" ? { license: selectedLicense } : {}),
+                ...(selectedGitignore !== "none" ? { gitignore: selectedGitignore } : {}),
             });
             router.push(`/${user.username}/${repoName}`);
         } catch (err) {

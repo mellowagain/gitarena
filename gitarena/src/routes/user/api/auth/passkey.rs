@@ -330,8 +330,12 @@ pub(crate) async fn post_login_finish(
         .await?
         .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
-    if user.disabled || !primary_email.is_allowed_login() {
+    if user.disabled {
         die!(FORBIDDEN, "Account has been disabled. Please contact support.");
+    }
+
+    if !primary_email.is_allowed_login() {
+        die!(FORBIDDEN, "Verify your email address before logging in.");
     }
 
     let session = Session::new(&request, &user, &mut tx).await?;

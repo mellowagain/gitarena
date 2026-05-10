@@ -41,7 +41,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
     async function handleSignOut() {
         try {
             await logout();
-            router.push("/");
+            router.push("/about");
         } catch {
             toast.error("Sign out failed. Please try again.");
         }
@@ -162,7 +162,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <button className="flex items-center justify-center h-9 w-9 rounded-full bg-secondary text-base font-medium hover:ring-2 hover:ring-ring transition-all ml-1">
-                                        {user.username[0].toUpperCase()}
+                                        {user.username?.[0]?.toUpperCase()}
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56">

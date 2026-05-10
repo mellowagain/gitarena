@@ -1,7 +1,6 @@
 use crate::config::get_optional_setting;
 use crate::die;
 use crate::git::write;
-use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::repository::api::CreateJsonResponse;
@@ -70,20 +69,33 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         die!(CONFLICT, "Repository name already in use for your account");
     }
 
-    let repo: Repository =
-        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
-            .bind(user.id)
-            .bind(name)
-            .bind(description)
-            .bind(body.visibility)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let repo: Repository = sqlx::query_as::<_, Repository>(
+        "insert into repositories (owner, name, description, visibility, default_branch) values ($1, $2, $3, $4, $5) returning *",
+    )
+    .bind(user.id)
+    .bind(name)
+    .bind(description)
+    .bind(body.visibility)
+    .bind(&body.default_branch)
+    .fetch_one(&mut *transaction)
+    .await?;
 
     repo.create_fs(&mut transaction).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
-    if body.readme.is_some() {
-        create_readme(&repo, &user, &db_pool).await?;
+    if let Some(readme) = body.readme
+        && readme
+    {
+        let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());
+        create_file(&repo, &user, "README.md", &readme, &db_pool).await?;
+    }
+
+    if let Some(_license) = &body.license {
+        // todo: include https://github.com/github/choosealicense.com/tree/gh-pages/_licenses
+    }
+
+    if let Some(_gitignore) = &body.gitignore {
+        // todo: include https://github.com/github/gitignore
     }
 
     let domain = get_optional_setting::<String>("domain", &mut transaction).await?.unwrap_or_default();
@@ -96,31 +108,26 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     info!(id = repo.id, owner, name, "New repository created");
 
-    Ok(if request.is_htmx() {
-        HttpResponse::Ok()
-            .append_header(("hx-redirect", path))
-            .append_header(("hx-refresh", "true"))
-            .finish()
-    } else {
-        HttpResponse::Ok().json(CreateJsonResponse {
-            id: repo.id,
-            url: format!("{domain}{path}"),
-        })
-    })
+    Ok(HttpResponse::Ok().json(CreateJsonResponse {
+        id: repo.id,
+        url: format!("{domain}{path}"),
+    }))
 }
 
 #[instrument(err, skip(db_pool))]
-async fn create_readme(repo: &Repository, user: &User, db_pool: &Pool) -> Result<()> {
-    let mut transaction = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
-    let readme = format!("# {}\n\n{}\n", repo.name.as_str(), repo.description.as_str());
+async fn create_file(repo: &Repository, user: &User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
+    let libgit2_repo = {
+        let mut transaction = db_pool.begin().await?;
+        let libgit2_repo = repo.libgit2(&mut transaction).await?;
+        transaction.commit().await?;
+        libgit2_repo
+    };
 
-    transaction.commit().await?;
-
-    write::write_file(&libgit2_repo, user, Some("HEAD"), "README.md", readme.as_bytes(), db_pool).await
+    write::write_file(&libgit2_repo, user, Some("HEAD"), file_name, content.as_bytes(), db_pool).await
 }
 
 #[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CreateJsonRequest {
     /// Repository name
     #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
@@ -132,5 +139,13 @@ pub(crate) struct CreateJsonRequest {
     visibility: RepoVisibility,
     /// Optional: initialise a README.md with the repo name and description
     #[serde(default)]
-    readme: Option<String>,
+    readme: Option<bool>,
+    /// Default branch for repository
+    default_branch: String,
+    /// Optional: initialioze a LICENSE.txt file with the chosen license
+    #[serde(default)]
+    license: Option<String>,
+    /// Optional: initialize a .gitignore file with the chosen template
+    #[serde(default)]
+    gitignore: Option<String>,
 }

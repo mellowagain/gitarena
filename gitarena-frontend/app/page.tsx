@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -19,10 +19,13 @@ import {
     BookOpen,
     FileCode2,
     Construction,
+    CheckCircle2,
+    X,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import * as allLangs from "linguist-languages";
 
@@ -88,13 +91,22 @@ function WipBadge() {
 
 export default function DashboardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, error, isLoading } = useAuth();
+
+    const [showVerifiedNotice, setShowVerifiedNotice] = useState(() => searchParams.get("verified") === "true");
 
     useEffect(() => {
         if (!isLoading && !user) {
             router.push("/about");
         }
     }, [isLoading, user, router]);
+
+    useEffect(() => {
+        if (searchParams.get("verified") === "true") {
+            router.replace("/");
+        }
+    }, [searchParams, router]);
 
     const [repoFilter, setRepoFilter] = useState<"all" | "owned" | "starred">("all");
 
@@ -125,7 +137,7 @@ export default function DashboardPage() {
 
     if (!user) {
         // user will get redirected to /about via useEffect
-        return null;
+        return <DashboardSkeleton />;
     }
 
     return (
@@ -142,6 +154,22 @@ export default function DashboardPage() {
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+                        {/* Email verified notice */}
+                        {showVerifiedNotice && (
+                            <Alert className="mb-6 border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">
+                                <CheckCircle2 className="h-4 w-4" />
+                                <AlertDescription className="flex items-center justify-between text-green-700 dark:text-green-400">
+                                    Your email address has been verified.
+                                    <button
+                                        onClick={() => setShowVerifiedNotice(false)}
+                                        className="text-green-700/60 hover:text-green-700 dark:text-green-400/60 dark:hover:text-green-400"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         {/* Welcome header */}
                         <div className="mb-6 sm:mb-8">
                             <h1 className="text-xl sm:text-2xl font-semibold">

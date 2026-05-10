@@ -12,6 +12,7 @@ import {
     History,
     GitBranch,
     GitCommitHorizontal,
+    ChevronDown,
 } from "lucide-react";
 import { use, useState } from "react";
 import Link from "next/link";
@@ -20,6 +21,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TopBar } from "@/components/top-bar";
 import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file-sidebar";
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
 import { isMarkdown } from "@/components/markdown-renderer";
@@ -99,8 +102,18 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
 
 function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; meta: RepoMetadata }) {
     const instanceConfig = useInstanceConfig();
-    const baseUrl = instanceConfig?.baseUrl ?? "";
-    const cloneUrl = `${baseUrl}/${user}/${repo}.git`;
+    const [protocol, setProtocol] = useState<"https" | "ssh">("https");
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+    const host = apiUrl.replace(/^https?:\/\//, "");
+    const sshEnabled = instanceConfig?.sshPort != null;
+    const sshCloneUrl =
+        instanceConfig?.sshPort === 22
+            ? `git@${host}:${user}/${repo}.git`
+            : `ssh://git@${host}:${instanceConfig?.sshPort}/${user}/${repo}.git`;
+    const cloneUrl = protocol === "https" ? `${apiUrl}/${user}/${repo}.git` : sshCloneUrl;
+
+    const branch = meta.defaultBranch;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -108,17 +121,60 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
 
             <div className="flex flex-1 overflow-hidden">
                 <div className="flex flex-1 items-center justify-center">
-                    <div className="flex flex-col items-center gap-6 text-center max-w-lg px-6">
-                        <GitBranch className="h-12 w-12 text-muted-foreground" />
-                        <div>
-                            <h2 className="text-xl font-semibold">Repository is empty</h2>
-                            <p className="text-sm text-muted-foreground mt-1">Push your existing code to get started.</p>
+                    <div className="flex flex-col gap-5 w-full max-w-2xl px-6">
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <GitBranch className="h-8 w-8 text-muted-foreground shrink-0" />
+                            <div>
+                                <h2 className="text-xl font-semibold">Repository is empty</h2>
+                                <p className="text-sm text-muted-foreground mt-0.5">Get started by pushing your code.</p>
+                            </div>
                         </div>
-                        <div className="w-full rounded-md border border-border bg-muted/50 p-4 text-left font-mono text-sm leading-relaxed">
-                            <div>git remote add origin {cloneUrl}</div>
-                            <div>git branch -M {meta.defaultBranch}</div>
-                            <div>git push -u origin {meta.defaultBranch}</div>
-                        </div>
+
+                        <Tabs defaultValue="create">
+                            <div className="flex items-center justify-between mb-3">
+                                <TabsList>
+                                    <TabsTrigger value="create">Create new repository</TabsTrigger>
+                                    <TabsTrigger value="push">Push existing repository</TabsTrigger>
+                                </TabsList>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                                        >
+                                            {protocol}
+                                            <ChevronDown className="h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setProtocol("https")}>HTTPS</DropdownMenuItem>
+                                        {sshEnabled && <DropdownMenuItem onClick={() => setProtocol("ssh")}>SSH</DropdownMenuItem>}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+
+                            <TabsContent value="create">
+                                <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
+                                    <div>echo &quot;# {repo}&quot; &gt;&gt; README.md</div>
+                                    <div>git init</div>
+                                    <div>git add README.md</div>
+                                    <div>git commit -m &quot;initial commit&quot;</div>
+                                    <div>git branch -M {branch}</div>
+                                    <div>git remote add origin {cloneUrl}</div>
+                                    <div>git push -u origin {branch}</div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="push">
+                                <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
+                                    <div>git remote add origin {cloneUrl}</div>
+                                    <div>git branch -M {branch}</div>
+                                    <div>git push -u origin {branch}</div>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 </div>
 
