@@ -16,7 +16,7 @@ import { jsonFetcher } from "@/lib/fetchers";
 import * as allLangs from "linguist-languages";
 
 interface UserProfileRepo {
-    id: number;
+    id: string;
     name: string;
     description: string;
     visibility: "public" | "internal" | "private";
@@ -32,7 +32,7 @@ interface UserProfileStats {
 }
 
 interface UserProfileResponse {
-    id: number;
+    id: string;
     username: string;
     admin: boolean;
     createdAt: string;

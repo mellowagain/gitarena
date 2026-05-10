@@ -12,7 +12,6 @@ use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpRequest};
 use anyhow::{Error, Result, anyhow};
-use chrono::{DateTime, Utc};
 use derive_more::Display;
 use futures::Future;
 use gitarena_common::database::Database;
@@ -22,23 +21,23 @@ use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 use tracing_unwrap::OptionExt;
+use uuid::Uuid;
 
 #[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
 #[display("{username}")]
 pub(crate) struct User {
-    pub(crate) id: i32,
+    pub(crate) id: Uuid,
     pub(crate) username: String,
     #[serde(skip_serializing)]
     #[debug("[redacted]")]
     pub(crate) password: String,
     pub(crate) disabled: bool,
     pub(crate) admin: bool,
-    pub(crate) created_at: DateTime<Utc>,
 }
 
 impl User {
     #[instrument(skip(tx))]
-    pub(crate) async fn find_using_id(id: i32, tx: &mut Transaction<'_, Database>) -> Option<User> {
+    pub(crate) async fn find_using_id(id: Uuid, tx: &mut Transaction<'_, Database>) -> Option<User> {
         sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
             .bind(id)
             .fetch_optional(&mut **tx)
@@ -75,18 +74,6 @@ impl User {
             .await
             .ok()
             .flatten()
-    }
-}
-
-impl From<User> for i32 {
-    fn from(user: User) -> i32 {
-        user.id
-    }
-}
-
-impl From<&User> for i32 {
-    fn from(user: &User) -> i32 {
-        user.id
     }
 }
 

@@ -204,7 +204,7 @@ async fn add_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Datab
         .execute(&mut **tx)
         .await?;
 
-    debug!(user.username, user.id, repo.id, "Star added to repo");
+    debug!(user.username, user.id = %user.id, repo.id = %repo.id, "Star added to repo");
 
     Ok(())
 }
@@ -217,7 +217,7 @@ async fn remove_star(user: &User, repo: &Repository, tx: &mut Transaction<'_, Da
         .execute(&mut **tx)
         .await?;
 
-    debug!(user.username, user.id, repo.id, "Star removed from repo");
+    debug!(user.username, user.id = %user.id, repo.id = %repo.id, "Star removed from repo");
 
     Ok(())
 }

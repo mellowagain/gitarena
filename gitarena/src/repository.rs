@@ -27,15 +27,16 @@ use sqlx::{FromRow, Transaction};
 use tracing::{Level, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(FromRow, Display, Clone, derive_more::Debug, Serialize, ToSchema)]
 #[display("{name}")]
 #[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct Repository {
     /// ID
-    pub(crate) id: i32,
+    pub(crate) id: Uuid,
     /// User ID of the repository owner
-    pub(crate) owner: i32,
+    pub(crate) owner: Uuid,
     /// Name of the repository
     pub(crate) name: String,
     /// Description, set by the user
@@ -52,7 +53,7 @@ pub(crate) struct Repository {
     #[schema(value_type = HashMap<String, u64>)]
     pub(crate) languages: Json<HashMap<String, u64>>,
     /// ID of the repo from which this one was forked from
-    pub(crate) forked_from: Option<i32>,
+    pub(crate) forked_from: Option<Uuid>,
     /// URL of the repo from which this one is mirrored from
     #[debug("{}", mirrored_from.is_some())]
     pub(crate) mirrored_from: Option<String>,
@@ -63,8 +64,7 @@ pub(crate) struct Repository {
 }
 
 impl Repository {
-    pub(crate) async fn open(user_id: impl Into<i32>, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
-        let user_id = user_id.into();
+    pub(crate) async fn open(user_id: Uuid, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
         let repo_name = repo_name.as_ref();
 
         let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
@@ -179,7 +179,7 @@ pub(crate) async fn extract_repo_from_request(db_pool: &Pool, actor: Option<&Use
     let user = User::find_using_name(username, &mut transaction)
         .await
         .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
-    let repo = Repository::open(user, repository, &mut transaction)
+    let repo = Repository::open(user.id, repository, &mut transaction)
         .await
         .ok_or_else(|| err!(NOT_FOUND, "Repository not found"))?;
 

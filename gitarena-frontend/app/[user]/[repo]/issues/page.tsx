@@ -30,7 +30,7 @@ type Priority = "urgent" | "high" | "medium" | "low" | "none";
 type Status = "todo" | "in_progress" | "done" | "cancelled";
 
 type Issue = {
-    id: number;
+    id: string;
     title: string;
     status: Status;
     priority: Priority;

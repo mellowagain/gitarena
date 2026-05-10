@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::{FromRow, Transaction};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Serialize, ToSchema)]
 pub(crate) struct ExploreResponse {
@@ -79,10 +80,10 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
 #[derive(FromRow, Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExploreRepo {
-    id: i32,
+    id: Uuid,
     name: String,
     description: String,
-    owner_id: i32,
+    owner_id: Uuid,
     owner_name: String,
     visibility: RepoVisibility,
     archived: bool,

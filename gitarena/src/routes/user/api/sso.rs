@@ -111,7 +111,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         }
     };
 
-    let primary_email = Email::find_primary_email(&user, &mut transaction)
+    let primary_email = Email::find_primary_email(user.id, &mut transaction)
         .await?
         .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
@@ -119,7 +119,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         debug!(
             %provider,
             user.username,
-            user.id,
+            user.id = %user.id,
             "Received sso login request from disabled user"
         );
 
@@ -136,7 +136,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
     debug!(
         %provider,
         user.username,
-        user.id,
+        user.id = %user.id,
         "User logged in through sso"
     );
 

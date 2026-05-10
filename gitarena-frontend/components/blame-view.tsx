@@ -11,7 +11,7 @@ import { gitarenaTheme, detectLanguage } from "@/components/code-block";
 export interface BlameHunk {
     commitId: string;
     authorName: string;
-    authorUid: number | null;
+    authorUid: string | null;
     authorEmail: string;
     timestamp: number;
     summary: string;
@@ -49,7 +49,7 @@ function renderNode(node: AstNode, stylesheet: Record<string, React.CSSPropertie
     );
 }
 
-function BlameAvatar({ authorName, authorUid, size = 16 }: { authorName: string; authorUid: number | null; size?: number }) {
+function BlameAvatar({ authorName, authorUid, size = 16 }: { authorName: string; authorUid: string | null; size?: number }) {
     if (authorUid !== null) {
         return (
             <Image
@@ -125,7 +125,7 @@ export function BlameView({ user, repo, hunks, content, filename, wrapLines = fa
                     map.set(hunk.authorName, { authorName: hunk.authorName, authorUid: hunk.authorUid });
                 }
                 return map;
-            }, new Map<string, { authorName: string; authorUid: number | null }>())
+            }, new Map<string, { authorName: string; authorUid: string | null }>())
             .values()
     );
 

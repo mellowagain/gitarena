@@ -22,6 +22,7 @@ use sqlx::{FromRow, Transaction};
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 use std::time::Duration;
 use tracing::debug;
+use uuid::Uuid;
 
 pub(crate) mod task;
 pub(crate) mod templates;
@@ -32,9 +33,9 @@ pub(crate) static TRANSPORTER: OnceCell<AsyncSmtpTransport<Tokio1Executor>> = On
 #[serde(rename_all = "camelCase")]
 #[display("{email}")]
 pub(crate) struct Email {
-    pub(crate) id: i32,
+    pub(crate) id: Uuid,
     #[serde(skip)]
-    pub(crate) owner: i32,
+    pub(crate) owner: Uuid,
     #[allow(clippy::struct_field_names)]
     pub(crate) email: String,
 
@@ -47,7 +48,6 @@ pub(crate) struct Email {
     pub(crate) notification: bool,
     pub(crate) public: bool,
 
-    pub(crate) created_at: DateTime<Local>,
     pub(crate) verified_at: Option<DateTime<Local>>,
 }
 
@@ -60,16 +60,13 @@ impl Email {
     pub(crate) fn is_allowed_login(&self) -> bool {
         assert!(self.primary);
 
-        match self.verified_at {
-            Some(_) => true,
-            None => Local::now().signed_duration_since(self.created_at).num_hours() < 24,
-        }
+        self.verified_at.is_some()
     }
 }
 
 macro_rules! generate_find {
     ($method_name:ident, $field:literal) => {
-        pub(crate) async fn $method_name(user: impl Into<i32>, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
+        pub(crate) async fn $method_name(user: impl Into<Uuid>, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
             let query = concat!("select * from emails where owner = $1 and ", $field, " = true limit 1");
             Email::find_specific_email(user, query, tx).await
         }
@@ -83,7 +80,7 @@ impl Email {
     generate_find!(find_public_email, "public");
 
     // Private helper called by the functions defined using the `generate_find!` macro
-    async fn find_specific_email(user: impl Into<i32>, query: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
+    async fn find_specific_email(user: impl Into<Uuid>, query: &'static str, tx: &mut Transaction<'_, Database>) -> Result<Option<Email>> {
         let email: Option<Email> = sqlx::query_as(query).bind(user.into()).fetch_optional(&mut **tx).await?;
 
         Ok(email)

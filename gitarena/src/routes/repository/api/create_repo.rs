@@ -15,6 +15,7 @@ use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::{info, instrument};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 // This whole handler is very similar to `import_repo.rs` so at some point this should be consolidated into one
 
@@ -71,7 +72,8 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     }
 
     let repo: Repository =
-        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
+        sqlx::query_as::<_, Repository>("insert into repositories (id, owner, name, description, visibility) values ($1, $2, $3, $4, $5) returning *")
+            .bind(Uuid::now_v7())
             .bind(user.id)
             .bind(name)
             .bind(description)
@@ -94,7 +96,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     let owner = &user.username;
     let name = &repo.name;
 
-    info!(id = repo.id, owner, name, "New repository created");
+    info!(id = %repo.id, owner, name, "New repository created");
 
     Ok(if request.is_htmx() {
         HttpResponse::Ok()

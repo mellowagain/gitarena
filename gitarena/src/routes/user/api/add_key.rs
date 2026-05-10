@@ -14,6 +14,7 @@ use openssh_keys::PublicKey;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     put,
@@ -65,20 +66,22 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
         die!(CONFLICT, "SSH key already exists");
     }
 
-    let key =
-        sqlx::query_as::<_, SshKey>("insert into ssh_keys (owner, title, fingerprint, algorithm, key, expires_at) values ($1, $2, $3, $4, $5, $6) returning *")
-            .bind(user.id)
-            .bind(key_title)
-            .bind(fingerprint.as_str())
-            .bind(algorithm)
-            .bind(public_key.data().as_slice())
-            .bind(body.expiration_date)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let key = sqlx::query_as::<_, SshKey>(
+        "insert into ssh_keys (id, owner, title, fingerprint, algorithm, key, expires_at) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+    )
+    .bind(Uuid::now_v7())
+    .bind(user.id)
+    .bind(key_title)
+    .bind(fingerprint.as_str())
+    .bind(algorithm)
+    .bind(public_key.data().as_slice())
+    .bind(body.expiration_date)
+    .fetch_one(&mut *transaction)
+    .await?;
 
     transaction.commit().await?;
 
-    debug!(user.id, key.id, key.title, key.fingerprint = fingerprint.as_str(), "New SSH key added by user",);
+    debug!(user.id = %user.id, key.id = %key.id, key.title, key.fingerprint = fingerprint.as_str(), "New SSH key added by user",);
 
     Ok(HttpResponse::Created().json(AddKeyJsonResponse { id: key.id, fingerprint }))
 }
@@ -100,7 +103,7 @@ pub(crate) struct AddKeyJsonRequest {
 #[derive(Serialize, ToSchema)]
 pub(crate) struct AddKeyJsonResponse {
     /// Internal ID of the newly added key
-    id: i32,
+    id: Uuid,
     /// MD5 fingerprint of the public key
     fingerprint: String,
 }

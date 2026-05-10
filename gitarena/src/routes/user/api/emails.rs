@@ -10,6 +10,7 @@ use anyhow::Result;
 use fang::AsyncQueue;
 use serde::Deserialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     get,
@@ -26,7 +27,7 @@ pub(crate) async fn get_emails(web_user: WebUser, db_pool: web::Data<Pool>) -> R
     let user = web_user.into_user()?;
     let mut transaction = db_pool.begin().await?;
 
-    let emails = sqlx::query_as::<_, Email>("select * from emails where owner = $1 order by created_at")
+    let emails = sqlx::query_as::<_, Email>("select * from emails where owner = $1 order by id")
         .bind(user.id)
         .fetch_all(&mut *transaction)
         .await?;
@@ -85,7 +86,8 @@ pub(crate) async fn post_email(
         die!(CONFLICT, "Email address already in use");
     }
 
-    let email = sqlx::query_as::<_, Email>("insert into emails (owner, email) values ($1, $2) returning *")
+    let email = sqlx::query_as::<_, Email>("insert into emails (id, owner, email) values ($1, $2, $3) returning *")
+        .bind(Uuid::now_v7())
         .bind(user.id)
         .bind(body.email.as_str())
         .fetch_one(&mut *transaction)
@@ -101,7 +103,7 @@ pub(crate) async fn post_email(
 #[utoipa::path(
     delete,
     path = "/api/emails/{id}",
-    params(("id" = i32, Path, description = "Email ID")),
+    params(("id" = Uuid, Path, description = "Email ID")),
     responses(
         (status = 204, description = "Email deleted"),
         (status = 400, description = "Cannot remove primary email"),
@@ -112,7 +114,7 @@ pub(crate) async fn post_email(
     tag = "user"
 )]
 #[route("/api/emails/{id}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_email(path: web::Path<i32>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_email(path: web::Path<Uuid>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let email_id = path.into_inner();
@@ -153,7 +155,7 @@ pub(crate) struct UpdateEmailRequest {
 #[utoipa::path(
     patch,
     path = "/api/emails/{id}",
-    params(("id" = i32, Path, description = "Email ID")),
+    params(("id" = Uuid, Path, description = "Email ID")),
     request_body = UpdateEmailRequest,
     responses(
         (status = 200, description = "Email updated", body = Email),
@@ -166,7 +168,7 @@ pub(crate) struct UpdateEmailRequest {
 )]
 #[route("/api/emails/{id}", method = "PATCH", err = "json")]
 pub(crate) async fn patch_email(
-    path: web::Path<i32>,
+    path: web::Path<Uuid>,
     body: web::Json<UpdateEmailRequest>,
     web_user: WebUser,
     db_pool: web::Data<Pool>,
@@ -229,7 +231,7 @@ pub(crate) async fn patch_email(
 #[utoipa::path(
     post,
     path = "/api/emails/{id}/verify",
-    params(("id" = i32, Path, description = "Email ID")),
+    params(("id" = Uuid, Path, description = "Email ID")),
     responses(
         (status = 204, description = "Verification email sent (or SMTP disabled)"),
         (status = 400, description = "Email is already verified"),
@@ -241,7 +243,7 @@ pub(crate) async fn patch_email(
 )]
 #[route("/api/emails/{id}/verify", method = "POST", err = "json")]
 pub(crate) async fn resend_verify_email(
-    path: web::Path<i32>,
+    path: web::Path<Uuid>,
     web_user: WebUser,
     queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,

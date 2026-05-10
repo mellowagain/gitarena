@@ -39,7 +39,7 @@ function languageColor(name: string): string {
 }
 
 interface UserProfileRepo {
-    id: number;
+    id: string;
     name: string;
     description: string;
     visibility: "public" | "internal" | "private";
@@ -49,7 +49,7 @@ interface UserProfileRepo {
 }
 
 interface UserProfileResponse {
-    id: number;
+    id: string;
     username: string;
     admin: boolean;
     createdAt: string;

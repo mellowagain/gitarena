@@ -11,11 +11,10 @@ use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Sc
 use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use tracing::{info, instrument};
+use uuid::Uuid;
 
 #[instrument(err, skip(queue, db_pool))]
 pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
-    assert!(user.id >= 0);
-
     let (smtp_enabled, domain) = from_config!(
         "smtp.enabled" => bool,
         "domain" => String,
@@ -30,7 +29,8 @@ pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &A
 
     let smtp_address = get_setting("smtp.address", &mut transaction).await?;
 
-    sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
+    sqlx::query("insert into user_verifications (id, user_id, hash, expires) values ($1, $2, $3, now() + interval '1 day')")
+        .bind(Uuid::now_v7())
         .bind(user.id)
         .bind(&hash)
         .execute(&mut *transaction)

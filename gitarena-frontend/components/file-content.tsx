@@ -27,7 +27,7 @@ export interface FileCommit {
     time: number;
     authorName: string;
     authorEmail: string;
-    authorUid: number | null;
+    authorUid: string | null;
 }
 
 interface FileContentProps {

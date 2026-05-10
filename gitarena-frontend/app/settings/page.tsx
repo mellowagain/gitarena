@@ -38,7 +38,7 @@ import DeviceDetector from "device-detector-js";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface EmailResponse {
-    id: number;
+    id: string;
     email: string;
     primary: boolean;
     commit: boolean;
@@ -59,7 +59,7 @@ interface SessionResponse {
 }
 
 interface SshKeyResponse {
-    id: number;
+    id: string;
     title: string;
     fingerprint: string;
     algorithm: string;
@@ -333,7 +333,7 @@ function EmailsTab() {
 
     const { trigger: patchEmail } = useSWRMutation(
         EMAILS_KEY,
-        (_url: string, { arg }: { arg: { id: number; patch: { primary?: boolean; notification?: boolean; public?: boolean } } }) =>
+        (_url: string, { arg }: { arg: { id: string; patch: { primary?: boolean; notification?: boolean; public?: boolean } } }) =>
             patchJsonFetcher<typeof arg.patch, EmailResponse>(`/api/emails/${arg.id}`, { arg: arg.patch }),
         {
             onSuccess: () => mutate(EMAILS_KEY),
@@ -745,7 +745,7 @@ function KeysTab() {
 
     const { trigger: addSSHKey, isMutating: addingKey } = useSWRMutation(
         "/api/ssh-key",
-        putJsonFetcher<{ title: string; key: string }, { id: number; fingerprint: string }>,
+        putJsonFetcher<{ title: string; key: string }, { id: string; fingerprint: string }>,
         {
             onSuccess: () => {
                 setNewSSHTitle("");

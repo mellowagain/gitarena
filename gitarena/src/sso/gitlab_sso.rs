@@ -22,6 +22,7 @@ use serde_json::Value;
 use sqlx::Transaction;
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
+use uuid::Uuid;
 
 pub(crate) struct GitLabSSO;
 
@@ -111,7 +112,8 @@ impl SSOProvider for GitLabSSO {
             username = crypto::random_numeric_ascii_string(16)?;
         }
 
-        let user: User = sqlx::query_as::<_, User>("insert into users (username, password) values ($1, $2) returning *")
+        let user: User = sqlx::query_as::<_, User>("insert into users (id, username, password) values ($1, $2, $3) returning *")
+            .bind(Uuid::now_v7())
             .bind(username.as_str())
             .bind("sso-login")
             .fetch_one(&mut *transaction)
@@ -163,7 +165,8 @@ impl SSOProvider for GitLabSSO {
                 primary = true;
             });
 
-            sqlx::query("insert into emails (owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $3, $3, $3)")
+            sqlx::query("insert into emails (id, owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, $4, $4, $4, $4)")
+                .bind(Uuid::now_v7())
                 .bind(user.id)
                 .bind(email)
                 .bind(primary)

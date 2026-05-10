@@ -109,7 +109,7 @@ pub(crate) fn build_webauthn(domain: &str, origin: Option<&str>) -> Result<Webau
 #[derive(FromRow, Debug)]
 pub(crate) struct StoredPasskey {
     pub(crate) id: Uuid,
-    pub(crate) user_id: i32,
+    pub(crate) user_id: Uuid,
     pub(crate) name: String,
     pub(crate) credential: Value,
 }
@@ -119,7 +119,7 @@ impl StoredPasskey {
         serde_json::from_value(self.credential).map_err(|e| anyhow!("Failed to deserialise passkey credential: {e}"))
     }
 
-    pub(crate) async fn find_for_user(user_id: i32, tx: &mut Transaction<'_, Database>) -> Result<Vec<StoredPasskey>> {
+    pub(crate) async fn find_for_user(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<Vec<StoredPasskey>> {
         let rows = sqlx::query_as::<_, StoredPasskey>("select * from passkeys where user_id = $1")
             .bind(user_id)
             .fetch_all(&mut **tx)
@@ -128,8 +128,8 @@ impl StoredPasskey {
         Ok(rows)
     }
 
-    pub(crate) async fn find_user_id_by_cred_id(cred_id_b64: &str, tx: &mut Transaction<'_, Database>) -> Result<Option<i32>> {
-        let row: Option<(i32,)> = sqlx::query_as("select user_id from passkeys where credential->'cred'->>'cred_id' = $1 limit 1")
+    pub(crate) async fn find_user_id_by_cred_id(cred_id_b64: &str, tx: &mut Transaction<'_, Database>) -> Result<Option<Uuid>> {
+        let row: Option<(Uuid,)> = sqlx::query_as("select user_id from passkeys where credential->'cred'->>'cred_id' = $1 limit 1")
             .bind(cred_id_b64)
             .fetch_optional(&mut **tx)
             .await?;
@@ -141,7 +141,7 @@ impl StoredPasskey {
 #[derive(FromRow, Debug)]
 pub(crate) struct WebAuthnChallenge {
     pub(crate) id: Uuid,
-    pub(crate) user_id: Option<i32>,
+    pub(crate) user_id: Option<Uuid>,
     pub(crate) state: serde_json::Value,
     pub(crate) expires_at: DateTime<Utc>,
 }
@@ -154,7 +154,7 @@ pub(crate) enum ChallengeType {
 }
 
 impl WebAuthnChallenge {
-    pub(crate) async fn insert_registration(id: Uuid, user_id: i32, state: &PasskeyRegistration, tx: &mut Transaction<'_, Database>) -> Result<()> {
+    pub(crate) async fn insert_registration(id: Uuid, user_id: Uuid, state: &PasskeyRegistration, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let state_json = serde_json::to_value(state)?;
         sqlx::query(
             "insert into webauthn_challenges (id, user_id, state, type, expires_at) \

@@ -14,6 +14,7 @@ use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use sqlx::Transaction;
 use tracing::instrument;
+use uuid::Uuid;
 
 #[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
@@ -26,7 +27,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(i32,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
+    let user_option: Option<(Uuid,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
         .bind(&uri.username)
         .fetch_optional(&mut *transaction)
         .await?;

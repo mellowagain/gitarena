@@ -75,7 +75,7 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
             };
 
             if user.password == "sso-login" {
-                debug!(user.username, user.id, "Received git http password login request for an SSO-registered user");
+                debug!(user.username, user.id = %user.id, "Received git http password login request for an SSO-registered user");
                 die!(UNAUTHORIZED, "This account was registered with SSO. Only Git operations via SSH are supported.");
             }
 
@@ -83,16 +83,16 @@ pub(crate) async fn authenticate(request: &HttpRequest, transaction: &mut Transa
                 die!(UNAUTHORIZED, "Invalid credentials");
             }
 
-            let primary_email = Email::find_primary_email(&user, transaction)
+            let primary_email = Email::find_primary_email(user.id, transaction)
                 .await?
                 .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
 
             if user.disabled || !primary_email.is_allowed_login() {
-                debug!(user.username, user.id, "Received login request for disabled user");
+                debug!(user.username, user.id = %user.id, "Received login request for disabled user");
                 die!(FORBIDDEN, "Account has been disabled. Please contact support.");
             }
 
-            debug!(user.username, user.id, "User authenticated in git http");
+            debug!(user.username, user.id = %user.id, "User authenticated in git http");
             Ok(user)
         }
         None => die!(UNAUTHORIZED),

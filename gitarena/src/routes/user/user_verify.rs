@@ -7,6 +7,7 @@ use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
 use tracing::info;
+use uuid::Uuid;
 
 use tracing_unwrap::OptionExt;
 
@@ -20,7 +21,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     let mut transaction = db_pool.begin().await?;
 
-    let option: Option<(i32, i32)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
+    let option: Option<(Uuid, Uuid)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
         .bind(token)
         .fetch_optional(&mut *transaction)
         .await?;
@@ -43,7 +44,7 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     transaction.commit().await?;
 
-    info!(user.id = user_id, "User verified their e-mail");
+    info!(user.id = %user_id, "User verified their e-mail");
 
     // TODO: Show html success page instead of json
     Ok(web::Json(json!({

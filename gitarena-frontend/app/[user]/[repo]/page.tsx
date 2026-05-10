@@ -30,9 +30,9 @@ import { shortLocale } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 
 export interface RepoMetadata {
-    id: number;
+    id: string;
 
-    owner: number;
+    owner: string;
     name: string;
     description: string;
 
@@ -44,7 +44,7 @@ export interface RepoMetadata {
     license?: string;
     languages: Record<string, number>;
 
-    forkedFrom?: number;
+    forkedFrom?: string;
     mirroredFrom?: string;
 
     archived: boolean;

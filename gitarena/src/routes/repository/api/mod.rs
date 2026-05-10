@@ -1,6 +1,7 @@
 use actix_web::web::ServiceConfig;
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 pub(crate) mod blame;
 pub(crate) mod branch_commits;
@@ -41,7 +42,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 #[derive(Serialize, ToSchema)]
 pub(crate) struct CreateJsonResponse {
     /// Internal ID of the newly created repository
-    pub(crate) id: i32,
+    pub(crate) id: Uuid,
     /// Full URL to the repository
     pub(crate) url: String,
 }

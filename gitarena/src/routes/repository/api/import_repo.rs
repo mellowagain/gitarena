@@ -18,6 +18,7 @@ use tracing::info;
 
 use url::Url;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 // This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
@@ -92,7 +93,8 @@ pub(crate) async fn import(
     }
 
     let repo: Repository =
-        sqlx::query_as::<_, Repository>("insert into repositories (owner, name, description, visibility) values ($1, $2, $3, $4) returning *")
+        sqlx::query_as::<_, Repository>("insert into repositories (id, owner, name, description, visibility) values ($1, $2, $3, $4, $5) returning *")
+            .bind(Uuid::now_v7())
             .bind(user.id)
             .bind(name)
             .bind(description)
@@ -118,7 +120,7 @@ pub(crate) async fn import(
     transaction.commit().await?;
 
     info!(
-        target.id = repo.id,
+        target.id = %repo.id,
         target.owner = user.username,
         target.name = repo.name,
         source.url = %url,

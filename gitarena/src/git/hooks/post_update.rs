@@ -19,11 +19,11 @@ pub(crate) async fn run(store: Arc<Store>, repo: &mut Repository, tx: &mut Trans
     let gitoxide_repo = repo.gitoxide(tx).await?;
 
     if let Err(err) = detect_license(store.clone(), &gitoxide_repo, repo).await {
-        warn!(repo.id, ?err, "Failed to detect license in repo");
+        warn!(repo.id = %repo.id, ?err, "Failed to detect license in repo");
     }
 
     if let Err(err) = detect_languages(store, &gitoxide_repo, repo).await {
-        warn!(repo.id, ?err, "Failed to detect languages in repo");
+        warn!(repo.id = %repo.id, ?err, "Failed to detect languages in repo");
     }
 
     Ok(())

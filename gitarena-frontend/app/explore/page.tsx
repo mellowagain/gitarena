@@ -25,10 +25,10 @@ function languageColor(name: string): string {
 const PAGE_SIZE = 20;
 
 interface ExploreRepo {
-    id: number;
+    id: string;
     name: string;
     description: string;
-    ownerId: number;
+    ownerId: string;
     ownerName: string;
     visibility: string;
     archived: boolean;

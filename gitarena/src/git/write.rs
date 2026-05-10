@@ -12,7 +12,7 @@ use tracing::instrument;
 pub(crate) async fn write_file(repo: &LibGit2Repo, user: &User, branch: Option<&str>, file_name: &str, content: &[u8], db_pool: &Pool) -> Result<()> {
     let mut transaction = db_pool.begin().await?;
 
-    let author_email = Email::find_commit_email(user, &mut transaction)
+    let author_email = Email::find_commit_email(user.id, &mut transaction)
         .await?
         .ok_or_else(|| err!(BAD_REQUEST, "User has no commit email"))?;
     let author_signature = Signature::now(user.username.as_str(), author_email.email.as_str())?;
