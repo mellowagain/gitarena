@@ -88,6 +88,6 @@ impl AsyncRunnable for ExpiredVerifyLinkRemovalTask {
 
     fn cron(&self) -> Option<Scheduled> {
         // daily at 3am
-        Some(Scheduled::CronPattern("0 3 * * *".to_string()))
+        Some(Scheduled::CronPattern("0 0 3 * * * *".to_string()))
     }
 }
