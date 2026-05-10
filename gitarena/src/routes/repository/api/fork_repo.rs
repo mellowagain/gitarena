@@ -1,6 +1,5 @@
 use crate::config::get_optional_setting;
 use crate::die;
-use crate::prelude::HttpRequestExtensions;
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::user::WebUser;
@@ -31,7 +30,7 @@ use tracing::info;
     security(("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "htmx+text")]
+#[route("/api/repo/{username}/{repository}/fork", method = "POST", err = "json")]
 pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -86,13 +85,8 @@ pub(crate) async fn create_fork(repo: Repository, web_user: WebUser, request: Ht
         "New repository forked"
     );
 
-    Ok(if request.is_htmx() {
-        HttpResponse::Ok()
-            .append_header(("hx-redirect", url))
-            .append_header(("hx-refresh", "true"))
-            .finish()
-    } else {
+    Ok(
         // TODO: Move CreateJsonResponse into mod.rs so it's no longer living inside of create_repo.rs
-        HttpResponse::Ok().json(CreateJsonResponse { id: new_repo.id, url })
-    })
+        HttpResponse::Ok().json(CreateJsonResponse { id: new_repo.id, url }),
+    )
 }

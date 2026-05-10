@@ -10,7 +10,7 @@ use tracing::info;
 
 use tracing_unwrap::OptionExt;
 
-#[route("/api/verify/{token}", method = "GET", err = "html")]
+#[route("/api/verify/{token}", method = "GET", err = "json")]
 pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let token = &verify_request.token;
 

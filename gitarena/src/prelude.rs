@@ -1,4 +1,5 @@
-use crate::user::{User, WebUser};
+use crate::user::User;
+use std::fmt;
 
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow, bail};
@@ -7,13 +8,13 @@ use awc::http::header::USER_AGENT;
 use awc::{Client, ClientBuilder};
 use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
+use fang::FangError;
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
 use gitarena_common::database::Database;
 use gix::actor::Signature;
 use gix::date::Time;
 use qstring::QString;
 use sqlx::Transaction;
-use tera::Context;
 use tracing::warn;
 
 pub(crate) trait HttpRequestExtensions {
@@ -192,29 +193,6 @@ impl GitoxideSignatureExtensions for Signature {
     }
 }
 
-pub(crate) trait ContextExtensions {
-    /// Inserts a [`WebUser`] into the current context, if authenticated (not [Anonymous][WebUser::Anonymous]).
-    fn insert_web_user(&mut self, user: &WebUser) -> Result<()>;
-
-    /// Inserts a [`User`] into the current context. The template can then access the User via the `user` Tera variable.
-    fn insert_user(&mut self, user: &User) -> Result<()>;
-}
-
-impl ContextExtensions for Context {
-    fn insert_web_user(&mut self, web_user: &WebUser) -> Result<()> {
-        match web_user {
-            WebUser::Authenticated(user) => self.insert_user(user),
-            WebUser::Anonymous => Ok(()),
-        }
-    }
-
-    fn insert_user(&mut self, user: &User) -> Result<()> {
-        self.try_insert("user", user)?;
-
-        Ok(())
-    }
-}
-
 pub(crate) const USER_AGENT_STR: &str = concat!("GitArena v", env!("CARGO_PKG_VERSION"), " (https://github.com/mellowagain/gitarena/)");
 
 pub(crate) trait AwcExtensions {
@@ -225,5 +203,15 @@ pub(crate) trait AwcExtensions {
 impl AwcExtensions for Client {
     fn gitarena() -> Client {
         ClientBuilder::new().add_default_header((USER_AGENT, USER_AGENT_STR)).finish()
+    }
+}
+
+pub(crate) trait MapToFangError<T> {
+    fn fang(self) -> Result<T, FangError>;
+}
+
+impl<T, E: fmt::Display> MapToFangError<T> for Result<T, E> {
+    fn fang(self) -> Result<T, FangError> {
+        self.map_err(|err| FangError { description: err.to_string() })
     }
 }

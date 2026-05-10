@@ -158,14 +158,14 @@ impl FromRequest for Repository {
                         .await
                         .map_err(|err| GitArenaError {
                             source: Arc::new(err),
-                            display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                            display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
                         })
                 })
             }
             None => Box::pin(async {
                 Err(GitArenaError {
                     source: Arc::new(anyhow!("No PgPool in application data")),
-                    display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                    display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
                 })
             }),
         }
@@ -231,14 +231,14 @@ impl FromRequest for Branch {
 
                     extract_branch_from_request(db_pool, repo, tree).await.map_err(|err| GitArenaError {
                         source: Arc::new(err),
-                        display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                        display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
                     })
                 })
             }
             None => Box::pin(async {
                 Err(GitArenaError {
                     source: Arc::new(anyhow!("No PgPool in application data")),
-                    display_type: ErrorDisplayType::Html, // TODO: Check whenever route is err = "html|json|git" etc...
+                    display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
                 })
             }),
         }

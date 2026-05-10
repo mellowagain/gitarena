@@ -6,10 +6,6 @@
 //! - The **public email** is displayed on the user profile.
 //! - All emails will be used to identify Git commits and incoming emails (e.g. issue creation by email).
 
-use crate::user::User;
-
-use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
-
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
@@ -17,11 +13,20 @@ use gitarena_common::database::Database;
 use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
+use lettre::transport::smtp::PoolConfig;
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use lettre::{AsyncSmtpTransport, Tokio1Executor};
+use once_cell::sync::OnceCell;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
-use tracing::{debug, instrument};
+use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
+use std::time::Duration;
+use tracing::debug;
+
+pub(crate) mod task;
+pub(crate) mod templates;
+
+pub(crate) static TRANSPORTER: OnceCell<AsyncSmtpTransport<Tokio1Executor>> = OnceCell::new();
 
 #[derive(FromRow, Display, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +62,7 @@ impl Email {
 
         match self.verified_at {
             Some(_) => true,
-            None => self.created_at.signed_duration_since(Local::now()).num_hours() < 24,
+            None => Local::now().signed_duration_since(self.created_at).num_hours() < 24,
         }
     }
 }
@@ -120,41 +125,7 @@ pub(crate) async fn get_root_email(db_pool: &Pool) -> Result<String> {
     Ok(address)
 }
 
-pub(crate) async fn get_root_mailbox(db_pool: &Pool) -> Result<Mailbox> {
-    let address = get_root_email(db_pool).await?;
-
-    // TODO: Allow customization of display name for email address
-    Ok(Mailbox::new(Some("GitArena".to_owned()), address.parse()?))
-}
-
-#[instrument(err, skip(db_pool))]
-pub(crate) async fn send_user_mail(user: &User, subject: &str, body: String, db_pool: &Pool) -> Result<()> {
-    // This is in an extra block so `transaction` gets dropped early
-    let email = {
-        let mut transaction = db_pool.begin().await?;
-
-        // Every *valid* user has a notification email address in the database, so .unwrap is fine
-        let email = Email::find_notification_email(user, &mut transaction)
-            .await?
-            .ok_or_else(|| anyhow!("User {user} has no notification email address"))?;
-
-        transaction.commit().await?;
-
-        email
-    };
-
-    let message = Message::builder()
-        .from(get_root_mailbox(db_pool).await?)
-        .to(email.as_mailbox(Some(user.username.clone()))?)
-        .subject(subject)
-        .body(body)
-        .context("Unable to build email.")?;
-
-    send_mail(message, db_pool).await
-}
-
-#[instrument(err, skip(db_pool))]
-async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
+pub(crate) async fn create_transport(db_pool: &Pool) -> Result<()> {
     let enabled = from_config!("smtp.enabled" => bool);
 
     if !enabled {
@@ -177,15 +148,19 @@ async fn send_mail(message: Message, db_pool: &Pool) -> Result<()> {
             .context("Unable to create TLS connection")?
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
+            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(server.as_str())
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
+            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     };
 
-    transporter.send(message).await.context("Unable to send email")?;
+    TRANSPORTER
+        .set(transporter)
+        .map_err(|_| anyhow!("email transport was initialized more than once"))?;
 
     Ok(())
 }

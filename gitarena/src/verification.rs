@@ -1,19 +1,34 @@
 use crate::config::get_setting;
-use crate::templates::plain::render;
+use crate::mail::task::MailTask;
+use crate::mail::templates::VerifyEmailTemplate;
+use crate::prelude::MapToFangError;
 use crate::user::User;
-use crate::{crypto, mail, template_context, templates};
-
+use crate::{TASK_DB_POOL, crypto};
 use anyhow::{Context, Result};
+use askama::Template;
+use async_trait::async_trait;
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use gitarena_common::database::Pool;
-use tracing::instrument;
-use tracing_unwrap::OptionExt;
+use gitarena_macros::from_config;
+use tracing::{info, instrument};
 
-#[instrument(err, skip(db_pool))]
-pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool) -> Result<()> {
+#[instrument(err, skip(queue, db_pool))]
+pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
     assert!(user.id >= 0);
+
+    let (smtp_enabled, domain) = from_config!(
+        "smtp.enabled" => bool,
+        "domain" => String,
+    );
+
+    if !smtp_enabled {
+        return Ok(());
+    }
 
     let hash = crypto::random_hex_string(32)?;
     let mut transaction = db_pool.begin().await?;
+
+    let smtp_address = get_setting("smtp.address", &mut transaction).await?;
 
     sqlx::query("insert into user_verifications (user_id, hash, expires) values ($1, $2, now() + interval '1 day')")
         .bind(user.id)
@@ -21,22 +36,58 @@ pub(crate) async fn send_verification_mail(user: &User, db_pool: &Pool) -> Resul
         .execute(&mut *transaction)
         .await?;
 
-    let domain: String = get_setting("domain", &mut transaction).await?;
-    let url = format!("{domain}/api/verify/{hash}");
+    let template = VerifyEmailTemplate {
+        link: &format!("{domain}/api/verify/{hash}"),
+        instance_name: "GitArena",
+        domain: &domain,
+    };
 
-    let template = &templates::VERIFY_EMAIL.get().unwrap_or_log();
-    let body = &template.0;
-    let tags = &template.1;
-
-    let subject = tags.get("subject").context("Template does not contain subject")?;
-    let email_body = render(
-        body.clone(),
-        template_context!([("username".to_owned(), user.username.clone()), ("link".to_owned(), url)]),
-    );
-
-    mail::send_user_mail(user, subject, email_body, db_pool).await?;
+    let task = MailTask {
+        from: ("GitArena".to_string(), smtp_address),
+        to: (user.username.clone(), email),
+        subject: template.subject(),
+        body: template.render().context("failed to render verify email template")?,
+    };
 
     transaction.commit().await?;
 
+    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
+
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "fang::serde")]
+pub(crate) struct ExpiredVerifyLinkRemovalTask {}
+
+#[async_trait]
+#[typetag::serde]
+impl AsyncRunnable for ExpiredVerifyLinkRemovalTask {
+    #[instrument(skip(_client))]
+    async fn run(&self, _client: &dyn AsyncQueueable) -> Result<(), FangError> {
+        let db_pool = TASK_DB_POOL.get().ok_or_else(|| FangError {
+            description: "task db pool OnceCell is empty".to_string(),
+        })?;
+
+        let mut tx = db_pool.begin().await.fang()?;
+
+        let result = sqlx::query("delete from user_verifications where expires < now()")
+            .execute(&mut *tx)
+            .await
+            .fang()?;
+
+        tx.commit().await.fang()?;
+
+        info!(count = %result.rows_affected(), "deleted expired user verification links");
+        Ok(())
+    }
+
+    fn uniq(&self) -> bool {
+        true
+    }
+
+    fn cron(&self) -> Option<Scheduled> {
+        // daily at 3am
+        Some(Scheduled::CronPattern("0 3 * * *".to_string()))
+    }
 }

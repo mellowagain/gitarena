@@ -1,0 +1,9 @@
+{{ inviter }} has invited you to join {{ org }} as a {{ role }}.
+Accept the invite by clicking or pasting this link into your browser:
+
+  {{ link }}
+
+This invite expires in 7 days.
+
+--
+{{ instance_name }} | {{ domain }}

@@ -9,9 +9,8 @@ use crate::utils::admin_panel_layer::AdminPanelLayer;
 use crate::utils::system::SYSTEM_INFO;
 
 use std::env;
-use std::env::VarError;
 
-use actix_files::Files;
+use crate::verification::ExpiredVerifyLinkRemovalTask;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
@@ -22,13 +21,15 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
+use fang::{AsyncQueueable, AsyncRunnable};
 use futures_locks::RwLock;
-use gitarena_common::database::create_postgres_pool;
+use gitarena_common::database::{Pool, create_postgres_pool};
 use gitarena_common::log::init_logger;
 use gitarena_common::telemetry;
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use time::Duration as TimeDuration;
+use tokio::sync::OnceCell;
 use tracing::{info, warn};
 use tracing_subscriber::Layer;
 use utoipa::OpenApi;
@@ -48,16 +49,18 @@ mod metrics;
 mod passkey;
 mod prelude;
 mod privileges;
+mod queue;
 mod repository;
 mod routes;
 mod session;
 mod sse;
 mod ssh;
 mod sso;
-mod templates;
 mod user;
 mod utils;
 mod verification;
+
+pub(crate) static TASK_DB_POOL: OnceCell<Pool> = OnceCell::const_new();
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -86,13 +89,16 @@ async fn main() -> Result<()> {
     }
 
     let db_pool = create_postgres_pool("gitarena", None).await?;
+    TASK_DB_POOL
+        .set(db_pool.clone())
+        .map_err(|_| anyhow!("task db pool should not be set more than once"))?;
+
     let _task_handle = spawn_db_pool_metrics_task(db_pool.clone());
 
     licenses::init();
 
     // read the `Lazy` to initialize it but immediately drop the returned guard to prevent a deadlock
     let _ = SYSTEM_INFO.read().await;
-    let _watcher = templates::init().await?;
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
@@ -103,6 +109,16 @@ async fn main() -> Result<()> {
     let webauthn_origin: Option<String> = from_optional_config!("webauthn.origin" => String);
     let webauthn_domain = domain.unwrap_or_else(|| "http://localhost:8320".to_owned());
     let webauthn = passkey::build_webauthn(&webauthn_domain, webauthn_origin.as_deref())?;
+
+    mail::create_transport(&db_pool).await?;
+
+    let queue = queue::init().await?;
+
+    let cron = ExpiredVerifyLinkRemovalTask {};
+    queue
+        .schedule_task(&cron as &dyn AsyncRunnable)
+        .await
+        .context("failed to schedule remove expired verify link cron job")?;
 
     let ipc = RwLock::new(Ipc::new().await?);
 
@@ -122,11 +138,12 @@ async fn main() -> Result<()> {
                 .secure(secure),
         );
 
-        let mut app = App::new()
+        App::new()
             .app_data(Data::new(db_pool.clone()))
             .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
             .app_data(Data::new(webauthn.clone()))
+            .app_data(Data::new(queue.clone()))
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
@@ -141,9 +158,7 @@ async fn main() -> Result<()> {
                         // "Cache-Control headers SHOULD be used to disable caching of the returned entity."
                         res.headers_mut()
                             .insert(CACHE_CONTROL, HeaderValue::from_static("no-cache, max-age=0, must-revalidate"));
-                    }
-
-                    if res.request().path().starts_with("/api") {
+                    } else {
                         res.headers_mut().insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
                     }
 
@@ -152,7 +167,6 @@ async fn main() -> Result<()> {
             })
             .wrap_fn(error_renderer_middleware)
             .default_service(route().method(Method::GET).to(routes::not_found::default_handler))
-            .service(routes::admin::all())
             .configure(routes::init)
             .configure(routes::proxy::init)
             .configure(routes::user::init)
@@ -162,21 +176,7 @@ async fn main() -> Result<()> {
             .route(
                 "/favicon.ico",
                 to(|| async { HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish() }),
-            );
-
-        let debug_mode = cfg!(debug_assertions);
-        let serve_static = matches!(env::var("SERVE_STATIC_FILES"), Ok(_) | Err(VarError::NotUnicode(_))) || debug_mode;
-
-        if serve_static {
-            app = app.service(
-                Files::new("/static", "./gitarena/static")
-                    .use_etag(!debug_mode)
-                    .use_last_modified(!debug_mode)
-                    .use_hidden_files(),
-            );
-        }
-
-        app
+            )
     })
     .bind(bind_address.as_str())
     .context("Unable to bind HTTP server.")?;

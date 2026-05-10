@@ -22,7 +22,6 @@ use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-pub(crate) mod admin;
 pub(crate) mod api;
 mod explore;
 pub(crate) mod not_found;

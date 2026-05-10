@@ -18,7 +18,10 @@ const tldrPoints = [
         icon: Lock,
         text: "Passwords are hashed with Argon2id. All traffic is encrypted with TLS",
     },
-    { icon: Bell, text: "We send transactional emails only (verification, security alerts). No marketing emails unless you ask for them." },
+    {
+        icon: Bell,
+        text: "We send transactional emails only (verification, security alerts). Emails are delivered via Resend (EU region). No marketing emails unless you ask for them.",
+    },
     { icon: UserX, text: "You can delete your account at any time. We will remove your personal data within 30 days. You own your code." },
 ];
 
@@ -70,6 +73,7 @@ const sections: Section[] = [
             "Backend — the application server is hosted on Tencent Cloud in Frankfurt am Main, Germany (EU/EEA). Repository contents (the actual files, commits, and git objects) are stored on disk on this server as bare git repositories. Tencent Cloud acts as a data processor under Art. 28 GDPR.",
             "Database — account data, sessions, SSH keys, passkeys, issues, merge request comments, and repository metadata are stored in an Aiven-managed PostgreSQL 17 instance running on DigitalOcean in Amsterdam, the Netherlands (EU/EEA). Both Aiven and DigitalOcean act as sub-processors under Art. 28 GDPR.",
             "Observability — logs, metrics, and traces are sent to New Relic, Inc., EU data region (data stored within the EU/EEA). New Relic processes data under a Data Processing Agreement.",
+            "Email delivery — transactional emails (account verification, security notices) are sent via Resend, Inc. Resend's SMTP infrastructure is used solely to transmit emails you explicitly trigger. Your email address and the content of those messages are processed by Resend to deliver them. Resend acts as a data processor under Art. 28 GDPR. See resend.com/legal/dpa for their Data Processing Agreement.",
             "We do not sell, rent, or trade personal data to any third party. We will disclose data to law-enforcement authorities only when required by a valid legal process, and will notify you beforehand where permitted by law.",
         ],
     },
@@ -174,7 +178,7 @@ export default function PrivacyPage() {
                             <div>
                                 <h1 className="text-2xl font-semibold tracking-tight mb-1">Privacy Policy</h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Last updated: 2 May 2026 &nbsp;·&nbsp; Effective: 2 May 2026
+                                    Last updated: 10 May 2026 &nbsp;·&nbsp; Effective: 10 May 2026
                                 </p>
                             </div>
                         </div>

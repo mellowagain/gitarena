@@ -1,0 +1,8 @@
+Verify your email address by clicking or pasting this link into your browser:
+
+  {{ link }}
+
+This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+
+--
+{{ instance_name }} | {{ domain }}

@@ -1,6 +1,5 @@
 use crate::git::io::band::Band;
 use crate::git::io::writer::GitWriter;
-use crate::templates;
 
 use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
@@ -19,7 +18,6 @@ use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use derive_more::{Display, Error};
 use serde_json::json;
-use tera::Context;
 use tracing::error;
 
 /// Returns early with an error. This macro is similar to the `bail!` macro which can be found in `anyhow`.
@@ -197,20 +195,13 @@ impl ResponseError for GitArenaError {
         let mut builder = HttpResponseBuilder::new(self.status_code());
 
         match &self.display_type {
-            ErrorDisplayType::Html | ErrorDisplayType::Git => {
+            ErrorDisplayType::Git => {
                 builder.extensions_mut().insert::<GitArenaError>(self.clone());
 
                 // This method is not async which means we can't call async renders such as HTML and Git
                 // As a workaround, we let a middleware (which is async) render these two error types
                 // More information: https://github.com/actix/actix-web/discussions/2593
                 builder.finish()
-            }
-            ErrorDisplayType::Htmx(inner) => {
-                // TODO: Send partial htmx instead
-                let mut error = self.clone();
-                error.display_type = *inner.clone();
-
-                error.error_response()
             }
             ErrorDisplayType::Json => builder.json(json!({
                 "error": self.message()
@@ -238,15 +229,6 @@ where
 
         Ok(if let Some(error) = gitarena_error {
             match error.display_type {
-                ErrorDisplayType::Html => {
-                    let result = render_html_error(&error).await;
-
-                    response.map_body(|head, _| {
-                        head.headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
-
-                        result.unwrap_or_else(|err| error_render_error(err, &error, head))
-                    })
-                }
                 ErrorDisplayType::Git => {
                     let result = render_git_error(&error).await;
 
@@ -269,20 +251,6 @@ where
             response
         })
     }
-}
-
-async fn render_html_error(renderer: &GitArenaError) -> Result<BoxBody> {
-    let mut context = Context::new();
-    context.try_insert("error", renderer.message().as_str())?;
-
-    if cfg!(debug_assertions) {
-        context.try_insert("debug", &true)?;
-    }
-
-    let template_name = format!("error/{}.html", renderer.status_code().as_u16());
-    let template = templates::render(template_name.as_str(), &context).await?;
-
-    Ok(BoxBody::new(template))
 }
 
 async fn render_git_error(renderer: &GitArenaError) -> Result<BoxBody> {
@@ -336,8 +304,6 @@ impl<T, E: StdError + Send + Sync + 'static> ExtendWithStatusCode<T> for StdResu
 
 #[derive(Display, Debug, Clone)]
 pub(crate) enum ErrorDisplayType {
-    Html,
-    Htmx(Box<ErrorDisplayType>),
     Json,
     Git,
     Plain,

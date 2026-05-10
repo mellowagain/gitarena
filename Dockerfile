@@ -23,8 +23,6 @@ RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=builder /usr/src/gitarena/target/release/gitarena /app/gitarena-bin
-COPY --from=builder /usr/src/gitarena/gitarena/templates/ /app/gitarena/templates/
-COPY --from=builder /usr/src/gitarena/gitarena/static/ /app/gitarena/static/
 
 EXPOSE 8080
 EXPOSE 2222

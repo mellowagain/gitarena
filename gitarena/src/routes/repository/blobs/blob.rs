@@ -1,11 +1,7 @@
-use crate::git::history::{all_branches, all_tags, last_commit_for_blob};
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
-use crate::prelude::{ContextExtensions, LibGit2SignatureExtensions};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
-use crate::templates::web::{GitCommit, RepoFile};
-use crate::user::WebUser;
-use crate::{die, err, render_template};
+use crate::{die, err};
 use gitarena_common::database::Pool;
 
 use std::sync::Arc;
@@ -20,87 +16,6 @@ use gix::objs::tree::{EntryKind, EntryMode};
 use gix::objs::{Tree, TreeRef};
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
-use infer::MatcherType;
-
-use tera::Context;
-use tracing_unwrap::OptionExt;
-
-#[route("/{username}/{repository}/tree/{tree}/blob/{blob:.*}", method = "GET", err = "html")]
-pub(crate) async fn view_blob(
-    repo: Repository,
-    branch: Branch,
-    uri: web::Path<BlobRequest>,
-    web_user: WebUser,
-    db_pool: web::Data<Pool>,
-) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-
-    let gitoxide_repo = branch.gitoxide_repo;
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
-
-    let full_tree_name = branch.reference.name.as_bstr().to_str()?;
-
-    let mut buffer = Vec::<u8>::new();
-    let mut blob_buffer = Vec::<u8>::new();
-
-    let store = gitoxide_repo.objects.store().clone();
-
-    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let (name, content, mode) = recursively_visit_blob_content(tree_ref, uri.blob.as_str(), store.clone(), &mut blob_buffer).await?;
-
-    let oid = last_commit_for_blob(&libgit2_repo, full_tree_name, uri.blob.as_str()).await?.unwrap_or_log();
-    let commit = libgit2_repo.find_commit(oid)?;
-    let (author_name, author_uid, author_email) = commit.author().try_disassemble(&mut transaction).await;
-
-    let mut context = Context::new();
-
-    context.try_insert(
-        "file",
-        &RepoFile {
-            file_type: mode.value(),
-            file_name: name.as_str(),
-            submodule_target_oid: None,
-            commit: GitCommit {
-                oid: format!("{oid}"),
-                message: commit.message().unwrap_or_default().to_owned(),
-                time: commit.time().seconds(),
-                date: None,
-                author_name,
-                author_uid,
-                author_email,
-            },
-        },
-    )?;
-
-    let size = content.len();
-
-    let file_ty = match infer::get(content.as_bytes()) {
-        Some(ty) if matches!(ty.matcher_type(), MatcherType::Text | MatcherType::Doc) => {
-            // We only display text files which are less than 2 MB
-            if size < 2_000_000 {
-                context.try_insert("content", content.as_str())?;
-            }
-
-            "text"
-        }
-        Some(_) => "binary",
-        None => "error",
-    };
-    context.try_insert("type", file_ty)?;
-
-    context.insert_web_user(&web_user)?;
-    context.try_insert("repo_owner_name", uri.username.as_str())?;
-    context.try_insert("repo", &repo)?;
-
-    context.try_insert("tree", uri.tree.as_str())?;
-    context.try_insert("branches", &all_branches(&libgit2_repo).await?)?;
-    context.try_insert("tags", &all_tags(&libgit2_repo, None).await?)?;
-
-    context.try_insert("name", name.as_str())?;
-    context.try_insert("full_path", uri.blob.as_str())?;
-
-    render_template!("repo/blob/blob.html", context, transaction)
-}
 
 #[route("/{username}/{repository}/tree/{tree}/~blob/{blob:.*}", method = "GET", err = "text")]
 pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::Path<BlobRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {

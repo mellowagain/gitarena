@@ -29,6 +29,7 @@ used_underscore_binding = "allow"
 enum_glob_use = "allow"
 items_after_statements = "allow"
 doc_markdown = "allow"
+struct_excessive_bools = "allow"
 
 [profile.release]
 lto = true

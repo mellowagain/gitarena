@@ -7,6 +7,7 @@ use gitarena_macros::{from_config, route};
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
+use fang::AsyncQueue;
 use serde::Deserialize;
 use utoipa::ToSchema;
 
@@ -54,7 +55,12 @@ pub(crate) struct AddEmailRequest {
     tag = "user"
 )]
 #[route("/api/emails", method = "POST", err = "json")]
-pub(crate) async fn post_email(body: web::Json<AddEmailRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn post_email(
+    body: web::Json<AddEmailRequest>,
+    web_user: WebUser,
+    queue: web::Data<AsyncQueue>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if body.email.is_empty() {
@@ -87,9 +93,7 @@ pub(crate) async fn post_email(body: web::Json<AddEmailRequest>, web_user: WebUs
 
     transaction.commit().await?;
 
-    if smtp_enabled {
-        send_verification_mail(&user, &db_pool).await?;
-    }
+    send_verification_mail(&user, email.email.clone(), &queue, &db_pool).await?;
 
     Ok(HttpResponse::Created().json(email))
 }
@@ -236,7 +240,12 @@ pub(crate) async fn patch_email(
     tag = "user"
 )]
 #[route("/api/emails/{id}/verify", method = "POST", err = "json")]
-pub(crate) async fn resend_verify_email(path: web::Path<i32>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn resend_verify_email(
+    path: web::Path<i32>,
+    web_user: WebUser,
+    queue: web::Data<AsyncQueue>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let email_id = path.into_inner();
@@ -256,11 +265,7 @@ pub(crate) async fn resend_verify_email(path: web::Path<i32>, web_user: WebUser,
 
     transaction.commit().await?;
 
-    let smtp_enabled = from_config!("smtp.enabled" => bool);
-
-    if smtp_enabled {
-        send_verification_mail(&user, &db_pool).await?;
-    }
+    send_verification_mail(&user, email.email.clone(), &queue, &db_pool).await?;
 
     Ok(HttpResponse::NoContent().finish())
 }
