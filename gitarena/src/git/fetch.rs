@@ -69,7 +69,9 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
 
     if let Some(acknowledgments) = process_haves(repo, &options).await? {
         writer.append(acknowledgments).await?;
-    } else if let Some(wants) = process_wants(repo, &options).await? {
+    }
+
+    if let Some(wants) = process_wants(repo, &options).await? {
         writer.append(wants).await?;
     }
 
