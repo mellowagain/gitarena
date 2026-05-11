@@ -35,6 +35,7 @@
             "group": "Features",
             "pages": [
               "features/repositories",
+              "features/markdown",
               "features/authentication",
               "features/issues-and-merge-requests",
               "features/admin",

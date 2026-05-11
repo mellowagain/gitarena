@@ -1,0 +1,105 @@
+---
+title: "Markdown rendering"
+description: "Supported markdown elements in GitArena's file viewer and README display."
+---
+
+GitArena renders markdown files (`.md`, `.mdx`, `.markdown`) in the repository file viewer and on repository overview pages. Rendering is based on [GitHub Flavored Markdown](https://github.github.com/gfm/) (GFM) with additional HTML element support.
+
+## Standard elements
+
+All standard GFM elements are supported.
+
+| Element | Syntax |
+| --- | --- |
+| Headings | `# H1` through `###### H6` |
+| Bold | `**bold**` |
+| Italic | `*italic*` |
+| Strikethrough | `~~strikethrough~~` |
+| Inline code | `` `code` `` |
+| Code block | ` ```language ` |
+| Blockquote | `> quote` |
+| Horizontal rule | `---` |
+| Link | `[text](url)` |
+| Image | `![alt](url)` |
+
+## Lists
+
+Both ordered and unordered lists are supported, including nested lists and task lists.
+
+```markdown
+- Item
+  - Nested item
+- [ ] Unchecked task
+- [x] Checked task
+
+1. First
+2. Second
+```
+
+## Tables
+
+GFM tables are supported, including `colspan` and `rowspan` on cells.
+
+```markdown
+| Column A | Column B |
+| --- | --- |
+| Cell | Cell |
+```
+
+## Code blocks
+
+Fenced code blocks with a language identifier get syntax highlighting.
+
+````markdown
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+````
+
+Supported languages include Rust, TypeScript, Python, Go, C, C++, Java, bash, SQL, JSON, YAML, and many more via Prism.
+
+## HTML elements
+
+A subset of HTML elements is allowed inside markdown files. Raw HTML tags not on this list are stripped before rendering.
+
+| Element | Purpose |
+| --- | --- |
+| `<details>` / `<summary>` | Collapsible sections |
+| `<kbd>` | Keyboard key labels |
+| `<mark>` | Highlighted text |
+| `<sub>` / `<sup>` | Subscript and superscript |
+| `<ins>` | Underlined / inserted text |
+| `<div>` / `<p>` | Block containers (with `align` attribute) |
+
+### Collapsible sections
+
+```markdown
+<details>
+<summary>Click to expand</summary>
+
+Content goes here. Markdown inside `<details>` is rendered normally.
+
+</details>
+```
+
+### Keyboard labels
+
+```markdown
+Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.
+```
+
+### Highlighted text
+
+```markdown
+This is <mark>highlighted</mark> text.
+```
+
+## Images
+
+Relative image paths in markdown files are resolved against the file's directory within the repository. Absolute `https://` URLs are proxied through GitArena to avoid mixed-content issues. Data URIs (`data:image/...`) are passed through as-is.
+
+## Disallowed elements
+
+`<script>`, `<style>`, and any other elements not listed above are stripped from the output. Attribute values are also sanitized — only safe, explicitly allowed attributes are kept.
