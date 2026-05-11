@@ -18,7 +18,7 @@ pub(crate) async fn execute_upload_pack_v2(data: &[u8], repo: &Repository) -> Re
 
     let output = match command.as_str() {
         "ls-refs" => ls_refs(body, repo).await?,
-        "fetch" => fetch(body, repo).await?,
+        "fetch" => fetch(body, repo, true).await?,
         _ => bail!("unknown git-upload-pack command: {command}"),
     };
 
@@ -32,5 +32,5 @@ pub(crate) async fn execute_upload_pack_v1(data: &[u8], repo: &Repository) -> Re
 
     let git_body = read_data_lines(&mut readable_iter).await?;
 
-    Ok(fetch(git_body, repo).await?.to_vec())
+    Ok(fetch(git_body, repo, false).await?.to_vec())
 }

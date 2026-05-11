@@ -10,8 +10,11 @@ use tracing::instrument;
 use tracing::warn;
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
-    let mut options = Fetch::default();
+pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: bool) -> Result<Bytes> {
+    let mut options = Fetch {
+        sideband,
+        ..Default::default()
+    };
     let mut writer = GitWriter::new();
 
     for raw_line in &input {
@@ -38,7 +41,15 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }
 
         if let Some(stripped) = line.strip_prefix("want ") {
-            options.want.push(stripped.to_owned());
+            let mut parts = stripped.splitn(2, '\x00');
+            let oid = parts.next().unwrap_or(stripped).trim();
+            options.want.push(oid.to_owned());
+
+            if let Some(caps) = parts.next()
+                && caps.split(' ').any(|c| c == "side-band-64k")
+            {
+                options.sideband = true;
+            }
         }
 
         /*if line.starts_with("shallow ") {
@@ -183,7 +194,11 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
 
     writer.append(progress_writer.to_writer().await?).await?;
 
-    writer.write_binary_sideband(Band::Data, buffer.as_ref()).await?;
+    if options.sideband {
+        writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref()).await?;
+    } else {
+        writer.write_binary(buffer.as_ref()).await?;
+    }
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
@@ -233,6 +248,7 @@ pub(crate) struct Fetch {
     pub(crate) include_tag: bool,
     pub(crate) ofs_delta: bool, // PACKv2
     pub(crate) done: bool,
+    pub(crate) sideband: bool,
     pub(crate) have: Vec<String>,
     pub(crate) want: Vec<String>,
     /*pub(crate) shallow: Vec<String>,
