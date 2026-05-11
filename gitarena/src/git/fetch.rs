@@ -5,7 +5,7 @@ use crate::git::io::writer::GitWriter;
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
 use async_recursion::async_recursion;
-use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
+use git2::{Buf, Commit, Error as Git2Error, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use tracing::instrument;
 use tracing::warn;
 
@@ -92,16 +92,21 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
     writer.write_text("acknowledgments").await?;
 
     for have in &options.have {
-        match repo.find_reference(have.as_str()) {
-            Ok(reference) => {
-                if let Some(name) = reference.name() {
-                    writer.write_text(format!("ACK {name}")).await?;
-                    written_one = true;
-                }
-            }
+        let oid = match Oid::from_str(have.as_str()) {
+            Ok(oid) => oid,
             Err(err) => {
-                warn!(?err, "Unable to find reference {have} user has");
+                warn!(?err, "Invalid OID in have: {have}");
+                continue;
             }
+        };
+
+        match repo.find_object(oid, None) {
+            Ok(_) => {
+                writer.write_text(format!("ACK {have}")).await?;
+                written_one = true;
+            }
+            Err(err) if err.code() == ErrorCode::NotFound => { /* client has a commit we dont have, just ignore */ }
+            Err(err) => warn!(?err, "Error looking up have object: {have}"),
         }
     }
 
@@ -123,7 +128,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
 
     let mut progress_writer = ProgressWriter::new();
 
-    let (buffer, object_count, _written) = {
+    let (buffer, object_count, written) = {
         let mut pack_builder = repo.packbuilder()?;
 
         pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
@@ -166,18 +171,13 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
 
-    // TODO: Fix calculation
-    let reused = 0 /*total - written*/;
-    let reused_delta =  0 /*total_delta - reused*/;
-
-    let _obj_pack_total = 0 /*total_delta - total*/;
-    let _obj_pack_reused = 0 /*reused_delta - reused*/;
-    let pack_reused = 0 /*obj_pack_total + obj_pack_reused*/;
+    let reused = total.saturating_sub(written);
+    let reused_delta = total_delta.saturating_sub(reused);
 
     writer
         .write_text_sideband(
             Band::Progress,
-            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta}), pack-reused {pack_reused}"),
+            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta})"),
         )
         .await?;
 
