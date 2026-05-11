@@ -68,15 +68,24 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }
     }
 
-    if !options.done {
-        if let Some(acknowledgments) = process_haves(repo, &options).await? {
-            writer.append(acknowledgments).await?;
-            writer.delimiter().await?;
+    if options.done {
+        if let Some(wants) = process_wants(repo, &options).await? {
+            writer.append(wants).await?;
         }
-    }
+    } else {
+        let (acknowledgments, sent_ready) = process_haves(repo, &options).await?;
 
-    if let Some(wants) = process_wants(repo, &options).await? {
-        writer.append(wants).await?;
+        if let Some(acknowledgments) = acknowledgments {
+            writer.append(acknowledgments).await?;
+        }
+
+        if sent_ready {
+            writer.delimiter().await?;
+
+            if let Some(wants) = process_wants(repo, &options).await? {
+                writer.append(wants).await?;
+            }
+        }
     }
 
     /*if let Some(mut shallows) = process_shallows(&repo, &options).await? {
@@ -88,9 +97,9 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
 }
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
+pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<(Option<GitWriter>, bool)> {
     if options.have.is_empty() {
-        return Ok(None);
+        return Ok((None, false));
     }
 
     let mut written_one = false;
@@ -116,11 +125,13 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
         }
     }
 
-    if !written_one {
+    if written_one {
+        writer.write_text("ready").await?;
+    } else {
         writer.write_text("NAK").await?;
     }
 
-    Ok(Some(writer))
+    Ok((Some(writer), written_one))
 }
 
 #[instrument(err, skip(repo))]
