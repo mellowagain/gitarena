@@ -63,12 +63,16 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }*/
 
         if line == "done" {
+            options.done = true;
             break;
         }
     }
 
-    if let Some(acknowledgments) = process_haves(repo, &options).await? {
-        writer.append(acknowledgments).await?;
+    if !options.done {
+        if let Some(acknowledgments) = process_haves(repo, &options).await? {
+            writer.append(acknowledgments).await?;
+            writer.delimiter().await?;
+        }
     }
 
     if let Some(wants) = process_wants(repo, &options).await? {
@@ -217,6 +221,7 @@ pub(crate) struct Fetch {
     pub(crate) no_progress: bool,
     pub(crate) include_tag: bool,
     pub(crate) ofs_delta: bool, // PACKv2
+    pub(crate) done: bool,
     pub(crate) have: Vec<String>,
     pub(crate) want: Vec<String>,
     /*pub(crate) shallow: Vec<String>,
