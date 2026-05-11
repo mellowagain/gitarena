@@ -77,6 +77,24 @@ The SSH server reads its settings from the `settings` table:
 
 The server host key is generated automatically on first start and stored in the `ssh.private_key` setting. It persists across restarts and cannot be overridden from the environment.
 
+## Supported key types
+
+The following public key types are accepted:
+
+| Key type                             | Algorithm                           |
+|--------------------------------------|-------------------------------------|
+| `ssh-ed25519`                        | Ed25519                             |
+| `sk-ssh-ed25519@openssh.com`         | Ed25519 (FIDO/U2F security key)     |
+| `ecdsa-sha2-nistp256`                | ECDSA P-256                         |
+| `ecdsa-sha2-nistp384`                | ECDSA P-384                         |
+| `ecdsa-sha2-nistp521`                | ECDSA P-521                         |
+| `sk-ecdsa-sha2-nistp256@openssh.com` | ECDSA P-256 (FIDO/U2F security key) |
+| `ssh-rsa`                            | RSA (SHA-1)                         |
+| `rsa-sha2-256`                       | RSA (SHA-256)                       |
+| `rsa-sha2-512`                       | RSA (SHA-512)                       |
+
+DSA keys are not accepted.
+
 ## Shell access
 
 If a user connects without issuing a git command (e.g. by opening an interactive SSH session), the server greets them by name and closes the connection. Shell access is not provided.

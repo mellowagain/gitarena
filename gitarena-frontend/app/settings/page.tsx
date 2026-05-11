@@ -828,6 +828,46 @@ function KeysTab() {
                 </div>
                 <div>
                     <FieldLabel>Key</FieldLabel>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <p className="text-xs text-muted-foreground underline decoration-dashed underline-offset-2 cursor-default mb-2 w-fit">
+                                Supported algorithms
+                            </p>
+                        </TooltipTrigger>
+                        <TooltipContent className="p-0" side="right">
+                            <table className="text-xs">
+                                <thead>
+                                    <tr className="border-b border-background/20">
+                                        <th className="px-3 py-1.5 text-left font-medium opacity-60">Algorithm</th>
+                                        <th className="px-3 py-1.5 text-right font-medium opacity-60">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        { type: "ssh-ed25519", status: "recommended" },
+                                        { type: "sk-ssh-ed25519@openssh.com", status: "recommended" },
+                                        { type: "ecdsa-sha2-nistp256", status: "accepted" },
+                                        { type: "ecdsa-sha2-nistp384", status: "accepted" },
+                                        { type: "ecdsa-sha2-nistp521", status: "accepted" },
+                                        { type: "sk-ecdsa-sha2-nistp256@openssh.com", status: "accepted" },
+                                        { type: "rsa-sha2-256", status: "accepted" },
+                                        { type: "rsa-sha2-512", status: "accepted" },
+                                        { type: "ssh-rsa", status: "accepted" },
+                                        { type: "ssh-dss", status: "unsupported" },
+                                    ].map(({ type, status }) => (
+                                        <tr key={type}>
+                                            <td className="font-mono px-3 py-1">{type}</td>
+                                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                                                {status === "recommended" && <span className="text-blue-500 font-bold">recommended</span>}
+                                                {status === "accepted" && <span className="text-muted-foreground">accepted</span>}
+                                                {status === "unsupported" && <span className="text-destructive">unsupported</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </TooltipContent>
+                    </Tooltip>
                     <Textarea
                         rows={4}
                         value={newSSHKey}
