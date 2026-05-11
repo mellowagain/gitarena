@@ -21,7 +21,7 @@ use gitarena_common::database::Pool;
 use gix::Repository as GitoxideRepository;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use sqlx::{FromRow, Transaction};
 use tracing::{Level, instrument};
@@ -29,7 +29,7 @@ use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(FromRow, Display, Clone, derive_more::Debug, Serialize, ToSchema)]
+#[derive(FromRow, Display, Clone, derive_more::Debug, Serialize, Deserialize, ToSchema)]
 #[display("{name}")]
 #[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct Repository {

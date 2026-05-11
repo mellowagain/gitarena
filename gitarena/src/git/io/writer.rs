@@ -106,7 +106,7 @@ impl GitWriter {
             self.inner
                 .write(with_band.as_slice())
                 .await
-                .with_context(|| format!("Unable to write binary chunk to sideband {band} in Git writer: {binary:?}"))?;
+                .with_context(|| format!("Unable to write binary chunk to sideband {band} in Git writer: {} bytes", chunk.len()))?;
         }
 
         self.inner.enable_text_mode();

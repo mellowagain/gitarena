@@ -1,7 +1,6 @@
 #![deny(unsafe_code)]
 
 use crate::error::error_renderer_middleware;
-use crate::ipc::Ipc;
 use crate::metrics::db_pool::spawn_db_pool_metrics_task;
 use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
@@ -22,7 +21,6 @@ use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
 use fang::{AsyncQueueable, AsyncRunnable};
-use futures_locks::RwLock;
 use gitarena_common::database::{Pool, create_postgres_pool};
 use gitarena_common::log::init_logger;
 use gitarena_common::telemetry;
@@ -41,7 +39,6 @@ mod crypto;
 mod error;
 mod geoip;
 mod git;
-mod ipc;
 mod issue;
 mod licenses;
 mod mail;
@@ -50,6 +47,7 @@ mod passkey;
 mod prelude;
 mod privileges;
 mod queue;
+mod replication;
 mod repository;
 mod routes;
 mod session;
@@ -120,12 +118,6 @@ async fn main() -> Result<()> {
         .await
         .context("failed to schedule remove expired verify link cron job")?;
 
-    let ipc = RwLock::new(Ipc::new().await?);
-
-    if !ipc.read().await.is_connected() {
-        ipc::spawn_connection_task(ipc.clone());
-    }
-
     ssh::init(db_pool.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
@@ -140,7 +132,6 @@ async fn main() -> Result<()> {
 
         App::new()
             .app_data(Data::new(db_pool.clone()))
-            .app_data(Data::new(ipc.clone()))
             .app_data(broadcaster.clone())
             .app_data(Data::new(webauthn.clone()))
             .app_data(Data::new(queue.clone()))
