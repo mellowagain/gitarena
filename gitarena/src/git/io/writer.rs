@@ -94,6 +94,25 @@ impl GitWriter {
         Ok(self)
     }
 
+    #[instrument(err, skip(self, binary))]
+    pub(crate) async fn write_binary_sideband_chunked(&mut self, band: Band, binary: &[u8]) -> Result<&mut GitWriter> {
+        const MAX_CHUNK: usize = 65515;
+
+        self.inner.enable_binary_mode();
+
+        for chunk in binary.chunks(MAX_CHUNK) {
+            let with_band = [band.serialize(), chunk].concat();
+
+            self.inner
+                .write(with_band.as_slice())
+                .await
+                .with_context(|| format!("Unable to write binary chunk to sideband {band} in Git writer: {} bytes", chunk.len()))?;
+        }
+
+        self.inner.enable_text_mode();
+        Ok(self)
+    }
+
     #[instrument(err, skip_all)]
     pub(crate) async fn write_raw(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
         self.inner

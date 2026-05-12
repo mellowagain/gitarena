@@ -5,13 +5,16 @@ use crate::git::io::writer::GitWriter;
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
 use async_recursion::async_recursion;
-use git2::{Buf, Commit, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
+use git2::{Buf, Commit, Error as Git2Error, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use tracing::instrument;
 use tracing::warn;
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
-    let mut options = Fetch::default();
+pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: bool) -> Result<Bytes> {
+    let mut options = Fetch {
+        sideband,
+        ..Default::default()
+    };
     let mut writer = GitWriter::new();
 
     for raw_line in &input {
@@ -38,7 +41,15 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }
 
         if let Some(stripped) = line.strip_prefix("want ") {
-            options.want.push(stripped.to_owned());
+            let mut parts = stripped.splitn(2, '\x00');
+            let oid = parts.next().unwrap_or(stripped).trim();
+            options.want.push(oid.to_owned());
+
+            if let Some(caps) = parts.next()
+                && caps.split(' ').any(|c| c == "side-band-64k")
+            {
+                options.sideband = true;
+            }
         }
 
         /*if line.starts_with("shallow ") {
@@ -63,14 +74,29 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
         }*/
 
         if line == "done" {
+            options.done = true;
             break;
         }
     }
 
-    if let Some(acknowledgments) = process_haves(repo, &options).await? {
-        writer.append(acknowledgments).await?;
-    } else if let Some(wants) = process_wants(repo, &options).await? {
-        writer.append(wants).await?;
+    if options.done {
+        if let Some(wants) = process_wants(repo, &options).await? {
+            writer.append(wants).await?;
+        }
+    } else {
+        let (acknowledgments, sent_ready) = process_haves(repo, &options).await?;
+
+        if let Some(acknowledgments) = acknowledgments {
+            writer.append(acknowledgments).await?;
+        }
+
+        if sent_ready {
+            writer.delimiter().await?;
+
+            if let Some(wants) = process_wants(repo, &options).await? {
+                writer.append(wants).await?;
+            }
+        }
     }
 
     /*if let Some(mut shallows) = process_shallows(&repo, &options).await? {
@@ -82,9 +108,9 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<
 }
 
 #[instrument(err, skip(repo))]
-pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
+pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Result<(Option<GitWriter>, bool)> {
     if options.have.is_empty() {
-        return Ok(None);
+        return Ok((None, false));
     }
 
     let mut written_one = false;
@@ -92,24 +118,31 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
     writer.write_text("acknowledgments").await?;
 
     for have in &options.have {
-        match repo.find_reference(have.as_str()) {
-            Ok(reference) => {
-                if let Some(name) = reference.name() {
-                    writer.write_text(format!("ACK {name}")).await?;
-                    written_one = true;
-                }
-            }
+        let oid = match Oid::from_str(have.as_str()) {
+            Ok(oid) => oid,
             Err(err) => {
-                warn!(?err, "Unable to find reference {have} user has");
+                warn!(?err, "Invalid OID in have: {have}");
+                continue;
             }
+        };
+
+        match repo.find_object(oid, None) {
+            Ok(_) => {
+                writer.write_text(format!("ACK {have}")).await?;
+                written_one = true;
+            }
+            Err(err) if err.code() == ErrorCode::NotFound => { /* client has a commit we dont have, just ignore */ }
+            Err(err) => warn!(?err, "Error looking up have object: {have}"),
         }
     }
 
-    if !written_one {
+    if written_one {
+        writer.write_text("ready").await?;
+    } else {
         writer.write_text("NAK").await?;
     }
 
-    Ok(Some(writer))
+    Ok((Some(writer), written_one))
 }
 
 #[instrument(err, skip(repo))]
@@ -123,7 +156,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
 
     let mut progress_writer = ProgressWriter::new();
 
-    let (buffer, object_count, _written) = {
+    let (buffer, object_count, written) = {
         let mut pack_builder = repo.packbuilder()?;
 
         pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
@@ -161,23 +194,22 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
 
     writer.append(progress_writer.to_writer().await?).await?;
 
-    writer.write_binary_sideband(Band::Data, buffer.as_ref()).await?;
+    if options.sideband {
+        writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref()).await?;
+    } else {
+        writer.write_binary(buffer.as_ref()).await?;
+    }
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
 
-    // TODO: Fix calculation
-    let reused = 0 /*total - written*/;
-    let reused_delta =  0 /*total_delta - reused*/;
-
-    let _obj_pack_total = 0 /*total_delta - total*/;
-    let _obj_pack_reused = 0 /*reused_delta - reused*/;
-    let pack_reused = 0 /*obj_pack_total + obj_pack_reused*/;
+    let reused = total.saturating_sub(written);
+    let reused_delta = total_delta.saturating_sub(reused);
 
     writer
         .write_text_sideband(
             Band::Progress,
-            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta}), pack-reused {pack_reused}"),
+            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta})"),
         )
         .await?;
 
@@ -215,6 +247,8 @@ pub(crate) struct Fetch {
     pub(crate) no_progress: bool,
     pub(crate) include_tag: bool,
     pub(crate) ofs_delta: bool, // PACKv2
+    pub(crate) done: bool,
+    pub(crate) sideband: bool,
     pub(crate) have: Vec<String>,
     pub(crate) want: Vec<String>,
     /*pub(crate) shallow: Vec<String>,

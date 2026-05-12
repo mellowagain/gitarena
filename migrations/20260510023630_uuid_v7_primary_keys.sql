@@ -1,3 +1,5 @@
+create extension if not exists pgcrypto cascade;
+
 create or replace function gen_uuidv7(ts timestamptz default clock_timestamp())
 returns uuid
 language plpgsql
@@ -77,8 +79,14 @@ update passkeys set new_user_id = u.new_id from users u where passkeys.user_id =
 alter table webauthn_challenges add column new_user_id uuid;
 update webauthn_challenges set new_user_id = u.new_id from users u where webauthn_challenges.user_id = u.id;
 
-alter table organization_members add column new_user_id uuid;
-update organization_members set new_user_id = u.new_id from users u where organization_members.user_id = u.id;
+do $guard$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'organization_members') then
+        alter table organization_members add column new_user_id uuid;
+        update organization_members set new_user_id = u.new_id from users u where organization_members.user_id = u.id;
+    end if;
+end;
+$guard$;
 
 alter table repositories add column new_owner uuid;
 update repositories set new_owner = u.new_id from users u where repositories.owner = u.id;
@@ -120,7 +128,14 @@ alter table issues drop constraint if exists issues_users_id_fk;
 alter table sso drop constraint if exists sso_users_id_fk;
 alter table passkeys drop constraint if exists passkeys_user_id_fkey;
 alter table webauthn_challenges drop constraint if exists webauthn_challenges_user_id_fkey;
-alter table organization_members drop constraint if exists organization_members_user_id_fkey;
+
+do $guard$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'organization_members') then
+        alter table organization_members drop constraint if exists organization_members_user_id_fkey;
+    end if;
+end;
+$guard$;
 
 -- Phase 4: swap columns
 
@@ -228,8 +243,14 @@ alter table passkeys alter column user_id set not null;
 alter table webauthn_challenges drop column user_id;
 alter table webauthn_challenges rename column new_user_id to user_id;
 
-alter table organization_members drop column user_id;
-alter table organization_members rename column new_user_id to user_id;
+do $guard$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'organization_members') then
+        alter table organization_members drop column user_id;
+        alter table organization_members rename column new_user_id to user_id;
+    end if;
+end;
+$guard$;
 
 -- Phase 5: recreate FK constraints
 
@@ -248,6 +269,13 @@ alter table issues add constraint issues_users_id_fk foreign key (author) refere
 alter table sso add constraint sso_users_id_fk foreign key (user_id) references users (id) on delete cascade;
 alter table passkeys add constraint passkeys_user_id_fkey foreign key (user_id) references users (id) on delete cascade;
 alter table webauthn_challenges add constraint webauthn_challenges_user_id_fkey foreign key (user_id) references users (id) on delete cascade;
-alter table organization_members add constraint organization_members_user_id_fkey foreign key (user_id) references users (id) on delete cascade;
+
+do $guard$
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'organization_members') then
+        alter table organization_members add constraint organization_members_user_id_fkey foreign key (user_id) references users (id) on delete cascade;
+    end if;
+end;
+$guard$;
 
 drop function gen_uuidv7;

@@ -2,17 +2,18 @@ use crate::config::{get_optional_setting, get_setting};
 use crate::organization::{OrgMember, Organization};
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
+use crate::replication::ImportTask;
 use crate::repository::Repository;
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
-use crate::{Ipc, die, err};
+use crate::{die, err};
 use gitarena_common::database::Pool;
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
 use futures_locks::RwLock;
-use gitarena_common::packets::git::GitImport;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
@@ -20,7 +21,7 @@ use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-// This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
+// todo: This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[utoipa::path(
     post,
@@ -40,16 +41,16 @@ use uuid::Uuid;
 pub(crate) async fn import(
     web_user: WebUser,
     body: web::Json<ImportJsonRequest>,
-    request: HttpRequest,
-    ipc: web::Data<RwLock<Ipc>>,
+    queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
-    let mut transaction = db_pool.begin().await?;
 
-    let enabled: bool = get_setting("repositories.importing_enabled", &mut transaction).await?;
+    let mut tx = db_pool.begin().await?;
 
-    if !enabled || !ipc.read().await.is_connected() {
+    let enabled: bool = get_setting("repositories.importing_enabled", &mut tx).await?;
+
+    if !enabled {
         die!(NOT_IMPLEMENTED, "Importing is disabled on this instance");
     }
 
@@ -77,16 +78,33 @@ pub(crate) async fn import(
     }
 
     let url = Url::parse(body.import_url.as_str()).map_err(|_| err!(BAD_REQUEST, "Unable to parse import url"))?;
+    let scheme = url.scheme();
+
+    if scheme != "http" && scheme != "https" {
+        die!(BAD_REQUEST, "Importing is only supported from `http` or `https` urls");
+    }
+
+    // as we print the url in our logs, disallow including credentials directly in it
+    if !url.username().is_empty() || url.password().is_some() {
+        die!(BAD_REQUEST, "Username and password is not allowed directly in the clone url");
+    }
 
     if body.mirror.is_some() {
         die!(NOT_IMPLEMENTED, "Mirroring is not yet implemented");
     }
 
+    let username = &body.username;
+    let password = &body.password;
+
+    if (username.is_some() && password.is_none()) || (username.is_none() && password.is_some()) {
+        die!(BAD_REQUEST, "Either provide both username or password or leave both blank");
+    }
+
     // Resolve namespace to either the authenticated user or an org the user has access to
     let (owner_id, owner_name) = if body.namespace == user.username {
         (user.id, user.username.clone())
-    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut transaction).await {
-        if OrgMember::get_role(org.id, user.id, &mut transaction).await?.is_none() {
+    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
+        if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
             die!(FORBIDDEN, "You are not a member of this organization");
         }
         (org.id, org.name.clone())
@@ -97,7 +115,7 @@ pub(crate) async fn import(
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
         .bind(owner_id)
         .bind(name)
-        .fetch_one(&mut *transaction)
+        .fetch_one(&mut *tx)
         .await?;
 
     if exists {
@@ -111,25 +129,27 @@ pub(crate) async fn import(
             .bind(name)
             .bind(description)
             .bind(body.visibility)
-            .fetch_one(&mut *transaction)
+            .fetch_one(&mut *tx)
             .await?;
 
-    repo.create_fs(&mut transaction).await?;
+    repo.create_fs(&mut tx).await?;
 
-    // Currently, only Git importing is supported. TODO: Support other VCS as well as GitLab export
-    // At some point it is also planned to import issues and such, requiring support for specific hosters such as GitHub, GitLab, BitBucket and Gitea
-    let packet = GitImport {
-        url: url.to_string(),
-        username: body.username.clone(),
-        password: body.password.clone(),
+    let task = ImportTask {
+        source: url.to_string(),
+        target: repo.clone(),
+        username: username.clone(),
+        password: password.clone(),
     };
 
-    ipc.write().await.send(packet).await.context("Failed to send import packet to workhorse")?;
+    queue
+        .insert_task(&task as &dyn AsyncRunnable)
+        .await
+        .context("failed to enqueue importing task")?;
 
-    let domain: String = get_optional_setting("domain", &mut transaction).await?.unwrap_or_default();
+    let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
     let path = format!("/{}/{}", &owner_name, &repo.name);
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
     info!(
         target.id = %repo.id,
@@ -139,16 +159,8 @@ pub(crate) async fn import(
         "New repository created for importing",
     );
 
-    Ok(if request.is_htmx() {
-        HttpResponse::Ok()
-            .append_header(("hx-redirect", path))
-            .append_header(("hx-refresh", "true"))
-            .finish()
-    } else {
-        let url = format!("{domain}{path}");
-
-        HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url })
-    })
+    let url = format!("{domain}{path}");
+    Ok(HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url }))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -165,9 +177,9 @@ pub(crate) struct ImportJsonRequest {
     #[serde(rename = "url")]
     #[schema(format = Uri)]
     import_url: String,
-    /// Set to any value to mirror the repository
+    /// Set to true to mirror the repository
     #[serde(default)]
-    mirror: Option<String>,
+    mirror: Option<bool>,
     /// Visibility of the imported repository
     visibility: RepoVisibility,
 
