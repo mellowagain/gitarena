@@ -4,7 +4,7 @@ use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::replication::ImportTask;
 use crate::repository::Repository;
-use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err};
@@ -100,19 +100,8 @@ pub(crate) async fn import(
         die!(BAD_REQUEST, "Either provide both username or password or leave both blank");
     }
 
-    let (owner_id, owner_name) = if body.namespace == user.username {
-        (user.id, user.username.clone())
-    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
-        if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
-            die!(FORBIDDEN, "You are not a member of this organization");
-        }
-        (org.id, org.name.clone())
-    } else {
-        die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
-    };
-
-    let is_org = body.namespace != user.username;
-    let owner_col = if is_org { "owner_org" } else { "owner_user" };
+    let (owner_id, owner_name) = determine_namespace(&body.namespace, &user, &mut tx).await?;
+    let owner_col = if body.namespace == user.username { "owner_user" } else { "owner_org" };
 
     let (exists,): (bool,) = sqlx::query_as(&format!(
         "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"

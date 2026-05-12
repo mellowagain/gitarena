@@ -1,5 +1,11 @@
+use crate::die;
+use crate::organization::{OrgMember, Organization};
+use crate::user::User;
 use actix_web::web::ServiceConfig;
+use anyhow::Result;
+use gitarena_common::database::Database;
 use serde::Serialize;
+use sqlx::Transaction;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -37,6 +43,20 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(star::post_star);
     config.service(star::delete_star);
     config.service(star::put_star);
+}
+
+pub(crate) async fn determine_namespace(namespace: &str, user: &User, tx: &mut Transaction<'_, Database>) -> Result<(Uuid, String)> {
+    Ok(if namespace == user.username {
+        (user.id, user.username.clone())
+    } else if let Some(org) = Organization::find_by_name(&namespace, tx).await {
+        if OrgMember::get_role(org.id, user.id, tx).await?.is_none() {
+            die!(FORBIDDEN, "You are not a member of this organization");
+        }
+
+        (org.id, org.name.clone())
+    } else {
+        die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
+    })
 }
 
 #[derive(Serialize, ToSchema)]

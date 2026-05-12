@@ -23,7 +23,7 @@ import {
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
-import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonFetcher } from "@/lib/fetchers";
+import { jsonFetcher, putJsonVoidFetcher, deleteFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -344,7 +344,7 @@ function MembersTab({ orgName }: { orgName: string }) {
     const { trigger: addMember } = useSWRMutation(
         membersKey,
         (_url: string, { arg }: { arg: { username: string; role: string } }) =>
-            putJsonFetcher<{ username: string; role: string }, void>(membersKey, { arg }),
+            putJsonVoidFetcher<{ username: string; role: string }>(membersKey, { arg }),
         {
             onSuccess: () => {
                 setInviteInput("");
@@ -370,7 +370,7 @@ function MembersTab({ orgName }: { orgName: string }) {
     const { trigger: changeRole } = useSWRMutation(
         membersKey,
         (_url: string, { arg }: { arg: { username: string; role: string } }) =>
-            putJsonFetcher<{ username: string; role: string }, void>(membersKey, { arg }),
+            putJsonVoidFetcher<{ username: string; role: string }>(membersKey, { arg }),
         {
             onSuccess: () => {
                 mutate(membersKey);

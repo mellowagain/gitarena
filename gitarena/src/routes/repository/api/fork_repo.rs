@@ -2,7 +2,7 @@ use crate::config::get_optional_setting;
 use crate::die;
 use crate::organization::{OrgMember, Organization};
 use crate::repository::{RepoOwner, Repository};
-use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::filesystem::copy_dir_all;
 use gitarena_common::database::Pool;
@@ -47,17 +47,8 @@ pub(crate) async fn create_fork(
 
     let mut tx = db_pool.begin().await?;
 
-    let (target_id, target_name) = if let Some(ns) = &body.target_namespace {
-        if *ns == user.username {
-            (user.id, user.username.clone())
-        } else if let Some(org) = Organization::find_by_name(ns, &mut tx).await {
-            if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
-                die!(FORBIDDEN, "You are not a member of this organization");
-            }
-            (org.id, org.name.clone())
-        } else {
-            die!(BAD_REQUEST, "Target namespace not found or you do not have access to it");
-        }
+    let (target_id, target_name) = if let Some(namespace) = &body.target_namespace {
+        determine_namespace(namespace, &user, &mut tx).await?
     } else {
         (user.id, user.username.clone())
     };

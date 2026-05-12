@@ -4,8 +4,8 @@ use crate::git::write;
 use crate::organization::{OrgMember, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
-use crate::routes::repository::api::CreateJsonResponse;
-use crate::user::WebUser;
+use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
+use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
@@ -58,18 +58,8 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     let mut tx = db_pool.begin().await?;
 
-    let (owner_id, owner_name) = if body.namespace == user.username {
-        (user.id, user.username.clone())
-    } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
-        if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
-            die!(FORBIDDEN, "You are not a member of this organization");
-        }
-        (org.id, org.name.clone())
-    } else {
-        die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
-    };
-
-    let owner_col = if body.namespace != user.username { "owner_org" } else { "owner_user" };
+    let (owner_id, owner_name) = determine_namespace(&body.namespace, &user, &mut tx).await?;
+    let owner_col = if body.namespace == user.username { "owner_user" } else { "owner_org" };
 
     let (exists,): (bool,) = sqlx::query_as(&format!(
         "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
@@ -127,7 +117,7 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 }
 
 #[instrument(err, skip(db_pool))]
-async fn create_file(repo: &Repository, user: &crate::user::User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
+async fn create_file(repo: &Repository, user: &User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
     let libgit2_repo = {
         let mut transaction = db_pool.begin().await?;
         let libgit2_repo = repo.libgit2(&mut transaction).await?;
