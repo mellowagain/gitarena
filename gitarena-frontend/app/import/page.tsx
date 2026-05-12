@@ -22,9 +22,12 @@ import {
     CheckCircle2,
     AlertCircle,
     Loader2,
+    ChevronDown,
+    Building2,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { postJsonFetcher, validationFetcher } from "@/lib/fetchers";
+import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 import { isValidUrl, extractRepoNameFromUrl } from "@/lib/repo-validation";
 
 // SSO Provider icons
@@ -60,6 +63,7 @@ type ImportSource = "url" | "github" | "gitlab" | "bitbucket";
 type Visibility = "public" | "internal" | "private";
 
 interface ImportRepoRequest {
+    namespace: string;
     name: string;
     description: string;
     url: string;
@@ -73,9 +77,26 @@ interface ImportRepoResponse {
     url: string;
 }
 
+interface UserOrgEntry {
+    id: string;
+    name: string;
+}
+
 export default function ImportRepositoryPage() {
     const router = useRouter();
     const { user } = useAuth();
+
+    const { data: userOrgs } = useSWR<UserOrgEntry[]>(user ? `/api/users/${user.username}/orgs` : null, jsonFetcher, {
+        shouldRetryOnError: false,
+    });
+
+    const [namespaceOverride, setNamespaceOverride] = useState<string | null>(null);
+    const selectedNamespace = namespaceOverride ?? user?.username ?? "";
+
+    const namespaceOptions: Array<{ value: string; label: string; isOrg: boolean }> = [
+        ...(user ? [{ value: user.username, label: user.username, isOrg: false }] : []),
+        ...(userOrgs ?? []).map((org) => ({ value: org.name, label: org.name, isOrg: true })),
+    ];
 
     const [source, setSource] = useState<ImportSource>("url");
     const [repoUrl, setRepoUrl] = useState("");
@@ -116,7 +137,7 @@ export default function ImportRepositoryPage() {
     // Single validate call covers name rules, reserved names, duplicate check, and description length
     const validateUrl =
         user && debouncedName
-            ? `/api/repo/validate?name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
+            ? `/api/repo/validate?namespace=${encodeURIComponent(selectedNamespace)}&name=${encodeURIComponent(debouncedName)}&description=${encodeURIComponent(debouncedDescription)}`
             : null;
 
     const { data: validation, isLoading: isValidating } = useSWR(validateUrl, validationFetcher, {
@@ -146,6 +167,7 @@ export default function ImportRepositoryPage() {
 
         try {
             await trigger({
+                namespace: selectedNamespace,
                 name: repoName,
                 description,
                 url: repoUrl,
@@ -153,7 +175,7 @@ export default function ImportRepositoryPage() {
                 ...(importUsername ? { username: importUsername } : {}),
                 ...(importPassword ? { password: importPassword } : {}),
             });
-            router.push(`/${user.username}/${repoName}`);
+            router.push(`/${selectedNamespace}/${repoName}`);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to import repository");
         }
@@ -190,7 +212,7 @@ export default function ImportRepositoryPage() {
                                     New repository
                                 </Link>
                                 <Link
-                                    href="#"
+                                    href="/orgs/new"
                                     className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/30 rounded-md transition-colors"
                                 >
                                     <Users className="h-4 w-4" />
@@ -327,13 +349,45 @@ export default function ImportRepositoryPage() {
                                     Import to <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex items-center gap-3">
-                                    {/* Owner is always the current user — no org dropdown for now */}
-                                    <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
-                                        <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                            {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                    {namespaceOptions.length > 1 ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                                    <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium shrink-0">
+                                                        {namespaceOptions.find((o) => o.value === selectedNamespace)?.isOrg ? (
+                                                            <Building2 className="h-3.5 w-3.5" />
+                                                        ) : (
+                                                            (selectedNamespace[0]?.toUpperCase() ?? "?")
+                                                        )}
+                                                    </div>
+                                                    <span>{selectedNamespace || "Select owner"}</span>
+                                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="start" className="w-52">
+                                                {namespaceOptions.map((opt) => (
+                                                    <DropdownMenuItem key={opt.value} onClick={() => setNamespaceOverride(opt.value)}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center justify-center h-5 w-5 rounded bg-secondary text-xs font-medium shrink-0">
+                                                                {opt.isOrg ? <Building2 className="h-3 w-3" /> : opt.label[0].toUpperCase()}
+                                                            </div>
+                                                            {opt.label}
+                                                            {opt.isOrg && (
+                                                                <span className="ml-auto text-[10px] text-muted-foreground">org</span>
+                                                            )}
+                                                        </div>
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
+                                            <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
+                                                {user?.username?.[0]?.toUpperCase() ?? "?"}
+                                            </div>
+                                            <span>{user?.username ?? "…"}</span>
                                         </div>
-                                        <span>{user?.username ?? "…"}</span>
-                                    </div>
+                                    )}
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
@@ -357,7 +411,7 @@ export default function ImportRepositoryPage() {
                                     <p className="text-sm text-muted-foreground">
                                         Will be imported to{" "}
                                         <span className="text-foreground font-mono">
-                                            {user.username}/{repoName}
+                                            {selectedNamespace}/{repoName}
                                         </span>
                                     </p>
                                 )}

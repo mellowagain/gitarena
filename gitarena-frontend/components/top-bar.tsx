@@ -153,8 +153,10 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem>
-                                        <Users className="h-4 w-4 mr-2" />
-                                        New organization
+                                        <Link href="/orgs/new" className="flex items-center gap-2">
+                                            <Users className="h-4 w-4 mr-2" />
+                                            New organization
+                                        </Link>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

@@ -1,7 +1,10 @@
+use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::api::ApiInfoResponse;
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
+use crate::routes::organization::api::create_org::CreateOrgRequest;
+use crate::routes::organization::api::members::{AddMemberRequest, OrgMemberEntry};
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::routes::repository::api::blame::{BlameHunk, BlameResponse};
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
@@ -25,6 +28,7 @@ use utoipa::{Modify, OpenApi};
 pub(crate) mod api;
 mod explore;
 pub(crate) mod not_found;
+pub(crate) mod organization;
 pub(crate) mod proxy;
 pub(crate) mod repository;
 pub(crate) mod user;
@@ -68,6 +72,12 @@ impl Modify for CookieAuth {
         crate::routes::user::api::auth::logout::post_logout,
         crate::routes::user::api::auth::me::get_me,
         crate::routes::user::api::profile::get_user_profile,
+        crate::routes::organization::api::create_org::create_org,
+        crate::routes::organization::api::org::get_org,
+        crate::routes::organization::api::org::delete_org,
+        crate::routes::organization::api::members::list_members,
+        crate::routes::organization::api::members::add_member,
+        crate::routes::organization::api::members::remove_member,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -105,12 +115,19 @@ impl Modify for CookieAuth {
         UserProfileResponse,
         UserProfileRepo,
         UserProfileStats,
+        Organization,
+        OrgRole,
+        OrgMember,
+        CreateOrgRequest,
+        AddMemberRequest,
+        OrgMemberEntry,
     )),
     modifiers(&CookieAuth),
     tags(
         (name = "api", description = "General API endpoints"),
         (name = "explore", description = "Explore public repositories"),
         (name = "repository", description = "Repository management"),
+        (name = "organization", description = "Organization management"),
         (name = "user", description = "User account management"),
     )
 )]

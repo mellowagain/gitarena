@@ -31,7 +31,7 @@ support in mind.
 - [x] User auth
   - [x] Username and password auth
   - [x] SSH key management
-  - [ ] Org/team model for access control
+  - [x] Org/team model for access control
 - [ ] Merge requests
   - [ ] Open, review, approve, merge
   - [ ] Inline comments on diffs 

@@ -150,9 +150,9 @@ pub(crate) struct CommitDetailResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/commits/{oid}",
+    path = "/api/repos/{namespace}/{repository}/commits/{oid}",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("oid" = String, Path, description = "Full or abbreviated commit SHA-1"),
     ),
@@ -164,7 +164,7 @@ pub(crate) struct CommitDetailResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/commits/{oid}", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/commits/{oid}", method = "GET", err = "json")]
 pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, String, String)>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

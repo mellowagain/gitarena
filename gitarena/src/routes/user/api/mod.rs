@@ -3,6 +3,7 @@ use actix_web::web::ServiceConfig;
 pub(crate) mod add_key;
 pub(crate) mod auth;
 pub(crate) mod emails;
+pub(crate) mod orgs;
 pub(crate) mod profile;
 pub(crate) mod sessions;
 pub(crate) mod ssh_keys;
@@ -11,6 +12,8 @@ pub(crate) mod sso;
 pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(add_key::put_ssh_key);
     config.service(profile::get_user_profile);
+    config.service(profile::get_user_by_id);
+    config.service(orgs::get_user_orgs);
     auth::init(config);
 
     config.service(emails::get_emails);

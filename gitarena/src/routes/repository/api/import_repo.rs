@@ -1,8 +1,10 @@
 use crate::config::{get_optional_setting, get_setting};
+use crate::organization::{OrgMember, Organization};
 use crate::prelude::HttpRequestExtensions;
 use crate::privileges::repo_visibility::RepoVisibility;
+use crate::replication::ImportTask;
 use crate::repository::Repository;
-use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err};
@@ -15,8 +17,6 @@ use futures_locks::RwLock;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;
-
-use crate::replication::ImportTask;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -100,24 +100,31 @@ pub(crate) async fn import(
         die!(BAD_REQUEST, "Either provide both username or password or leave both blank");
     }
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(user.id)
-        .bind(name)
-        .fetch_one(&mut *tx)
-        .await?;
+    let (owner_id, owner_name) = determine_namespace(&body.namespace, &user, &mut tx).await?;
+    let owner_col = if body.namespace == user.username { "owner_user" } else { "owner_org" };
+
+    let (exists,): (bool,) = sqlx::query_as(&format!(
+        "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
+    ))
+    .bind(owner_id)
+    .bind(name)
+    .fetch_one(&mut *tx)
+    .await?;
 
     if exists {
-        die!(CONFLICT, "Repository name already in use for your account");
+        die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
-    let repo = sqlx::query_as::<_, Repository>("insert into repositories (id, owner, name, description, visibility) values ($1, $2, $3, $4, $5) returning *")
-        .bind(Uuid::now_v7())
-        .bind(user.id)
-        .bind(name)
-        .bind(description)
-        .bind(body.visibility)
-        .fetch_one(&mut *tx)
-        .await?;
+    let repo = sqlx::query_as::<_, Repository>(&format!(
+        "insert into repositories (id, {owner_col}, name, description, visibility) values ($1, $2, $3, $4, $5) returning *"
+    ))
+    .bind(Uuid::now_v7())
+    .bind(owner_id)
+    .bind(name)
+    .bind(description)
+    .bind(body.visibility)
+    .fetch_one(&mut *tx)
+    .await?;
 
     repo.create_fs(&mut tx).await?;
 
@@ -139,18 +146,22 @@ pub(crate) async fn import(
 
     info!(
         target.id = %repo.id,
-        target.owner = user.username,
+        target.owner = owner_name,
         target.name = repo.name,
         source.url = %url,
         "New repository created for importing",
     );
 
-    let url = format!("{domain}/{}/{}", &user.username, &repo.name);
-    Ok(HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url }))
+    Ok(HttpResponse::Ok().json(CreateJsonResponse {
+        id: repo.id,
+        url: format!("{domain}/{owner_name}/{}", repo.name),
+    }))
 }
 
 #[derive(Deserialize, ToSchema)]
 pub(crate) struct ImportJsonRequest {
+    /// Namespace (username or org name) under which the imported repo should be created
+    namespace: String,
     /// Repository name
     #[schema(max_length = 32, pattern = "^[a-z0-9_-]+$")]
     name: String,

@@ -55,12 +55,13 @@ pub(crate) async fn explore(web_user: WebUser, request: HttpRequest, db_pool: we
 }
 
 async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_, Database>) -> Result<Vec<ExploreRepo>> {
+    // Resolve owner name: check users table first, then organizations
     let query = format!(
         "select repositories.id, \
         repositories.name, \
         repositories.description, \
-        repositories.owner as owner_id, \
-        users.username as owner_name, \
+        coalesce(repositories.owner_user, repositories.owner_org) as owner_id, \
+        coalesce(u.username, o.name) as owner_name, \
         repositories.visibility, \
         repositories.archived, \
         repositories.disabled, \
@@ -69,7 +70,8 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         count(distinct issues.id) filter (where not(issues.closed = true or issues.confidential = true)) as issues \
         from repositories \
         left join stars on repositories.id = stars.repo \
-        left join users on repositories.owner = users.id \
+        left join users u on repositories.owner_user = u.id \
+        left join organizations o on repositories.owner_org = o.id \
         left join issues on repositories.id = issues.repo \
         {options}",
     );
@@ -150,7 +152,7 @@ impl Display for ExploreOptions<'_> {
 
         // Private repositories are hidden in the public explore page
         // TODO: Display them if the logged in user has permission to view them
-        f.write_str("repositories.visibility != 'private' group by repositories.id, users.id order by ")?;
+        f.write_str("repositories.visibility != 'private' group by repositories.id, u.username, o.name order by ")?;
 
         match self.sort {
             "stars" => write!(f, "stars {}, id ", self.order)?,

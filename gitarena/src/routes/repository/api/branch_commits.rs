@@ -49,9 +49,9 @@ struct BranchCommitsResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/branch/{tree}/commits",
+    path = "/api/repos/{namespace}/{repository}/branch/{tree}/commits",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("tree" = String, Path, description = "Branch name (short form like 'main', or full ref like 'refs/heads/main')"),
         CommitsQuery,
@@ -63,7 +63,7 @@ struct BranchCommitsResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/branch/{tree}/commits", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/branch/{tree}/commits", method = "GET", err = "json")]
 pub(crate) async fn branch_commits(repo: Repository, branch: Branch, query: web::Query<CommitsQuery>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 

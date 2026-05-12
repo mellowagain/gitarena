@@ -23,6 +23,8 @@ use tracing::instrument;
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
 
+pub(crate) type UserId = Uuid;
+
 #[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
 #[display("{username}")]
 pub(crate) struct User {

@@ -2,7 +2,7 @@ use crate::config::{get_optional_setting, get_setting};
 use crate::routes::user::api::auth::me::MeResponse;
 use crate::session::Session;
 use crate::user::User;
-use crate::utils::identifiers::{is_username_taken, validate_username};
+use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
 use gitarena_common::database::Pool;
@@ -40,9 +40,9 @@ pub(crate) async fn post_register(
 
     let username = &body.username;
 
-    validate_username(username.as_str())?;
+    validate_namespace(username.as_str())?;
 
-    if is_username_taken(username.as_str(), &mut tx).await? {
+    if is_namespace_taken(username.as_str(), &mut tx).await? {
         die!(CONFLICT, "Username already in use");
     }
 

@@ -2,21 +2,23 @@ use crate::die;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::ls_refs_all;
+use crate::organization::Organization;
 use crate::prelude::*;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
+use crate::user::User;
 
+use crate::privileges::privilege;
 use actix_web::http::header::CONTENT_TYPE;
-use actix_web::{Either, HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Database;
+use either::Either;
 use gitarena_common::database::Pool;
 use gitarena_macros::route;
-use sqlx::Transaction;
 use tracing::instrument;
 use uuid::Uuid;
 
-#[route("/{username}/{repository}.git/info/refs", method = "GET", err = "text")]
+#[route("/{namespace}/{repository}.git/info/refs", method = "GET", err = "text")]
 pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let query_string = request.q_string();
 
@@ -27,20 +29,8 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 
     let mut transaction = db_pool.begin().await?;
 
-    let user_option: Option<(Uuid,)> = sqlx::query_as("select id from users where lower(username) = lower($1) limit 1")
-        .bind(&uri.username)
-        .fetch_optional(&mut *transaction)
-        .await?;
-
-    let Some((user_id,)) = user_option else {
-        die!(NOT_FOUND);
-    };
-
-    let repo_option: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
-        .bind(user_id)
-        .bind(&uri.repository)
-        .fetch_optional(&mut *transaction)
-        .await?;
+    let owner_id = resolve_namespace(&uri.namespace, &mut transaction).await?;
+    let repo_option: Option<Repository> = Repository::open(owner_id, &uri.repository, &mut transaction).await;
 
     match service {
         "git-upload-pack" => {
@@ -59,12 +49,23 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
     }
 }
 
+/// Resolve a namespace string to the UUID of the owning user or organization.
+pub(crate) async fn resolve_namespace(namespace: &str, tx: &mut sqlx::Transaction<'_, gitarena_common::database::Database>) -> Result<Uuid> {
+    if let Some(user) = User::find_using_name(namespace, tx).await {
+        return Ok(user.id);
+    }
+    if let Some(org) = Organization::find_by_name(namespace, tx).await {
+        return Ok(org.id);
+    }
+    die!(BAD_REQUEST, "Repository not found")
+}
+
 #[instrument(err, skip(request, tx))]
 async fn upload_pack_info_refs(
     repo_option: Option<Repository>,
     service: &str,
     request: &HttpRequest,
-    tx: &mut Transaction<'_, Database>,
+    tx: &mut sqlx::Transaction<'_, gitarena_common::database::Database>,
 ) -> Result<HttpResponse> {
     let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 
@@ -84,23 +85,25 @@ async fn upload_pack_info_refs(
 
 #[instrument(err, skip(request, db_pool))]
 async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpRequest, db_pool: &Pool) -> Result<HttpResponse> {
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
-    let _user = match basic_auth::login_flow(request, &mut transaction, "application/x-git-receive-pack-advertisement").await? {
+    let user = match basic_auth::login_flow(request, &mut tx, "application/x-git-receive-pack-advertisement").await? {
         Either::Left(user) => user,
         Either::Right(response) => return Ok(response),
     };
-
-    // TODO: Check if the user has actually `write` access to the repository
 
     let Some(repo) = repo_option else {
         die!(NOT_FOUND);
     };
 
-    let git2repo = repo.libgit2(&mut transaction).await?;
+    if !privilege::check_push(&repo, Some(&user), &mut tx).await? {
+        die!(NOT_FOUND);
+    }
+
+    let git2repo = repo.libgit2(&mut tx).await?;
     let output = ls_refs_all(&git2repo, Some("git-receive-pack")).await?;
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
     Ok(HttpResponse::Ok()
         .append_header((CONTENT_TYPE, "application/x-git-receive-pack-advertisement"))

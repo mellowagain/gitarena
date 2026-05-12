@@ -30,9 +30,9 @@ pub(crate) struct BranchesResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repos/{username}/{repository}/branches",
+    path = "/api/repos/{namespace}/{repository}/branches",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
@@ -42,7 +42,7 @@ pub(crate) struct BranchesResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repos/{username}/{repository}/branches", method = "GET", err = "json")]
+#[route("/api/repos/{namespace}/{repository}/branches", method = "GET", err = "json")]
 pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;

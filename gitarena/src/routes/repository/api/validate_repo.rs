@@ -1,3 +1,4 @@
+use crate::organization::Organization;
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
@@ -8,9 +9,9 @@ use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-/// Validates a candidate repository name and description for the authenticated user.
+/// Validates a candidate repository name and description for the given namespace.
 /// Always returns 200 with per-field error messages so the frontend can display them
-/// on the correct field. Also checks that the name is not already in use on the user's account.
+/// on the correct field. Also checks that the name is not already in use in the namespace.
 #[utoipa::path(
     get,
     path = "/api/repo/validate",
@@ -39,14 +40,32 @@ pub(crate) async fn validate(web_user: WebUser, query: web::Query<ValidateQuery>
     } else if !is_fs_legal(name) {
         name_error = Some("Repository name is illegal".to_string());
     } else {
-        let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-            .bind(user.id)
-            .bind(name)
-            .fetch_one(&mut *transaction)
-            .await?;
+        // Determine the actual owner to check against.
+        // If namespace matches the user's own username (or is absent), check user repos.
+        // If namespace matches an org, check org repos.
+        let effective_namespace = query.namespace.as_deref().unwrap_or(&user.username);
+
+        let exists: bool = if effective_namespace == user.username {
+            let (e,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner_user = $1 and lower(name) = lower($2) limit 1)")
+                .bind(user.id)
+                .bind(name)
+                .fetch_one(&mut *transaction)
+                .await?;
+            e
+        } else if let Some(org) = Organization::find_by_name(effective_namespace, &mut transaction).await {
+            let (e,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner_org = $1 and lower(name) = lower($2) limit 1)")
+                .bind(org.id)
+                .bind(name)
+                .fetch_one(&mut *transaction)
+                .await?;
+            e
+        } else {
+            // Namespace not found; duplicate check not meaningful, skip it
+            false
+        };
 
         if exists {
-            name_error = Some("Repository name already in use for your account".to_string());
+            name_error = Some("Repository name already in use for this namespace".to_string());
         }
     }
 
@@ -69,6 +88,8 @@ pub(crate) async fn validate(web_user: WebUser, query: web::Query<ValidateQuery>
 
 #[derive(Deserialize, ToSchema, IntoParams)]
 pub(crate) struct ValidateQuery {
+    /// Namespace (username or org name) to check against; defaults to the authenticated user
+    namespace: Option<String>,
     /// Candidate repository name
     name: String,
     /// Optional candidate description (validated for length if provided)

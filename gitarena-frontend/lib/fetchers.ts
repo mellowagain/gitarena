@@ -129,6 +129,22 @@ export async function putJsonFetcher<TArg, TResult>(url: string, { arg }: { arg:
 }
 
 /**
+ * SWR mutation fetcher for PUT requests with a JSON body that return no body (e.g. 204 No Content).
+ */
+export async function putJsonVoidFetcher<TArg>(url: string, { arg }: { arg: TArg }): Promise<void> {
+    const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arg),
+    });
+
+    if (!res.ok) {
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
+    }
+}
+
+/**
  * Fetcher for DELETE requests.
  */
 export async function deleteFetcher(url: string): Promise<void> {

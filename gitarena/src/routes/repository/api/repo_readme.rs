@@ -21,9 +21,9 @@ pub(crate) struct ReadmeResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/repo/{username}/{repository}/tree/{tree}/readme",
+    path = "/api/repo/{namespace}/{repository}/tree/{tree}/readme",
     params(
-        ("username" = String, Path, description = "Repository owner username"),
+        ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
         ("tree" = String, Path, description = "Branch or tag name"),
     ),
@@ -34,7 +34,7 @@ pub(crate) struct ReadmeResponse {
     security((), ("cookieAuth" = [])),
     tag = "repository"
 )]
-#[route("/api/repo/{username}/{repository}/tree/{tree:.*}/readme", method = "GET", err = "json")]
+#[route("/api/repo/{namespace}/{repository}/tree/{tree:.*}/readme", method = "GET", err = "json")]
 pub(crate) async fn readme(_repo: Repository, branch: Branch) -> Result<impl Responder> {
     let gitoxide_repo = branch.gitoxide_repo;
 
