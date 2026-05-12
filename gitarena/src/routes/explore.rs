@@ -60,7 +60,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         "select repositories.id, \
         repositories.name, \
         repositories.description, \
-        repositories.owner as owner_id, \
+        coalesce(repositories.owner_user, repositories.owner_org) as owner_id, \
         coalesce(u.username, o.name) as owner_name, \
         repositories.visibility, \
         repositories.archived, \
@@ -70,8 +70,8 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         count(distinct issues.id) filter (where not(issues.closed = true or issues.confidential = true)) as issues \
         from repositories \
         left join stars on repositories.id = stars.repo \
-        left join users u on repositories.owner = u.id \
-        left join organizations o on repositories.owner = o.id \
+        left join users u on repositories.owner_user = u.id \
+        left join organizations o on repositories.owner_org = o.id \
         left join issues on repositories.id = issues.repo \
         {options}",
     );
@@ -152,7 +152,7 @@ impl Display for ExploreOptions<'_> {
 
         // Private repositories are hidden in the public explore page
         // TODO: Display them if the logged in user has permission to view them
-        f.write_str("repositories.visibility != 'private' group by repositories.id order by ")?;
+        f.write_str("repositories.visibility != 'private' group by repositories.id, u.username, o.name order by ")?;
 
         match self.sort {
             "stars" => write!(f, "stars {}, id ", self.order)?,

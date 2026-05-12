@@ -40,6 +40,11 @@ interface UserProfileResponse {
     stats: UserProfileStats;
 }
 
+interface UserOrgEntry {
+    id: string;
+    name: string;
+}
+
 interface OrgInfo {
     id: string;
     name: string;
@@ -51,10 +56,14 @@ interface OrgMemberRaw {
     role: "owner" | "admin" | "member";
 }
 
-interface OrgMember {
-    userId: string;
-    username: string;
-    role: "owner" | "admin" | "member";
+interface OrgRepo {
+    id: string;
+    name: string;
+    description: string;
+    visibility: string;
+    archived: boolean;
+    languages: Record<string, number> | null;
+    stars: number;
 }
 
 function getTopLanguage(languages: Record<string, number> | null): { name: string; color: string } | null {
@@ -312,29 +321,56 @@ const roleColors: Record<string, string> = {
     member: "text-muted-foreground border-border bg-secondary",
 };
 
+function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; variant?: "row" | "avatar" }) {
+    const { data: user } = useSWR<{ id: string; username: string }>(`/api/users/by-id/${member.userId}`, jsonFetcher);
+    const username = user?.username ?? "…";
+
+    if (variant === "avatar") {
+        return (
+            <Link
+                href={user ? `/${username}` : "#"}
+                title={user ? `${username} (${member.role})` : member.role}
+                className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-medium hover:ring-2 hover:ring-ring transition-all"
+            >
+                {username[0].toUpperCase()}
+            </Link>
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-4 px-4 py-3.5 hover:bg-accent/30 transition-colors border-t border-border first:border-t-0">
+            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-secondary border border-border text-sm font-semibold shrink-0">
+                {username[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    {user ? (
+                        <Link href={`/${username}`} className="text-sm font-medium hover:underline">
+                            {username}
+                        </Link>
+                    ) : (
+                        <span className="text-sm font-medium text-muted-foreground">Loading…</span>
+                    )}
+                    <span
+                        className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border rounded ${roleColors[member.role] ?? roleColors.member}`}
+                    >
+                        {member.role}
+                    </span>
+                </div>
+                {user && <p className="text-xs text-muted-foreground font-mono">@{username}</p>}
+            </div>
+        </div>
+    );
+}
+
 function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string | null }) {
     const { data: org, error, isLoading } = useSWR<OrgInfo>(`/api/orgs/${name}`, jsonFetcher);
     const { data: rawMembers, isLoading: membersLoading } = useSWR<OrgMemberRaw[]>(`/api/orgs/${name}/members`, jsonFetcher);
-
-    const [resolvedNames, setResolvedNames] = useState<Map<number, string>>(new Map());
     const [activeTab, setActiveTab] = useState<"overview" | "repos" | "members">("overview");
-
-    // Resolve usernames for each member ID
-    if (rawMembers) {
-        rawMembers.forEach(async (m) => {
-            if (!resolvedNames.has(m.userId)) {
-                try {
-                    const res = await fetch(`/api/users/by-id/${m.userId}`);
-                    if (res.ok) {
-                        const data: { id: string; username: string } = await res.json();
-                        setResolvedNames((prev) => new Map(prev).set(m.userId, data.username));
-                    }
-                } catch {
-                    // ignore
-                }
-            }
-        });
-    }
+    const { data: repos, isLoading: reposLoading } = useSWR<OrgRepo[]>(
+        activeTab === "repos" ? `/api/orgs/${name}/repos` : null,
+        jsonFetcher
+    );
 
     if (isLoading || membersLoading) {
         return <ProfileSkeleton username={name} />;
@@ -344,15 +380,9 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
         return <ErrorDisplay failed="organization" error={error} />;
     }
 
-    const members: OrgMember[] = (rawMembers ?? []).map((m) => ({
-        userId: m.userId,
-        username: resolvedNames.get(m.userId) ?? `#${m.userId}`,
-        role: m.role,
-    }));
-
-    const currentUserMember = authUserId != null ? members.find((m) => m.userId === authUserId) : undefined;
-    const isAdmin = currentUserMember != null && (currentUserMember.role === "owner" || currentUserMember.role === "admin");
-    const memberCount = members.length;
+    const memberCount = (rawMembers ?? []).length;
+    const currentUserRaw = authUserId != null ? (rawMembers ?? []).find((m) => m.userId === authUserId) : undefined;
+    const isAdmin = currentUserRaw != null && (currentUserRaw.role === "owner" || currentUserRaw.role === "admin");
 
     const tabs = [
         { id: "overview", label: "Overview" },
@@ -410,19 +440,12 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                     </div>
 
                     {/* Members preview */}
-                    {members.length > 0 && (
+                    {memberCount > 0 && (
                         <div className="pt-4 border-t border-border mt-4">
                             <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Members</h3>
                             <div className="flex flex-wrap gap-1.5">
-                                {members.slice(0, 12).map((m) => (
-                                    <Link
-                                        key={m.userId}
-                                        href={`/${m.username}`}
-                                        title={`${m.username} (${m.role})`}
-                                        className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-medium hover:ring-2 hover:ring-ring transition-all"
-                                    >
-                                        {m.username[0].toUpperCase()}
-                                    </Link>
+                                {(rawMembers ?? []).slice(0, 12).map((m) => (
+                                    <OrgMemberCard key={m.userId} member={m} variant="avatar" />
                                 ))}
                             </div>
                         </div>
@@ -465,9 +488,7 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                         {activeTab === "repos" && (
                             <section>
                                 <div className="flex items-center justify-between gap-4 mb-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        Repository listing is not yet available for organizations.
-                                    </p>
+                                    <p className="text-sm font-semibold">Repositories</p>
                                     {isAdmin && (
                                         <Link
                                             href={`/new?namespace=${org.name}`}
@@ -478,6 +499,54 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                         </Link>
                                     )}
                                 </div>
+                                {reposLoading ? (
+                                    <div className="space-y-2">
+                                        {[0, 1, 2].map((i) => (
+                                            <div key={i} className="h-14 bg-secondary/50 rounded-md animate-pulse" />
+                                        ))}
+                                    </div>
+                                ) : (repos ?? []).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground py-4 text-center">No repositories yet.</p>
+                                ) : (
+                                    <div className="border border-border rounded-md overflow-hidden divide-y divide-border">
+                                        {(repos ?? []).map((repo) => {
+                                            const topLang = getTopLanguage(repo.languages);
+                                            return (
+                                                <div
+                                                    key={repo.id}
+                                                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors"
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <Link
+                                                            href={`/${org.name}/${repo.name}`}
+                                                            className="text-sm font-medium hover:underline"
+                                                        >
+                                                            {repo.name}
+                                                        </Link>
+                                                        {repo.description && (
+                                                            <p className="text-xs text-muted-foreground line-clamp-1">{repo.description}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                                                        {topLang && (
+                                                            <span className="flex items-center gap-1">
+                                                                <span
+                                                                    className="h-2 w-2 rounded-full shrink-0"
+                                                                    style={{ backgroundColor: topLang.color }}
+                                                                />
+                                                                {topLang.name}
+                                                            </span>
+                                                        )}
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3" />
+                                                            {repo.stars}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </section>
                         )}
 
@@ -497,30 +566,10 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                 )}
 
                                 <div className="border border-border rounded-md overflow-hidden">
-                                    {members.map((member, i) => (
-                                        <div
-                                            key={member.userId}
-                                            className={`flex items-center gap-4 px-4 py-3.5 hover:bg-accent/30 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
-                                        >
-                                            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-secondary border border-border text-sm font-semibold shrink-0">
-                                                {member.username[0].toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <Link href={`/${member.username}`} className="text-sm font-medium hover:underline">
-                                                        {member.username}
-                                                    </Link>
-                                                    <span
-                                                        className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border rounded ${roleColors[member.role] ?? roleColors.member}`}
-                                                    >
-                                                        {member.role}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground font-mono">@{member.username}</p>
-                                            </div>
-                                        </div>
+                                    {(rawMembers ?? []).map((member) => (
+                                        <OrgMemberCard key={member.userId} member={member} variant="row" />
                                     ))}
-                                    {members.length === 0 && (
+                                    {(rawMembers ?? []).length === 0 && (
                                         <div className="px-4 py-8 text-center text-sm text-muted-foreground">No members found.</div>
                                     )}
                                 </div>
@@ -555,6 +604,8 @@ export default function NamespacePage() {
         error: userError,
         isLoading: userLoading,
     } = useSWR<UserProfileResponse | null>(`/api/users/${namespace}`, userFetcherWith404);
+
+    const { data: orgs, isLoading: orgsLoading } = useSWR<UserOrgEntry[]>(`/api/users/${namespace}/orgs`, jsonFetcher);
 
     const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
 
@@ -662,6 +713,31 @@ export default function NamespacePage() {
                             </div>
                         </div>
                     </div>
+
+                    {(orgsLoading || (orgs && orgs.length > 0)) && (
+                        <div className="pt-4 border-t border-border mt-4 space-y-1">
+                            <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-2">Organizations</h3>
+                            {orgsLoading ? (
+                                <div className="space-y-2">
+                                    <Skeleton className="h-6 w-full" />
+                                    <Skeleton className="h-6 w-3/4" />
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {orgs!.map((org) => (
+                                        <Link
+                                            key={org.id}
+                                            href={`/${org.name}`}
+                                            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-secondary hover:bg-accent/50 text-foreground transition-colors"
+                                        >
+                                            <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                            {org.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </aside>
 
                 <main className="flex-1 min-w-0 overflow-y-auto p-4 lg:p-6 space-y-8">

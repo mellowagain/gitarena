@@ -9,12 +9,13 @@ use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Serialize, ToSchema, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OrgMemberEntry {
     /// User ID
-    user_id: i32,
+    user_id: Uuid,
     /// Role
     role: OrgRole,
 }
@@ -106,9 +107,9 @@ pub(crate) async fn add_member(
     // cannot demote another owner unless you are also owner
     if let Some(existing_role) = OrgMember::get_role(org.id, target.id, &mut tx).await?
         && existing_role == OrgRole::Owner
-        && actor_role.map_or(true, |ar| !OrgMember::has_permission(ar, OrgRole::Owner))
+        && actor_role.is_none_or(|ar| !OrgMember::has_permission(ar, OrgRole::Owner))
     {
-        die!(FORBIDDEN, "Only an owner can change another owner's role");
+        die!(FORBIDDEN, "Only an owner can change another owners role");
     }
 
     sqlx::query(

@@ -26,7 +26,7 @@ pub(crate) struct UserOrgEntry {
         ("username" = String, Path, description = "Username"),
     ),
     responses(
-        (status = 200, description = "List of organizations the user is an admin or owner of", body = Vec<UserOrgEntry>),
+        (status = 200, description = "List of organizations the user is a member of", body = Vec<UserOrgEntry>),
         (status = 404, description = "User not found"),
     ),
     tag = "user"
@@ -45,7 +45,6 @@ pub(crate) async fn get_user_orgs(path: web::Path<String>, db_pool: web::Data<Po
          from organization_members \
          join organizations on organizations.id = organization_members.org_id \
          where organization_members.user_id = $1 \
-           and organization_members.role in ('owner', 'admin') \
          order by organizations.name",
     )
     .bind(user.id)

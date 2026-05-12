@@ -36,8 +36,10 @@ use uuid::Uuid;
 pub(crate) struct Repository {
     /// ID
     pub(crate) id: Uuid,
-    /// UUID of the repository owner (either a user ID or an organization ID)
-    pub(crate) owner: Uuid,
+    /// UUID of the user who owns this repository
+    pub(crate) owner_user: Option<Uuid>,
+    /// UUID of the organization that owns this repository
+    pub(crate) owner_org: Option<Uuid>,
     /// Name of the repository
     pub(crate) name: String,
     /// Description, set by the user
@@ -68,13 +70,14 @@ impl Repository {
     pub(crate) async fn open(owner_id: Uuid, repo_name: impl AsRef<str>, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
         let repo_name = repo_name.as_ref();
 
-        let repo: Option<Repository> = sqlx::query_as::<_, Repository>("select * from repositories where owner = $1 and lower(name) = lower($2) limit 1")
-            .bind(owner_id)
-            .bind(repo_name)
-            .fetch_optional(&mut **tx)
-            .await
-            .ok()
-            .flatten();
+        let repo: Option<Repository> =
+            sqlx::query_as::<_, Repository>("select * from repositories where (owner_user = $1 or owner_org = $1) and lower(name) = lower($2) limit 1")
+                .bind(owner_id)
+                .bind(repo_name)
+                .fetch_optional(&mut **tx)
+                .await
+                .ok()
+                .flatten();
 
         repo
     }
@@ -102,6 +105,11 @@ impl Repository {
 
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
     pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
+        let owner_id = self
+            .owner_user
+            .or(self.owner_org)
+            .ok_or_else(|| anyhow!("Repository has neither owner_user nor owner_org set"))?;
+
         // Instead of using `config::get_optional_setting`, we run our own query to get both namespace and repo base dir in one query
         // https://stackoverflow.com/a/16364390
         // The owner UUID may refer to either a user or an organization; try both tables.
@@ -111,7 +119,7 @@ impl Repository {
             cross join \
             (select username as namespace from users where id = $1 limit 1) B",
         )
-        .bind(self.owner)
+        .bind(owner_id)
         .fetch_optional(&mut **tx)
         .await?;
 
@@ -124,12 +132,12 @@ impl Repository {
                 cross join \
                 (select name as namespace from organizations where id = $1 limit 1) B",
             )
-            .bind(self.owner)
+            .bind(owner_id)
             .fetch_one(&mut **tx)
             .await?
         };
 
-        Ok(format!("{}/{}/{}", base_dir, namespace, &self.name))
+        Ok(format!("{base_dir}/{namespace}/{}", &self.name))
     }
 
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]

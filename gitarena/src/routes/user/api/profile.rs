@@ -132,7 +132,7 @@ async fn get_user_stats(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Re
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UserByIdResponse {
-    id: i32,
+    id: Uuid,
     username: String,
 }
 
@@ -140,7 +140,7 @@ pub(crate) struct UserByIdResponse {
     get,
     path = "/api/users/by-id/{id}",
     params(
-        ("id" = i32, Path, description = "User ID to look up"),
+        ("id" = Uuid, Path, description = "User ID to look up"),
     ),
     responses(
         (status = 200, description = "User info", body = UserByIdResponse),
@@ -150,11 +150,11 @@ pub(crate) struct UserByIdResponse {
     tag = "user"
 )]
 #[route("/api/users/by-id/{id}", method = "GET", err = "json")]
-pub(crate) async fn get_user_by_id(path: web::Path<i32>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn get_user_by_id(path: web::Path<Uuid>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let id = path.into_inner();
     let mut tx = db_pool.begin().await?;
 
-    let user = sqlx::query_as::<_, (i32, String)>("select id, username from users where id = $1")
+    let user = sqlx::query_as::<_, (Uuid, String)>("select id, username from users where id = $1")
         .bind(id)
         .fetch_optional(&mut *tx)
         .await?;

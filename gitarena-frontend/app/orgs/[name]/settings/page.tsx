@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     Building2,
     Globe,
@@ -23,7 +23,7 @@ import {
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
-import { jsonFetcher, putJsonFetcher, deleteFetcher } from "@/lib/fetchers";
+import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -43,12 +43,6 @@ interface OrgMemberRaw {
 interface UserByIdResponse {
     id: string;
     username: string;
-}
-
-interface OrgMemberResolved {
-    userId: string;
-    username: string;
-    role: "owner" | "admin" | "member";
 }
 
 type Tab = "general" | "members" | "teams" | "security" | "webhooks" | "tokens" | "danger";
@@ -81,11 +75,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     return <h2 className="text-base font-semibold mb-4">{children}</h2>;
 }
 
-function SaveButton({ onClick }: { onClick?: () => void }) {
+function SaveButton({ onClick, disabled }: { onClick?: () => void; disabled?: boolean }) {
     return (
         <button
             onClick={onClick}
-            className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity"
+            disabled={disabled}
+            className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
         >
             <Check className="h-4 w-4" />
             Save changes
@@ -104,7 +99,19 @@ function WipTag() {
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
 function GeneralTab({ org }: { org: OrgInfo }) {
-    const description = org.description;
+    const [description, setDescription] = useState(org.description);
+
+    const { trigger: saveDescription, isMutating: isSaving } = useSWRMutation(
+        `/api/orgs/${org.name}`,
+        (url: string, { arg }: { arg: { description: string } }) => patchJsonFetcher<{ description: string }, void>(url, { arg }),
+        {
+            onSuccess: () => {
+                mutate(`/api/orgs/${org.name}`);
+                toast.success("Description saved");
+            },
+            onError: (err: Error) => toast.error(err.message),
+        }
+    );
 
     return (
         <div className="space-y-6">
@@ -149,19 +156,17 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                 <FieldHint>Display name editing is not yet available.</FieldHint>
             </div>
 
-            {/* Description — WIP (PATCH /api/orgs/{name} not yet implemented) */}
+            {/* Description */}
             <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel>Description</FieldLabel>
-                    <WipTag />
-                </div>
+                <FieldLabel>Description</FieldLabel>
                 <textarea
                     value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                     rows={3}
-                    disabled
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm opacity-50 cursor-not-allowed resize-none"
+                    maxLength={256}
+                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 />
-                <FieldHint>Description editing coming soon.</FieldHint>
+                <FieldHint>Max 256 characters.</FieldHint>
             </div>
 
             <Divider />
@@ -265,7 +270,66 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                 </div>
             </div>
 
-            <SaveButton />
+            <SaveButton onClick={() => saveDescription({ description })} disabled={isSaving} />
+        </div>
+    );
+}
+
+function MemberRow({
+    member,
+    onRemove,
+    onRoleChange,
+}: {
+    member: OrgMemberRaw;
+    onRemove: (username: string) => void;
+    onRoleChange: (username: string, role: string) => void;
+}) {
+    const { data: user } = useSWR<UserByIdResponse>(`/api/users/by-id/${member.userId}`, jsonFetcher);
+    const username = user?.username ?? `…`;
+
+    const roleBadge: Record<string, string> = {
+        owner: "text-amber-500 bg-amber-500/10 border-amber-500/30",
+        admin: "text-blue-500 bg-blue-500/10 border-blue-500/30",
+        member: "text-muted-foreground bg-secondary border-border",
+    };
+
+    return (
+        <div className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors border-t border-border first:border-t-0">
+            <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-medium shrink-0">
+                {username[0]?.toUpperCase() ?? "?"}
+            </div>
+            <div className="flex-1 min-w-0">
+                {user ? (
+                    <Link href={`/${username}`} className="text-sm font-medium hover:underline">
+                        @{username}
+                    </Link>
+                ) : (
+                    <span className="text-sm font-medium text-muted-foreground">Loading…</span>
+                )}
+            </div>
+            <span
+                className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded capitalize ${roleBadge[member.role]}`}
+            >
+                {member.role}
+            </span>
+            <select
+                value={member.role}
+                onChange={(e) => onRoleChange(username, e.target.value)}
+                disabled={member.role === "owner" || !user}
+                className="h-7 px-2 bg-card border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+            <button
+                onClick={() => onRemove(username)}
+                disabled={member.role === "owner" || !user}
+                title={member.role === "owner" ? "Cannot remove the last owner" : "Remove member"}
+                className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+                <X className="h-3.5 w-3.5" />
+            </button>
         </div>
     );
 }
@@ -276,27 +340,6 @@ function MembersTab({ orgName }: { orgName: string }) {
     const [inviteInput, setInviteInput] = useState("");
     const [inviteRole, setInviteRole] = useState<"member" | "admin" | "owner">("member");
     const [isInviting, setIsInviting] = useState(false);
-
-    // Resolve usernames for each member by fetching /api/users/by-id/{id}
-    // We use a composite SWR-like pattern: each member entry fetches its own username
-    const [resolvedMembers, setResolvedMembers] = useState<Map<number, string>>(new Map());
-
-    // When rawMembers change, resolve missing usernames
-    if (rawMembers) {
-        rawMembers.forEach(async (m) => {
-            if (!resolvedMembers.has(m.userId)) {
-                try {
-                    const res = await fetch(`/api/users/by-id/${m.userId}`);
-                    if (res.ok) {
-                        const data: UserByIdResponse = await res.json();
-                        setResolvedMembers((prev) => new Map(prev).set(m.userId, data.username));
-                    }
-                } catch {
-                    // ignore
-                }
-            }
-        });
-    }
 
     const { trigger: addMember } = useSWRMutation(
         membersKey,
@@ -324,6 +367,19 @@ function MembersTab({ orgName }: { orgName: string }) {
         }
     );
 
+    const { trigger: changeRole } = useSWRMutation(
+        membersKey,
+        (_url: string, { arg }: { arg: { username: string; role: string } }) =>
+            putJsonFetcher<{ username: string; role: string }, void>(membersKey, { arg }),
+        {
+            onSuccess: () => {
+                mutate(membersKey);
+                toast.success("Role updated");
+            },
+            onError: (err: Error) => toast.error(err.message),
+        }
+    );
+
     async function handleInvite() {
         if (!inviteInput.trim()) {
             return;
@@ -335,18 +391,6 @@ function MembersTab({ orgName }: { orgName: string }) {
             setIsInviting(false);
         }
     }
-
-    const roleBadge: Record<string, string> = {
-        owner: "text-amber-500 bg-amber-500/10 border-amber-500/30",
-        admin: "text-blue-500 bg-blue-500/10 border-blue-500/30",
-        member: "text-muted-foreground bg-secondary border-border",
-    };
-
-    const members: OrgMemberResolved[] = (rawMembers ?? []).map((m) => ({
-        userId: m.userId,
-        username: resolvedMembers.get(m.userId) ?? `#${m.userId}`,
-        role: m.role,
-    }));
 
     return (
         <div className="space-y-6">
@@ -392,43 +436,21 @@ function MembersTab({ orgName }: { orgName: string }) {
                 </div>
             ) : (
                 <div className="border border-border rounded-md overflow-hidden">
-                    {members.map((m, i) => (
-                        <div
+                    {(rawMembers ?? []).map((m) => (
+                        <MemberRow
                             key={m.userId}
-                            className={`flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
-                        >
-                            <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-medium shrink-0">
-                                {m.username[0].toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Link href={`/${m.username}`} className="text-sm font-medium hover:underline">
-                                    @{m.username}
-                                </Link>
-                            </div>
-                            <span
-                                className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded capitalize ${roleBadge[m.role]}`}
-                            >
-                                {m.role}
-                            </span>
-                            {/* Role change — WIP */}
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                WIP
-                            </span>
-                            <button
-                                onClick={() => removeMember(m.username)}
-                                disabled={m.role === "owner"}
-                                title={m.role === "owner" ? "Cannot remove the last owner" : "Remove member"}
-                                className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
+                            member={m}
+                            onRemove={(username) => removeMember(username)}
+                            onRoleChange={(username, role) => changeRole({ username, role })}
+                        />
                     ))}
-                    {members.length === 0 && <div className="px-4 py-8 text-center text-sm text-muted-foreground">No members found.</div>}
+                    {(rawMembers ?? []).length === 0 && (
+                        <div className="px-4 py-8 text-center text-sm text-muted-foreground">No members found.</div>
+                    )}
                 </div>
             )}
             <p className="text-xs text-muted-foreground">
-                {members.length} member{members.length !== 1 ? "s" : ""}.
+                {(rawMembers ?? []).length} member{(rawMembers ?? []).length !== 1 ? "s" : ""}.
             </p>
         </div>
     );
@@ -521,27 +543,20 @@ function DangerTab({ orgName }: { orgName: string }) {
     const router = useRouter();
     const [deleteInput, setDeleteInput] = useState("");
     const [showDelete, setShowDelete] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
 
-    async function handleDelete() {
+    const { trigger: deleteOrg, isMutating: isDeleting } = useSWRMutation(`/api/orgs/${orgName}`, (url: string) => deleteFetcher(url), {
+        onSuccess: () => {
+            toast.success("Organization deleted");
+            router.push("/");
+        },
+        onError: (err: Error) => toast.error(err.message),
+    });
+
+    function handleDelete() {
         if (deleteInput !== orgName) {
             return;
         }
-        setIsDeleting(true);
-        try {
-            const res = await fetch(`/api/orgs/${orgName}`, { method: "DELETE" });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({ error: res.statusText }));
-                toast.error(body.error ?? res.statusText);
-                return;
-            }
-            toast.success("Organization deleted");
-            router.push("/");
-        } catch {
-            toast.error("Failed to delete organization");
-        } finally {
-            setIsDeleting(false);
-        }
+        deleteOrg();
     }
 
     return (
@@ -651,11 +666,14 @@ export default function OrgSettingsPage() {
     const params = useParams();
     const orgName = params.name as string;
     const { user: authUser } = useAuth();
+    const searchParams = useSearchParams();
 
     const { data: org, isLoading, error } = useSWR<OrgInfo>(`/api/orgs/${orgName}`, jsonFetcher);
     const { data: members } = useSWR<OrgMemberRaw[]>(`/api/orgs/${orgName}/members`, jsonFetcher);
 
-    const [activeTab, setActiveTab] = useState<Tab>("general");
+    const tabFromQuery = searchParams.get("tab") as Tab | null;
+    const validTabFromQuery = tabFromQuery && navItems.some((n) => n.id === tabFromQuery) ? tabFromQuery : null;
+    const [activeTab, setActiveTab] = useState<Tab>(validTabFromQuery ?? "general");
 
     // Determine if the current user is an admin/owner
     const myRole = authUser && members ? members.find((m) => m.userId === authUser.id)?.role : undefined;

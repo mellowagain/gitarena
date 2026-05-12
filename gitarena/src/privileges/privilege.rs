@@ -63,7 +63,7 @@ pub(crate) async fn check_access(repo: &Repository, user: Option<&User>, tx: &mu
 }
 
 fn is_repo_owner(repo: &Repository, user: &User) -> bool {
-    repo.owner == user.id
+    repo.owner_user == Some(user.id)
 }
 
 generate_check!(check_manage_issues, can_manage_issues);

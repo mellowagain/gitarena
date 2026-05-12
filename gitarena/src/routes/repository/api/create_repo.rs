@@ -58,11 +58,9 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
 
     let mut tx = db_pool.begin().await?;
 
-    // Resolve namespace to either the authenticated user or an org the user has access to
     let (owner_id, owner_name) = if body.namespace == user.username {
         (user.id, user.username.clone())
     } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
-        // User must be a member of the org to create repositories under it
         if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
             die!(FORBIDDEN, "You are not a member of this organization");
         }
@@ -71,19 +69,23 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
         die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
     };
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(owner_id)
-        .bind(name)
-        .fetch_one(&mut *tx)
-        .await?;
+    let owner_col = if body.namespace != user.username { "owner_org" } else { "owner_user" };
+
+    let (exists,): (bool,) = sqlx::query_as(&format!(
+        "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
+    ))
+    .bind(owner_id)
+    .bind(name)
+    .fetch_one(&mut *tx)
+    .await?;
 
     if exists {
         die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
-    let repo: Repository = sqlx::query_as::<_, Repository>(
-        "insert into repositories (id, owner, name, description, visibility, default_branch) values ($1, $2, $3, $4, $5, $6) returning *",
-    )
+    let repo: Repository = sqlx::query_as::<_, Repository>(&format!(
+        "insert into repositories (id, {owner_col}, name, description, visibility, default_branch) values ($1, $2, $3, $4, $5, $6) returning *"
+    ))
     .bind(Uuid::now_v7())
     .bind(owner_id)
     .bind(name)

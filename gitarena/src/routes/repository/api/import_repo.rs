@@ -100,7 +100,6 @@ pub(crate) async fn import(
         die!(BAD_REQUEST, "Either provide both username or password or leave both blank");
     }
 
-    // Resolve namespace to either the authenticated user or an org the user has access to
     let (owner_id, owner_name) = if body.namespace == user.username {
         (user.id, user.username.clone())
     } else if let Some(org) = Organization::find_by_name(&body.namespace, &mut tx).await {
@@ -112,25 +111,31 @@ pub(crate) async fn import(
         die!(BAD_REQUEST, "Namespace not found or you do not have access to it");
     };
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(owner_id)
-        .bind(name)
-        .fetch_one(&mut *tx)
-        .await?;
+    let is_org = body.namespace != user.username;
+    let owner_col = if is_org { "owner_org" } else { "owner_user" };
+
+    let (exists,): (bool,) = sqlx::query_as(&format!(
+        "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
+    ))
+    .bind(owner_id)
+    .bind(name)
+    .fetch_one(&mut *tx)
+    .await?;
 
     if exists {
         die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
-    let repo: Repository =
-        sqlx::query_as::<_, Repository>("insert into repositories (id, owner, name, description, visibility) values ($1, $2, $3, $4, $5) returning *")
-            .bind(Uuid::now_v7())
-            .bind(owner_id)
-            .bind(name)
-            .bind(description)
-            .bind(body.visibility)
-            .fetch_one(&mut *tx)
-            .await?;
+    let repo = sqlx::query_as::<_, Repository>(&format!(
+        "insert into repositories (id, {owner_col}, name, description, visibility) values ($1, $2, $3, $4, $5) returning *"
+    ))
+    .bind(Uuid::now_v7())
+    .bind(owner_id)
+    .bind(name)
+    .bind(description)
+    .bind(body.visibility)
+    .fetch_one(&mut *tx)
+    .await?;
 
     repo.create_fs(&mut tx).await?;
 
@@ -147,7 +152,6 @@ pub(crate) async fn import(
         .context("failed to enqueue importing task")?;
 
     let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
-    let path = format!("/{}/{}", &owner_name, &repo.name);
 
     tx.commit().await?;
 
@@ -159,8 +163,10 @@ pub(crate) async fn import(
         "New repository created for importing",
     );
 
-    let url = format!("{domain}{path}");
-    Ok(HttpResponse::Ok().json(CreateJsonResponse { id: repo.id, url }))
+    Ok(HttpResponse::Ok().json(CreateJsonResponse {
+        id: repo.id,
+        url: format!("{domain}/{owner_name}/{}", repo.name),
+    }))
 }
 
 #[derive(Deserialize, ToSchema)]

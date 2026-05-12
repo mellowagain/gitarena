@@ -45,14 +45,13 @@ pub(crate) async fn create_fork(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
-    // Resolve the target namespace. Defaults to the authenticated user if not provided.
     let (target_id, target_name) = if let Some(ns) = &body.target_namespace {
         if *ns == user.username {
             (user.id, user.username.clone())
-        } else if let Some(org) = Organization::find_by_name(ns, &mut transaction).await {
-            if OrgMember::get_role(org.id, user.id, &mut transaction).await?.is_none() {
+        } else if let Some(org) = Organization::find_by_name(ns, &mut tx).await {
+            if OrgMember::get_role(org.id, user.id, &mut tx).await?.is_none() {
                 die!(FORBIDDEN, "You are not a member of this organization");
             }
             (org.id, org.name.clone())
@@ -63,44 +62,50 @@ pub(crate) async fn create_fork(
         (user.id, user.username.clone())
     };
 
-    // Prevent forking your own repo into the same namespace
-    if repo.owner == target_id {
+    let repo_owner = repo.owner_user.or(repo.owner_org);
+
+    if repo_owner == Some(target_id) {
         die!(BAD_REQUEST, "Cannot fork your own repository into the same namespace");
     }
 
-    let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from repositories where owner = $1 and lower(name) = lower($2) limit 1)")
-        .bind(target_id)
-        .bind(&repo.name)
-        .fetch_one(&mut *transaction)
-        .await?;
+    let is_org_fork = target_id != user.id;
+    let owner_col = if is_org_fork { "owner_org" } else { "owner_user" };
+
+    let (exists,): (bool,) = sqlx::query_as(&format!(
+        "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
+    ))
+    .bind(target_id)
+    .bind(&repo.name)
+    .fetch_one(&mut *tx)
+    .await?;
 
     if exists {
         die!(CONFLICT, "Repository name already in use in this namespace");
     }
 
-    let new_repo = sqlx::query_as::<_, Repository>(
-        "insert into repositories (id, owner, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5, $6) returning *",
-    )
+    let new_repo = sqlx::query_as::<_, Repository>(&format!(
+        "insert into repositories (id, {owner_col}, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5, $6) returning *"
+    ))
     .bind(Uuid::now_v7())
     .bind(target_id)
     .bind(&repo.name)
     .bind(&repo.description)
     .bind(repo.visibility)
     .bind(repo.id)
-    .fetch_one(&mut *transaction)
+    .fetch_one(&mut *tx)
     .await?;
 
-    let old_path = repo.get_fs_path(&mut transaction).await?;
-    let new_path = new_repo.get_fs_path(&mut transaction).await?;
+    let old_path = repo.get_fs_path(&mut tx).await?;
+    let new_path = new_repo.get_fs_path(&mut tx).await?;
 
+    // TODO: turn this into a task
     copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
         .await
         .context("Failed to copy repository")?;
 
-    let domain: String = get_optional_setting("domain", &mut transaction).await?.unwrap_or_default();
-    let url = format!("{}/{}/{}", domain, target_name, new_repo.name);
+    let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
     let extensions = request.extensions();
     let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;
@@ -115,7 +120,10 @@ pub(crate) async fn create_fork(
         "New repository forked"
     );
 
-    Ok(HttpResponse::Ok().json(CreateJsonResponse { id: new_repo.id, url }))
+    Ok(HttpResponse::Ok().json(CreateJsonResponse {
+        id: new_repo.id,
+        url: format!("{domain}/{target_name}/{}", new_repo.name),
+    }))
 }
 
 #[derive(Deserialize, ToSchema)]
