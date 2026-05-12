@@ -2530,7 +2530,6 @@ dependencies = [
  "num_cpus",
  "oauth2",
  "once_cell",
- "openssh-keys",
  "opentelemetry",
  "opentelemetry-instrumentation-actix-web",
  "opentelemetry-semantic-conventions",
@@ -4824,17 +4823,6 @@ dependencies = [
 
 [[package]]
 name = "md-5"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5a279bb9607f9f53c22d496eade00d138d1bdcccd07d74650387cf94942a15"
-dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
- "opaque-debug",
-]
-
-[[package]]
-name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
@@ -5200,19 +5188,6 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
-
-[[package]]
-name = "openssh-keys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7249a699cdeea261ac73f1bf9350777cb867324f44373aafb5a287365bf1771"
-dependencies = [
- "base64 0.13.1",
- "byteorder",
- "md-5 0.9.1",
- "sha2 0.9.9",
- "thiserror 1.0.69",
-]
 
 [[package]]
 name = "openssl"
@@ -7234,7 +7209,7 @@ dependencies = [
  "itoa",
  "libc",
  "log",
- "md-5 0.10.6",
+ "md-5",
  "memchr",
  "once_cell",
  "paste",
@@ -7381,7 +7356,7 @@ dependencies = [
  "hmac 0.12.1",
  "itoa",
  "log",
- "md-5 0.10.6",
+ "md-5",
  "memchr",
  "once_cell",
  "percent-encoding",
@@ -7423,7 +7398,7 @@ dependencies = [
  "ipnetwork",
  "itoa",
  "log",
- "md-5 0.10.6",
+ "md-5",
  "memchr",
  "once_cell",
  "rand 0.8.5",

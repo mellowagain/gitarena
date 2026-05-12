@@ -10,7 +10,8 @@ use chrono::serde::ts_seconds_option;
 use chrono::{DateTime, Utc};
 use gitarena_common::database::models::KeyType;
 use gitarena_macros::route;
-use openssh_keys::PublicKey;
+use russh::keys::ssh_encoding::Encode;
+use russh::keys::{HashAlg, PublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use utoipa::ToSchema;
@@ -33,38 +34,47 @@ use uuid::Uuid;
 #[route("/api/ssh-key", method = "PUT", err = "json")]
 pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
     if body.key.is_empty() {
         die!(BAD_REQUEST, "Key is not a valid argument");
     }
 
-    let public_key = PublicKey::parse(body.key.as_str()).context("Failed to parse SSH public key")?;
-    let algorithm = KeyType::try_from(public_key.keytype()).map_err(|_| err!(BAD_REQUEST, "Invalid or unsupported key type"))?;
+    let public_key = PublicKey::from_openssh(body.key.as_str()).map_err(|err| {
+        debug!(?err, input = %body.key.as_str(), "failed to parse public key");
+        err!(BAD_REQUEST, "Failed to parse SSH public key")
+    })?;
 
     let key_title = if !body.title.is_empty() {
         &body.title
-    } else if let Some(comment) = &public_key.comment {
-        comment
+    } else if !public_key.comment().is_empty() {
+        public_key.comment()
     } else {
         die!(BAD_REQUEST, "Key requires a title");
     };
 
-    let fingerprint = public_key.fingerprint();
+    let Ok(algorithm) = KeyType::try_from(&public_key.algorithm()) else {
+        die!(BAD_REQUEST, "Unsupported key algorithm");
+    };
 
-    if fingerprint.len() != 43 {
-        warn!(length = fingerprint.len(), fingerprint, "Calculated sha256 fingerprint is the wrong length",);
-        die!(UNPROCESSABLE_ENTITY, "Calculated sha256 fingerprint did not end up being 43 characters long");
-    }
+    let fingerprint = public_key.fingerprint(HashAlg::Sha256).to_string();
+    let fingerprint = fingerprint
+        .strip_prefix("SHA256:")
+        .expect("fingerprint to_string on sha256 to include sha256 prefix");
 
     let (exists,): (bool,) = sqlx::query_as("select exists(select 1 from ssh_keys where fingerprint = $1 limit 1)")
-        .bind(fingerprint.as_str())
-        .fetch_one(&mut *transaction)
+        .bind(fingerprint)
+        .fetch_one(&mut *tx)
         .await?;
 
     if exists {
         die!(CONFLICT, "SSH key already exists");
     }
+
+    let key_data = public_key.key_data();
+
+    let mut buffer = Vec::with_capacity(key_data.encoded_len()?);
+    key_data.encode(&mut buffer).context("failed to encode key data")?;
 
     let key = sqlx::query_as::<_, SshKey>(
         "insert into ssh_keys (id, owner, title, fingerprint, algorithm, key, expires_at) values ($1, $2, $3, $4, $5, $6, $7) returning *",
@@ -72,18 +82,21 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
     .bind(Uuid::now_v7())
     .bind(user.id)
     .bind(key_title)
-    .bind(fingerprint.as_str())
+    .bind(fingerprint)
     .bind(algorithm)
-    .bind(public_key.data().as_slice())
+    .bind(buffer)
     .bind(body.expiration_date)
-    .fetch_one(&mut *transaction)
+    .fetch_one(&mut *tx)
     .await?;
 
-    transaction.commit().await?;
+    tx.commit().await?;
 
-    debug!(user.id = %user.id, key.id = %key.id, key.title, key.fingerprint = fingerprint.as_str(), "New SSH key added by user",);
+    debug!(user.id = %user.id, key.id = %key.id, key.title, key.algorithm = ?algorithm, key.fingerprint = fingerprint, "New SSH key added by user",);
 
-    Ok(HttpResponse::Created().json(AddKeyJsonResponse { id: key.id, fingerprint }))
+    Ok(HttpResponse::Created().json(AddKeyJsonResponse {
+        id: key.id,
+        fingerprint: fingerprint.to_string(),
+    }))
 }
 
 #[derive(Deserialize, ToSchema)]
