@@ -36,6 +36,7 @@ derive_more = { version = "2.1.1", features = ["debug"] }
 either = "1.15.0"
 fang = { version = "0.11.0-rc1", default-features = false, features = ["asynk-postgres"], git = "https://github.com/ayrat555/fang", rev = "f7b5cac" }
 fs_extra = "1.2.0"
+fs2 = "0.4.3"
 futures = "0.3.19"
 futures-locks = "0.7.0"
 gix = { version = "0.75.0", features = ["async-network-client", "max-performance"] }

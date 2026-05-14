@@ -32,11 +32,12 @@ pub(crate) static DNS_RESOLVER: Lazy<TokioAsyncResolver> =
 /// assert_eq!(5, seconds);
 /// ```
 ///
-/// [future]: core::future::Future
-pub(crate) async fn time_function<T: Future, F: FnOnce() -> T>(func: F) -> u64 {
+/// [future]: Future
+pub(crate) async fn time_function<T: Future, F: FnOnce() -> T>(func: F) -> (u64, T::Output) {
     let start = Instant::now();
 
-    func().await;
+    let result = func().await;
 
-    start.elapsed().as_secs()
+    #[allow(clippy::cast_possible_truncation)]
+    (start.elapsed().as_millis() as u64, result)
 }

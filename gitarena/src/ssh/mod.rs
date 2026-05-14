@@ -1,23 +1,27 @@
 use crate::config::Setting;
 use crate::ssh::server::SshServer;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use russh::keys::ssh_encoding::LineEnding;
 use russh::keys::{Algorithm, PrivateKey};
-use russh::server::{Config, Server};
+use russh::server::{Config, RunningServerHandle, Server};
 use russh::{MethodKind, MethodSet, SshId};
 use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use tracing::{Instrument, info, info_span, instrument, warn};
+use tokio::sync::{OnceCell, mpsc};
+use tokio::task::JoinHandle;
+use tracing::{Instrument, error, info, info_span, instrument, warn};
 
 pub(crate) mod key;
 mod server;
 
+pub(crate) static SSH_TASK_HANDLE: OnceCell<JoinHandle<()>> = OnceCell::const_new();
+
 #[instrument(skip_all)]
-pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
+pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<Option<RunningServerHandle>> {
     let (enabled, port): (bool, i32) = from_config!(
         "ssh.enabled" => bool,
         "ssh.port" => i32
@@ -46,7 +50,7 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
 
     if !enabled {
         warn!("SSH server is disabled. Only HTTP(s) will allow Git CLI access.");
-        return Ok(());
+        return Ok(None);
     }
 
     let mut methods = MethodSet::empty();
@@ -79,13 +83,30 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<()> {
         .await
         .with_context(|| format!("failed to bind ssh server to {address}:{port}"))?;
 
-    tokio::spawn(
-        async move {
-            info!("running ssh server on {address}:{port}");
-            server.run_on_socket(config, &socket).await.expect("to be able to run the ssh server");
-        }
-        .instrument(info_span!("ssh")),
-    );
+    let (tx, mut rx) = mpsc::channel(1);
 
-    Ok(())
+    SSH_TASK_HANDLE
+        .set(tokio::spawn(
+            async move {
+                let server = server.run_on_socket(config, &socket);
+
+                tx.send(server.handle()).await.expect("to be able to send the server handle over a channel");
+
+                info!("running ssh server on {address}:{port}");
+                server.await.expect("to be able to run the ssh server");
+            }
+            .instrument(info_span!("ssh")),
+        ))
+        .context("failed to set ssh task handle")?;
+
+    let handle = rx.recv().await;
+    Ok(handle)
+}
+
+#[instrument(skip_all)]
+pub(crate) fn destroy(handle: Option<RunningServerHandle>) {
+    if let Some(handle) = handle {
+        handle.shutdown("instance is shutting down".to_string());
+        info!("ssh server shutting down gracefully");
+    }
 }

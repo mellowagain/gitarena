@@ -1,6 +1,9 @@
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
+use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceHealth};
+use crate::routes::admin::stats::InstanceStats;
+use crate::routes::admin::users::ExtendedUser;
 use crate::routes::api::ApiInfoResponse;
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::organization::api::create_org::CreateOrgRequest;
@@ -25,6 +28,7 @@ use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
+pub(crate) mod admin;
 pub(crate) mod api;
 mod explore;
 pub(crate) mod not_found;
@@ -78,6 +82,9 @@ impl Modify for CookieAuth {
         crate::routes::organization::api::members::list_members,
         crate::routes::organization::api::members::add_member,
         crate::routes::organization::api::members::remove_member,
+        crate::routes::admin::stats::get_instance_stats,
+        crate::routes::admin::health::get_instance_health,
+        crate::routes::admin::users::get_instance_users,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -121,6 +128,11 @@ impl Modify for CookieAuth {
         CreateOrgRequest,
         AddMemberRequest,
         OrgMemberEntry,
+        InstanceStats,
+        InstanceHealth,
+        InstanceComponent,
+        ComponentStatus,
+        ExtendedUser,
     )),
     modifiers(&CookieAuth),
     tags(
@@ -129,6 +141,7 @@ impl Modify for CookieAuth {
         (name = "repository", description = "Repository management"),
         (name = "organization", description = "Organization management"),
         (name = "user", description = "User account management"),
+        (name = "admin", description = "Instance management for admins"),
     )
 )]
 pub(crate) struct ApiDoc;

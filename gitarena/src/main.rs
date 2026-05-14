@@ -119,7 +119,7 @@ async fn main() -> Result<()> {
         .await
         .context("failed to schedule remove expired verify link cron job")?;
 
-    ssh::init(db_pool.clone(), &bind_address).await?;
+    let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
         let identity_service = IdentityService::new(
@@ -163,6 +163,7 @@ async fn main() -> Result<()> {
             .configure(routes::proxy::init)
             .configure(routes::user::init)
             .configure(routes::organization::init)
+            .configure(routes::admin::init)
             .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/healthz", web::get().to(|| async { "healthy" }))
@@ -176,7 +177,8 @@ async fn main() -> Result<()> {
 
     server.run().await.context("Unable to start HTTP server.")?;
 
-    info!("Thank you and goodbye.");
+    ssh::destroy(ssh_handle);
 
+    info!("Thank you and goodbye.");
     Ok(())
 }
