@@ -101,17 +101,13 @@ pub(crate) async fn post_register(
     .fetch_one(&mut *tx)
     .await?;
 
+    let session = Session::new(&request, &user, &mut tx).await?;
+
+    tx.commit().await?;
+
     send_verification_mail(&user, email.email, &queue, &db_pool).await?;
 
-    // Close the transaction so the email gets committed (above) and then immediately start a new one for `session` below
-    tx.commit().await?;
-
-    let mut tx = db_pool.begin().await?;
-
-    let session = Session::new(&request, &user, &mut tx).await?;
     id.remember(session.to_string());
-
-    tx.commit().await?;
 
     info!(user.username, user.id = %user.id, "New user signed up");
 
