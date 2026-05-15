@@ -2,9 +2,9 @@ use crate::mail::Email;
 use crate::user::User;
 use crate::{err, mail};
 
+use crate::database::Pool;
 use anyhow::{Context, Result};
 use git2::{Repository as LibGit2Repo, Signature};
-use gitarena_common::database::Pool;
 use tracing::instrument;
 
 /// Writes and commits a file into the repository

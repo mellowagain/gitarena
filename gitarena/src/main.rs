@@ -4,11 +4,12 @@ use crate::error::error_renderer_middleware;
 use crate::metrics::db_pool::spawn_db_pool_metrics_task;
 use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
-use crate::utils::admin_panel_layer::AdminPanelLayer;
 use crate::utils::system::SYSTEM_INFO;
 
 use std::env;
 
+use crate::database::{Pool, create_postgres_pool};
+use crate::log::init_logger;
 use crate::verification::ExpiredVerifyLinkRemovalTask;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
@@ -21,26 +22,24 @@ use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
 use fang::{AsyncQueueable, AsyncRunnable};
-use gitarena_common::database::{Pool, create_postgres_pool};
-use gitarena_common::log::init_logger;
-use gitarena_common::telemetry;
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use time::Duration as TimeDuration;
 use tokio::sync::OnceCell;
 use tracing::{info, warn};
-use tracing_subscriber::Layer;
 use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
 
 mod captcha;
 mod config;
 mod crypto;
+mod database;
 mod error;
 mod geoip;
 mod git;
 mod issue;
 mod licenses;
+mod log;
 mod mail;
 mod metrics;
 mod organization;
@@ -55,6 +54,7 @@ mod session;
 mod sse;
 mod ssh;
 mod sso;
+mod telemetry;
 mod user;
 mod utils;
 mod verification;
@@ -64,30 +64,15 @@ pub(crate) static TASK_DB_POOL: OnceCell<Pool> = OnceCell::const_new();
 #[tokio::main]
 async fn main() -> Result<()> {
     let (telemetry_guards, logger_provider) = telemetry::init("gitarena")?;
-
     let broadcaster = Broadcaster::new();
-    let _log_guards = init_logger(
-        "gitarena",
-        &[
-            "actix_http=info",
-            "actix_server=info",
-            "askalono=warn",
-            "globset=info",
-            "h2=info",
-            "hyper=info",
-            "reqwest=info",
-            "rustls=info",
-            "sqlx=warn",
-        ],
-        Some(AdminPanelLayer::new(broadcaster.clone()).boxed()),
-        Some(&logger_provider),
-    )?;
+
+    let _log_guards = init_logger(&broadcaster, Some(&logger_provider))?;
 
     if !telemetry_guards.is_guarding() {
         warn!("OpenTelemetry exporting is disabled because the env variables were not set");
     }
 
-    let db_pool = create_postgres_pool("gitarena", None).await?;
+    let db_pool = create_postgres_pool(None).await?;
     TASK_DB_POOL
         .set(db_pool.clone())
         .map_err(|_| anyhow!("task db pool should not be set more than once"))?;

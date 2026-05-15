@@ -7,11 +7,11 @@ use crate::{die, err};
 
 use std::sync::Arc;
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use bstr::ByteSlice;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use gix::objs::tree::EntryKind;
 use gix::objs::{Tree, TreeRef};

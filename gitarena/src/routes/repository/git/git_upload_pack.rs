@@ -1,3 +1,4 @@
+use crate::database::Pool;
 use crate::die;
 use crate::git::basic_auth;
 use crate::git::upload_pack::execute_upload_pack_v2;
@@ -7,7 +8,6 @@ use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use crate::routes::repository::git::info_refs::resolve_namespace;
-use gitarena_common::database::Pool;
 
 use std::time::Instant;
 

@@ -1,12 +1,15 @@
+use crate::sse::Broadcaster;
+use crate::utils::admin_panel_layer::AdminPanelLayer;
+use actix_web::web::Data;
+use anyhow::{Context, Result};
+use futures_locks::RwLock;
+use opentelemetry::global;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 use std::env::VarError;
 use std::error::Error;
 use std::path::Path;
 use std::{env, fs, io};
-
-use anyhow::{Context, Result};
-use opentelemetry::global;
-use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_sdk::logs::SdkLoggerProvider;
 use tracing::Subscriber;
 use tracing::metadata::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -20,34 +23,29 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry, layer};
 use tracing_unwrap::ResultExt;
 
-pub fn init_logger(
-    module: &str,
-    directives: &'static [&str],
-    additional: Option<Box<dyn layer::Layer<Registry> + Send + Sync + 'static>>,
-    logger_provider: Option<&SdkLoggerProvider>,
-) -> Result<Vec<WorkerGuard>> {
+pub fn init_logger(broadcaster: &Data<RwLock<Broadcaster>>, logger_provider: Option<&SdkLoggerProvider>) -> Result<Vec<WorkerGuard>> {
     let mut guards = Vec::new();
 
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(&err, directives));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|err| default_env(&err));
 
     let stdout_layer = stdout().map(|(layer, guard)| {
         guards.push(guard);
         layer
     });
 
-    let file_layer = log_file(module)?.map(|(layer, guard)| {
+    let file_layer = log_file()?.map(|(layer, guard)| {
         guards.push(guard);
         layer
     });
 
     let (env_filter, tokio_console_layer) = tokio_console(env_filter);
 
-    let otel_tracing_layer = OpenTelemetryLayer::new(global::tracer(module.to_owned()));
+    let otel_tracing_layer = OpenTelemetryLayer::new(global::tracer("gitarena".to_string()));
     let otel_log_bridge = logger_provider.map(OpenTelemetryTracingBridge::new);
 
     // https://stackoverflow.com/a/66138267
     Registry::default()
-        .with(additional)
+        .with(AdminPanelLayer::new(broadcaster.clone()))
         .with(env_filter)
         .with(stdout_layer)
         .with(file_layer)
@@ -57,7 +55,7 @@ pub fn init_logger(
         .try_init()
         .context("Failed to initialize logger")?;
 
-    tracing::debug!("Successfully initialized logger for {module}");
+    tracing::debug!("Successfully initialized logger");
 
     Ok(guards)
 }
@@ -75,7 +73,7 @@ pub fn stdout<S: Subscriber + for<'a> LookupSpan<'a>>() -> Option<(impl layer::L
     Some((layer, guard))
 }
 
-pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>(module: &str) -> Result<Option<(impl layer::Layer<S>, WorkerGuard)>> {
+pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>() -> Result<Option<(impl layer::Layer<S>, WorkerGuard)>> {
     if cfg!(debug_assertions) || env::var_os("DEBUG_FILE_LOG").is_none() {
         return Ok(None);
     }
@@ -86,7 +84,7 @@ pub fn log_file<S: Subscriber + for<'a> LookupSpan<'a>>(module: &str) -> Result<
         fs::create_dir_all(logs_dir)?;
     }
 
-    let appender = rolling::daily(logs_dir, module);
+    let appender = rolling::daily(logs_dir, "gitarena");
     let (writer, guard) = tracing_appender::non_blocking(appender);
 
     let layer = Layer::new().with_thread_ids(true).with_writer(writer).json();
@@ -109,7 +107,7 @@ pub fn tokio_console<S: Subscriber + for<'a> LookupSpan<'a>>(filter: EnvFilter) 
 }
 
 #[must_use]
-pub fn default_env(err: &FromEnvError, directives: &[&str]) -> EnvFilter {
+pub fn default_env(err: &FromEnvError) -> EnvFilter {
     let not_found = err
         .source()
         .is_some_and(|o| o.downcast_ref::<VarError>().map_or_else(|| false, |err| matches!(err, VarError::NotPresent)));
@@ -124,11 +122,15 @@ pub fn default_env(err: &FromEnvError, directives: &[&str]) -> EnvFilter {
 
     let level = if cfg!(debug_assertions) { LevelFilter::DEBUG } else { LevelFilter::INFO };
 
-    let mut filter = EnvFilter::default().add_directive(level.into());
-
-    for directive in directives {
-        filter = filter.add_directive(directive.parse().unwrap_or_log());
-    }
-
-    filter
+    EnvFilter::default()
+        .add_directive(level.into())
+        .add_directive("actix_http=info".parse().unwrap())
+        .add_directive("actix_server=info".parse().unwrap())
+        .add_directive("askalono=warn".parse().unwrap())
+        .add_directive("globset=info".parse().unwrap())
+        .add_directive("h2=info".parse().unwrap())
+        .add_directive("hyper=info".parse().unwrap())
+        .add_directive("reqwest=info".parse().unwrap())
+        .add_directive("rustls=info".parse().unwrap())
+        .add_directive("sqlx=warn".parse().unwrap())
 }

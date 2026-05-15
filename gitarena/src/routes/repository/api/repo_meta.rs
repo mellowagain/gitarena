@@ -1,11 +1,11 @@
 use crate::git::utils::repo_files_at_ref;
 use crate::repository::Repository;
 
+use crate::database::{Database, Pool};
 use actix_web::web::Data;
 use actix_web::{HttpResponse, Responder};
 use anyhow::{Result, bail};
 use bstr::ByteSlice;
-use gitarena_common::database::{Database, Pool};
 use gitarena_macros::route;
 use gix::objs::Tree;
 use gix::refs::file::find::existing::Error as GitoxideFindError;

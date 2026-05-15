@@ -10,11 +10,11 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
 use git2::Oid;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use gix::ObjectId;
 use gix::objs::Tree;

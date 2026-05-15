@@ -1,12 +1,15 @@
+use crate::database::Database;
 use crate::user::User;
 use anyhow::Result;
+use anyhow::{Error, bail};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
-use gitarena_common::database::Database;
-use gitarena_common::database::models::KeyType;
 use russh::keys::Algorithm;
 use russh::keys::ssh_key::Fingerprint;
+use russh::keys::{EcdsaCurve, HashAlg};
+use serde::Deserialize;
 use serde::{Serialize, Serializer};
+use sqlx::Type;
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
 use uuid::Uuid;
@@ -57,4 +60,76 @@ impl SshKey {
 
 fn serialize_key_as_base64<S: Serializer>(key: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&base64::encode(key))
+}
+
+#[derive(Type, Debug, Display, Deserialize, Serialize, Copy, Clone)]
+#[sqlx(type_name = "ssh_key_type", rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
+#[display(rename_all = "kebab-case")]
+pub enum KeyType {
+    SshRsa,
+    #[display("ecdsa-sha2-nistp256")]
+    EcdsaSha2Nistp256,
+    #[display("ecdsa-sha2-nistp384")]
+    EcdsaSha2Nistp384,
+    #[display("ecdsa-sha2-nistp521")]
+    EcdsaSha2Nistp521,
+    #[display("ssh-ed25519")]
+    SshEd25519,
+    #[sqlx(rename = "sk-ssh-ed25519@openssh.com")]
+    #[serde(rename = "sk-ssh-ed25519@openssh.com")]
+    #[display("sk-ssh-ed25519@openssh.com")]
+    SkSshEd25519,
+    #[sqlx(rename = "sk-ecdsa-sha2-nistp256@openssh.com")]
+    #[serde(rename = "sk-ecdsa-sha2-nistp256@openssh.com")]
+    #[display("sk-ecdsa-sha2-nistp256@openssh.com")]
+    SkEcdsaSha2Nistp256,
+    #[sqlx(rename = "rsa-sha2-256")]
+    #[display("rsa-sha2-256")]
+    RsaSha2_256,
+    #[sqlx(rename = "rsa-sha2-512")]
+    #[display("rsa-sha2-512")]
+    RsaSha2_512,
+}
+
+impl TryFrom<&str> for KeyType {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "ssh-rsa" => KeyType::SshRsa,
+            "ecdsa-sha2-nistp256" => KeyType::EcdsaSha2Nistp256,
+            "ecdsa-sha2-nistp384" => KeyType::EcdsaSha2Nistp384,
+            "ecdsa-sha2-nistp521" => KeyType::EcdsaSha2Nistp521,
+            "ssh-ed25519" => KeyType::SshEd25519,
+            "sk-ssh-ed25519@openssh.com" => KeyType::SkSshEd25519,
+            "sk-ecdsa-sha2-nistp256@openssh.com" => KeyType::SkEcdsaSha2Nistp256,
+            "rsa-sha2-256" => KeyType::RsaSha2_256,
+            "rsa-sha2-512" => KeyType::RsaSha2_512,
+            _ => bail!("Unknown algorithm: {value}"),
+        })
+    }
+}
+
+impl TryFrom<&Algorithm> for KeyType {
+    type Error = Error;
+
+    fn try_from(value: &Algorithm) -> Result<Self, Self::Error> {
+        Ok(match value {
+            Algorithm::Dsa => bail!("DSA keys are unsupported"),
+            Algorithm::Ecdsa { curve } => match curve {
+                EcdsaCurve::NistP256 => KeyType::EcdsaSha2Nistp256,
+                EcdsaCurve::NistP384 => KeyType::EcdsaSha2Nistp384,
+                EcdsaCurve::NistP521 => KeyType::EcdsaSha2Nistp521,
+            },
+            Algorithm::Rsa { hash: Some(HashAlg::Sha256) } => KeyType::RsaSha2_256,
+            Algorithm::Rsa { hash: Some(HashAlg::Sha512) } => KeyType::RsaSha2_512,
+            Algorithm::Rsa { hash: None } | Algorithm::Rsa { .. } => KeyType::SshRsa,
+            Algorithm::SkEcdsaSha2NistP256 => KeyType::SkEcdsaSha2Nistp256,
+            Algorithm::Ed25519 => KeyType::SshEd25519,
+            Algorithm::SkEd25519 => KeyType::SkSshEd25519,
+            Algorithm::Other(name) => bail!("Unknown algorithm: {}", name.as_str()),
+            name => unimplemented!("russh supports {name} but gitarena doesn't?!"),
+        })
+    }
 }

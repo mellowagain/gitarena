@@ -2,6 +2,7 @@ use crate::user::User;
 use std::fmt;
 use uuid::Uuid;
 
+use crate::database::Database;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
@@ -11,7 +12,6 @@ use bstr::BString;
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
 use fang::FangError;
 use git2::{Signature as LibGit2Signature, Time as LibGit2Time};
-use gitarena_common::database::Database;
 use gix::actor::Signature;
 use gix::date::Time;
 use qstring::QString;
@@ -56,9 +56,6 @@ pub(crate) trait HttpRequestExtensions {
     /// assert_eq!(query_string.get("v"), Some("BXB26PzV31k"));
     /// ```
     fn q_string(&self) -> QString;
-
-    /// Returns true if the request was made by a htmx.js handler
-    fn is_htmx(&self) -> bool;
 }
 
 impl HttpRequestExtensions for HttpRequest {
@@ -68,10 +65,6 @@ impl HttpRequestExtensions for HttpRequest {
 
     fn q_string(&self) -> QString {
         QString::from(self.query_string())
-    }
-
-    fn is_htmx(&self) -> bool {
-        self.get_header("hx-request").is_some()
     }
 }
 

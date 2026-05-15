@@ -5,7 +5,7 @@ use crate::git::io::writer::GitWriter;
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
 use async_recursion::async_recursion;
-use git2::{Buf, Commit, Error as Git2Error, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
+use git2::{Buf, Commit, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
 use tracing::instrument;
 use tracing::warn;
 

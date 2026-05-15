@@ -4,12 +4,12 @@ use crate::repository::Repository;
 use crate::user::User;
 use crate::{crypto, die, err};
 
+use crate::database::Database;
 use crate::mail::Email;
 use actix_web::http::header::{CONTENT_TYPE, WWW_AUTHENTICATE};
 use actix_web::{HttpRequest, HttpResponse};
 use anyhow::Result;
 use either::Either;
-use gitarena_common::database::Database;
 use sqlx::Transaction;
 use tracing::{debug, instrument};
 

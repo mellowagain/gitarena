@@ -2,9 +2,9 @@ use crate::organization::Organization;
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};

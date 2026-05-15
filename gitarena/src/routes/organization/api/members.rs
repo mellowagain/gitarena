@@ -2,9 +2,9 @@ use crate::die;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::user::{User, WebUser};
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;

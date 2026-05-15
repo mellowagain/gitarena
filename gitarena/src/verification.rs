@@ -1,4 +1,5 @@
 use crate::config::get_setting;
+use crate::database::Pool;
 use crate::mail::task::MailTask;
 use crate::mail::templates::VerifyEmailTemplate;
 use crate::prelude::MapToFangError;
@@ -8,7 +9,6 @@ use anyhow::{Context, Result};
 use askama::Template;
 use async_trait::async_trait;
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
-use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use tracing::{info, instrument};
 use uuid::Uuid;

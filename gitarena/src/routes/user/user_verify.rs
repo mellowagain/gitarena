@@ -1,5 +1,5 @@
+use crate::database::Pool;
 use crate::die;
-use gitarena_common::database::Pool;
 
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpResponse, Responder, web};

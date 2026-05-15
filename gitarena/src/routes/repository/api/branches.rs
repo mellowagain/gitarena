@@ -1,10 +1,10 @@
 use crate::git::history::all_commits;
 use crate::repository::Repository;
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use git2::ErrorCode;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Serialize;
 use utoipa::ToSchema;

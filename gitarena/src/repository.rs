@@ -10,6 +10,8 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::database::Database;
+use crate::database::Pool;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpMessage, HttpRequest};
@@ -17,8 +19,6 @@ use anyhow::{Result, anyhow};
 use derive_more::{Deref, Display};
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use gix::Repository as GitoxideRepository;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;

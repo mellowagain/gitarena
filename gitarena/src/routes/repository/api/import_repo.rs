@@ -1,6 +1,5 @@
 use crate::config::{get_optional_setting, get_setting};
-use crate::organization::{OrgMember, Organization};
-use crate::prelude::HttpRequestExtensions;
+use crate::database::Pool;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::replication::ImportTask;
 use crate::repository::Repository;
@@ -8,12 +7,10 @@ use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err};
-use gitarena_common::database::Pool;
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
-use futures_locks::RwLock;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::info;

@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
-use gitarena_common::database::{Database, Pool};
+use crate::database::{Database, Pool};
 use gitarena_macros::route;
 use gix::hash::ObjectId;
 use gix::objs::Tree;

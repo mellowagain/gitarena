@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["gitarena", "gitarena-common", "gitarena-macros"]
+members = ["gitarena", "gitarena-macros"]
 
 [workspace.package]
 version = "0.0.0"
@@ -11,16 +11,8 @@ license = "MIT"
 repository = "https://github.com/mellowagain/gitarena"
 readme = "README.md"
 
-[workspace.dependencies]
-sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] }
-ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses^
-opentelemetry = "0.31.0"
-opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki-roots", "http-proto", "http-json", "reqwest-rustls-webpki-roots"] }
-opentelemetry-semantic-conventions = "0.31.0"
-opentelemetry-appender-tracing = { version = "0.31.1", default-features = false, features = ["log"] }
-tracing-opentelemetry = "0.32.1"
-russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tokio_unstable)"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
@@ -30,6 +22,7 @@ enum_glob_use = "allow"
 items_after_statements = "allow"
 doc_markdown = "allow"
 struct_excessive_bools = "allow"
+unused_self = "allow"
 
 [profile.release]
 lto = true

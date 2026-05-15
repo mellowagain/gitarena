@@ -8,12 +8,12 @@ use crate::repository::Repository;
 use crate::routes::repository::GitRequest;
 use crate::user::User;
 
+use crate::database::{Database, Pool};
 use crate::privileges::privilege;
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use either::Either;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use tracing::instrument;
 use uuid::Uuid;
@@ -50,7 +50,7 @@ pub(crate) async fn info_refs(uri: web::Path<GitRequest>, request: HttpRequest, 
 }
 
 /// Resolve a namespace string to the UUID of the owning user or organization.
-pub(crate) async fn resolve_namespace(namespace: &str, tx: &mut sqlx::Transaction<'_, gitarena_common::database::Database>) -> Result<Uuid> {
+pub(crate) async fn resolve_namespace(namespace: &str, tx: &mut sqlx::Transaction<'_, Database>) -> Result<Uuid> {
     if let Some(user) = User::find_using_name(namespace, tx).await {
         return Ok(user.id);
     }
@@ -65,7 +65,7 @@ async fn upload_pack_info_refs(
     repo_option: Option<Repository>,
     service: &str,
     request: &HttpRequest,
-    tx: &mut sqlx::Transaction<'_, gitarena_common::database::Database>,
+    tx: &mut sqlx::Transaction<'_, Database>,
 ) -> Result<HttpResponse> {
     let git_protocol = request.get_header("git-protocol").unwrap_or_default();
 

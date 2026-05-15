@@ -3,7 +3,7 @@ use crate::prelude::ContextExtensions;
 use crate::render_template;
 use crate::repository::{RepoOwner, Repository};
 use crate::user::WebUser;
-use gitarena_common::database::Pool;
+use crate::database::Pool;
 
 use std::collections::HashMap;
 

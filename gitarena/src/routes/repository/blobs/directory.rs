@@ -7,7 +7,7 @@ use crate::routes::repository::blobs::BlobRequest;
 use crate::templates::web::{GitCommit, RepoFile};
 use crate::user::WebUser;
 use crate::{die, err, render_template};
-use gitarena_common::database::Pool;
+use crate::database::Pool;
 
 use std::cmp::Ordering;
 use std::sync::Arc;

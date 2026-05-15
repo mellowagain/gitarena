@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use crate::database::Database;
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
-use gitarena_common::database::Database;
 use serde_cbor_2::Value as CborValue;
 use serde_json::Value;
 use sqlx::{FromRow, Transaction};

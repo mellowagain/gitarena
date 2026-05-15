@@ -1,16 +1,15 @@
 use crate::config::get_optional_setting;
 use crate::die;
 use crate::git::write;
-use crate::organization::{OrgMember, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use crate::database::Pool;
+use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::{info, instrument};
@@ -31,7 +30,7 @@ use uuid::Uuid;
     tag = "repository"
 )]
 #[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let name = &body.name;
 

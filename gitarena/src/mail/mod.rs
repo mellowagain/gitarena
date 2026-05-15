@@ -6,11 +6,11 @@
 //! - The **public email** is displayed on the user profile.
 //! - All emails will be used to identify Git commits and incoming emails (e.g. issue creation by email).
 
+use crate::database::Database;
+use crate::database::Pool;
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use derive_more::Display;
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
 use lettre::transport::smtp::PoolConfig;

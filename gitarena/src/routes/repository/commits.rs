@@ -4,7 +4,7 @@ use crate::repository::{Branch, RepoOwner, Repository};
 use crate::templates::web::GitCommit;
 use crate::user::WebUser;
 use crate::{die, render_template};
-use gitarena_common::database::Pool;
+use crate::database::Pool;
 
 use actix_web::{HttpMessage, HttpRequest, Responder, web};
 use anyhow::{Result, anyhow};

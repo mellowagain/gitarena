@@ -1,7 +1,7 @@
 use crate::config::Setting;
+use crate::database::Pool;
 use crate::ssh::server::SshServer;
-use anyhow::{Context, Result, anyhow};
-use gitarena_common::database::Pool;
+use anyhow::{Context, Result};
 use gitarena_macros::from_config;
 use russh::keys::ssh_encoding::LineEnding;
 use russh::keys::{Algorithm, PrivateKey};
@@ -13,7 +13,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::{OnceCell, mpsc};
 use tokio::task::JoinHandle;
-use tracing::{Instrument, error, info, info_span, instrument, warn};
+use tracing::{Instrument, info, info_span, instrument, warn};
 
 pub(crate) mod key;
 mod server;

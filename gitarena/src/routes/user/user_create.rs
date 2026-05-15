@@ -1,11 +1,11 @@
 use crate::config::{get_optional_setting, get_setting};
+use crate::database::Pool;
 use crate::routes::user::api::auth::me::MeResponse;
 use crate::session::Session;
 use crate::user::User;
 use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
-use gitarena_common::database::Pool;
 
 use crate::mail::Email;
 use actix_identity::Identity;

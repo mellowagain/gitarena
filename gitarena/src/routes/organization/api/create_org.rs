@@ -3,9 +3,9 @@ use crate::organization::{OrgRole, Organization};
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_namespace_taken, is_reserved_namespace, is_valid};
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Deserialize;
 use utoipa::ToSchema;

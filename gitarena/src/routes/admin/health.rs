@@ -1,4 +1,5 @@
 use crate::config::get_setting;
+use crate::database::Pool;
 use crate::die;
 use crate::mail::TRANSPORTER;
 use crate::ssh::SSH_TASK_HANDLE;
@@ -8,7 +9,6 @@ use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use fang::{AsyncQueue, Serialize};
 use futures::future;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use std::env;
 use std::time::Duration;

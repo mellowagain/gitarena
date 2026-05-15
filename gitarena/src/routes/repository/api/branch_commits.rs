@@ -3,10 +3,10 @@ use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::api::branch_files::{CommitInfo, FileCommitInfo};
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};

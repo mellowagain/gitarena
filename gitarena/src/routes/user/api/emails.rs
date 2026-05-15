@@ -1,8 +1,8 @@
+use crate::database::Pool;
 use crate::mail::Email;
 use crate::user::{User, WebUser};
 use crate::verification::send_verification_mail;
 use crate::{die, err};
-use gitarena_common::database::Pool;
 use gitarena_macros::{from_config, route};
 
 use actix_web::{HttpResponse, Responder, web};

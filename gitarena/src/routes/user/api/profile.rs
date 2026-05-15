@@ -1,12 +1,12 @@
+use crate::database::Pool;
 use crate::die;
 use crate::err;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::{User, WebUser};
-use gitarena_common::database::Pool;
 
+use crate::database::Database;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_common::database::Database;
 use gitarena_macros::route;
 use serde::Serialize;
 use serde_json::Value as JsonValue;

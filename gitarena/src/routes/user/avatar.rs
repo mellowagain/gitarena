@@ -1,8 +1,8 @@
+use crate::database::Pool;
 use crate::mail::Email;
 use crate::prelude::{AwcExtensions, HttpRequestExtensions};
 use crate::user::WebUser;
 use crate::{die, err};
-use gitarena_common::database::Pool;
 use uuid::Uuid;
 
 use std::fs;

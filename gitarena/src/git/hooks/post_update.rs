@@ -4,8 +4,8 @@ use crate::repository::Repository;
 
 use std::sync::Arc;
 
+use crate::database::Database;
 use anyhow::Result;
-use gitarena_common::database::Database;
 use gix::odb::Store;
 use sqlx::Transaction;
 use tracing::{instrument, warn};

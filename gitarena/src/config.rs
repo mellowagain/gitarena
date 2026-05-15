@@ -6,9 +6,9 @@ use std::future::Future;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
+use crate::database::Database;
 use anyhow::{Context, Result, anyhow, bail};
 use derive_more::Display;
-use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};
 use sqlx::encode::Encode;
 use sqlx::{FromRow, Postgres, Transaction, Type};

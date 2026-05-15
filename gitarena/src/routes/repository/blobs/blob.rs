@@ -1,8 +1,8 @@
+use crate::database::Pool;
 use crate::git::utils::{read_blob_content, repo_files_at_ref};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
 use crate::{die, err};
-use gitarena_common::database::Pool;
 
 use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-use gitarena_common::database::Pool;
+use crate::database::Pool;
 use opentelemetry::metrics::ObservableGauge;
 use opentelemetry::{KeyValue, global};
 use opentelemetry_semantic_conventions::attribute::DB_CLIENT_CONNECTION_POOL_NAME;

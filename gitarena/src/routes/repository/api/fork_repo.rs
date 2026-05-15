@@ -1,11 +1,10 @@
 use crate::config::get_optional_setting;
+use crate::database::Pool;
 use crate::die;
-use crate::organization::{OrgMember, Organization};
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::filesystem::copy_dir_all;
-use gitarena_common::database::Pool;
 
 use std::path::Path;
 

@@ -6,12 +6,12 @@ use crate::user::User;
 use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::{config, crypto, err};
 
+use crate::database::Database;
+use crate::database::Pool;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use awc::Client;
 use awc::http::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;

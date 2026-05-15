@@ -1,3 +1,4 @@
+use crate::database::Pool;
 use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
@@ -9,7 +10,6 @@ use crate::repository::{Repository, extract_repo_from_request};
 use crate::ssh::key::SshKey;
 use crate::user::User;
 use anyhow::{Context, Result, anyhow};
-use gitarena_common::database::Pool;
 use opentelemetry::KeyValue;
 use russh::keys::{HashAlg, PublicKey};
 use russh::server::{Auth, Handler, Msg, Server, Session};

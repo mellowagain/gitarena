@@ -1,9 +1,9 @@
+use crate::database::Pool;
 use crate::mail::Email;
 use crate::routes::user::api::auth::me::MeResponse;
 use crate::session::Session;
 use crate::user::{User, WebUser};
 use crate::{crypto, die, err};
-use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};

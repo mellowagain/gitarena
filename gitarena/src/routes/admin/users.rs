@@ -1,3 +1,4 @@
+use crate::database::Pool;
 use crate::error::WithStatusCode;
 use crate::prelude::HttpRequestExtensions;
 use crate::user::{User, WebUser};
@@ -6,7 +7,6 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use fang::Serialize;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use sqlx::FromRow;
 use utoipa::ToSchema;

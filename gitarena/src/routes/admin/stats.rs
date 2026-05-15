@@ -1,10 +1,10 @@
 use crate::config::get_setting;
+use crate::database::Pool;
 use crate::die;
 use crate::user::WebUser;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use fang::Serialize;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use std::path::Path;
 use utoipa::ToSchema;

@@ -3,19 +3,19 @@ use crate::session::Session;
 use crate::{die, err, session};
 
 use std::convert::TryFrom;
-use std::fmt::Debug;
+use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::database::Database;
+use crate::database::Pool;
 use actix_identity::Identity;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpRequest};
 use anyhow::{Error, Result, anyhow};
-use derive_more::Display;
+use derive_more::{Debug, Display};
 use futures::Future;
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
@@ -23,14 +23,13 @@ use tracing::instrument;
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
 
-pub(crate) type UserId = Uuid;
-
-#[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
+#[derive(FromRow, Display, Debug, Serialize, Clone)]
 #[display("{username}")]
 pub(crate) struct User {
     pub(crate) id: Uuid,
     pub(crate) username: String,
     #[serde(skip_serializing)]
+    #[display("[redacted]")]
     #[debug("[redacted]")]
     pub(crate) password: String,
     pub(crate) disabled: bool,
@@ -51,7 +50,7 @@ impl User {
     #[instrument(skip(tx))]
     pub(crate) async fn find_using_name<S>(name: S, tx: &mut Transaction<'_, Database>) -> Option<User>
     where
-        S: AsRef<str> + Debug,
+        S: AsRef<str> + fmt::Debug,
     {
         let username = name.as_ref();
 
@@ -66,7 +65,7 @@ impl User {
     #[instrument(skip(tx))]
     pub(crate) async fn find_using_email<E>(email: E, tx: &mut Transaction<'_, Database>) -> Option<User>
     where
-        E: AsRef<str> + Debug,
+        E: AsRef<str> + fmt::Debug,
     {
         let email = email.as_ref();
 

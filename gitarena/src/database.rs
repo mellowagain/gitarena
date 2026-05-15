@@ -9,20 +9,16 @@ use sqlx::{Executor, Postgres};
 use tokio::fs;
 use tracing::{info, instrument};
 
-pub mod models;
-
-// These are all type aliased to allow for compile time switching of database backend in the future
-use sqlx::postgres::{PgConnectOptions, PgDatabaseError};
+use sqlx::postgres::PgConnectOptions;
 
 pub type ConnectOptions = PgConnectOptions;
 pub type Database = Postgres;
-pub type DatabaseError = PgDatabaseError;
 
 pub type Pool = sqlx::Pool<Database>;
 pub type PoolOptions = sqlx::pool::PoolOptions<Database>;
 
 #[instrument(err)]
-pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) -> Result<Pool> {
+pub async fn create_postgres_pool(max_conns: Option<u32>) -> Result<Pool> {
     static ONCE: OnceCell<String> = OnceCell::new();
 
     let pool = PoolOptions::new()
@@ -32,7 +28,7 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
                 let _ = connection
-                    .execute(ONCE.get_or_init(|| format!("set application_name = '{module}';")).as_str())
+                    .execute(ONCE.get_or_init(|| "set application_name = 'gitarena';".to_string()).as_str())
                     .await;
 
                 info!("Successfully connected to database");
@@ -43,7 +39,6 @@ pub async fn create_postgres_pool(module: &'static str, max_conns: Option<u32>) 
         .await?;
 
     sqlx::migrate!("../migrations").run(&pool).await?;
-
     Ok(pool)
 }
 
@@ -83,7 +78,7 @@ fn get_max_connections() -> Result<u32> {
         Ok(env_str) => env_str
             .parse::<u32>()
             .context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
-        Err(VarError::NotPresent) => u32::try_from(num_cpus::get()).context("too many cpu threads to fit into u32")?,
+        Err(VarError::NotPresent) => 5.max(u32::try_from(num_cpus::get()).context("too many cpu threads to fit into u32")?),
         Err(VarError::NotUnicode(_)) => {
             bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
         }

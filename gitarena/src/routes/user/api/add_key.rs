@@ -1,19 +1,18 @@
-use crate::ssh::key::SshKey;
+use crate::database::Pool;
+use crate::ssh::key::{KeyType, SshKey};
 use crate::user::WebUser;
 use crate::{die, err};
-use gitarena_common::database::Pool;
 
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Context;
 use anyhow::Result;
 use chrono::serde::ts_seconds_option;
 use chrono::{DateTime, Utc};
-use gitarena_common::database::models::KeyType;
 use gitarena_macros::route;
 use russh::keys::ssh_encoding::Encode;
 use russh::keys::{HashAlg, PublicKey};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, warn};
+use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
 

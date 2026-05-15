@@ -1,7 +1,7 @@
+use crate::database::Pool;
 use crate::ssh::key::SshKey;
 use crate::user::User;
 use actix_web::{Responder, web};
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use itertools::Itertools;
 

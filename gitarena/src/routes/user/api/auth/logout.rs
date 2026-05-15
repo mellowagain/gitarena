@@ -1,7 +1,7 @@
+use crate::database::Pool;
 use crate::die;
 use crate::session::Session;
 use crate::user::WebUser;
-use gitarena_common::database::Pool;
 
 use actix_identity::Identity;
 use actix_web::{HttpResponse, Responder, web};

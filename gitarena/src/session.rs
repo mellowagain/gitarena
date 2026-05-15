@@ -6,10 +6,10 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::net::Ipv6Addr;
 use std::str::FromStr;
 
+use crate::database::Database;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Local};
-use gitarena_common::database::Database;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
@@ -59,10 +59,7 @@ impl Session {
                 let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
 
                 // Old sessions used i32 user IDs; if parsing as UUID fails, treat as expired and force logout
-                let user_id = match user_id_str.parse::<Uuid>() {
-                    Ok(id) => id,
-                    Err(_) => return Ok(None),
-                };
+                let Ok(user_id) = user_id_str.parse::<Uuid>() else { return Ok(None) };
 
                 let option: Option<Session> = sqlx::query_as::<_, Session>("select * from sessions where user_id = $1 and hash = $2 limit 1")
                     .bind(user_id)

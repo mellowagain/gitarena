@@ -2,9 +2,9 @@ use crate::config::get_optional_setting;
 use crate::err;
 use crate::prelude::AwcExtensions;
 
+use crate::database::Database;
 use anyhow::Result;
 use awc::Client;
-use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};
 use sqlx::Transaction;
 use tracing::{error, instrument, warn};

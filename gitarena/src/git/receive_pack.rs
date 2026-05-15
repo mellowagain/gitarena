@@ -16,10 +16,10 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::database::Database;
+use crate::database::Pool;
 use anyhow::{Context, Result, anyhow};
 use bstr::BString;
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
 use gix::lock::acquire::Fail;

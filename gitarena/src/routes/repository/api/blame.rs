@@ -4,11 +4,11 @@ use crate::repository::{Branch, Repository};
 use std::path::Path;
 use uuid::Uuid;
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use bstr::ByteSlice;
 use git2::BlameOptions;
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;

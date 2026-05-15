@@ -8,12 +8,12 @@ use crate::{config, crypto, err};
 
 use std::sync::Once;
 
+use crate::database::Database;
+use crate::database::Pool;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use awc::Client;
 use awc::http::header::{AUTHORIZATION, USER_AGENT};
-use gitarena_common::database::Database;
-use gitarena_common::database::Pool;
 use oauth2::{AuthUrl, ClientId, ClientSecret, TokenUrl};
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;

@@ -5,6 +5,7 @@ use quote::{ToTokens, quote};
 use syn::spanned::Spanned;
 use syn::{AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, Pat, parse_macro_input};
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut args = parse_macro_input!(args as AttributeArgs);
     let mut input = parse_macro_input!(input as ItemFn);

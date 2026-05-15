@@ -1,14 +1,14 @@
+use crate::database::Pool;
 use crate::err;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::WebUser;
-use gitarena_common::database::Pool;
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
+use crate::database::Database;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use derive_more::Display;
-use gitarena_common::database::Database;
 use gitarena_macros::route;
 use qstring::QString;
 use serde::{Deserialize, Serialize};

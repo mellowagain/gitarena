@@ -2,10 +2,10 @@ use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::Repository;
 use crate::{die, err};
 
+use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use git2::{Delta, DiffFindOptions, DiffFormat, DiffOptions};
-use gitarena_common::database::Pool;
 use gitarena_macros::route;
 use serde::Serialize;
 use utoipa::ToSchema;

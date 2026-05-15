@@ -1,3 +1,4 @@
+use crate::database::Pool;
 use crate::prelude::HttpRequestExtensions;
 use crate::session::Session;
 use crate::sso::SSO;
@@ -5,7 +6,6 @@ use crate::sso::sso_provider::SSOProvider;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::{User, WebUser};
 use crate::{die, err};
-use gitarena_common::database::Pool;
 
 use std::str::FromStr;
 

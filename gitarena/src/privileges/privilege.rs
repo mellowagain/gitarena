@@ -3,8 +3,8 @@ use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::User;
 
+use crate::database::Database;
 use anyhow::{Context, Result};
-use gitarena_common::database::Database;
 use sqlx::{FromRow, Transaction};
 use tracing::{Level, instrument};
 use uuid::Uuid;

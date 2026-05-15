@@ -1,9 +1,9 @@
+use crate::database::Database;
 use crate::die;
 use crate::organization::{OrgMember, Organization};
 use crate::user::User;
 use actix_web::web::ServiceConfig;
 use anyhow::Result;
-use gitarena_common::database::Database;
 use serde::Serialize;
 use sqlx::Transaction;
 use utoipa::ToSchema;
@@ -48,7 +48,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 pub(crate) async fn determine_namespace(namespace: &str, user: &User, tx: &mut Transaction<'_, Database>) -> Result<(Uuid, String)> {
     Ok(if namespace == user.username {
         (user.id, user.username.clone())
-    } else if let Some(org) = Organization::find_by_name(&namespace, tx).await {
+    } else if let Some(org) = Organization::find_by_name(namespace, tx).await {
         if OrgMember::get_role(org.id, user.id, tx).await?.is_none() {
             die!(FORBIDDEN, "You are not a member of this organization");
         }

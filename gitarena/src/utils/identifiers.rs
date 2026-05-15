@@ -1,7 +1,7 @@
 use crate::die;
 
+use crate::database::Database;
 use anyhow::Result;
-use gitarena_common::database::Database;
 use sqlx::Transaction;
 
 /// Checks if the character is a valid GitArena identifier.

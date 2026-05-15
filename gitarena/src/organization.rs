@@ -1,5 +1,5 @@
+use crate::database::Database;
 use anyhow::Result;
-use gitarena_common::database::Database;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Transaction, Type};
 use tracing::instrument;
