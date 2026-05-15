@@ -1,8 +1,11 @@
 use crate::mail::task::MAIL_TASK_TYPE;
+use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
+use crate::verification::ExpiredVerifyLinkRemovalTask;
 use anyhow::{Context, Result};
-use fang::{AsyncQueue, AsyncWorkerPool, SleepParams};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool, SleepParams};
 use std::env;
 use std::time::Duration;
+use tracing::info;
 
 pub(crate) async fn init() -> Result<AsyncQueue> {
     // todo: this makes `DATABASE_URL` mandatory
@@ -45,5 +48,30 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
 
     email_worker_pool.start().await;
 
+    schedule_cron_jobs(&queue).await?;
     Ok(queue)
+}
+
+async fn schedule_cron_jobs(queue: &AsyncQueue) -> Result<()> {
+    {
+        let cron = ExpiredVerifyLinkRemovalTask {};
+
+        let task = queue
+            .schedule_task(&cron as &dyn AsyncRunnable)
+            .await
+            .context("failed to schedule remove expired verify link cron job")?;
+
+        info!(id = %task.id, "scheduled cron job: remove expired verify links");
+    }
+    {
+        let cron = ExpiredWebAuthnChallengesRemovalTask {};
+
+        let task = queue
+            .schedule_task(&cron as &dyn AsyncRunnable)
+            .await
+            .context("failed to schedule remove expired webauthn challenges cron job")?;
+
+        info!(id = %task.id, "scheduled cron job: remove expired webauthn challenges");
+    }
+    Ok(())
 }

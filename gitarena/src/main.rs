@@ -10,7 +10,6 @@ use std::env;
 
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
-use crate::verification::ExpiredVerifyLinkRemovalTask;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
@@ -21,7 +20,6 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route, to};
 use actix_web::{App, HttpResponse, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
-use fang::{AsyncQueueable, AsyncRunnable};
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use time::Duration as TimeDuration;
@@ -97,12 +95,6 @@ async fn main() -> Result<()> {
     mail::create_transport(&db_pool).await?;
 
     let queue = queue::init().await?;
-
-    let cron = ExpiredVerifyLinkRemovalTask {};
-    queue
-        .schedule_task(&cron as &dyn AsyncRunnable)
-        .await
-        .context("failed to schedule remove expired verify link cron job")?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 

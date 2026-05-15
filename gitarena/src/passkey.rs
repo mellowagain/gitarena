@@ -1,12 +1,17 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use crate::TASK_DB_POOL;
 use crate::database::Database;
+use crate::prelude::MapToFangError;
 use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use fang::{AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use serde_cbor_2::Value as CborValue;
 use serde_json::Value;
 use sqlx::{FromRow, Transaction};
+use tracing::{debug, instrument};
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{DiscoverableAuthentication, Passkey, PasskeyRegistration, Webauthn, WebauthnBuilder};
@@ -142,11 +147,11 @@ impl StoredPasskey {
 pub(crate) struct WebAuthnChallenge {
     pub(crate) id: Uuid,
     pub(crate) user_id: Option<Uuid>,
-    pub(crate) state: serde_json::Value,
+    pub(crate) state: Value,
     pub(crate) expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, sqlx::Type, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "webauthn_challenge_type", rename_all = "lowercase")]
 pub(crate) enum ChallengeType {
     Registration,
@@ -195,5 +200,41 @@ impl WebAuthnChallenge {
         .await?;
 
         Ok(row)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "fang::serde")]
+pub(crate) struct ExpiredWebAuthnChallengesRemovalTask {}
+
+#[async_trait]
+#[typetag::serde]
+impl AsyncRunnable for ExpiredWebAuthnChallengesRemovalTask {
+    #[instrument(skip(_client))]
+    async fn run(&self, _client: &dyn AsyncQueueable) -> Result<(), FangError> {
+        let db_pool = TASK_DB_POOL.get().ok_or_else(|| FangError {
+            description: "task db pool OnceCell is empty".to_string(),
+        })?;
+
+        let mut tx = db_pool.begin().await.fang()?;
+
+        let result = sqlx::query("delete from webauthn_challenges where expires_at < now()")
+            .execute(&mut *tx)
+            .await
+            .fang()?;
+
+        tx.commit().await.fang()?;
+
+        debug!(count = %result.rows_affected(), "deleted expired webauthn challenges");
+        Ok(())
+    }
+
+    fn uniq(&self) -> bool {
+        true
+    }
+
+    fn cron(&self) -> Option<Scheduled> {
+        // every 10 min
+        Some(Scheduled::CronPattern("0 */10 * * * * *".to_string()))
     }
 }
