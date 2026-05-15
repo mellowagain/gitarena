@@ -1,0 +1,48 @@
+---
+title: "Background jobs"
+description: "How GitArena runs repository imports and email delivery through the in-process job queue."
+---
+
+GitArena runs background work inside the main `gitarena` process with [fang](https://github.com/ayrat555/fang). Jobs are stored in PostgreSQL, then picked up by worker pools started during backend startup.
+
+There is no separate background daemon or socket protocol in the current workspace.
+
+## Worker pools
+
+`gitarena/src/queue.rs` starts two worker pools:
+
+| Pool | Workers | Purpose |
+|------|---------|---------|
+| General | One worker per CPU core | Repository imports and other default queue tasks |
+| Email | `2` workers | SMTP email delivery tasks |
+
+The email pool uses shorter sleep intervals so verification messages are picked up quickly.
+
+<Warning>
+  The queue currently reads `DATABASE_URL` directly. `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE` are supported by the main database pool, but not by queue startup.
+</Warning>
+
+## Repository imports
+
+Repository imports use `ImportTask` in `gitarena/src/replication/mod.rs`.
+
+<Steps>
+  <Step title="Request the import">
+    The frontend submits `POST /api/repo/import` with the source URL and optional credentials.
+  </Step>
+  <Step title="Create the repository record">
+    The backend creates the target repository metadata and enqueues an `ImportTask`.
+  </Step>
+  <Step title="Clone in the queue">
+    A general queue worker runs a bare `git2::build::RepoBuilder` clone into the repository filesystem path.
+  </Step>
+  <Step title="Retry on failure">
+    The import task can retry up to three times before fang marks it as failed.
+  </Step>
+</Steps>
+
+## Email delivery
+
+Email tasks use the dedicated email worker pool. Verification flows create a verification token, then enqueue a message for SMTP delivery when email is enabled.
+
+See [email configuration](/self-hosting/email) for the settings used by the SMTP transport.

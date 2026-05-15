@@ -69,11 +69,11 @@ Users manage their SSH keys through account settings in the web UI. See the [API
 
 The SSH server reads its settings from the `settings` table:
 
-| Setting                           | Default | Description                                  |
-|-----------------------------------|---------|----------------------------------------------|
-| `ssh.enabled`                     | `true`  | Enable or disable the SSH server             |
-| `ssh.port`                        | `2222`  | Port the server binds to                     |
-| `ssh.auth_rejection_time_seconds` | `5`     | Delay before rejecting a failed auth attempt |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ssh.enabled` | `true` | Enable or disable the SSH server |
+| `ssh.port` | `2222` | Port the server binds to |
+| `ssh.private_key` | Generated | Private host key stored after first startup |
 
 The server host key is generated automatically on first start and stored in the `ssh.private_key` setting. It persists across restarts and cannot be overridden from the environment.
 

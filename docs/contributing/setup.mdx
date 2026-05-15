@@ -51,7 +51,7 @@ This guide gets your development environment running from scratch. For a broader
   </Step>
 
   <Step title="Run everything">
-    Open three terminals:
+    Open two terminals:
 
     <CodeGroup>
       ```bash Backend
@@ -63,15 +63,9 @@ This guide gets your development environment running from scratch. For a broader
       pnpm run dev
       ```
 
-      ```bash Workhorse (optional)
-      mkdir -p /run/gitarena
-      cargo run -p gitarena-workhorse
-      ```
     </CodeGroup>
 
-    Open `http://localhost:3000`. The frontend proxies API calls to the backend on port 8080.
-
-    The workhorse is only needed if you're working on repository import functionality.
+    Open `http://localhost:8321`. The frontend proxies API calls to the backend on port 8080. Background jobs run inside the backend process.
   </Step>
 </Steps>
 

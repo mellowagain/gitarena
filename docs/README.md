@@ -1,6 +1,6 @@
 # GitArena Docs
 
-Documentation for [GitArena](https://github.com/mellowagain/gitarena) — a self-hosted software development platform with built-in version control, issue tracking, and code review.
+Documentation for [GitArena](https://github.com/mellowagain/gitarena), a self-hosted software development platform with git hosting, user accounts, and instance administration.
 
 Built with [Mintlify](https://mintlify.com).
 
@@ -34,11 +34,11 @@ docs/
 ├── index.mdx           # Introduction
 ├── quickstart.mdx      # Docker deployment
 ├── development.mdx     # Local dev setup
-├── architecture/       # Backend, frontend, workhorse, SSH
+├── architecture/       # Backend, frontend, background jobs, SSH
 ├── features/           # Repositories, auth, issues, admin, explore
 ├── self-hosting/       # Docker, configuration, reverse proxy, SSO, email, CAPTCHA
 ├── api-reference/      # API overview (OpenAPI auto-generation)
-└── contributing/       # Dev setup, backend/frontend patterns, IPC protocol
+└── contributing/       # Dev setup, backend/frontend patterns, background jobs
 ```
 
 ## Publishing

@@ -1,23 +1,26 @@
 ---
 title: "Docker"
-description: "Deploy GitArena with Docker Compose: full configuration reference."
+description: "Run the current GitArena backend Docker image with PostgreSQL."
 ---
 
-GitArena ships as a Docker image. The recommended deployment method is Docker Compose.
+The Dockerfile in this repository builds the Rust backend binary. It does not build or serve the Next.js frontend.
 
-## Full Compose file
+<Warning>
+  Treat the current Docker setup as backend-focused. A full web instance needs a separately deployed frontend that points at the backend API.
+</Warning>
+
+## Compose file
 
 ```yaml docker-compose.yml
 services:
   postgres:
     image: postgres:trixie
-    restart: unless-stopped
     environment:
       POSTGRES_DB: gitarena
       POSTGRES_USER: gitarena
       POSTGRES_PASSWORD: change_me
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gitarena"]
       interval: 5s
@@ -25,8 +28,7 @@ services:
       retries: 5
 
   gitarena:
-    image: ghcr.io/mellowagain/gitarena:latest
-    restart: unless-stopped
+    build: .
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,9 +39,10 @@ services:
       - repos:/repositories
     ports:
       - "127.0.0.1:8080:8080"
+      - "2222:2222"
 
 volumes:
-  postgres_data:
+  pgdata:
   repos:
 ```
 
@@ -51,50 +54,42 @@ volumes:
 
 | Volume | Purpose |
 |--------|---------|
-| `postgres_data` | PostgreSQL data directory |
+| `pgdata` | PostgreSQL data directory |
 | `repos` | Bare git repositories on disk |
 
-The `repos` volume is mounted at `/repositories` inside the container. Back this up along with your database.
-
-## Using Docker secrets for the database password
-
-Instead of putting the password in plain text in the `DATABASE_URL`, use Docker secrets:
-
-```yaml docker-compose.yml
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-
-services:
-  postgres:
-    environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
-
-  gitarena:
-    environment:
-      DATABASE_URL: "postgres://gitarena@postgres/gitarena"
-      DATABASE_PASSWORD_FILE: /run/secrets/db_password
-    secrets:
-      - db_password
-```
-
-Create the secret file:
+The `repos` volume is mounted at `/repositories` inside the container. Set `repositories.base_dir` to `/repositories` before creating repositories:
 
 ```bash
-mkdir -p secrets
-echo "your_strong_password" > secrets/db_password.txt
-chmod 600 secrets/db_password.txt
+docker compose exec postgres psql -U gitarena -d gitarena -c \
+  "UPDATE settings SET value = '/repositories' WHERE key = 'repositories.base_dir';"
 ```
+
+Back up both the database volume and repository volume.
+
+## Database password secrets
+
+The main database pool supports `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE`, but the background queue currently requires `DATABASE_URL` directly. Keep the password in `DATABASE_URL` until queue startup supports file-based secrets.
+
+## Frontend deployment
+
+Run the frontend separately from `gitarena-frontend`:
+
+```bash
+cd gitarena-frontend
+pnpm install
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8080 pnpm run build
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8080 pnpm run start
+```
+
+For local development, use `pnpm run dev`; it listens on port `8321`.
 
 ## Upgrading
 
-Pull the latest image and restart:
+Rebuild the backend image and restart:
 
 ```bash
-docker compose pull
-docker compose up -d
+docker compose build gitarena
+docker compose up -d gitarena
 ```
 
 Migrations run automatically on startup.
@@ -107,15 +102,14 @@ GitArena exposes a health check endpoint at `/healthz`:
 curl http://localhost:8080/healthz
 ```
 
-A 200 response means GitArena is up and connected to the database.
+A 200 response means the HTTP server responded. Use `/api/admin/health` from an admin session for component health, including database connectivity.
 
 ## Logs
 
-In release mode, GitArena writes logs to files in a `logs/` directory inside the container. To access them:
+By default, GitArena writes logs to stdout. View them with Docker:
 
 ```bash
-docker compose exec gitarena ls /app/logs
-docker compose exec gitarena cat /app/logs/$(date +%Y-%m-%d).log
+docker compose logs -f gitarena
 ```
 
-Or stream them in real time from the admin panel at `/admin`.
+Set `NO_STDOUT_LOG` to disable stdout logging. Set `DEBUG_FILE_LOG` in non-debug builds to enable rolling file logs.

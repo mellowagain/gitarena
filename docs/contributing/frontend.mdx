@@ -48,14 +48,10 @@ All data fetching goes through SWR. Never use `fetch` directly in a component.
 
 ```tsx
 // Reading data
-const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repositories/${user}/${repo}`);
+const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repos/${user}/${repo}`);
 
 // Mutations (POST, PATCH, DELETE)
-const { trigger, isMutating } = useSWRMutation(
-  "/api/repositories",
-  (url, { arg }: { arg: CreateRepoInput }) =>
-    fetch(url, { method: "POST", body: JSON.stringify(arg) }).then(r => r.json())
-);
+const { trigger, isMutating } = useSWRMutation("/api/repo", postJsonFetcher);
 ```
 
 Always use the `{ data, isLoading, error }` tuple. Don't use `!data` as a loading check — it hides empty states.
@@ -105,32 +101,27 @@ function MyForm() {
 
 ## Forms
 
-Use `react-hook-form` with Zod validation:
+Most feature forms currently use local React state for field values and validation, then submit through an SWR mutation. Keep validation close to the form unless the same schema is shared by multiple pages.
 
 ```tsx
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-const schema = z.object({
-  name: z.string().min(1).max(100),
-});
-
-type FormData = z.infer<typeof schema>;
-
 function CreateRepoForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  });
+  const [name, setName] = useState("");
+  const { trigger, isMutating } = useSWRMutation("/api/repo", postJsonFetcher);
 
-  const onSubmit = (data: FormData) => {
-    // trigger SWR mutation
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!name.trim()) {
+      return;
+    }
+
+    await trigger({ name });
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register("name")} />
-      {errors.name && <span>{errors.name.message}</span>}
+    <form onSubmit={onSubmit}>
+      <Input value={name} onChange={(event) => setName(event.target.value)} />
+      <Button disabled={isMutating}>Create</Button>
     </form>
   );
 }

@@ -27,7 +27,7 @@
               "architecture/overview",
               "architecture/backend",
               "architecture/frontend",
-              "architecture/workhorse",
+              "architecture/background-jobs",
               "architecture/ssh"
             ]
           },
@@ -59,7 +59,7 @@
               "contributing/setup",
               "contributing/backend",
               "contributing/frontend",
-              "contributing/ipc-protocol"
+              "contributing/background-jobs"
             ]
           }
         ]

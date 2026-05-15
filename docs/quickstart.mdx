@@ -1,25 +1,61 @@
 ---
 title: "Quickstart"
-description: "Deploy GitArena with Docker Compose in minutes."
+description: "Start the current Docker backend and connect it to Postgres."
 ---
+
+<Warning>
+  Docker support currently builds the Rust backend only. The image does not build or serve the Next.js frontend, so a full web instance needs the frontend deployed separately.
+</Warning>
 
 ## Prerequisites
 
-- Docker and Docker Compose installed on your server
-- A domain or IP address you control (for the reverse proxy)
+- Docker and Docker Compose installed
+- A checked-out GitArena repository if you build the local Dockerfile
+- A separate frontend deployment or development server for the user-facing UI
 
 <Steps>
-  <Step title="Download the Compose file">
-    Fetch the official `docker-compose.yml` directly from GitArena's distribution endpoint:
+  <Step title="Create a Compose file">
+    Use this Compose file from the repository root:
 
-    ```bash
-    wget https://get.git.mari.zip/docker-compose.yml
+    ```yaml docker-compose.yml
+    services:
+      postgres:
+        image: postgres:trixie
+        environment:
+          POSTGRES_DB: gitarena
+          POSTGRES_USER: gitarena
+          POSTGRES_PASSWORD: change_me
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U gitarena"]
+          interval: 5s
+          timeout: 5s
+          retries: 5
+
+      gitarena:
+        build: .
+        depends_on:
+          postgres:
+            condition: service_healthy
+        environment:
+          BIND_ADDRESS: "0.0.0.0:8080"
+          DATABASE_URL: "postgres://gitarena:change_me@postgres/gitarena"
+        volumes:
+          - repos:/repositories
+        ports:
+          - "127.0.0.1:8080:8080"
+          - "2222:2222"
+
+    volumes:
+      pgdata:
+      repos:
     ```
 
-    Open the file and replace the two `change_me` placeholders with a strong, unique password — one in the `postgres` service definition and one in the `gitarena` service definition.
+    Replace both `change_me` values with the same strong password.
 
     <Warning>
-      Don't expose port 8080 directly to the internet. The file binds GitArena to `127.0.0.1:8080` by default, so only a local reverse proxy can reach it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
+      Don't expose port 8080 directly to the internet. Bind it to `127.0.0.1` and put a reverse proxy in front of it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
     </Warning>
   </Step>
 
@@ -28,32 +64,35 @@ description: "Deploy GitArena with Docker Compose in minutes."
     docker compose up -d
     ```
 
-    Docker pulls the images, starts Postgres, waits for the health check to pass, then starts GitArena. Migrations run automatically on first start.
+    Docker builds the backend image, starts Postgres, waits for the health check to pass, then starts GitArena. Migrations run automatically on first start.
 
     ```bash
     docker compose ps
     ```
 
-    GitArena is reachable at `http://your-server:8080` once both services show `running`.
+    The backend is reachable at `http://127.0.0.1:8080` once both services show `running`.
+  </Step>
+
+  <Step title="Set the repository path">
+    Configure the repository storage path to match the mounted volume:
+
+    ```bash
+    docker compose exec postgres psql -U gitarena -d gitarena -c \
+      "UPDATE settings SET value = '/repositories' WHERE key = 'repositories.base_dir';"
+    ```
   </Step>
 
   <Step title="Create your admin account">
-    Open GitArena in your browser and click **Sign up** to register your first account.
+    Register your first account through the frontend connected to this backend.
 
     Then grant yourself admin access:
 
     ```bash
-    docker compose exec postgres psql -U gitarena -c \
+    docker compose exec postgres psql -U gitarena -d gitarena -c \
       "UPDATE users SET admin = true WHERE username = 'your_username';"
     ```
 
-    Restart GitArena:
-
-    ```bash
-    docker compose restart gitarena
-    ```
-
-    Your account now has access to the admin panel at `/admin`.
+    Your next request has access to the admin panel at `/admin`.
   </Step>
 </Steps>
 
@@ -61,7 +100,7 @@ description: "Deploy GitArena with Docker Compose in minutes."
 
 <Columns cols={2}>
   <Card title="Configuration" icon="sliders" href="/self-hosting/configuration">
-    Set up your instance name, SMTP, SSH, and more through the settings table.
+    Set up `domain`, repository storage, SMTP, SSH, and more through the settings table.
   </Card>
   <Card title="Reverse proxy" icon="shield-halved" href="/self-hosting/reverse-proxy">
     Put Nginx or Caddy in front of GitArena for TLS termination.
@@ -70,6 +109,6 @@ description: "Deploy GitArena with Docker Compose in minutes."
     Let users sign in with GitHub, GitLab, or Bitbucket.
   </Card>
   <Card title="SSH keys" icon="terminal" href="/features/authentication">
-    Configure OpenSSH so users can push over SSH.
+    Add SSH keys so users can push through GitArena's built-in SSH server.
   </Card>
 </Columns>

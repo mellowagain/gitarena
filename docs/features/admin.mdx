@@ -1,9 +1,13 @@
 ---
 title: "Admin panel"
-description: "Manage your GitArena instance, settings, and logs from the admin dashboard."
+description: "Manage current GitArena admin functions: stats, health, and users."
 ---
 
-The admin panel at `/admin` is only accessible to users with `admin = true` in the `users` table. It provides instance management, live log streaming, and settings control.
+The admin panel at `/admin` is only accessible to users with `admin = true` in the `users` table. The current panel provides instance stats, component health, and user management views.
+
+<Note>
+  Settings editing, audit logs, and live log streaming are visible as work-in-progress sections in the frontend, but they are not complete admin features yet.
+</Note>
 
 ## Granting admin access
 
@@ -18,19 +22,19 @@ docker compose exec postgres psql -U gitarena -c \
 psql -U gitarena -c "UPDATE users SET admin = true WHERE username = 'your_username';"
 ```
 
-Restart GitArena after updating the database.
+Admin access is checked on each request. You do not need to restart GitArena after updating the database.
 
 ## Dashboard
 
-The dashboard shows a summary of the instance: total user count, repository count, uptime, and active sessions.
+The dashboard shows user count, organization count, repository count, total repository disk space, and used repository disk space.
 
 ## Settings
 
-Instance settings are stored in the `settings` table and editable from the admin panel. See the [configuration reference](/self-hosting/configuration) for all available keys and their descriptions.
+Instance settings are stored in the `settings` table. Edit settings directly in PostgreSQL for now. See the [configuration reference](/self-hosting/configuration) for available keys and their descriptions.
 
 ## Live log streaming
 
-The admin panel includes a real-time log viewer that streams server logs via Server-Sent Events (SSE). Logs appear as they are written, without refreshing.
+The backend contains internal SSE/logging helpers, but no complete admin log stream endpoint is currently exposed.
 
 ## API
 

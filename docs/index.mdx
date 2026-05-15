@@ -1,10 +1,10 @@
 ---
 title: "GitArena"
-description: "A self-hosted software development platform with built-in version control, issue tracking, and code review."
+description: "A self-hosted software development platform with git hosting, user accounts, and instance administration."
 icon: "git-alt"
 ---
 
-GitArena is a lightweight, performant alternative to GitLab and Gitea, built for self-hosting across platforms and architectures. It gives your team a full development platform — git hosting, issues, merge requests, and user management — without the operational overhead of heavier solutions.
+GitArena is a self-hosted git platform built with a Rust backend and a Next.js frontend. It provides repository hosting over smart HTTP and SSH, user accounts, passkeys, SSO, and an admin panel.
 
 <Frame>
   <img src="/readme_screenshots/repo.png" alt="GitArena repository view" />
@@ -16,20 +16,20 @@ GitArena is a lightweight, performant alternative to GitLab and Gitea, built for
   href="/quickstart"
   horizontal
 >
-  Get GitArena running with Docker Compose in three steps.
+  Start the current backend container and connect it to Postgres.
 </Card>
 
 ## What GitArena includes
 
 <Columns cols={2}>
   <Card title="Git hosting" icon="code-branch">
-    Push and pull over HTTP (smart protocol) and SSH. Create, import, and fork repositories. Language and license detection run automatically after each push.
+    Push and pull over smart HTTP and SSH. Create and import repositories. Language and license detection run after each push.
   </Card>
   <Card title="Issue tracking" icon="circle-dot">
-    Create and manage issues directly on your repositories, with labels and assignees to keep work organized.
+    Browse the current issue pages while the full issue workflow is under active development.
   </Card>
   <Card title="Merge requests" icon="code-merge">
-    Open merge requests to review and discuss code changes before merging them into your main branch.
+    View the current merge request pages while creation, review, and merge flows are being built.
   </Card>
   <Card title="User accounts" icon="user">
     Cookie-based sessions, passkey (WebAuthn) authentication, SSH key management, and per-session device tracking with revocation.
@@ -38,22 +38,19 @@ GitArena is a lightweight, performant alternative to GitLab and Gitea, built for
     Sign in with GitHub, GitLab, or Bitbucket. Each provider is individually enabled in the settings table.
   </Card>
   <Card title="Admin panel" icon="shield">
-    Manage instance settings and stream live logs from the admin dashboard. Grant admin access directly in the database.
+    View instance stats, health checks, and user accounts. Grant admin access directly in the database.
   </Card>
 </Columns>
 
 ## How it's built
 
-GitArena is split into several components, each responsible for a specific part of the system.
+GitArena is split into a backend, frontend, and proc-macro crate.
 
 | Component | Role |
 |-----------|------|
-| `gitarena` | Main HTTP server built on Actix-Web |
-| `gitarena-frontend` | Next.js SPA frontend |
-| `gitarena-common` | Shared library: database pool, models, IPC |
+| `gitarena` | Actix-Web backend, smart HTTP, built-in SSH, migrations, queue workers |
+| `gitarena-frontend` | Next.js frontend |
 | `gitarena-macros` | Proc-macro crate for config and route helpers |
-| `gitarena-ssh` | CLI for OpenSSH `AuthorizedKeysCommand` integration |
-| `gitarena-workhorse` | Background daemon for async tasks (git imports) |
 
 <Columns cols={2}>
   <Card title="Architecture overview" icon="diagram-project" href="/architecture/overview">

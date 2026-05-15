@@ -1,6 +1,6 @@
 ---
 title: "Repositories"
-description: "Create, import, fork, and manage git repositories in GitArena."
+description: "Create, import, browse, and access git repositories in GitArena."
 ---
 
 Repositories are the core of GitArena. Each repository stores a bare git clone on disk and its metadata in PostgreSQL.
@@ -19,7 +19,7 @@ Users create repositories at `/new`. The form accepts a name, an optional descri
   <img src="/readme_screenshots/import-repo.png" alt="Import repository form" />
 </Frame>
 
-GitArena can import an existing repository from any remote URL at `/import`. The import is non-blocking — the HTTP response returns immediately while the clone runs in the background via the workhorse daemon.
+GitArena can import an existing repository from a remote URL at `/import`. The import is non-blocking: the HTTP response returns immediately while an in-process fang worker clones the repository in the background.
 
 ## Repository view
 
@@ -27,7 +27,7 @@ GitArena can import an existing repository from any remote URL at `/import`. The
   <img src="/readme_screenshots/repo.png" alt="Repository overview page" />
 </Frame>
 
-The repository page shows the file tree, README, language breakdown, and commit history. The sidebar provides navigation to issues, merge requests, and settings.
+The repository page shows the file tree, README, language breakdown, and commit data. Repository navigation links to files, commits, issues, and merge requests where pages exist.
 
 ## Git over HTTP
 
@@ -64,7 +64,11 @@ These results appear in the repository UI (the language bar and license badge).
 
 ## Starring
 
-Users can star repositories to save them for later. Star counts are included in repository metadata.
+Star counts are included in repository metadata and the backend exposes star endpoints. The current frontend buttons display counts, but starring actions are not wired in the UI yet.
+
+## Forking
+
+The backend exposes `POST /api/repo/{namespace}/{repository}/fork`. The current frontend does not yet include a fork flow.
 
 ## API
 

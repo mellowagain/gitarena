@@ -3,7 +3,7 @@ title: "Architecture overview"
 description: "How GitArena's components fit together and communicate."
 ---
 
-GitArena is split into several Rust crates and a Next.js frontend. Each component has a clear responsibility. They communicate through HTTP, Unix sockets, and a shared database.
+GitArena is a Rust backend, a proc-macro crate, and a separate Next.js frontend. The backend owns the REST API, smart HTTP git routes, built-in SSH server, migrations, and background job queue.
 
 ## Components
 
@@ -11,63 +11,76 @@ GitArena is split into several Rust crates and a Next.js frontend. Each componen
 flowchart TD
     Browser["Browser / Client"]
     Frontend["gitarena-frontend\n(Next.js SPA)"]
-    Backend["gitarena\n(Actix-Web HTTP server)\n\nRoutes · Sessions · Git smart HTTP · OpenAPI"]
+    Backend["gitarena\n(Actix-Web backend)\n\nREST API · Sessions · smart HTTP · SSH · Queue"]
     DB[(PostgreSQL)]
-    Workhorse["gitarena-workhorse\n(background daemon)"]
-    SSH["gitarena-ssh\n(CLI, reads DB once)"]
-    OpenSSH["OpenSSH\nAuthorizedKeysCommand"]
+    Queue["fang workers\n(in-process)"]
+    Git["Bare git repositories\n(on disk)"]
+    SMTP["SMTP server"]
 
     Browser -->|HTTP| Frontend
     Frontend -->|REST API| Backend
     Backend -->|sqlx| DB
-    Backend -->|"IPC (Unix socket, bincode)"| Workhorse
-    Workhorse -->|sqlx| DB
-    OpenSSH --> SSH
-    SSH -->|sqlx| DB
+    Backend -->|smart HTTP / SSH| Git
+    Backend -->|enqueue jobs| Queue
+    Queue -->|sqlx| DB
+    Queue -->|clone imports| Git
+    Queue -->|send mail| SMTP
 ```
 
 ## Crates
 
 | Crate | Directory | Role |
 |-------|-----------|------|
-| `gitarena` | `gitarena/` | Main HTTP binary |
-| `gitarena-common` | `gitarena-common/` | Shared library: DB pool, models, IPC, packet definitions |
-| `gitarena-macros` | `gitarena-macros/` | Proc-macro crate: config accessors, IPC derive, route helpers |
-| `gitarena-ssh` | `gitarena-ssh/` | CLI for SSH key lookup; invoked by OpenSSH |
-| `gitarena-workhorse` | `gitarena-workhorse/` | Background daemon for async tasks |
+| `gitarena` | `gitarena/` | Main Actix-Web backend binary |
+| `gitarena-macros` | `gitarena-macros/` | Proc-macro crate for route and config helpers |
 | `gitarena-frontend` | `gitarena-frontend/` | Next.js SPA frontend |
 
 ## Data flow
 
 ### HTTP request
 
-1. The browser loads the Next.js SPA.
-2. The frontend fetches data from the backend's REST API.
-3. Actix-Web handles the request, queries PostgreSQL via `sqlx`, and returns JSON.
+<Steps>
+  <Step title="Load the frontend">
+    The browser loads the Next.js app.
+  </Step>
+  <Step title="Call the backend">
+    Client components fetch JSON from the backend REST API with SWR.
+  </Step>
+  <Step title="Read or write state">
+    Actix-Web handlers query PostgreSQL through `sqlx`, then return JSON or an error response.
+  </Step>
+</Steps>
 
 ### Background task (example: git import)
 
-1. The backend receives an import request and serializes a `GitImport` packet.
-2. The packet is sent over a Unix socket to the workhorse.
-3. The workhorse deserializes the packet and clones the remote repository.
-4. Progress and results are written back to PostgreSQL.
+<Steps>
+  <Step title="Queue the task">
+    The backend receives `POST /api/repo/import`, creates the repository record, and enqueues an `ImportTask` in PostgreSQL through fang.
+  </Step>
+  <Step title="Run inside the backend process">
+    An in-process worker picks up the task and clones the remote repository into the configured repository directory.
+  </Step>
+  <Step title="Retry failures">
+    Fang tracks retries and marks failed tasks after their retry limit.
+  </Step>
+</Steps>
 
-### SSH key lookup
+### SSH git operation
 
-1. A user pushes over SSH to the host.
-2. OpenSSH calls `gitarena-ssh authorized-keys`.
-3. The CLI connects to PostgreSQL, reads all public keys, and prints them in `authorized_keys` format.
-4. OpenSSH uses the output to authenticate the push.
+<Steps>
+  <Step title="Connect to the built-in SSH server">
+    Users connect as `git` and present a public key.
+  </Step>
+  <Step title="Authenticate against PostgreSQL">
+    The backend looks up the key in `ssh_keys` and resolves the GitArena user.
+  </Step>
+  <Step title="Run git service commands">
+    The SSH server handles `git-upload-pack` and `git-receive-pack` directly against repositories on disk.
+  </Step>
+</Steps>
 
 ## Database
 
-All persistent state lives in PostgreSQL. Migrations are embedded in the binary via `sqlx::migrate!` and run automatically on startup. The migration files live in `migrations/`.
+All persistent application state lives in PostgreSQL. Migrations are embedded in the backend binary through `sqlx::migrate!` and run automatically on startup. The migration files live in `migrations/`.
 
-## Shared library
-
-`gitarena-common` is linked by the main server, the workhorse, and the SSH CLI. It provides:
-
-- The database connection pool (`sqlx::PgPool`)
-- Model structs for users, repositories, sessions, and more
-- The IPC protocol types and the `ipc_path()` function
-- Packet definitions (`GitImport`, etc.)
+Bare git repositories live on disk under the path stored in `repositories.base_dir`.

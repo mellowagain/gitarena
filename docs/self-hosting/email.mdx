@@ -13,7 +13,7 @@ Email templates are rendered server-side using [Askama](https://github.com/askam
 
 ## SMTP configuration
 
-GitArena connects to an SMTP server to send emails. Configure the connection in the `settings` table or from the admin panel:
+GitArena connects to an SMTP server to send emails. Configure the connection in the `settings` table:
 
 | Key             | Description                      | Example               |
 |-----------------|----------------------------------|-----------------------|
@@ -64,7 +64,7 @@ Users can request a new verification email from their account settings if the li
 
 ## Disabling email
 
-Set `smtp.enabled` to `false` to disable all outgoing email. Email tasks will still be queued but the worker will drop them silently. Verification links won't be sent, so new registrations won't be able to confirm their email addresses unless you re-enable email delivery later.
+Set `smtp.enabled` to `false` to disable outgoing email. Verification flows skip queueing new email tasks while SMTP is disabled. If an email task is already queued and no mail transport is configured, the worker exits without sending it.
 
 <Note>
   If `smtp.enabled` is `false`, the remaining SMTP settings are ignored and do not need to be configured.

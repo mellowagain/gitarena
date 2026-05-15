@@ -3,7 +3,7 @@ title: "SSO"
 description: "Let users sign in with GitHub, GitLab, or Bitbucket."
 ---
 
-GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each provider is configured independently through the admin settings.
+GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each provider is configured independently through the settings table.
 
 ## GitHub
 
@@ -18,7 +18,7 @@ GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each
     After registering, copy the **Client ID** and generate a **Client secret**.
   </Step>
   <Step title="Configure GitArena">
-    Update the settings table, or set these values from the admin panel at `/admin`:
+    Update the settings table:
 
     ```sql
     UPDATE settings SET value = 'true'               WHERE key = 'sso.github.enabled';
@@ -42,9 +42,9 @@ GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each
   </Step>
   <Step title="Configure GitArena">
     ```sql
-    UPDATE settings SET value = 'true'         WHERE key = 'sso.gitlab.enabled';
-    UPDATE settings SET value = 'your_app_id'  WHERE key = 'sso.gitlab.client_id';
-    UPDATE settings SET value = 'your_secret'  WHERE key = 'sso.gitlab.client_secret';
+    UPDATE settings SET value = 'true'        WHERE key = 'sso.gitlab.enabled';
+    UPDATE settings SET value = 'your_app_id' WHERE key = 'sso.gitlab.app_id';
+    UPDATE settings SET value = 'your_secret' WHERE key = 'sso.gitlab.client_secret';
     ```
   </Step>
 </Steps>
@@ -57,29 +57,40 @@ GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each
 
     - **Name**: your instance name
     - **Callback URL**: `https://git.example.com/api/sso/bitbucket/callback`
-    - **Permissions**: Account → Read
+    - **Permissions**: Account → Read and Email → Read
 
     After saving, copy the **Key** (client ID) and **Secret**.
   </Step>
   <Step title="Configure GitArena">
     ```sql
-    UPDATE settings SET value = 'true'       WHERE key = 'sso.bitbucket.enabled';
-    UPDATE settings SET value = 'your_key'   WHERE key = 'sso.bitbucket.client_id';
-    UPDATE settings SET value = 'your_secret' WHERE key = 'sso.bitbucket.client_secret';
+    UPDATE settings SET value = 'true'        WHERE key = 'sso.bitbucket.enabled';
+    UPDATE settings SET value = 'your_key'    WHERE key = 'sso.bitbucket.key';
+    UPDATE settings SET value = 'your_secret' WHERE key = 'sso.bitbucket.secret';
     ```
   </Step>
 </Steps>
 
 ## How the OAuth flow works
 
-When a user clicks "Sign in with GitHub" (or GitLab/Bitbucket):
+When a user clicks "Sign in with GitHub" or another provider:
 
-1. GitArena redirects the user to the provider's authorization URL.
-2. The user approves the OAuth app.
-3. The provider redirects back to `/api/sso/{service}/callback` with an authorization code.
-4. GitArena exchanges the code for an access token and fetches the user's profile.
-5. If an account with the same email exists, the SSO provider is linked to it. Otherwise, a new account is created.
-6. A session cookie is set and the user is logged in.
+<Steps>
+  <Step title="Redirect to the provider">
+    GitArena redirects the user to the provider's authorization URL.
+  </Step>
+  <Step title="Handle the callback">
+    The provider redirects back to `/api/sso/{service}/callback` with an authorization code.
+  </Step>
+  <Step title="Fetch the profile">
+    GitArena exchanges the code for an access token and fetches the provider profile.
+  </Step>
+  <Step title="Resolve the account">
+    If an existing SSO link matches the provider account, GitArena logs in that user. Otherwise, the provider flow creates a new user when possible.
+  </Step>
+  <Step title="Create the session">
+    GitArena sets the `gitarena-auth` cookie and the user is logged in.
+  </Step>
+</Steps>
 
 ## Disabling a provider
 

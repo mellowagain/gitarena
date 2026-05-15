@@ -1,14 +1,14 @@
 ---
 title: "Reverse proxy"
-description: "Put Nginx or Caddy in front of GitArena for TLS termination and static file serving."
+description: "Put Nginx or Caddy in front of the frontend and backend for TLS termination."
 ---
 
-GitArena should run behind a reverse proxy in production for TLS termination and real IP forwarding.
+GitArena should run behind a reverse proxy in production for TLS termination and real IP forwarding. The current backend Docker image does not serve the Next.js frontend, so route browser traffic to the frontend and backend-only paths to the backend.
 
-Once HTTPS is in place, enable it in your instance settings so GitArena adds the `Secure` flag to session cookies:
+Set the public `domain` setting to the HTTPS URL. GitArena adds the `Secure` flag to session cookies when `domain` starts with `https`:
 
 ```sql
-UPDATE settings SET value = 'true' WHERE key = 'https';
+UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain';
 ```
 
 ## Nginx
@@ -32,16 +32,32 @@ server {
     # Git operations can involve large pack files
     client_max_body_size 500m;
 
-    location / {
+    location ~ ^/[^/]+/[^/]+\.git/ {
         proxy_pass         http://127.0.0.1:8080;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
 
-        # Required for git push/pull and log streaming (SSE)
         proxy_buffering    off;
         proxy_read_timeout 300s;
+    }
+
+    location ~ ^/(api|api-docs|rapidoc|healthz)(/|$) {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_buffering    off;
+    }
+
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
     }
 }
 ```
@@ -60,10 +76,12 @@ Caddy handles TLS automatically via Let's Encrypt.
 
 ```caddy /etc/caddy/Caddyfile
 git.example.com {
-    reverse_proxy 127.0.0.1:8080 {
-        # Required for git push/pull and log streaming (SSE)
+    @backend path /api/* /api-docs/* /rapidoc* /healthz /*/*.git/*
+    reverse_proxy @backend 127.0.0.1:8080 {
         flush_interval -1
     }
+
+    reverse_proxy 127.0.0.1:3000
 
     # Increase timeouts for large git operations
     request_body {
@@ -80,7 +98,7 @@ sudo systemctl reload caddy
 
 ## Notes
 
-- **`proxy_buffering off`** (Nginx) / **`flush_interval -1`** (Caddy) — required for Server-Sent Events (the live log stream in the admin panel) and for large git pack file transfers.
+- **`proxy_buffering off`** (Nginx) / **`flush_interval -1`** (Caddy) — useful for large git pack file transfers.
 - **`client_max_body_size`** — set this large enough to accommodate git push operations with large files. 500 MB is a reasonable default; adjust based on your repository sizes.
 - **X-Forwarded-For** — GitArena uses this header to record the real client IP in sessions. Make sure your proxy sets it correctly.
 - **Large file support** — If you use Git LFS, increase the body size limit to match your largest expected LFS object.

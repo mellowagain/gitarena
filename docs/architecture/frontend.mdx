@@ -3,7 +3,7 @@ title: "Frontend"
 description: "How the Next.js SPA is structured: routing, data fetching, components, and theming."
 ---
 
-The `gitarena-frontend` crate is a [Next.js](https://nextjs.org) 16 SPA. It handles all user-facing UI, fetches data from the backend's REST API via SWR, and renders it using a Radix UI + shadcn/ui component library on top of Tailwind CSS v4.
+`gitarena-frontend` is a [Next.js](https://nextjs.org) 16 app. It handles the user-facing UI, fetches backend data with SWR, and renders it with Radix UI, shadcn/ui components, and Tailwind CSS v4.
 
 ## Tech stack
 
@@ -14,9 +14,9 @@ The `gitarena-frontend` crate is a [Next.js](https://nextjs.org) 16 SPA. It hand
 | Component library | shadcn/ui (new-york style) |
 | Styling | Tailwind CSS v4 |
 | Data fetching | SWR |
-| Forms | react-hook-form + Zod |
+| Forms | Local React state with SWR mutations; shadcn form helpers are available |
 | Icons | lucide-react |
-| Themes | next-themes |
+| Themes | CSS variables; `next-themes` provider exists but is not mounted globally |
 | Font | Geist (Vercel) |
 | Passkeys | @simplewebauthn/browser |
 | Markdown | react-markdown + remark-gfm |
@@ -37,15 +37,21 @@ Pages live under `gitarena-frontend/app/` and use the Next.js App Router:
 | `/settings` | `app/settings/page.tsx` |
 | `/admin` | `app/admin/page.tsx` |
 | `/about` | `app/about/page.tsx` |
+| `/privacy` | `app/privacy/page.tsx` |
+| `/terms` | `app/terms/page.tsx` |
+| `/takedown` | `app/takedown/page.tsx` |
+| `/orgs/new` | `app/orgs/new/page.tsx` |
+| `/orgs/:name/settings` | `app/orgs/[name]/settings/page.tsx` |
 | `/:user` | `app/[user]/page.tsx` |
 | `/:user/:repo` | `app/[user]/[repo]/page.tsx` |
 | `/:user/:repo/commits/:branch` | `app/[user]/[repo]/commits/[branch]/page.tsx` |
+| `/:user/:repo/commit/:hash` | `app/[user]/[repo]/commit/[hash]/page.tsx` |
 | `/:user/:repo/issues` | `app/[user]/[repo]/issues/page.tsx` |
 | `/:user/:repo/issues/:id` | `app/[user]/[repo]/issues/[id]/page.tsx` |
 | `/:user/:repo/merge-requests` | `app/[user]/[repo]/merge-requests/page.tsx` |
 | `/:user/:repo/merge-requests/:id` | `app/[user]/[repo]/merge-requests/[id]/page.tsx` |
 
-The root layout (`app/layout.tsx`) wraps all pages with the top bar, theme provider, and instance config provider.
+The root layout mounts navigation progress, the client layout wrapper, and analytics. Top bars are page-level components.
 
 ## Data fetching
 
@@ -53,10 +59,10 @@ All data fetching goes through [SWR](https://swr.vercel.app). Never use `fetch` 
 
 ```typescript
 // Reading data
-const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repositories/${user}/${repo}`);
+const { data, isLoading, error } = useSWR<RepoMeta>(`/api/repos/${user}/${repo}`);
 
 // Mutations
-const { trigger } = useSWRMutation('/api/repositories', createRepo);
+const { trigger } = useSWRMutation("/api/repo", postJsonFetcher);
 ```
 
 Always use the `{ data, isLoading, error }` return values from SWR — don't manage loading state with `useState` or `!data` checks. This keeps loading skeletons and error states consistent.
@@ -65,34 +71,27 @@ Shared fetchers live in `lib/fetchers.ts`. Use one of those before writing a cus
 
 ## Component structure
 
-```
-components/
-├── ui/              # 57-file shadcn/ui component library
-├── top-bar.tsx      # Site header and navigation
-├── client-layout.tsx
-├── theme-provider.tsx
-├── navigation-progress.tsx
-├── repo-sidebar.tsx        # Repository navigation sidebar
-├── repo-file-sidebar.tsx   # File tree sidebar
-├── branch-bar.tsx
-├── language-bar.tsx        # Language breakdown bar
-├── code-block.tsx
-├── file-content.tsx
-├── markdown-renderer.tsx
-├── error-display.tsx
-├── instance-config-provider.tsx
-└── landing/         # Landing page sections
-```
+| Path | Purpose |
+|------|---------|
+| `components/ui/` | shadcn/ui component library |
+| `components/top-bar.tsx` | Page header and navigation |
+| `components/client-layout.tsx` | Client-side layout wrapper |
+| `components/navigation-progress.tsx` | Route transition indicator |
+| `components/repo-sidebar.tsx` | Repository sidebar content |
+| `components/repo-file-sidebar.tsx` | File tree sidebar |
+| `components/language-bar.tsx` | Repository language breakdown |
+| `components/markdown-renderer.tsx` | Markdown rendering |
+| `components/instance-config-provider.tsx` | Hook-like helper that fetches `GET /api` |
 
 Use components from `components/ui/` for all basic UI elements. They follow the shadcn/ui new-york style with CSS variables for theming.
 
 ## Theming
 
-Dark and light mode are supported via `next-themes`. The theme provider wraps the app in `components/theme-provider.tsx`. Color tokens are defined as CSS variables in `app/globals.css` using Tailwind CSS v4's CSS-based configuration (no `tailwind.config.*` file).
+Color tokens are defined as CSS variables in `app/globals.css` using Tailwind CSS v4's CSS-based configuration. A `components/theme-provider.tsx` wrapper exists, but the root layout does not currently mount it globally.
 
 ## Instance configuration
 
-Each GitArena instance exposes its public configuration (instance name, enabled features, etc.) through an API endpoint. The `InstanceConfigProvider` component fetches this on load and makes it available to all pages via React context, accessed through `lib/instance-config.ts`.
+The backend exposes public instance metadata through `GET /api`. `components/instance-config-provider.tsx` currently exports a `useInstanceConfig()` helper that calls `useSWR("/api")`; it is not a React context provider.
 
 ## Code style rules
 

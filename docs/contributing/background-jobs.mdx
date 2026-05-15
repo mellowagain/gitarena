@@ -1,0 +1,63 @@
+---
+title: "Background jobs"
+description: "Add and test async jobs in the Rust backend."
+---
+
+GitArena uses [fang](https://github.com/ayrat555/fang) for async jobs. Jobs run in worker pools started by the main backend process, so adding a job does not require a second daemon or a custom wire protocol.
+
+## Add a job type
+
+Define a serializable struct and implement `AsyncRunnable` for it.
+
+```rust
+use async_trait::async_trait;
+use fang::{AsyncQueueable, AsyncRunnable, Deserialize, FangError, Serialize, typetag};
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "fang::serde")]
+pub(crate) struct MyTask {
+    pub(crate) id: uuid::Uuid,
+}
+
+#[async_trait]
+#[typetag::serde]
+impl AsyncRunnable for MyTask {
+    async fn run(&self, _queue: &dyn AsyncQueueable) -> Result<(), FangError> {
+        // Do the queued work here.
+        Ok(())
+    }
+}
+```
+
+Use `gitarena/src/replication/mod.rs` and `gitarena/src/mail/task.rs` as references for repository imports and email delivery.
+
+## Access the database
+
+Queue jobs cannot use Actix extractors. Existing jobs use the shared task database pool from `TASK_DB_POOL` and convert errors into `FangError`.
+
+```rust
+let db_pool = TASK_DB_POOL.get().ok_or_else(|| FangError {
+    description: "task db pool is empty".to_string(),
+})?;
+
+let mut tx = db_pool.begin().await.fang()?;
+// Query or update data here.
+tx.commit().await.fang()?;
+```
+
+For read-only transactions, still commit the transaction before returning.
+
+## Enqueue work
+
+Routes enqueue jobs through the `AsyncQueue` stored in Actix app data.
+
+```rust
+let task = MyTask { id };
+queue.insert_task(&task as &dyn AsyncRunnable).await?;
+```
+
+Set a custom task type only when the job needs a dedicated worker pool, like email delivery. Most jobs should use the default pool.
+
+## Test behavior
+
+Prefer tests that verify the database state or filesystem result after the job runs. For jobs that call blocking git or filesystem operations, keep the blocking work inside `tokio::task::spawn_blocking` so queue workers do not block the async runtime.

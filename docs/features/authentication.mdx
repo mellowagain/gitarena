@@ -23,7 +23,7 @@ Cookie properties:
 | Max age | 10 days |
 | HttpOnly | Yes |
 | SameSite | Lax |
-| Secure | Yes (when HTTPS is enabled in instance settings) |
+| Secure | Yes when the `domain` setting starts with `https` |
 
 ## Session management
 
@@ -39,9 +39,9 @@ The WebAuthn origin is configurable via the `webauthn.origin` setting — it mus
 
 ## SSH keys
 
-Users add public SSH keys for pushing to repositories over SSH. Keys are stored in the `ssh_keys` table and read by the `gitarena-ssh` CLI for OpenSSH integration.
+Users add public SSH keys for pushing to repositories over SSH. Keys are stored in the `ssh_keys` table and read by GitArena's built-in SSH server during authentication.
 
-See the [SSH architecture page](/architecture/ssh) for how OpenSSH integration works, and the [API reference](/api-reference/introduction) for the SSH key endpoints.
+See the [SSH architecture page](/architecture/ssh) for how SSH authentication works, and the [API reference](/api-reference/introduction) for the SSH key endpoints.
 
 ## SSO (OAuth2)
 

@@ -29,7 +29,7 @@ Use these terms consistently:
 | admin panel    | admin dashboard, control panel |
 | passkey        | WebAuthn credential            |
 | settings table | config table, configuration    |
-| workhorse      | background worker              |
+| job queue      | background worker              |
 | smart HTTP     | git HTTP protocol              |
 
 ## Site structure

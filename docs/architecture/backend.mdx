@@ -3,43 +3,53 @@ title: "Backend"
 description: "How the Actix-Web HTTP server is structured: routes, middleware, error handling, and OpenAPI."
 ---
 
-The main `gitarena` crate is an [Actix-Web](https://actix.rs) HTTP server. It handles all REST API endpoints, git smart HTTP protocol, and static file serving (optional).
+The main `gitarena` crate is an [Actix-Web](https://actix.rs) backend. It handles REST API endpoints, smart HTTP git routes, built-in SSH startup, sessions, migrations, and background queue workers.
 
 ## Entry point
 
-`gitarena/src/main.rs` bootstraps the server:
+`gitarena/src/main.rs` bootstraps the backend:
 
-1. Loads environment variables and connects to PostgreSQL.
-2. Runs database migrations via `sqlx::migrate!`.
-3. Registers middleware (identity/sessions, CORS, compression).
-4. Mounts all route handlers.
-5. Binds to `BIND_ADDRESS` and starts accepting connections.
+<Steps>
+  <Step title="Load runtime settings">
+    The process reads environment variables, opens the PostgreSQL pool, runs embedded migrations, and reads `secret` and `domain` from the settings table.
+  </Step>
+  <Step title="Start shared services">
+    Startup creates the WebAuthn configuration, mail transport, fang queue workers, expiry cron task, and built-in SSH server.
+  </Step>
+  <Step title="Mount HTTP routes">
+    Actix registers API, repository, user, organization, admin, smart HTTP, OpenAPI, RapiDoc, and health routes.
+  </Step>
+  <Step title="Listen for requests">
+    The server binds to `BIND_ADDRESS` and starts accepting HTTP traffic.
+  </Step>
+</Steps>
 
 ## Route layout
 
 Routes live under `gitarena/src/routes/`. They are grouped by domain:
 
-```
-routes/
-├── admin/       # Admin panel and settings
-├── git/         # Smart HTTP git protocol (fetch/push)
-├── repository/  # Repository CRUD, files, commits, stars
-└── user/
-    ├── api/     # User REST API (auth, sessions, SSH keys, SSO)
-    └── ...
-```
+| Directory | Purpose |
+|-----------|---------|
+| `routes/admin/` | Admin stats, health, and users APIs |
+| `routes/organization/` | Organization profile, members, and repositories APIs |
+| `routes/repository/` | Repository APIs, pages, smart HTTP, files, commits, stars, imports, forks |
+| `routes/user/` | Registration, auth, sessions, emails, SSH keys, SSO, profiles, avatars |
+| `routes/proxy/` | Image proxying used by rendered Markdown |
 
-Each route file registers its handlers with Actix-Web's `web::scope` or `web::resource`.
+Route handlers use the `gitarena-macros` `#[route(...)]` macro and are registered through the route modules.
 
 ## Middleware
 
-| Middleware | Purpose |
-|-----------|---------|
-| `actix-identity` | Cookie-based session identity (`gitarena-auth` cookie) |
-| CORS | Cross-origin resource sharing for the frontend SPA |
-| Compression | Response compression (gzip/brotli) |
+| Layer | Purpose |
+|-------|---------|
+| Request tracing | Adds tracing spans around requests |
+| Request metrics | Records HTTP metrics |
+| `NormalizePath` | Normalizes trailing slashes |
+| `actix-identity` | Cookie-based identity through the `gitarena-auth` cookie |
+| Header wrapper | Adds `Access-Control-Allow-Origin: *` to non-`.git` responses and no-cache headers to `.git` responses |
+| Error renderer | Converts application errors into JSON, text, git, HTML, or HTMX responses |
 
-The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 10-day max age. When `https` is set in the instance settings, the `Secure` flag is added. Each session maps to a row in the `sessions` table, storing the user ID, IP address, and user agent.
+The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 10-day max age. The `Secure` flag is added when the `domain` setting starts with `https`. Each session maps to a row in the `sessions` table, storing the user ID, IP address, user agent, and timestamps.
 
 ## Error handling
 
@@ -64,14 +74,16 @@ Most return types are `anyhow::Result<impl Responder>`. Actix-Web's error handli
 
 ## OpenAPI
 
-All routes are annotated with `#[utoipa::path]` and all response types derive `#[derive(utoipa::ToSchema)]`. The OpenAPI spec is generated at startup and served at `/api-docs/openapi.json`. An interactive RapiDoc UI is available at `/rapidoc`.
+Routes should be annotated with `#[utoipa::path]` and response types exposed through the API should derive `#[derive(utoipa::ToSchema)]`. Coverage is still being filled in for some older routes.
+
+The OpenAPI spec is generated at startup and served at `/api-docs/openapi.json`. An interactive RapiDoc UI is available at `/rapidoc`.
 
 Example route annotation:
 
 ```rust
 #[utoipa::path(
     get,
-    path = "/api/repositories/{user}/{repo}",
+    path = "/api/repos/{namespace}/{repository}",
     responses(
         (status = 200, description = "Repository metadata", body = RepositoryMeta),
         (status = 404, description = "Repository not found")
@@ -81,11 +93,11 @@ Example route annotation:
 
 ## Config system
 
-Instance configuration is stored in the `settings` table in PostgreSQL. The `gitarena-macros` crate generates typed accessors for each setting key via a proc-macro, so settings are read with a single function call rather than raw SQL.
+Instance configuration is stored in the `settings` table in PostgreSQL. Existing code uses generated config accessors from `gitarena-macros` for typed setting reads.
 
 ## Database access
 
-All database access uses `sqlx` with compile-time-verified queries. The connection pool (`PgPool`) is shared across all request handlers via Actix-Web's `web::Data`.
+Database access uses `sqlx`. The connection pool is shared across request handlers through Actix-Web's `web::Data`.
 
 ```rust
 // Example: fetch a user by username

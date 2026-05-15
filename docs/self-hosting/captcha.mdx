@@ -1,43 +1,39 @@
 ---
 title: "CAPTCHA"
-description: "Add hCaptcha to the registration form to reduce automated sign-ups."
+description: "Current status of hCaptcha settings and registration checks."
 ---
 
-GitArena integrates with [hCaptcha](https://www.hcaptcha.com) to protect the registration form from automated sign-ups. CAPTCHA is disabled by default and activates as soon as the site key is set in the instance settings.
+GitArena has backend-side hCaptcha settings and registration checks, but the current frontend integration is not complete.
 
-## Setting up hCaptcha
+<Warning>
+  Do not enable hCaptcha on a production instance until the frontend widget and backend secret handling are verified together. When `hcaptcha.site_key` is set, registration requires an `h-captcha-response` field.
+</Warning>
 
-### 1. Create an hCaptcha account
+## Settings
 
-Go to [hcaptcha.com](https://www.hcaptcha.com) and sign up for a free account. The free tier covers most self-hosted instances.
+The settings table contains these keys:
 
-### 2. Add a new site
+| Key | Description |
+|-----|-------------|
+| `hcaptcha.enabled` | Feature flag for hCaptcha-related checks |
+| `hcaptcha.site_key` | Site key used to decide whether registration must include a CAPTCHA response |
+| `hcaptcha.secret` | Secret key setting for server-side verification |
 
-1. In the hCaptcha dashboard, click **Add New Site**.
-2. Enter your instance's domain, e.g. `git.example.com`.
-3. Choose a difficulty level. **Easy** is recommended for most instances.
-4. Click **Save**. You will receive a **Site Key** and a **Secret Key**.
-
-### 3. Configure GitArena
-
-Update the settings table with both keys:
+Example SQL:
 
 ```sql
+UPDATE settings SET value = 'true'            WHERE key = 'hcaptcha.enabled';
 UPDATE settings SET value = 'your_site_key'   WHERE key = 'hcaptcha.site_key';
-UPDATE settings SET value = 'your_secret_key' WHERE key = 'hcaptcha.secret_key';
+UPDATE settings SET value = 'your_secret_key' WHERE key = 'hcaptcha.secret';
 ```
-
-Or set them from the admin panel at `/admin`.
-
-CAPTCHA activates as soon as the site key is saved. Reload `/register` to confirm the widget appears.
 
 ## How it works
 
-When a user submits the registration form:
+When a user submits the registration form and `hcaptcha.site_key` is set, the backend requires an `h-captcha-response` field and verifies it against `https://hcaptcha.com/siteverify`. If verification fails, registration is rejected.
 
-1. The frontend sends the hCaptcha token (generated when the user solves the challenge) with the form data.
-2. The backend verifies the token against `https://hcaptcha.com/siteverify` using the secret key.
-3. If verification fails, the registration is rejected with an error message.
+<Note>
+  The current backend verification path still needs to be aligned with the `hcaptcha.secret` setting. Keep CAPTCHA disabled unless you have tested registration end to end on your instance.
+</Note>
 
 ## Disabling CAPTCHA
 
@@ -47,4 +43,4 @@ Delete or clear the site key:
 UPDATE settings SET value = '' WHERE key = 'hcaptcha.site_key';
 ```
 
-With an empty site key, the widget is hidden and the backend skips verification.
+With an empty site key, the backend skips hCaptcha verification.

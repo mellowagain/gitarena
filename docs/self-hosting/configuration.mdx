@@ -3,7 +3,11 @@ title: "Configuration"
 description: "Environment variables and instance settings for GitArena."
 ---
 
-GitArena is configured through two mechanisms: environment variables (read at startup) and instance settings (stored in the `settings` table in PostgreSQL, editable from the admin panel).
+GitArena is configured through environment variables read at startup and instance settings stored in the `settings` table in PostgreSQL.
+
+<Note>
+  The current admin panel does not provide a complete settings editor. Edit settings directly in PostgreSQL for now.
+</Note>
 
 ## Environment variables
 
@@ -14,44 +18,51 @@ Set these before starting GitArena. In Docker, pass them under `environment:` in
 | Variable | Description |
 |----------|-------------|
 | `BIND_ADDRESS` | Socket address to listen on, e.g. `0.0.0.0:8080` or `127.0.0.1:8080`. The port is required. |
-| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@host/dbname`. Either this or `DATABASE_URL_FILE` must be set. |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@host/dbname`. Required by the background queue at startup. |
 
 ### Credentials as files
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL_FILE` | Path to a file containing the full `DATABASE_URL`. Useful with Docker secrets. |
-| `DATABASE_PASSWORD_FILE` | Path to a file containing only the database password. Use when the rest of `DATABASE_URL` is set but the password is in a secret file. |
+| `DATABASE_URL_FILE` | Path to a file containing the full `DATABASE_URL`. Supported by the main database pool, but not by queue startup. |
+| `DATABASE_PASSWORD_FILE` | Path to a file containing only the database password. Supported by the main database pool, but not by queue startup. |
 
 ### Optional
 
 | Variable | Description |
 |----------|-------------|
-| `MAX_POOL_CONNECTIONS` | Maximum number of Postgres connections to keep open. Defaults to a sensible value based on available system resources. |
-| `SERVE_STATIC_FILES` | When set to any value, GitArena serves `/static` resources directly. Experimental — use a reverse proxy for static files instead. |
+| `MAX_POOL_CONNECTIONS` | Maximum number of Postgres connections to keep open. |
+| `NO_STDOUT_LOG` | Disable stdout logging when set. |
+| `DEBUG_FILE_LOG` | Enable rolling file logging in non-debug builds when set. |
 
 ## Instance settings
 
-Instance settings live in the `settings` table. Edit them from the admin panel at `/admin`, or directly with SQL:
+Instance settings live in the `settings` table. Edit them directly with SQL:
 
 ```sql
 -- Read a setting
-SELECT value FROM settings WHERE key = 'instance.name';
+SELECT value FROM settings WHERE key = 'domain';
 
 -- Update a setting
-UPDATE settings SET value = 'My GitArena' WHERE key = 'instance.name';
+UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain';
 ```
 
-After changing settings directly in the database, restart GitArena. Changes made through the admin panel apply immediately where possible.
+Some settings are read at startup, while others are read per request. Restart GitArena after direct database edits if the behavior does not update immediately.
 
 ### Instance
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `instance.name` | `GitArena` | Display name shown in the UI and emails |
-| `instance.description` | — | Short description shown on the landing page |
-| `https` | `false` | Enable HTTPS mode. Adds the `Secure` flag to session cookies. Set to `true` when behind a TLS-terminating reverse proxy. |
-| `registration.enabled` | `true` | Allow new users to register. Set to `false` to close registrations. |
+| `domain` | `http://localhost:8080` | Public base URL of the instance. Session cookies use `Secure` when this starts with `https`. |
+| `secret` | Generated | Secret used for cookie key material. |
+| `allow_registrations` | `true` | Allow new users to register. Set to `false` to close registrations. |
+
+### Repositories
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `repositories.base_dir` | `null` | Filesystem directory where bare repositories are stored. Set this before creating repositories. |
+| `repositories.importing_enabled` | `true` | Enable repository imports through `POST /api/repo/import`. |
 
 ### WebAuthn (passkeys)
 
@@ -59,29 +70,25 @@ After changing settings directly in the database, restart GitArena. Changes made
 |-----|-------------|
 | `webauthn.origin` | The origin for WebAuthn operations, e.g. `https://git.example.com`. Must match the URL users access GitArena at. |
 
-### GeoIP
-
-| Key | Description |
-|-----|-------------|
-| `geoip.enabled` | Enable GeoIP lookups for session location display. |
-| `geoip.database` | Path to a MaxMind GeoLite2 database file. |
-
 ### SMTP (email)
 
 | Key | Description |
 |-----|-------------|
-| `smtp.host` | SMTP server hostname |
-| `smtp.port` | SMTP server port (typically 587 for STARTTLS, 465 for TLS) |
+| `smtp.enabled` | Enable email delivery |
+| `smtp.server` | SMTP server hostname |
+| `smtp.port` | SMTP server port |
+| `smtp.tls` | Use implicit TLS |
+| `smtp.address` | From address for outgoing emails, e.g. `noreply@example.com` |
 | `smtp.username` | SMTP login username |
 | `smtp.password` | SMTP login password |
-| `smtp.from` | From address for outgoing emails, e.g. `GitArena <noreply@example.com>` |
 
 ### hCaptcha
 
 | Key | Description |
 |-----|-------------|
-| `hcaptcha.site_key` | hCaptcha site key. When set, CAPTCHA is shown on the registration form. |
-| `hcaptcha.secret_key` | hCaptcha secret key used for server-side verification. |
+| `hcaptcha.enabled` | Enable hCaptcha-related registration checks |
+| `hcaptcha.site_key` | hCaptcha site key. Registration requires an `h-captcha-response` when this is set. |
+| `hcaptcha.secret` | hCaptcha secret key setting. Current verification behavior is still being aligned with this key. |
 
 ### SSO
 
@@ -91,8 +98,20 @@ After changing settings directly in the database, restart GitArena. Changes made
 | `sso.github.client_id` | GitHub OAuth app client ID |
 | `sso.github.client_secret` | GitHub OAuth app client secret |
 | `sso.gitlab.enabled` | Enable GitLab OAuth2 sign-in |
-| `sso.gitlab.client_id` | GitLab OAuth app client ID |
+| `sso.gitlab.app_id` | GitLab OAuth app application ID |
 | `sso.gitlab.client_secret` | GitLab OAuth app client secret |
 | `sso.bitbucket.enabled` | Enable Bitbucket OAuth2 sign-in |
-| `sso.bitbucket.client_id` | Bitbucket OAuth app client ID |
-| `sso.bitbucket.client_secret` | Bitbucket OAuth app client secret |
+| `sso.bitbucket.key` | Bitbucket OAuth consumer key |
+| `sso.bitbucket.secret` | Bitbucket OAuth consumer secret |
+
+### SSH
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `ssh.enabled` | `true` | Enable the built-in SSH server |
+| `ssh.port` | `2222` | Port the SSH server binds to |
+| `ssh.private_key` | Generated | Host private key generated on first startup |
+
+### GeoIP
+
+GeoIP lookups use an embedded MaxMind database. There are no runtime settings for GeoIP paths or enablement.

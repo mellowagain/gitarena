@@ -3,7 +3,11 @@ title: "API reference"
 description: "GitArena REST API: base URL, authentication, error format, and interactive explorer."
 ---
 
-GitArena exposes a REST API used by the frontend and available for integrations. All endpoints are documented with OpenAPI and viewable in the interactive explorer.
+GitArena exposes a REST API used by the frontend and available for integrations. The interactive explorer shows the generated OpenAPI document.
+
+<Note>
+  OpenAPI coverage is still being filled in for some older routes. The key route table below reflects the current backend route names.
+</Note>
 
 ## Base URL
 
@@ -14,12 +18,12 @@ https://your-instance.example.com
 API endpoints are prefixed with `/api/`. For example:
 
 ```
-GET https://your-instance.example.com/api/repositories/alice/my-repo
+GET https://your-instance.example.com/api/repos/alice/my-repo
 ```
 
 ## Interactive explorer
 
-GitArena includes a [RapiDoc](https://rapidocweb.com) API explorer at `/rapidoc`. You can browse all endpoints, view request/response schemas, and make live requests directly from the browser.
+GitArena includes a [RapiDoc](https://rapidocweb.com) API explorer at `/rapidoc`. You can browse the generated OpenAPI endpoints, view request/response schemas, and make live requests directly from the browser.
 
 The raw OpenAPI specification is available at:
 
@@ -33,18 +37,26 @@ Most read endpoints for public data (public repositories, explore, user profiles
 
 Write operations and private data require an active session. GitArena uses **cookie-based sessions** — there is no API token system. To authenticate:
 
-1. Log in via `POST /api/login` with your credentials.
-2. The response sets a `gitarena-auth` session cookie.
-3. Include this cookie in subsequent requests.
+<Steps>
+  <Step title="Log in">
+    Send credentials to `POST /api/auth/login`.
+  </Step>
+  <Step title="Store the cookie">
+    The response sets a `gitarena-auth` session cookie.
+  </Step>
+  <Step title="Use authenticated endpoints">
+    Include the cookie in subsequent requests.
+  </Step>
+</Steps>
 
 ```bash
 # Log in and save the cookie
-curl -c cookies.txt -X POST https://your-instance/api/login \
+curl -c cookies.txt -X POST https://your-instance/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "alice", "password": "secret"}'
 
 # Use the session cookie for authenticated requests
-curl -b cookies.txt https://your-instance/api/me
+curl -b cookies.txt https://your-instance/api/auth/me
 ```
 
 ## Error format
@@ -57,36 +69,35 @@ Errors from GitArena's user-facing endpoints return JSON with an HTTP status cod
 }
 ```
 
-Unexpected server errors return `500 Internal Server Error` without a body. The error details are logged server-side.
-
-## Pagination
-
-Endpoints that return lists support pagination via query parameters:
-
-| Parameter | Description |
-|-----------|-------------|
-| `page` | Page number, 1-indexed |
-| `per_page` | Results per page (default varies by endpoint) |
-
-Pagination metadata is included in the response body.
+Unexpected server errors return a generic `500 Internal Server Error` response, usually as `{"error":"Internal Server Error"}` for JSON routes. Details are logged server-side.
 
 ## Key endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api` | Instance information |
-| `POST` | `/api/login` | Log in |
-| `POST` | `/api/logout` | Log out |
-| `GET` | `/api/me` | Current user |
-| `GET` | `/explore` | List public repositories |
-| `POST` | `/api/repositories` | Create a repository |
-| `GET` | `/api/repositories/{user}/{repo}` | Repository metadata |
-| `POST` | `/api/repositories/{user}/{repo}/fork` | Fork a repository |
+| `POST` | `/api/user` | Register a user |
+| `POST` | `/api/auth/login` | Log in |
+| `POST` | `/api/auth/logout` | Log out |
+| `GET` | `/api/auth/me` | Current user |
+| `GET` | `/api/explore` | List public repositories |
+| `POST` | `/api/repo` | Create a repository |
+| `POST` | `/api/repo/import` | Import a repository |
+| `GET` | `/api/repos/{namespace}/{repository}` | Repository metadata |
+| `POST` | `/api/repo/{namespace}/{repository}/fork` | Fork a repository |
+| `GET` | `/api/repos/{namespace}/{repository}/branches` | List branches |
+| `GET` | `/api/repos/{namespace}/{repository}/branch/{tree}/files` | List files for a branch/tree |
+| `GET` | `/api/repos/{namespace}/{repository}/branch/{tree}/commits` | List commits for a branch/tree |
+| `GET` | `/api/repos/{namespace}/{repository}/commits/{oid}` | Commit details |
 | `GET` | `/api/sessions` | List active sessions |
 | `DELETE` | `/api/sessions/{hash}` | Revoke a session |
 | `GET` | `/api/ssh-keys` | List SSH keys |
-| `POST` | `/api/ssh-keys` | Add an SSH key |
+| `PUT` | `/api/ssh-key` | Add an SSH key |
 | `GET` | `/api/sso` | List enabled SSO providers |
-| `GET` | `/healthz` | Health check |
+| `POST` | `/api/orgs` | Create an organization |
+| `GET` | `/api/orgs/{name}` | Organization metadata |
+| `GET` | `/api/admin/stats` | Admin instance stats |
+| `GET` | `/api/admin/health` | Admin component health |
+| `GET` | `/healthz` | Basic HTTP health check |
 
 Browse the full list of endpoints in the interactive explorer at `/rapidoc`.

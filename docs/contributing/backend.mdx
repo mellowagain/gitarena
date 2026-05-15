@@ -54,7 +54,7 @@ pub async fn get_my_resource(
 }
 ```
 
-Register the handler in `gitarena/src/main.rs` inside the `HttpServer::new` closure.
+Register the handler in the relevant route module so it is included by the Actix app configuration.
 
 ## Error handling
 
@@ -78,7 +78,7 @@ Use `bail!` (from `anyhow`) for unexpected server errors that should not expose 
 bail!("Unexpected state: queue was empty after lock");
 ```
 
-`bail!` results in a 500 response with no body. The message appears in the server log only.
+`bail!` results in a generic 500 response. The detailed message appears in the server log only.
 
 ## Database migrations
 
@@ -114,7 +114,7 @@ pub struct RepoMeta {
 }
 ```
 
-Register new schemas and paths in `gitarena/src/openapi.rs` so they appear in the generated spec.
+Register new schemas and paths in the OpenAPI document setup so they appear in the generated spec.
 
 ## Config access
 

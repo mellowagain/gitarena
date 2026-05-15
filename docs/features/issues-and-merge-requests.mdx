@@ -1,48 +1,22 @@
 ---
 title: "Issues and merge requests"
-description: "Track work and review code with GitArena's issue and merge request system."
+description: "Current status of issue and merge request pages in GitArena."
 ---
 
-GitArena includes issue tracking and merge requests built into every repository. Both are accessible from the repository navigation sidebar.
+GitArena currently includes repository pages for issues and merge requests, but the full workflows are still under active development.
+
+<Note>
+  The current frontend pages use placeholder data. Issue creation, issue updates, merge request creation, diffs, discussions, approvals, and merging are not complete user-facing features yet.
+</Note>
 
 ## Issues
 
-Issues let you track bugs, tasks, and feature requests in context with your code.
-
-<Steps>
-  <Step title="Open the Issues tab">
-    Navigate to a repository and click **Issues** in the sidebar.
-  </Step>
-  <Step title="Create an issue">
-    Click **New issue** and fill in a title and description. Markdown is supported in the description field.
-  </Step>
-  <Step title="Manage the issue">
-    Assign team members, add labels, and close the issue when the work is done.
-  </Step>
-</Steps>
-
-Each issue supports assignees and colored labels (e.g. `bug`, `enhancement`, `documentation`).
+Issue tables exist in the database and some backend code exists, but the issue route is not currently registered as a complete API workflow. The frontend issue list and detail pages are useful for UI development and design review, not production issue tracking.
 
 ## Merge requests
 
-Merge requests let you propose, discuss, and review code changes before they land on a branch.
-
-<Steps>
-  <Step title="Open the Merge requests tab">
-    Navigate to a repository and click **Merge requests** in the sidebar.
-  </Step>
-  <Step title="Open a merge request">
-    Click **New merge request**, select a source branch and target branch, and add a title and description.
-  </Step>
-  <Step title="Review and merge">
-    The MR page shows the diff between branches and a discussion thread. Once approved, merge the request.
-  </Step>
-</Steps>
-
-<Note>
-  Issue tracking and merge requests are under active development. Some features may not yet be available. Check the [GitHub issues](https://github.com/mellowagain/gitarena/issues) tab for the current status of specific features.
-</Note>
+Merge request list and detail pages exist in the frontend with placeholder content. Backend merge request creation, review, and merge behavior is not implemented as a complete feature yet.
 
 ## API
 
-All issue and merge request endpoints are documented in the [API reference](/api-reference/introduction).
+Use the [GitHub issues](https://github.com/mellowagain/gitarena/issues) tab for current implementation status.
