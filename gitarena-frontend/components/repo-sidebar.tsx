@@ -1,18 +1,24 @@
 "use client";
 
-import { Star, GitFork, Eye, Copy, Check, ChevronDown, ExternalLink, Scale, Users, Package, Calendar } from "lucide-react";
+import { Star, GitFork, Eye, Copy, Check, ChevronDown, ExternalLink, Scale, Users, Package, Calendar, Building2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
+import type { ButtonHTMLAttributes, ElementType } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
 import { ErrorDisplay } from "@/components/error-display";
 import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import prettyBytes from "pretty-bytes";
 import { LanguageBar } from "@/components/language-bar";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useAuth } from "@/hooks/use-auth";
+import { deleteFetcher, jsonFetcher, postFetcher, postJsonFetcher } from "@/lib/fetchers";
+import { toast } from "sonner";
 
 type Release = {
     tag: string;
@@ -68,30 +74,73 @@ interface RepoDetailedStats {
     self: boolean;
 }
 
-function StatButton({
-    icon: Icon,
-    count,
-    active,
-    onClick,
-}: {
-    icon: React.ElementType;
+interface UserOrgEntry {
+    id: string;
+    name: string;
+}
+
+interface ForkRepoRequest {
+    target_namespace?: string;
+}
+
+interface CreateRepoResponse {
+    id: string;
+    url: string;
+}
+
+type StatButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+    icon: ElementType;
     count: number;
     active: boolean;
-    onClick?: () => void;
-}) {
+    label: string;
+};
+
+const StatButton = forwardRef<HTMLButtonElement, StatButtonProps>(function StatButton(
+    { icon: Icon, count, active, label, disabled, onClick, ...props },
+    ref
+) {
     return (
         <button
+            ref={ref}
+            aria-label={label}
+            title={label}
+            disabled={disabled}
             onClick={onClick}
-            className={`flex items-center gap-1.5 px-2 py-1 text-sm border rounded transition-colors ${
+            className={`flex items-center gap-1.5 px-2 py-1 text-sm border rounded transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                 active
                     ? "text-yellow-400 border-yellow-400/40 bg-yellow-400/10 hover:bg-yellow-400/20"
                     : "text-muted-foreground border-border hover:text-foreground hover:bg-accent/50"
             }`}
+            {...props}
         >
             <Icon className={`h-3.5 w-3.5${active ? " fill-current" : ""}`} />
             <span>{count}</span>
         </button>
     );
+});
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+function repoUrlToPath(url: string) {
+    if (url.startsWith("/")) {
+        return url;
+    }
+
+    try {
+        const parsed = new URL(url);
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        const normalized = url.replace(/^\/+/, "");
+        const [firstSegment, ...rest] = normalized.split("/");
+
+        if ((firstSegment.includes(".") || firstSegment.includes(":")) && rest.length > 0) {
+            return `/${rest.join("/")}`;
+        }
+
+        return `/${normalized}`;
+    }
 }
 
 export function RepoSidebar({
@@ -107,6 +156,8 @@ export function RepoSidebar({
     latestRelease,
     contributors,
 }: RepoSidebarProps) {
+    const router = useRouter();
+    const { user: authUser, isLoading: authLoading } = useAuth();
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
     const [allLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
     const instanceConfig = useInstanceConfig();
@@ -118,8 +169,97 @@ export function RepoSidebar({
             ? `git@${host}:${user}/${repo}.git`
             : `ssh://git@${host}:${instanceConfig?.sshPort}/${user}/${repo}.git`;
     const cloneUrl = protocol === "https" ? `${apiUrl}/${user}/${repo}.git` : sshCloneUrl;
+    const statsKey = `/api/repos/${user}/${repo}/stats`;
+    const starKey = `/api/repo/${user}/${repo}/star`;
+    const forkKey = `/api/repo/${user}/${repo}/fork`;
 
-    const { data, error, isLoading } = useSWR<RepoStats>(`/api/repos/${user}/${repo}/stats`);
+    const { data, error, isLoading, mutate: mutateStats } = useSWR<RepoStats>(statsKey);
+    const { data: userOrgs, isLoading: orgsLoading } = useSWR<UserOrgEntry[]>(
+        authUser ? `/api/users/${authUser.username}/orgs` : null,
+        jsonFetcher,
+        {
+            shouldRetryOnError: false,
+        }
+    );
+    const { trigger: addStar, isMutating: isAddingStar } = useSWRMutation(starKey, postFetcher);
+    const { trigger: removeStar, isMutating: isRemovingStar } = useSWRMutation(starKey, deleteFetcher);
+    const { trigger: forkRepo, isMutating: isForking } = useSWRMutation<CreateRepoResponse, Error, string, ForkRepoRequest>(
+        forkKey,
+        postJsonFetcher
+    );
+    const isStarMutating = isAddingStar || isRemovingStar;
+    const forkTargets =
+        authUser && userOrgs != null && userOrgs.length > 0
+            ? [{ id: authUser.id, name: authUser.username, isUser: true }, ...userOrgs.map((org) => ({ ...org, isUser: false }))]
+            : [];
+    const shouldShowForkMenu = forkTargets.length > 0;
+    const forkDisabled = isForking || authLoading || (!!authUser && orgsLoading);
+
+    async function handleToggleStar() {
+        if (authLoading) {
+            return;
+        }
+
+        if (!authUser) {
+            toast.error("Sign in to star repositories.");
+            return;
+        }
+
+        if (!data || isStarMutating) {
+            return;
+        }
+
+        const nextStarred = !data.stars.self;
+        const optimisticStats: RepoStats = {
+            ...data,
+            stars: {
+                count: nextStarred ? data.stars.count + 1 : Math.max(0, data.stars.count - 1),
+                self: nextStarred,
+            },
+        };
+
+        await mutateStats(
+            async () => {
+                if (nextStarred) {
+                    await addStar();
+                } else {
+                    await removeStar();
+                }
+
+                return optimisticStats;
+            },
+            {
+                optimisticData: optimisticStats,
+                rollbackOnError: true,
+                populateCache: true,
+                revalidate: true,
+            }
+        ).catch((err) => {
+            toast.error(getErrorMessage(err, nextStarred ? "Failed to star repository" : "Failed to unstar repository"));
+        });
+    }
+
+    async function handleFork(targetNamespace?: string) {
+        if (authLoading) {
+            return;
+        }
+
+        if (!authUser) {
+            toast.error("Sign in to fork repositories.");
+            return;
+        }
+
+        if (isForking || (!!authUser && orgsLoading)) {
+            return;
+        }
+
+        try {
+            const fork = await forkRepo(targetNamespace ? { target_namespace: targetNamespace } : {});
+            router.push(repoUrlToPath(fork.url));
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Failed to fork repository"));
+        }
+    }
 
     if (isLoading) {
         return <RepoPageSkeleton user={user} repo={repo} />;
@@ -166,20 +306,47 @@ export function RepoSidebar({
                                 icon={Star}
                                 count={data.stars.count}
                                 active={data.stars.self}
-                                onClick={() => console.log("clicked")}
+                                label={data.stars.self ? "Unstar repository" : "Star repository"}
+                                disabled={isStarMutating || authLoading}
+                                onClick={handleToggleStar}
                             />
-                            <StatButton
-                                icon={GitFork}
-                                count={data.forks.count}
-                                active={data.forks.self}
-                                onClick={() => console.log("clicked")}
-                            />
-                            <StatButton
-                                icon={Eye}
-                                count={data.watchers.count}
-                                active={data.watchers.self}
-                                onClick={() => console.log("clicked")}
-                            />
+                            {shouldShowForkMenu ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <StatButton
+                                            icon={GitFork}
+                                            count={data.forks.count}
+                                            active={data.forks.self}
+                                            label="Fork repository"
+                                            disabled={forkDisabled}
+                                        />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {forkTargets.map((target) => (
+                                            <DropdownMenuItem key={target.id} onClick={() => handleFork(target.name)} disabled={isForking}>
+                                                {target.isUser ? (
+                                                    <span className="flex h-5 w-5 items-center justify-center rounded bg-secondary text-xs font-medium">
+                                                        {target.name[0]?.toUpperCase() ?? "?"}
+                                                    </span>
+                                                ) : (
+                                                    <Building2 className="h-4 w-4" />
+                                                )}
+                                                {target.name}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <StatButton
+                                    icon={GitFork}
+                                    count={data.forks.count}
+                                    active={data.forks.self}
+                                    label="Fork repository"
+                                    disabled={forkDisabled}
+                                    onClick={() => handleFork()}
+                                />
+                            )}
+                            <StatButton icon={Eye} count={data.watchers.count} active={data.watchers.self} label="Watchers" disabled />
                         </div>
                     </div>
                     <p className="text-foreground leading-relaxed mb-4">{description}</p>

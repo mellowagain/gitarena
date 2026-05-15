@@ -58,7 +58,8 @@ export async function postFetcher(url: string): Promise<void> {
     const res = await fetch(url, { method: "POST" });
 
     if (!res.ok) {
-        throw new Error(res.statusText);
+        const body: ApiError = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body.error ?? res.statusText);
     }
 }
 
