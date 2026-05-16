@@ -353,7 +353,7 @@ function CodeResultsSkeleton() {
 }
 
 function CodeResults({ query }: { query: string }) {
-    const { data, error, isLoading } = useSWR<CodeSearchResponse>(query ? `/api/search/code?q=${encodeURIComponent(query)}` : null, {
+    const { data, error, isLoading } = useSWR<CodeSearchResponse>(query ? `/api/search/code?query=${encodeURIComponent(query)}` : null, {
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
     });
@@ -682,7 +682,7 @@ function SearchPageContent() {
     const [inputValue, setInputValue] = useState(q);
 
     // Fetch code results to get counts for the sidebar
-    const { data: codeData } = useSWR<CodeSearchResponse>(q ? `/api/search/code?q=${encodeURIComponent(q)}` : null, {
+    const { data: codeData } = useSWR<CodeSearchResponse>(q ? `/api/search/code?query=${encodeURIComponent(q)}` : null, {
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
     });
