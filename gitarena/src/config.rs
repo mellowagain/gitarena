@@ -211,7 +211,7 @@ generate_try_from!(Int, i64);
 
 #[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
 #[sqlx(type_name = "type_constraint", rename_all = "lowercase")]
-#[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum TypeConstraint {
     Boolean, // bool, bool
     Char,    // i8, char

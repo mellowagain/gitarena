@@ -12,7 +12,7 @@ use sqlx::Type;
 
 #[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
 #[sqlx(type_name = "sso_provider", rename_all = "lowercase")]
-#[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum SSOProviderType {
     BitBucket,
     GitHub,

@@ -177,7 +177,7 @@ impl SSOProvider for BitBucketSSO {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct BitBucketEmailList {
-    #[serde(rename(deserialize = "pagelen"))]
+    #[serde(rename = "pagelen")]
     page_length: usize,
     values: Vec<BitBucketEmail>,
     page: usize,
@@ -188,9 +188,7 @@ struct BitBucketEmailList {
 struct BitBucketEmail {
     is_primary: bool,
     is_confirmed: bool,
-    #[serde(rename(deserialize = "type"))]
+    #[serde(rename = "type")]
     email_type: String,
     email: String,
-    #[serde(skip_deserializing)]
-    links: Option<Value>,
 }

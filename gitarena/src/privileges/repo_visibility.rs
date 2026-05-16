@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 #[derive(Type, Display, Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize, ToSchema)]
 #[sqlx(type_name = "repo_visibility", rename_all = "lowercase")]
-#[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
+#[serde(rename_all = "lowercase")]
 #[schema(rename_all = "lowercase")]
 pub(crate) enum RepoVisibility {
     Public,

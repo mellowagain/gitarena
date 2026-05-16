@@ -44,6 +44,6 @@ struct HCaptchaResponse {
     challenge_ts: Option<String>,
     hostname: Option<String>,
     credit: Option<bool>,
-    #[serde(rename(deserialize = "error-codes"))]
+    #[serde(rename = "error-codes")]
     errors: Option<Vec<String>>,
 }

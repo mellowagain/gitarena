@@ -4,7 +4,7 @@ use sqlx::Type;
 
 #[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
 #[sqlx(type_name = "access_level", rename_all = "lowercase")]
-#[serde(rename_all(serialize = "lowercase", deserialize = "lowercase"))]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum AccessLevel {
     Viewer,
     Supporter,

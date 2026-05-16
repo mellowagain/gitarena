@@ -33,7 +33,7 @@ use uuid::Uuid;
 
 #[derive(FromRow, Display, Clone, derive_more::Debug, Serialize, Deserialize, ToSchema)]
 #[display("{name}")]
-#[serde(rename_all(serialize = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct Repository {
     /// ID
     pub(crate) id: Uuid,
