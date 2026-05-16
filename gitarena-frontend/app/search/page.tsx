@@ -353,7 +353,10 @@ function CodeResultsSkeleton() {
 }
 
 function CodeResults({ query }: { query: string }) {
-    const { data, error, isLoading } = useSWR<CodeSearchResponse>(query ? `/api/search/code?q=${encodeURIComponent(query)}` : null);
+    const { data, error, isLoading } = useSWR<CodeSearchResponse>(query ? `/api/search/code?q=${encodeURIComponent(query)}` : null, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    });
 
     if (isLoading) {
         return <CodeResultsSkeleton />;
@@ -675,11 +678,14 @@ function SearchPageContent() {
     const router = useRouter();
     const [activeType, setActiveType] = useState<SearchType>("code");
 
-    const q = searchParams.get("q") ?? "";
+    const q = searchParams.get("query") ?? "";
     const [inputValue, setInputValue] = useState(q);
 
     // Fetch code results to get counts for the sidebar
-    const { data: codeData } = useSWR<CodeSearchResponse>(q ? `/api/search/code?q=${encodeURIComponent(q)}` : null);
+    const { data: codeData } = useSWR<CodeSearchResponse>(q ? `/api/search/code?q=${encodeURIComponent(q)}` : null, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    });
 
     const codeFileCount = codeData?.Result?.FileCount ?? 0;
     const codeMatchCount = codeData?.Result?.MatchCount ?? 0;
@@ -689,7 +695,7 @@ function SearchPageContent() {
         if (e.key === "Enter") {
             const trimmed = inputValue.trim();
             if (trimmed) {
-                router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+                router.push(`/search?query=${encodeURIComponent(trimmed)}`);
             }
         }
     }

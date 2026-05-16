@@ -52,7 +52,7 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
                 return;
             }
             setShowDropdown(false);
-            router.push(`/search?q=${encodeURIComponent(q)}`);
+            router.push(`/search?query=${encodeURIComponent(q)}`);
         },
         [router, search.scope, value]
     );
