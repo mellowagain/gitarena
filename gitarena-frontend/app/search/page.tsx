@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
@@ -670,7 +670,7 @@ const MOCK_COUNTS: Record<Exclude<SearchType, "code">, number> = {
     users: MOCK_USERS.length,
 };
 
-export default function SearchPage() {
+function SearchPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [activeType, setActiveType] = useState<SearchType>("code");
@@ -795,5 +795,13 @@ export default function SearchPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <Suspense>
+            <SearchPageContent />
+        </Suspense>
     );
 }
