@@ -689,7 +689,7 @@ function SearchPageContent() {
 
     const codeFileCount = codeData?.result?.FileCount ?? 0;
     const codeMatchCount = codeData?.result?.MatchCount ?? 0;
-    const codeDurationMs = codeData ? Math.round((codeData.Result?.Duration ?? 0) / 1000) : null;
+    const codeDurationMs = codeData ? Math.round((codeData.result?.Duration ?? 0) / 1000) : null;
 
     function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key === "Enter") {
