@@ -79,7 +79,7 @@ pub(crate) async fn get_code_search(web_user: WebUser, request: HttpRequest, db_
             "Q": query,
             "RepoIDs": repo_ids,
             "Opts": {
-                "NumContextLines": 5,
+                "NumContextLines": 1,
                 "MaxDocDisplayCount": limit,
                 "MaxWallTime": 30_000_000_000_i64, // 30s
             }

@@ -4,7 +4,10 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
+import { gitarenaTheme, detectLanguage } from "@/components/code-block";
 import {
     Search,
     Code,
@@ -279,47 +282,249 @@ const MOCK_USERS = [
     },
 ];
 
-const LANG_COLORS: Record<string, string> = {
-    Rust: "bg-orange-500",
-    C: "bg-gray-500",
-    Python: "bg-blue-500",
-    Ruby: "bg-red-500",
-    TypeScript: "bg-blue-400",
-    JavaScript: "bg-yellow-400",
-    Go: "bg-cyan-500",
-};
+type LinguistEntry = { color?: string };
 
-// ── Highlight helper ───────────────────────────────────────────────────────────
+function languageColor(name: string): string {
+    const entry = (allLangs as Record<string, LinguistEntry>)[name];
+    if (entry?.color) {
+        return entry.color;
+    }
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `hsl(${Math.abs(hash) % 360}, 60%, 55%)`;
+}
 
-function highlightFragments(text: string, fragments: LineFragment[]): React.ReactNode {
-    if (!fragments || fragments.length === 0) {
-        return text;
+// ── Syntax-highlighted match rendering ─────────────────────────────────────────
+
+type AstNode =
+    | { type: "text"; value: string }
+    | { type: "element"; tagName: string; properties: { className?: string[] }; children: AstNode[] };
+
+type AstElement = Extract<AstNode, { type: "element" }>;
+
+function renderNode(node: AstNode, stylesheet: Record<string, React.CSSProperties>, i: number): React.ReactNode {
+    if (node.type === "text") {
+        return node.value;
+    }
+    const style = (node.properties?.className ?? []).reduce<React.CSSProperties>(
+        (acc, cls) => ({ ...acc, ...(stylesheet[cls] ?? {}) }),
+        {}
+    );
+    return (
+        <span key={i} style={style}>
+            {node.children.map((child, j) => renderNode(child, stylesheet, j))}
+        </span>
+    );
+}
+
+/**
+ * Merges adjacent/overlapping LineMatches into groups so they render as one block.
+ * Two matches are merged if the end of one's range (including after-context) overlaps
+ * or is adjacent to the start of the next's range (including before-context).
+ */
+function groupLineMatches(matches: LineMatch[]): LineMatch[][] {
+    if (matches.length === 0) {
+        return [];
+    }
+    const sorted = [...matches].sort((a, b) => a.LineNumber - b.LineNumber);
+    const groups: LineMatch[][] = [[sorted[0]]];
+
+    for (let i = 1; i < sorted.length; i++) {
+        const prev = groups[groups.length - 1];
+        const lastMatch = prev[prev.length - 1];
+        const lastAfterCount = lastMatch.After ? atob(lastMatch.After).split("\n").filter(Boolean).length : 0;
+        const lastEnd = lastMatch.LineNumber + lastAfterCount;
+
+        const curr = sorted[i];
+        const currBeforeCount = curr.Before ? atob(curr.Before).split("\n").filter(Boolean).length : 0;
+        const currStart = curr.LineNumber - currBeforeCount;
+
+        if (currStart <= lastEnd + 1) {
+            prev.push(curr);
+        } else {
+            groups.push([curr]);
+        }
+    }
+    return groups;
+}
+
+function HighlightedMatchGroup({ matches, fileName }: { matches: LineMatch[]; fileName: string }) {
+    // Build a deduplicated list of lines with metadata
+    const lineEntries: { lineNum: number; text: string; isMatch: boolean; fragments?: LineFragment[] }[] = [];
+    const seenLines = new Set<number>();
+
+    for (const match of matches) {
+        const line = atob(match.Line);
+        const beforeLines = match.Before ? atob(match.Before).split("\n").filter(Boolean) : [];
+        const afterLines = match.After ? atob(match.After).split("\n").filter(Boolean) : [];
+
+        for (let k = 0; k < beforeLines.length; k++) {
+            const num = match.LineNumber - (beforeLines.length - k);
+            if (!seenLines.has(num)) {
+                seenLines.add(num);
+                lineEntries.push({ lineNum: num, text: beforeLines[k], isMatch: false });
+            }
+        }
+
+        if (!seenLines.has(match.LineNumber)) {
+            seenLines.add(match.LineNumber);
+            lineEntries.push({ lineNum: match.LineNumber, text: line, isMatch: true, fragments: match.LineFragments });
+        }
+
+        for (let k = 0; k < afterLines.length; k++) {
+            const num = match.LineNumber + k + 1;
+            if (!seenLines.has(num)) {
+                seenLines.add(num);
+                lineEntries.push({ lineNum: num, text: afterLines[k], isMatch: false });
+            }
+        }
     }
 
-    const nodes: React.ReactNode[] = [];
-    let cursor = 0;
+    lineEntries.sort((a, b) => a.lineNum - b.lineNum);
 
-    // Sort fragments by offset in case they come out of order
+    const content = lineEntries.map((e) => e.text).join("\n");
+    const language = detectLanguage(fileName);
+
+    return (
+        <SyntaxHighlighter
+            language={language}
+            style={gitarenaTheme}
+            PreTag="div"
+            renderer={({ rows, stylesheet }) => (
+                <>
+                    {(rows as AstElement[]).map((row, i) => {
+                        const entry = lineEntries[i];
+                        if (!entry) {
+                            return null;
+                        }
+                        return (
+                            <div key={i} className={`flex ${entry.isMatch ? "group hover:bg-accent/20 transition-colors" : "opacity-40"}`}>
+                                <span className="w-12 shrink-0 px-3 py-0.5 text-xs font-mono text-muted-foreground/50 text-right select-none border-r border-border/40 leading-5">
+                                    {entry.lineNum}
+                                </span>
+                                <span className="px-4 py-0.5 text-xs leading-5 whitespace-pre">
+                                    {entry.isMatch && entry.fragments
+                                        ? highlightFragmentsOverNodes(row.children, entry.fragments, stylesheet)
+                                        : row.children.map((node, j) => renderNode(node, stylesheet, j))}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </>
+            )}
+        >
+            {content}
+        </SyntaxHighlighter>
+    );
+}
+
+/**
+ * Overlays match-highlight marks on top of syntax-highlighted AST nodes.
+ * Walks the token tree, inserting <mark> elements at the byte offsets indicated by LineFragments.
+ */
+function highlightFragmentsOverNodes(
+    nodes: AstNode[],
+    fragments: LineFragment[],
+    stylesheet: Record<string, React.CSSProperties>
+): React.ReactNode {
+    if (!fragments || fragments.length === 0) {
+        return nodes.map((node, i) => renderNode(node, stylesheet, i));
+    }
+
+    // Flatten to get the full text, then overlay marks at fragment positions
+    const fullText = flattenText(nodes);
     const sorted = [...fragments].sort((a, b) => a.Offset - b.Offset);
 
+    // Build intervals: [start, end, isHighlight]
+    const intervals: { start: number; end: number; highlight: boolean }[] = [];
+    let cursor = 0;
     for (const frag of sorted) {
         if (frag.Offset > cursor) {
-            nodes.push(text.slice(cursor, frag.Offset));
+            intervals.push({ start: cursor, end: frag.Offset, highlight: false });
         }
-        const end = frag.Offset + frag.MatchLength;
-        nodes.push(
-            <mark key={frag.Offset} className="bg-yellow-400/30 text-foreground rounded-sm">
-                {text.slice(frag.Offset, end)}
-            </mark>
-        );
-        cursor = end;
+        intervals.push({ start: frag.Offset, end: frag.Offset + frag.MatchLength, highlight: true });
+        cursor = frag.Offset + frag.MatchLength;
+    }
+    if (cursor < fullText.length) {
+        intervals.push({ start: cursor, end: fullText.length, highlight: false });
     }
 
-    if (cursor < text.length) {
-        nodes.push(text.slice(cursor));
+    // Now re-render the AST but wrap highlighted ranges in <mark>
+    return renderWithHighlights(nodes, intervals, stylesheet);
+}
+
+function flattenText(nodes: AstNode[]): string {
+    let text = "";
+    for (const node of nodes) {
+        if (node.type === "text") {
+            text += node.value;
+        } else {
+            text += flattenText(node.children);
+        }
+    }
+    return text;
+}
+
+function renderWithHighlights(
+    nodes: AstNode[],
+    intervals: { start: number; end: number; highlight: boolean }[],
+    stylesheet: Record<string, React.CSSProperties>
+): React.ReactNode {
+    const result: React.ReactNode[] = [];
+    let charOffset = 0;
+    let intervalIdx = 0;
+
+    function walk(node: AstNode, inheritedStyle: React.CSSProperties): void {
+        if (node.type === "text") {
+            let textOffset = 0;
+            while (textOffset < node.value.length && intervalIdx < intervals.length) {
+                const interval = intervals[intervalIdx];
+                const globalPos = charOffset + textOffset;
+                const remaining = node.value.length - textOffset;
+                const intervalRemaining = interval.end - globalPos;
+                const take = Math.min(remaining, intervalRemaining);
+                const slice = node.value.slice(textOffset, textOffset + take);
+
+                if (interval.highlight) {
+                    result.push(
+                        <mark key={`h-${globalPos}`} className="bg-yellow-400/30 text-foreground rounded-sm" style={inheritedStyle}>
+                            {slice}
+                        </mark>
+                    );
+                } else {
+                    result.push(
+                        <span key={`t-${globalPos}`} style={inheritedStyle}>
+                            {slice}
+                        </span>
+                    );
+                }
+
+                textOffset += take;
+                if (charOffset + textOffset >= interval.end) {
+                    intervalIdx++;
+                }
+            }
+            charOffset += node.value.length;
+        } else {
+            const style = {
+                ...inheritedStyle,
+                ...(node.properties?.className ?? []).reduce<React.CSSProperties>(
+                    (acc, cls) => ({ ...acc, ...(stylesheet[cls] ?? {}) }),
+                    {}
+                ),
+            };
+            for (const child of node.children) {
+                walk(child, style);
+            }
+        }
     }
 
-    return nodes;
+    for (const node of nodes) {
+        walk(node, {});
+    }
+    return result;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -411,56 +616,25 @@ function CodeResults({ query }: { query: string }) {
                                 {strippedPath}
                             </Link>
                             <div className="ml-auto flex items-center gap-1.5 shrink-0">
-                                <span className={`h-2.5 w-2.5 rounded-full ${LANG_COLORS[file.Language] ?? "bg-muted-foreground"}`} />
+                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: languageColor(file.Language) }} />
                                 <span className="text-xs text-muted-foreground">{file.Language}</span>
                             </div>
                         </div>
 
                         {/* Matched lines */}
-                        <div className="divide-y divide-border/40">
-                            {(file.LineMatches ?? []).map((match, j) => {
-                                const line = atob(match.Line);
-                                const beforeLines = match.Before ? atob(match.Before).split("\n").filter(Boolean) : [];
-                                const afterLines = match.After ? atob(match.After).split("\n").filter(Boolean) : [];
-
-                                return (
+                        <div className="overflow-x-auto">
+                            <div className="min-w-max">
+                                {groupLineMatches(file.LineMatches ?? []).map((group, j) => (
                                     <div key={j}>
-                                        {/* Before context lines */}
-                                        {beforeLines.map((ctx, k) => (
-                                            <div key={`before-${k}`} className="flex items-start opacity-40">
-                                                <span className="w-12 shrink-0 px-3 py-1.5 text-xs font-mono text-muted-foreground/50 text-right select-none border-r border-border/40 leading-5">
-                                                    {match.LineNumber - (beforeLines.length - k)}
-                                                </span>
-                                                <pre className="flex-1 px-4 py-1.5 text-xs font-mono leading-5 overflow-x-auto whitespace-pre text-foreground/60">
-                                                    {ctx}
-                                                </pre>
+                                        {j > 0 && (
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-secondary/60 border-y border-border/60">
+                                                <span className="text-xs font-mono text-muted-foreground/60 select-none">···</span>
                                             </div>
-                                        ))}
-
-                                        {/* Match line */}
-                                        <div className="flex items-start group hover:bg-accent/20 transition-colors">
-                                            <span className="w-12 shrink-0 px-3 py-2.5 text-xs font-mono text-muted-foreground/50 text-right select-none border-r border-border/40 leading-5">
-                                                {match.LineNumber}
-                                            </span>
-                                            <pre className="flex-1 px-4 py-2.5 text-xs font-mono leading-5 overflow-x-auto whitespace-pre text-foreground/80">
-                                                {highlightFragments(line, match.LineFragments)}
-                                            </pre>
-                                        </div>
-
-                                        {/* After context lines */}
-                                        {afterLines.map((ctx, k) => (
-                                            <div key={`after-${k}`} className="flex items-start opacity-40">
-                                                <span className="w-12 shrink-0 px-3 py-1.5 text-xs font-mono text-muted-foreground/50 text-right select-none border-r border-border/40 leading-5">
-                                                    {match.LineNumber + k + 1}
-                                                </span>
-                                                <pre className="flex-1 px-4 py-1.5 text-xs font-mono leading-5 overflow-x-auto whitespace-pre text-foreground/60">
-                                                    {ctx}
-                                                </pre>
-                                            </div>
-                                        ))}
+                                        )}
+                                        <HighlightedMatchGroup matches={group} fileName={file.FileName} />
                                     </div>
-                                );
-                            })}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 );
@@ -496,7 +670,7 @@ function RepoResults() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             {repo.language && (
                                 <span className="flex items-center gap-1.5">
-                                    <span className={`h-2.5 w-2.5 rounded-full ${LANG_COLORS[repo.language] ?? "bg-muted-foreground"}`} />
+                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: languageColor(repo.language) }} />
                                     {repo.language}
                                 </span>
                             )}
