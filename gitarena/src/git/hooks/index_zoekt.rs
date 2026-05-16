@@ -16,12 +16,12 @@ pub(crate) async fn schedule_repo_indexing(repo: Repository, tx: &mut Transactio
 
     let task = ZoektIndexRepo { repo };
 
-    let scheduled_task = GLOBAL_QUEUE
+    let queued_task = GLOBAL_QUEUE
         .get()
         .ok_or_else(|| anyhow!("repo should only be attempted to be indexed after queue has been initialized"))?
-        .schedule_task(&task as &dyn AsyncRunnable)
+        .insert_task(&task as &dyn AsyncRunnable)
         .await?;
 
-    debug!(task.id = %scheduled_task.id, "scheduled repo to be indexed");
+    debug!(task.id = %queued_task.id, "queued repo to be indexed");
     Ok(())
 }

@@ -1,6 +1,7 @@
 use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
 use crate::verification::ExpiredVerifyLinkRemovalTask;
+use crate::zoekt::task::ZOEKT_TASK_TYPE;
 use anyhow::{Context, Result};
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool, Scheduled, SleepParams};
 use std::env;
@@ -62,7 +63,7 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
                 .sleep_step(Duration::from_secs(30))
                 .build(),
         )
-        .task_type(MAIL_TASK_TYPE.to_string())
+        .task_type(ZOEKT_TASK_TYPE.to_string())
         .queue(queue.clone())
         .build();
 
