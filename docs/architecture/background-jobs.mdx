@@ -1,22 +1,21 @@
 ---
 title: "Background jobs"
-description: "How GitArena runs repository imports and email delivery through the in-process job queue."
+description: "How GitArena runs repository imports, email delivery, and code indexing through the in-process job queue."
 ---
 
 GitArena runs background work inside the main `gitarena` process with [fang](https://github.com/ayrat555/fang). Jobs are stored in PostgreSQL, then picked up by worker pools started during backend startup.
 
-There is no separate background daemon or socket protocol in the current workspace.
-
 ## Worker pools
 
-`gitarena/src/queue.rs` starts two worker pools:
+`gitarena/src/queue.rs` starts three worker pools:
 
 | Pool | Workers | Purpose |
 |------|---------|---------|
-| General | One worker per CPU core | Repository imports and other default queue tasks |
-| Email | `2` workers | SMTP email delivery tasks |
+| General | One per CPU core | Repository imports and other default queue tasks |
+| Email | `2` | SMTP email delivery |
+| Zoekt | `1` | Code search indexing (sequential) |
 
-The email pool uses shorter sleep intervals so verification messages are picked up quickly.
+The email pool uses shorter sleep intervals so verification messages are picked up quickly. The Zoekt pool is intentionally single-worker so index writes are never concurrent.
 
 <Warning>
   The queue currently reads `DATABASE_URL` directly. `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE` are supported by the main database pool, but not by queue startup.
@@ -46,3 +45,24 @@ Repository imports use `ImportTask` in `gitarena/src/replication/mod.rs`.
 Email tasks use the dedicated email worker pool. Verification flows create a verification token, then enqueue a message for SMTP delivery when email is enabled.
 
 See [email configuration](/self-hosting/email) for the settings used by the SMTP transport.
+
+## Code search indexing
+
+Code search indexing uses `ZoektIndexRepo` in `gitarena/src/zoekt/task.rs`. It only runs when `zoekt.enabled` is `true`.
+
+<Steps>
+  <Step title="Trigger">
+    A `ZoektIndexRepo` task is enqueued in two situations: after every push (via the post-update git hook) and on startup when the internal `zoekt.gitarena_version` sentinel is stale (triggering a full re-index of all repositories).
+  </Step>
+  <Step title="Configure the repository">
+    Before indexing, `init_zoekt_config` writes a `[zoekt]` section into the repository's bare `config` file. This provides `zoekt-git-index` with the repository name, web URL, and visibility metadata.
+  </Step>
+  <Step title="Run the indexer">
+    The worker spawns `zoekt-git-index` with the default branch, index directory, and repository path. The index shards are written to `zoekt.index_dir`.
+  </Step>
+  <Step title="Retry on failure">
+    If `zoekt-git-index` exits with a non-zero code, fang retries the task up to three times.
+  </Step>
+</Steps>
+
+The backend then queries the running `zoekt-webserver` over HTTP (`zoekt.address`) to serve search requests. See the [search self-hosting guide](/self-hosting/search) for setup instructions.

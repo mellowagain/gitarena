@@ -1,0 +1,131 @@
+---
+title: "Search"
+description: "Set up Zoekt to enable code search on your GitArena instance."
+---
+
+Code search is powered by [Zoekt](https://github.com/sourcegraph/zoekt), a trigram-based code search engine originally developed at Google. You need to install and run two Zoekt binaries alongside GitArena: `zoekt-git-index` and `zoekt-webserver`.
+
+## Install Zoekt
+
+Build from source using Go 1.21 or later:
+
+```bash
+go install github.com/sourcegraph/zoekt/cmd/zoekt-git-index@latest
+go install github.com/sourcegraph/zoekt/cmd/zoekt-webserver@latest
+```
+
+This places the binaries in `$GOPATH/bin` (typically `~/go/bin`).
+
+## Create an index directory
+
+Choose a directory where Zoekt will write its index shards. The directory must be writable by the user running GitArena:
+
+```bash
+mkdir -p /var/lib/zoekt/index
+```
+
+## Start the web server
+
+Run `zoekt-webserver` pointing at the index directory. It listens on port `6070` by default:
+
+```bash
+zoekt-webserver -index /var/lib/zoekt/index -listen 127.0.0.1:6070 -rpc
+```
+
+GitArena communicates with this server over HTTP and enforces access control itself — every search request is filtered to only the repository IDs the requesting user is allowed to see. Zoekt has no concept of per-repository permissions, so it returns results from all indexed repositories, public and private alike, to anyone who can reach it directly.
+
+<Warning>
+  Never expose `zoekt-webserver` to the public internet or to untrusted networks. Bind it to `127.0.0.1` (or the internal Docker network) so that only GitArena can reach it. Direct access bypasses all visibility controls.
+</Warning>
+
+To run it as a systemd service, create `/etc/systemd/system/zoekt-webserver.service`:
+
+```ini zoekt-webserver.service
+[Unit]
+Description=Zoekt web server
+After=network.target
+
+[Service]
+ExecStart=/root/go/bin/zoekt-webserver -index /var/lib/zoekt/index -listen 127.0.0.1:6070 -rpc
+Restart=on-failure
+User=gitarena
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable --now zoekt-webserver
+```
+
+## Configure GitArena
+
+Set the following keys in the `settings` table. You can do this via the admin panel or directly in PostgreSQL:
+
+| Key                       | Value                          | Description                              |
+|---------------------------|--------------------------------|------------------------------------------|
+| `zoekt.enabled`           | `true`                         | Enable code search                       |
+| `zoekt.address`           | `http://127.0.0.1:6070`        | URL of the running `zoekt-webserver`     |
+| `zoekt.index_dir`         | `/var/lib/zoekt/index`         | Directory where index shards are written |
+| `zoekt.index_binary_path` | `/root/go/bin/zoekt-git-index` | Path to the `zoekt-git-index` binary     |
+
+To set a value via `psql`:
+
+```bash
+psql -U gitarena -d gitarena -c \
+  "UPDATE settings SET value = 'true' WHERE key = 'zoekt.enabled';"
+```
+
+<Tip>
+  `zoekt.index_binary_path` supports `~` expansion, so you can use `~/go/bin/zoekt-git-index` if GitArena runs as a user with a home directory.
+</Tip>
+
+## Initial index
+
+After enabling Zoekt, restart GitArena. On startup, it detects that the internal `zoekt.gitarena_version` sentinel is unset and enqueues an indexing task for every repository. The single-worker Zoekt queue processes them sequentially — expect indexing to take a few minutes on larger instances.
+
+From that point on, repositories are re-indexed automatically after every push.
+
+## Docker Compose
+
+Add `zoekt-webserver` as a service alongside GitArena. Do not publish port `6070` — the `zoekt` container should only be reachable from within the Docker network by the `gitarena` container:
+
+```yaml docker-compose.yml
+services:
+  zoekt:
+    image: ghcr.io/sourcegraph/zoekt
+    command: ["zoekt-webserver", "-index", "/data/index", "-listen", "0.0.0.0:6070", "-rpc"]
+    volumes:
+      - zoektindex:/data/index
+    # No ports: block — zoekt must not be reachable from outside the Docker network
+
+  gitarena:
+    # ... existing service config ...
+    environment:
+      # ... existing env vars ...
+    volumes:
+      - repos:/repositories
+      - zoektindex:/data/index   # shared so gitarena can write shards directly
+
+volumes:
+  zoektindex:
+```
+
+Set `zoekt.address` to `http://zoekt:6070` and `zoekt.index_dir` to `/data/index` when using this layout.
+
+## Troubleshooting
+
+**No results appear after setup**
+
+Check that `zoekt.enabled` is `true` and that `zoekt-webserver` is reachable at `zoekt.address`. GitArena logs a warning at startup if the Zoekt address is unreachable.
+
+**Indexing tasks are failing**
+
+Check the GitArena logs for `ZoektIndexRepo` errors. The most common causes are:
+- `zoekt.index_binary_path` points to a binary that does not exist or is not executable
+- `zoekt.index_dir` does not exist or is not writable by the GitArena process
+- The repository path on disk does not match `repositories.base_dir`
+
+**Old repositories are not indexed**
+
+Restart GitArena. If `zoekt.gitarena_version` in the settings table is lower than the current internal version (`1`), a full re-index runs automatically on startup. You can also trigger it manually by resetting that key to `0`.

@@ -1,0 +1,50 @@
+---
+title: "Search"
+description: "Search code across all repositories on the instance."
+---
+
+GitArena supports full-text code search powered by [Zoekt](https://github.com/sourcegraph/zoekt), a trigram-based indexing engine. Search is accessible from the `/search` page and from the search bar in the top navigation.
+
+## Code search
+
+The code search tab queries the `/api/search/code` endpoint, which proxies requests to the Zoekt backend. Results are grouped by file and show matched lines with surrounding context.
+
+Each result shows:
+
+- The repository and file path, linked to the relevant blob view
+- The programming language, with a color dot from the GitHub Linguist palette
+- Matched lines with syntax highlighting and match fragments highlighted in yellow
+- Up to a few lines of context above and below each match
+
+When multiple matches in the same file are close together, they collapse into a single block to avoid repeating context lines.
+
+## Search bar
+
+The top navigation bar accepts search queries from any page. Press `/` to focus the search input.
+
+### Repository-scoped search
+
+When you are on a repository page, the search bar offers a scope dropdown. You can search within that repository alone or across the entire instance.
+
+Scoped queries are prefixed automatically, for example: `repo:"owner/name" your query`.
+
+## Query syntax
+
+Zoekt supports several filter keywords in addition to plain text queries:
+
+| Qualifier           | Description                                              |
+|---------------------|----------------------------------------------------------|
+| `repo:owner/name`   | Restrict results to a specific repository                |
+| `lang:Rust`         | Restrict results to a specific language                  |
+| `file:path/pattern` | Restrict results to files whose path matches the pattern |
+| `case:yes`          | Enable case-sensitive matching                           |
+
+Combine qualifiers with your search terms: `repo:mellowagain/gitarena lang:Rust tokio`.
+
+## Other search tabs
+
+The repositories, issues, merge requests, and users tabs are not yet connected to live data.
+
+<Note>
+  Code search requires a running Zoekt instance connected to the workhorse daemon. See the [background jobs architecture](/architecture/background-jobs) for details on how indexing works.
+</Note>

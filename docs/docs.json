@@ -39,7 +39,8 @@
               "features/authentication",
               "features/issues-and-merge-requests",
               "features/admin",
-              "features/explore"
+              "features/explore",
+              "features/search"
             ]
           },
           {
@@ -50,7 +51,8 @@
               "self-hosting/reverse-proxy",
               "self-hosting/sso",
               "self-hosting/email",
-              "self-hosting/captcha"
+              "self-hosting/captcha",
+              "self-hosting/search"
             ]
           },
           {
