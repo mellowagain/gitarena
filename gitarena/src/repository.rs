@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::zoekt::init_zoekt_config;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpMessage, HttpRequest};
@@ -64,6 +65,8 @@ pub(crate) struct Repository {
     pub(crate) archived: bool,
     /// Disabled flag
     pub(crate) disabled: bool,
+    #[serde(skip)]
+    pub(crate) zoekt_id: i32,
 }
 
 impl Repository {
@@ -90,6 +93,7 @@ impl Repository {
 
         Git2Repository::init_opts(self.get_fs_path(tx).await?, &init_ops)?;
 
+        init_zoekt_config(self, tx).await?;
         Ok(())
     }
 

@@ -2480,6 +2480,7 @@ dependencies = [
  "itertools 0.10.5",
  "lettre",
  "linguist",
+ "log",
  "maxminddb",
  "md5",
  "memmem",

@@ -18,6 +18,7 @@ use crate::routes::repository::api::create_repo::CreateJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
+use crate::routes::search::code::CodeSearchResponse;
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
@@ -35,6 +36,7 @@ pub(crate) mod not_found;
 pub(crate) mod organization;
 pub(crate) mod proxy;
 pub(crate) mod repository;
+pub(crate) mod search;
 pub(crate) mod user;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
@@ -85,6 +87,7 @@ impl Modify for CookieAuth {
         crate::routes::admin::stats::get_instance_stats,
         crate::routes::admin::health::get_instance_health,
         crate::routes::admin::users::get_instance_users,
+        crate::routes::search::code::get_code_search,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -133,6 +136,7 @@ impl Modify for CookieAuth {
         InstanceComponent,
         ComponentStatus,
         ExtendedUser,
+        CodeSearchResponse,
     )),
     modifiers(&CookieAuth),
     tags(
@@ -141,6 +145,7 @@ impl Modify for CookieAuth {
         (name = "repository", description = "Repository management"),
         (name = "organization", description = "Organization management"),
         (name = "user", description = "User account management"),
+        (name = "search", description = "Search endpoints"),
         (name = "admin", description = "Instance management for admins"),
     )
 )]

@@ -54,7 +54,7 @@ support in mind.
 - [ ] Woodpecker CI
 - [ ] Package registry
 - [ ] Wiki per repository
-- [ ] Code search
+- [x] Code search
 - [x] OAuth/SSO
 - [ ] CLI
 - [ ] MCP

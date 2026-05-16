@@ -56,6 +56,7 @@ mod telemetry;
 mod user;
 mod utils;
 mod verification;
+mod zoekt;
 
 pub(crate) static TASK_DB_POOL: OnceCell<Pool> = OnceCell::const_new();
 
@@ -95,6 +96,8 @@ async fn main() -> Result<()> {
     mail::create_transport(&db_pool).await?;
 
     let queue = queue::init().await?;
+
+    zoekt::init(&db_pool).await?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
@@ -141,6 +144,7 @@ async fn main() -> Result<()> {
             .configure(routes::user::init)
             .configure(routes::organization::init)
             .configure(routes::admin::init)
+            .configure(routes::search::init)
             .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/healthz", web::get().to(|| async { "healthy" }))

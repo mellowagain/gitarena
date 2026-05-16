@@ -2,10 +2,13 @@ use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
 use crate::verification::ExpiredVerifyLinkRemovalTask;
 use anyhow::{Context, Result};
-use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool, SleepParams};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, AsyncWorkerPool, Scheduled, SleepParams};
 use std::env;
 use std::time::Duration;
+use tokio::sync::OnceCell;
 use tracing::info;
+
+pub(crate) static GLOBAL_QUEUE: OnceCell<AsyncQueue> = OnceCell::const_new();
 
 pub(crate) async fn init() -> Result<AsyncQueue> {
     // todo: this makes `DATABASE_URL` mandatory
@@ -48,7 +51,26 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
 
     email_worker_pool.start().await;
 
+    // zoekt pool is sequentially and can sleep longer
+    let mut zoekt_worker_pool = AsyncWorkerPool::<AsyncQueue>::builder()
+        .number_of_workers(1_u32)
+        .sleep_params(
+            SleepParams::builder()
+                .sleep_period(Duration::from_secs(30))
+                .min_sleep_period(Duration::from_secs(30))
+                .max_sleep_period(Duration::from_secs(300))
+                .sleep_step(Duration::from_secs(30))
+                .build(),
+        )
+        .task_type(MAIL_TASK_TYPE.to_string())
+        .queue(queue.clone())
+        .build();
+
+    zoekt_worker_pool.start().await;
+
     schedule_cron_jobs(&queue).await?;
+
+    let _ = GLOBAL_QUEUE.set(queue.clone());
     Ok(queue)
 }
 
@@ -61,7 +83,7 @@ async fn schedule_cron_jobs(queue: &AsyncQueue) -> Result<()> {
             .await
             .context("failed to schedule remove expired verify link cron job")?;
 
-        info!(id = %task.id, "scheduled cron job: remove expired verify links");
+        info!(id = %task.id, pattern = extract_pattern(&cron), "scheduled cron job: remove expired verify links");
     }
     {
         let cron = ExpiredWebAuthnChallengesRemovalTask {};
@@ -71,7 +93,14 @@ async fn schedule_cron_jobs(queue: &AsyncQueue) -> Result<()> {
             .await
             .context("failed to schedule remove expired webauthn challenges cron job")?;
 
-        info!(id = %task.id, "scheduled cron job: remove expired webauthn challenges");
+        info!(id = %task.id, pattern = extract_pattern(&cron), "scheduled cron job: remove expired webauthn challenges");
     }
     Ok(())
+}
+
+fn extract_pattern(cron: &dyn AsyncRunnable) -> String {
+    match cron.cron().expect("cron job to have cron task") {
+        Scheduled::CronPattern(pattern) => pattern,
+        Scheduled::ScheduleOnce(time) => format!("once at {}", time.format("%Y-%m-%d %H:%M")),
+    }
 }

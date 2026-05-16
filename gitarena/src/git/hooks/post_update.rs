@@ -5,6 +5,7 @@ use crate::repository::Repository;
 use std::sync::Arc;
 
 use crate::database::Database;
+use crate::git::hooks::index_zoekt::schedule_repo_indexing;
 use anyhow::Result;
 use gix::odb::Store;
 use sqlx::Transaction;
@@ -24,6 +25,10 @@ pub(crate) async fn run(store: Arc<Store>, repo: &mut Repository, tx: &mut Trans
 
     if let Err(err) = detect_languages(store, &gitoxide_repo, repo).await {
         warn!(repo.id = %repo.id, ?err, "Failed to detect languages in repo");
+    }
+
+    if let Err(err) = schedule_repo_indexing(repo.clone(), tx).await {
+        warn!(repo.id = %repo.id, ?err, "Failed to schedule zoekt repo indexing");
     }
 
     Ok(())
