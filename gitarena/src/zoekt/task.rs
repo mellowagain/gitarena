@@ -42,7 +42,7 @@ impl AsyncRunnable for ZoektIndexRepo {
         let mut command = Command::new(zoekt_index_binary_path)
             .args(["-branches", &self.repo.default_branch])
             .args(["-index", &zoekt_index_dir])
-            .args(["-submodules", "false"])
+            .args(["-submodules=false"])
             .arg(path)
             .spawn()
             .context("failed to spawn zoekt-git-index child process")
