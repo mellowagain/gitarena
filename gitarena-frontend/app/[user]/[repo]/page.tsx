@@ -58,7 +58,10 @@ function RepoTopBar({ user, repo }: { user: string; repo: string }) {
     return (
         <TopBar
             breadcrumb={[{ label: user, href: `/${user}` }, { label: repo }]}
-            search={{ placeholder: "Search files, commits, issues..." }}
+            search={{
+                placeholder: "Search files, commits, issues...",
+                scope: { label: `${user}/${repo}`, prefix: `repo:"${user}/${repo}"` },
+            }}
             navLinks={[
                 {
                     label: "Code",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Plus, BookOpen, Search, Users, ExternalLink, ShieldCheck } from "lucide-react";
 import {
@@ -29,10 +29,124 @@ type TopBarProps = {
     breadcrumb?: BreadcrumbItem[];
     search?: {
         placeholder: string;
+        scope?: {
+            label: string;
+            prefix: string;
+        };
     };
     navLinks?: NavLink[];
     hasNotifications?: boolean;
 };
+
+function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
+    const router = useRouter();
+    const inputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [value, setValue] = useState("");
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    const navigate = useCallback(
+        (withScope: boolean) => {
+            const q = withScope && search.scope ? `${search.scope.prefix} ${value}`.trim() : value.trim();
+            if (!q) {
+                return;
+            }
+            setShowDropdown(false);
+            router.push(`/search?q=${encodeURIComponent(q)}`);
+        },
+        [router, search.scope, value]
+    );
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (search.scope) {
+                // Dropdown is already visible from focus; Enter defaults to scoped search
+                navigate(true);
+            } else {
+                navigate(false);
+            }
+        } else if (e.key === "Escape") {
+            setShowDropdown(false);
+            inputRef.current?.blur();
+        }
+    }
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Focus input on "/" keypress (when not already in an input)
+    useEffect(() => {
+        function handleSlash(e: KeyboardEvent) {
+            if (e.key !== "/") {
+                return;
+            }
+            const tag = (e.target as HTMLElement).tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) {
+                return;
+            }
+            e.preventDefault();
+            inputRef.current?.focus();
+        }
+        document.addEventListener("keydown", handleSlash);
+        return () => document.removeEventListener("keydown", handleSlash);
+    }, []);
+
+    return (
+        <div ref={containerRef} className="flex-1 max-w-lg relative">
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                        if (search.scope) {
+                            setShowDropdown(true);
+                        }
+                    }}
+                    placeholder={search.placeholder}
+                    className="w-full h-9 pl-9 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground bg-secondary rounded border border-border">
+                    /
+                </kbd>
+            </div>
+
+            {showDropdown && search.scope && (
+                <div className="absolute top-full mt-1 w-full bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">
+                    <button
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left"
+                        onClick={() => navigate(true)}
+                    >
+                        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>
+                            Search in <span className="font-mono font-medium">{search.scope.label}</span>
+                        </span>
+                    </button>
+                    <div className="border-t border-border" />
+                    <button
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
+                        onClick={() => navigate(false)}
+                    >
+                        <Search className="h-3.5 w-3.5 shrink-0" />
+                        <span>Search all of GitArena</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false }: TopBarProps) {
     const router = useRouter();
@@ -72,21 +186,7 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                         ))}
                 </div>
 
-                {search && (
-                    <div className="flex-1 max-w-lg">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder={search.placeholder}
-                                className="w-full h-9 pl-9 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-                            />
-                            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground bg-secondary rounded border border-border">
-                                /
-                            </kbd>
-                        </div>
-                    </div>
-                )}
+                {search && <SearchBar search={search} />}
 
                 <nav className="flex items-center gap-1 shrink-0 ml-auto">
                     {navLinks &&

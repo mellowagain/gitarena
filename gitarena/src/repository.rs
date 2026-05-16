@@ -104,7 +104,7 @@ impl Repository {
 
     #[instrument(err, skip(tx))]
     pub(crate) async fn gitoxide(&self, tx: &mut Transaction<'_, Database>) -> Result<GitoxideRepository> {
-        Ok(gix::discover(self.get_fs_path(tx).await?)?)
+        Ok(gix::open(self.get_fs_path(tx).await?)?)
     }
 
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]

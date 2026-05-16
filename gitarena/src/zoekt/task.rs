@@ -8,7 +8,7 @@ use fang::{AsyncQueueable, AsyncRunnable, FangError, typetag};
 use gix::path::env;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 pub(crate) static ZOEKT_TASK_TYPE: &str = "zoekt";
 
@@ -39,6 +39,15 @@ impl AsyncRunnable for ZoektIndexRepo {
         let home = env::var("HOME").unwrap_or_default();
         zoekt_index_binary_path = zoekt_index_binary_path.replacen('~', home.to_str().unwrap_or_default(), 1);
 
+        {
+            let git_repo = gix::open(&path).context("failed to open git repository").fang()?;
+
+            if git_repo.head().fang()?.is_unborn() {
+                debug!("skipping zoekt indexing for empty repository");
+                return Ok(());
+            }
+        }
+
         let mut command = Command::new(zoekt_index_binary_path)
             .args(["-branches", &self.repo.default_branch])
             .args(["-index", &zoekt_index_dir])
@@ -54,6 +63,8 @@ impl AsyncRunnable for ZoektIndexRepo {
         if !exit_status.success() {
             let code = exit_status.code().map_or_else(|| "terminated by signal".to_string(), |code| code.to_string());
 
+            warn!(?code, "zoekt-git-index exited with non-zero exit code");
+
             return Err(FangError {
                 description: format!("zoekt-git-index exited with non-zero exit code: {code}"),
             });
@@ -65,5 +76,9 @@ impl AsyncRunnable for ZoektIndexRepo {
 
     fn task_type(&self) -> String {
         ZOEKT_TASK_TYPE.to_string()
+    }
+
+    fn max_retries(&self) -> i32 {
+        3
     }
 }
