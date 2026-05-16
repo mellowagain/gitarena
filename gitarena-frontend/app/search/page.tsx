@@ -67,7 +67,7 @@ interface CodeSearchResult {
 }
 
 interface CodeSearchResponse {
-    Result: CodeSearchResult;
+    result: CodeSearchResult;
 }
 
 // ── Mock data (WIP tabs) ───────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ function CodeResults({ query }: { query: string }) {
         );
     }
 
-    const files = data?.Result?.Files;
+    const files = data?.result?.Files;
 
     if (!files || files.length === 0) {
         return (
@@ -687,8 +687,8 @@ function SearchPageContent() {
         revalidateOnReconnect: false,
     });
 
-    const codeFileCount = codeData?.Result?.FileCount ?? 0;
-    const codeMatchCount = codeData?.Result?.MatchCount ?? 0;
+    const codeFileCount = codeData?.result?.FileCount ?? 0;
+    const codeMatchCount = codeData?.result?.MatchCount ?? 0;
     const codeDurationMs = codeData ? Math.round((codeData.Result?.Duration ?? 0) / 1000) : null;
 
     function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
