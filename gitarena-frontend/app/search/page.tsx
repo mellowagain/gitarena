@@ -37,8 +37,8 @@ interface LineMatch {
     LineNumber: number;
     LineStart: number;
     LineEnd: number;
-    Before: string[];
-    After: string[];
+    Before: string;
+    After: string;
     LineFragments: LineFragment[];
     FileName: boolean;
     Score: number;
@@ -420,8 +420,8 @@ function CodeResults({ query }: { query: string }) {
                         <div className="divide-y divide-border/40">
                             {(file.LineMatches ?? []).map((match, j) => {
                                 const line = atob(match.Line);
-                                const beforeLines = (match.Before ?? []).map((b) => atob(b));
-                                const afterLines = (match.After ?? []).map((a) => atob(a));
+                                const beforeLines = match.Before ? atob(match.Before).split("\n").filter(Boolean) : [];
+                                const afterLines = match.After ? atob(match.After).split("\n").filter(Boolean) : [];
 
                                 return (
                                     <div key={j}>
