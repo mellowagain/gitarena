@@ -2,13 +2,14 @@ use crate::database::Pool;
 use crate::mail::Email;
 use crate::passkey::{ChallengeType, StoredPasskey, WebAuthnChallenge, aaguid_from_raw_credential, name_from_user_agent};
 use crate::routes::user::api::auth::me::MeResponse;
-use crate::session::Session;
+use crate::session::{Session, send_login_email};
 use crate::user::{User, WebUser};
 use crate::{die, err};
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
+use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -277,6 +278,7 @@ pub(crate) async fn post_login_finish(
     request: HttpRequest,
     id: Identity,
     webauthn: web::Data<Webauthn>,
+    queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
@@ -344,6 +346,8 @@ pub(crate) async fn post_login_finish(
     debug!(user.username, user.id = %user.id, "User logged in via passkey");
 
     tx.commit().await?;
+
+    send_login_email(&user, &request, &queue, &db_pool).await?;
 
     Ok(HttpResponse::Ok().json(MeResponse {
         id: user.id,

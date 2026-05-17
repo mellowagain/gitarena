@@ -1,13 +1,14 @@
 use crate::database::Pool;
 use crate::mail::Email;
 use crate::routes::user::api::auth::me::MeResponse;
-use crate::session::Session;
+use crate::session::{Session, send_login_email};
 use crate::user::{User, WebUser};
 use crate::{crypto, die, err};
 
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
+use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::Deserialize;
 use tracing::debug;
@@ -32,6 +33,7 @@ pub(crate) async fn post_login(
     web_user: WebUser,
     request: HttpRequest,
     id: Identity,
+    queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
@@ -92,6 +94,8 @@ pub(crate) async fn post_login(
     debug!(user.username, user.id = %user.id, "User logged in");
 
     transaction.commit().await?;
+
+    send_login_email(&user, &request, &queue, &db_pool).await?;
 
     Ok(HttpResponse::Ok().json(MeResponse {
         id: user.id,

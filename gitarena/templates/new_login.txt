@@ -1,0 +1,11 @@
+New sign-in detected on your account.
+
+  Time:         {{ time }}
+  Location:     {{ location }}
+  User Agent:   {{ user_agent }}
+
+If this was you, no action is needed. If you don't recognize this sign-in,
+secure your account by changing your password immediately.
+
+--
+{{ instance_name }} | {{ domain }}

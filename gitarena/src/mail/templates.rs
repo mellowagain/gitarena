@@ -32,3 +32,20 @@ impl OrgInviteTemplate<'_> {
         format!("You've been invited to join {}", self.org)
     }
 }
+
+#[derive(Template)]
+#[template(path = "new_login.txt", escape = "none")]
+pub(crate) struct NewLoginTemplate<'a> {
+    pub(crate) time: &'a str,
+    pub(crate) location: &'a str,
+    pub(crate) user_agent: &'a str,
+
+    pub(crate) instance_name: &'a str,
+    pub(crate) domain: &'a str,
+}
+
+impl NewLoginTemplate<'_> {
+    pub(crate) fn subject(&self) -> String {
+        "New sign-in detected".to_string()
+    }
+}

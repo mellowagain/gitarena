@@ -6,10 +6,17 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::net::Ipv6Addr;
 use std::str::FromStr;
 
-use crate::database::Database;
+use crate::database::{Database, Pool};
+use crate::geoip;
+use crate::mail::Email;
+use crate::mail::task::MailTask;
+use crate::mail::templates::NewLoginTemplate;
 use actix_web::HttpRequest;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
+use askama::Template;
 use chrono::{DateTime, Local};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
+use gitarena_macros::from_config;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
@@ -152,4 +159,71 @@ fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
     const RESERVED_IP: Ipv6Addr = Ipv6Addr::new(0x100, 0, 0, 0, 0, 0, 0, 0);
 
     Ipv6Network::new(RESERVED_IP, 64).unwrap_or_log().into()
+}
+
+#[instrument(skip(queue, db_pool))]
+pub(crate) async fn send_login_email(user: &User, request: &HttpRequest, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
+    let (log_user_agent, log_ip, domain, smtp_enabled, smtp_address) = from_config!(
+        "sessions.log_user_agent" => bool,
+        "sessions.log_ip" => bool,
+        "domain" => String,
+        "smtp.enabled" => bool,
+        "smtp.address" => String,
+    );
+
+    if !smtp_enabled {
+        return Ok(());
+    }
+
+    let mut tx = db_pool.begin().await?;
+
+    let Some(email) = Email::find_primary_email(user.id, &mut tx).await? else {
+        return Ok(());
+    };
+
+    tx.commit().await?;
+
+    let (location, user_agent) = {
+        let (ip, user_agent) = extract_ip_and_ua(request);
+
+        let location = if log_ip {
+            let (city, country) = geoip::lookup(ip.ip());
+            let mut result = String::new();
+
+            if let Some(city) = city {
+                result.push_str(&city);
+                result.push_str(", ");
+            }
+
+            if let Some(country) = country {
+                result.push_str(&country);
+            }
+
+            if result.is_empty() { "n/a".to_string() } else { result }
+        } else {
+            "n/a".to_string()
+        };
+
+        (location, if log_user_agent { user_agent } else { "n/a" })
+    };
+
+    let now = Local::now();
+
+    let template = NewLoginTemplate {
+        time: &now.format("%Y-%m-%d %H:%M:%S").to_string(),
+        location: location.as_str(),
+        user_agent,
+        instance_name: "GitArena",
+        domain: domain.as_str(),
+    };
+
+    let task = MailTask {
+        from: ("GitArena".to_string(), smtp_address),
+        to: (user.username.clone(), email.email),
+        subject: template.subject(),
+        body: template.render().context("failed to render new sign in template")?,
+    };
+
+    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
+    Ok(())
 }
