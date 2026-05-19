@@ -1,6 +1,20 @@
 "use client";
 
-import { Star, GitFork, Eye, Copy, Check, ChevronDown, ExternalLink, Scale, Users, Package, Calendar, Building2 } from "lucide-react";
+import {
+    Star,
+    GitFork,
+    Eye,
+    Copy,
+    Check,
+    ChevronDown,
+    ExternalLink,
+    Scale,
+    Users,
+    Package,
+    Calendar,
+    Building2,
+    Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { forwardRef, useState } from "react";
 import type { ButtonHTMLAttributes, ElementType } from "react";
@@ -302,6 +316,15 @@ export function RepoSidebar({
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">About</h3>
                         <div className="flex items-center gap-1.5">
+                            {authUser?.username === user && (
+                                <Link
+                                    href={`/${user}/${repo}/settings`}
+                                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Repository settings"
+                                >
+                                    <Settings className="h-3.5 w-3.5" />
+                                </Link>
+                            )}
                             <StatButton
                                 icon={Star}
                                 count={data.stars.count}
