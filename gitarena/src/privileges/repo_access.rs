@@ -1,8 +1,9 @@
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
+use utoipa::ToSchema;
 
-#[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Type, Display, Debug, Ord, PartialOrd, Eq, PartialEq, Deserialize, Serialize, ToSchema)]
 #[sqlx(type_name = "access_level", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum AccessLevel {

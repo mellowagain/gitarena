@@ -13,6 +13,7 @@ pub(crate) mod blame;
 pub(crate) mod branch_commits;
 pub(crate) mod branch_files;
 pub(crate) mod branches;
+pub(crate) mod collaborators;
 pub(crate) mod commit_detail;
 pub(crate) mod create_repo;
 pub(crate) mod file_content;
@@ -43,6 +44,10 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(star::post_star);
     config.service(star::delete_star);
     config.service(star::put_star);
+
+    config.service(collaborators::list_collaborators);
+    config.service(collaborators::upsert_collaborator);
+    config.service(collaborators::remove_collaborator);
 }
 
 pub(crate) async fn determine_namespace(namespace: &str, user: &User, tx: &mut Transaction<'_, Database>) -> Result<(Uuid, String)> {

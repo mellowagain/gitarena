@@ -1,4 +1,5 @@
 use crate::organization::{OrgMember, OrgRole, Organization};
+use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceHealth};
@@ -11,6 +12,7 @@ use crate::routes::organization::api::members::{AddMemberRequest, OrgMemberEntry
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::routes::repository::api::blame::{BlameHunk, BlameResponse};
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
+use crate::routes::repository::api::collaborators::{CollaboratorResponse, UpsertCollaboratorRequest};
 use crate::routes::repository::api::commit_detail::{
     CommitDetailResponse, CommitMeta, DiffFile, DiffHunk, DiffLineEntry, DiffLineKind, DiffStats, DiffStatus, FileStats, SignatureInfo,
 };
@@ -88,6 +90,9 @@ impl Modify for CookieAuth {
         crate::routes::admin::health::get_instance_health,
         crate::routes::admin::users::get_instance_users,
         crate::routes::search::code::get_code_search,
+        crate::routes::repository::api::collaborators::list_collaborators,
+        crate::routes::repository::api::collaborators::upsert_collaborator,
+        crate::routes::repository::api::collaborators::remove_collaborator,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -137,6 +142,9 @@ impl Modify for CookieAuth {
         ComponentStatus,
         ExtendedUser,
         CodeSearchResponse,
+        AccessLevel,
+        CollaboratorResponse,
+        UpsertCollaboratorRequest,
     )),
     modifiers(&CookieAuth),
     tags(
