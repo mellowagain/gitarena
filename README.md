@@ -5,6 +5,8 @@ It is meant as a lightweight and performant alternative to the likes of
 GitLab and Gitea, built with self-hosting and cross-platform/cross-architecture
 support in mind.
 
+To see a demo, you may browse the source code of GitArena itself on my hosted GitArena instance: https://git.mari.zip/mellowagain/gitarena
+
 <details>
 <summary>Features progress</summary>
 
@@ -75,44 +77,98 @@ support in mind.
 
 ## Building
 
+### Backend
+
 Requirements:
 
-* Latest Rust stable toolchain
+- Latest Rust stable toolchain
 
 Compiling:
 
 ```
+$ cd gitarena
 $ cargo build --release
 ```
 
-Cargo will build all required dependencies as well as GitArena itself.
-The resulting binary can be found in `./target/release`.
+### Frontend
 
-## Usage
+Requirements:
 
-In order to run GitArena, the following environment variable needs to be set:
+- Node.js 24
+- pnpm 10
 
-* `BIND_ADDRESS`: [Socket address](https://doc.rust-lang.org/nightly/std/net/trait.ToSocketAddrs.html) to bind to, for example `localhost:8080` or `127.0.0.1:80` (Port is required)
-* Specify either of these two environment variables:
-    * `DATABASE_URL_FILE`: Path to a file containing the [Postgres connection string][postgres]
-    * `DATABASE_URL`: Raw [Postgres connection string][postgres]
+Building:
 
+```
+$ cd gitarena-frontend
+$ pnpm run build
+```
+
+## Running
+
+You can either spin up everything via a Docker Compose or the backend and frontend separately.
+
+### Docker
+
+A `docker-compose.yml` is provided to spin up all GitArena components:
+
+- Rust backend
+- Next.js frontend
+- Postgresql
+
+```
+$ docker compose up -d
+```
+
+### Backend
+
+In order to run the GitArena backend, the following environment variable needs to be set:
+
+- `BIND_ADDRESS`: [Socket address](https://doc.rust-lang.org/nightly/std/net/trait.ToSocketAddrs.html) to bind to, for example `localhost:8080` or `127.0.0.1:80` (Port is required)
+- `DATABASE_URL`: Raw [Postgres connection string][postgres]
+
+Optional environment variables:
+
+- `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
+- `NO_STDOUT_LOG`: Set to any value to only write logs to the log file (and Otel, if configured)
+- `OTEL_SERVICE_NAME`: Service name to be used for metrics, traces and logs
+
+Observability is provided through Otel and can be optionally enabled by setting:
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: URL to a otlp endpoint
+
+Standardized [Otel environment variables](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/) are supported.
+
+GitArena gets compiled as a normal binary so you can just run it. 
 After start GitArena will automatically create the required tables. Please edit the `settings` table to configure your
 GitArena instance and restart GitArena. In the future this will be do-able in the web ui.
 
-Afterwards your GitArena instance will be fully set up and you can register
+Afterwards, your GitArena instance will be fully set up and you can register
 your account. In order to access the admin panel (`/admin`), please set
 `admin` on your user account in the `users` table to `true`.
 
-### Logs
+The frontend will now be reachable at https://localhost:8080/api or your configured hostname and port.
 
-By default, GitArena will write logs to a file (instead of the console) when built with `--release`. In order
-to view the logs, look for a file in the `logs` directory ending with the current date.
+### Frontend
 
-### Optional environment variables
+In order to run the GitArena frontend, the following environment variables need to be set:
 
-* `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
-* `DATABASE_PASSWORD_FILE`: This environment variable may contain a path to a file containing the Postgres database password. In that case, the password does not need to be specified in the [Postgres connection string][postgres]. This is for usage with Docker secrets.
+- `NODE_ENV`: set to `production`
+- `NEXT_PUBLIC_API_URL`: URL to the GitArena backend, defaults to `http://localhost:8080`
+
+Optionally you can set:
+
+- `HOSTNAME`: address to bind to, default `0.0.0.0`
+- `PORT`: port to bind to, default `3030`
+
+Then run:
+
+```
+$ cd gitarena-frontend
+$ pnpm run start
+```
+
+The frontend will now be reachable at https://localhost:3030 or your configured hostname and port.
 
 ## Screenshots
 
