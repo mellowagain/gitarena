@@ -90,10 +90,11 @@ function resolveImageUrl(url: string, user: string, repo: string, branch: string
             .join("");
         return `/api/proxy/${hex}`;
     }
-    // Relative path — resolve against the directory of the markdown file
+    // Relative path — resolve against the directory of the markdown file, serve raw bytes via blob URL
     const dir = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
     const resolved = dir ? `${dir}/${url}` : url;
-    return `/api/repos/${user}/${repo}/branch/${branch}/files/${resolved}`;
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+    return `${backendUrl}/${user}/${repo}/tree/${branch}/~blob/${resolved}`;
 }
 
 export function MarkdownRenderer({

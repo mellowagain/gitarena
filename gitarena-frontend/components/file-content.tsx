@@ -109,7 +109,7 @@ export function FileContent({
             <span>
                 Content has been truncated to 5 MB because the file is too large to display in full.{" "}
                 <a
-                    href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${filename}`}
+                    href={`${process.env.NEXT_PUBLIC_API_URL ?? ""}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
                     target="_blank"
                     rel="noreferrer"
                     className="underline underline-offset-2 hover:opacity-70 transition-opacity"
