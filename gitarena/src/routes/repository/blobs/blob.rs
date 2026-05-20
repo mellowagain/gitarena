@@ -1,5 +1,5 @@
 use crate::database::Pool;
-use crate::git::utils::{read_blob_content, repo_files_at_ref};
+use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::repository::{Branch, Repository};
 use crate::routes::repository::blobs::BlobRequest;
 use crate::{die, err};
@@ -31,7 +31,7 @@ pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::P
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let (_, content, _) = recursively_visit_blob_content(tree_ref, uri.blob.as_str(), store.clone(), &mut blob_buffer).await?;
 
-    let mime = infer::get(content.as_bytes()).map_or("text/plain", |ty| ty.mime_type());
+    let mime = infer::get(&content).map_or("text/plain", |ty| ty.mime_type());
 
     transaction.commit().await?;
 
@@ -47,7 +47,7 @@ async fn recursively_visit_blob_content<'a>(
     path: &str,
     store: Arc<Store>,
     buffer: &'a mut Vec<u8>,
-) -> Result<(String, String, EntryMode)> {
+) -> Result<(String, Vec<u8>, EntryMode)> {
     let tree = Tree::from(tree_ref);
     let (search, remaining) = path.split_once('/').map_or_else(|| (path, None), |(a, b)| (a, Some(b)));
 
@@ -70,6 +70,6 @@ async fn recursively_visit_blob_content<'a>(
 
         let file_name = entry.filename.to_str().unwrap_or("Invalid file name");
 
-        Ok((file_name.to_owned(), read_blob_content(entry.oid.as_ref(), store).await?, entry.mode))
+        Ok((file_name.to_owned(), read_raw_blob_content(entry.oid.as_ref(), store).await?, entry.mode))
     }
 }
