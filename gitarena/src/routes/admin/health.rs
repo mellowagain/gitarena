@@ -2,20 +2,24 @@ use crate::config::get_setting;
 use crate::database::Pool;
 use crate::die;
 use crate::mail::TRANSPORTER;
+use crate::prelude::AwcExtensions;
 use crate::ssh::SSH_TASK_HANDLE;
 use crate::user::WebUser;
 use crate::utils::time_function;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Context, Result};
+use awc::Client;
+use awc::http::StatusCode;
 use fang::{AsyncQueue, Serialize};
 use futures::future;
-use gitarena_macros::route;
+use gitarena_macros::{from_config, route};
+use opentelemetry_instrumentation_actix_web::ClientExt;
 use std::env;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
-use tracing::error;
+use tracing::{error, instrument};
 use utoipa::ToSchema;
 
 #[utoipa::path(
@@ -54,17 +58,21 @@ pub(crate) async fn get_instance_health(web_user: WebUser, queue: web::Data<Asyn
     set.spawn(future::ready(Ok(check_workers(&queue))));
     set.spawn(check_email());
 
-    let mut components = Vec::with_capacity(set.len());
+    let mut components = Vec::with_capacity(set.len() + 1);
 
     for task in set.join_all().await {
         components.push(task?);
     }
+
+    // awc::Client is not Send, so check_zoekt cannot be spawned on JoinSet
+    components.push(check_zoekt(&db_pool).await?);
 
     components.sort_by(|a, b| a.name.cmp(&b.name));
 
     Ok(HttpResponse::Ok().json(InstanceHealth { components }))
 }
 
+#[instrument(err, skip(db_pool))]
 async fn check_database(db_pool: &Pool) -> Result<InstanceComponent> {
     let mut tx = db_pool.begin().await?;
 
@@ -91,6 +99,7 @@ async fn check_database(db_pool: &Pool) -> Result<InstanceComponent> {
     })
 }
 
+#[instrument(err, skip(db_pool))]
 async fn check_ssh(db_pool: &Pool) -> Result<InstanceComponent> {
     let (latency, status) = if let Some(handle) = SSH_TASK_HANDLE.get() {
         if handle.is_finished() {
@@ -132,6 +141,7 @@ async fn check_ssh(db_pool: &Pool) -> Result<InstanceComponent> {
     })
 }
 
+#[instrument(skip(queue))]
 fn check_workers(queue: &AsyncQueue) -> InstanceComponent {
     let status = if queue.check_if_connection().is_ok() {
         ComponentStatus::Healthy
@@ -146,6 +156,7 @@ fn check_workers(queue: &AsyncQueue) -> InstanceComponent {
     }
 }
 
+#[instrument(err)]
 async fn check_email() -> Result<InstanceComponent> {
     let (latency, status) = if let Some(transporter) = TRANSPORTER.get() {
         let (latency, result) = time_function(async || transporter.test_connection().await).await;
@@ -164,6 +175,47 @@ async fn check_email() -> Result<InstanceComponent> {
 
     Ok(InstanceComponent {
         name: "Email".to_string(),
+        status,
+        latency,
+    })
+}
+
+#[instrument(err, skip(db_pool))]
+async fn check_zoekt(db_pool: &Pool) -> Result<InstanceComponent> {
+    let (enabled, address) = from_config!(
+        "zoekt.enabled" => bool,
+        "zoekt.address" => String,
+    );
+
+    let (status, latency) = if enabled {
+        let (latency, response) = time_function(|| async {
+            Client::gitarena()
+                .get(format!("{address}/healthz").as_str())
+                .timeout(Duration::from_secs(5))
+                .trace_request()
+                .send()
+                .await
+        })
+        .await;
+
+        if let Ok(mut response) = response {
+            if response.status() == StatusCode::OK {
+                (ComponentStatus::Healthy, Some(latency))
+            } else {
+                let bytes = response.body().await?;
+                let string = String::from_utf8_lossy(&bytes);
+
+                (ComponentStatus::Degraded(string.to_string()), Some(latency))
+            }
+        } else {
+            (ComponentStatus::Unhealthy, None)
+        }
+    } else {
+        (ComponentStatus::Disabled, None)
+    };
+
+    Ok(InstanceComponent {
+        name: "Zoekt".to_string(),
         status,
         latency,
     })
