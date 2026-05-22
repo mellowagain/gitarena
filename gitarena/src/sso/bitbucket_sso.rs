@@ -8,6 +8,7 @@ use crate::{config, crypto, err};
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::meili::MeiliClient;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use awc::Client;
@@ -92,7 +93,7 @@ impl SSOProvider for BitBucketSSO {
     }
 
     #[instrument(skip_all)]
-    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User> {
+    async fn create_user(&self, token: &str, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
         let profile_data: SerdeMap = BitBucketSSO::request_data("user", token).await?;
@@ -168,6 +169,8 @@ impl SSOProvider for BitBucketSSO {
         }
 
         transaction.commit().await?;
+
+        user.index_meili(meili_client).await;
 
         // TODO: Save SSH keys and GPG keys
 

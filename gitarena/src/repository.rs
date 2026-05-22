@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::meili::{MeiliClient, REPOS_MEILI_INDEX};
 use crate::zoekt::init_zoekt_config;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
@@ -26,7 +27,7 @@ use gix::refs::file::loose::Reference;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use sqlx::{FromRow, Transaction};
-use tracing::{Level, instrument};
+use tracing::{Level, error, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -147,6 +148,15 @@ impl Repository {
     #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
     pub(crate) async fn repo_size(&self, tx: &mut Transaction<'_, Database>) -> Result<u64> {
         Ok(dir::get_size(self.get_fs_path(tx).await?)?)
+    }
+
+    #[instrument(skip(client))]
+    pub(crate) async fn index_meili(&self, client: &MeiliClient) {
+        if let Some(client) = client
+            && let Err(err) = client.index(REPOS_MEILI_INDEX).add_documents(&[self], Some("id")).await
+        {
+            error!(?err, "failed to index repo in meilisearch");
+        }
     }
 }
 

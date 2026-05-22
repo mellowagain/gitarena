@@ -1,5 +1,6 @@
 use crate::config::Setting;
 use crate::database::Pool;
+use crate::meili::MeiliClient;
 use crate::ssh::server::SshServer;
 use anyhow::{Context, Result};
 use gitarena_macros::from_config;
@@ -21,7 +22,7 @@ mod server;
 pub(crate) static SSH_TASK_HANDLE: OnceCell<JoinHandle<()>> = OnceCell::const_new();
 
 #[instrument(skip_all)]
-pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<Option<RunningServerHandle>> {
+pub(crate) async fn init(db_pool: Pool, meili_client: MeiliClient, bind_address: &str) -> Result<Option<RunningServerHandle>> {
     let (enabled, port): (bool, i32) = from_config!(
         "ssh.enabled" => bool,
         "ssh.port" => i32
@@ -77,7 +78,7 @@ pub(crate) async fn init(db_pool: Pool, bind_address: &str) -> Result<Option<Run
 
     let port = u16::try_from(port).context("port needs to be within 0-65535")?;
 
-    let mut server = SshServer { db_pool };
+    let mut server = SshServer { db_pool, meili_client };
 
     let socket = TcpListener::bind((address.as_str(), port))
         .await

@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
@@ -19,10 +20,10 @@ import {
     CheckCircle2,
     Circle,
     Star,
-    GitFork,
     Lock,
     Globe,
     MessageSquare,
+    ChevronDown,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -73,64 +74,38 @@ interface CodeSearchResponse {
     result: CodeSearchResult;
 }
 
-// ── Mock data (WIP tabs) ───────────────────────────────────────────────────────
+interface ExploreRepo {
+    id: string;
+    name: string;
+    description: string;
+    ownerId: string;
+    ownerName: string;
+    visibility: string;
+    archived: boolean;
+    disabled: boolean;
+    languages: Record<string, number>;
+    stars: number;
+    issues: number;
+    mergeRequests: number;
+}
 
-const MOCK_REPOSITORIES = [
-    {
-        full_name: "mellowagain/gitarena",
-        description: "A lightweight, self-hosted git forge written in Rust",
-        stars: 892,
-        forks: 43,
-        language: "Rust",
-        visibility: "public",
-        updatedAt: "2 hours ago",
-    },
-    {
-        full_name: "torvalds/linux",
-        description: "Linux kernel source tree",
-        stars: 18423,
-        forks: 4821,
-        language: "C",
-        visibility: "public",
-        updatedAt: "1 hour ago",
-    },
-    {
-        full_name: "gvanrossum/cpython",
-        description: "The Python programming language",
-        stars: 12301,
-        forks: 2901,
-        language: "Python",
-        visibility: "public",
-        updatedAt: "3 hours ago",
-    },
-    {
-        full_name: "dhh/rails",
-        description: "Ruby on Rails — full-stack web framework",
-        stars: 9842,
-        forks: 1231,
-        language: "Ruby",
-        visibility: "public",
-        updatedAt: "2 days ago",
-    },
-    {
-        full_name: "rust-lang/rust",
-        description: "Empowering everyone to build reliable and efficient software",
-        stars: 14201,
-        forks: 2102,
-        language: "Rust",
-        visibility: "public",
-        updatedAt: "30 min ago",
-    },
-    {
-        full_name: "acme-inc/internal-api",
-        description: "Internal REST API for ACME product suite",
-        stars: 0,
-        forks: 0,
-        language: "TypeScript",
-        visibility: "private",
-        updatedAt: "4 hours ago",
-    },
-];
+interface RepoSearchResponse {
+    total: number;
+    repositories: ExploreRepo[];
+}
+
+interface SearchUser {
+    id: string;
+    username: string;
+    admin: boolean;
+}
+
+interface UserSearchResponse {
+    total: number;
+    users: SearchUser[];
+}
+
+// ── Mock data (WIP tabs) ───────────────────────────────────────────────────────
 
 const MOCK_ISSUES = [
     {
@@ -250,35 +225,6 @@ const MOCK_MRS = [
         comments: 11,
         base: "main",
         head: "refactor/auth-split",
-    },
-];
-
-const MOCK_USERS = [
-    { username: "mellowagain", displayName: "Mari", bio: "Building GitArena. Rust enthusiast.", repos: 34, followers: 412, following: 58 },
-    { username: "torvalds", displayName: "Linus Torvalds", bio: "I'm not a people person.", repos: 12, followers: 18201, following: 0 },
-    {
-        username: "gvanrossum",
-        displayName: "Guido van Rossum",
-        bio: "Python's BDFL (emeritus). Now at Microsoft.",
-        repos: 27,
-        followers: 9432,
-        following: 14,
-    },
-    {
-        username: "dhh",
-        displayName: "DHH",
-        bio: "Creator of Ruby on Rails, Founder at 37signals.",
-        repos: 19,
-        followers: 7821,
-        following: 3,
-    },
-    {
-        username: "wycats",
-        displayName: "Yehuda Katz",
-        bio: "Rust, Ember, Ruby. @tildeio co-founder.",
-        repos: 58,
-        followers: 3201,
-        following: 102,
     },
 ];
 
@@ -643,51 +589,125 @@ function CodeResults({ query }: { query: string }) {
     );
 }
 
-function RepoResults() {
+function RepoResults({ query }: { query: string }) {
+    const PAGE_SIZE = 20;
+    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<RepoSearchResponse>(
+        (index) =>
+            query ? `/api/search/repositories?query=${encodeURIComponent(query)}&offset=${index * PAGE_SIZE}&limit=${PAGE_SIZE}` : null,
+        { revalidateOnFocus: false, revalidateOnReconnect: false }
+    );
+
+    const allRepos = data?.flatMap((page) => page.repositories) ?? [];
+    const lastPage = data ? data[data.length - 1] : null;
+    const hasMore = !isLoading && lastPage != null && lastPage.repositories.length === PAGE_SIZE;
+
+    if (!query) {
+        return <p className="text-sm text-muted-foreground">Enter a query to search repositories.</p>;
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">Failed to load repositories</p>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="border border-border rounded-lg overflow-hidden">
+                {Array.from({ length: 5 }, (_, i) => (
+                    <div key={i} className={`flex items-start gap-4 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                        <div className="h-9 w-9 rounded-md bg-secondary border border-border shrink-0 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-secondary rounded animate-pulse w-48" />
+                            <div className="h-3 bg-secondary rounded animate-pulse w-72" />
+                            <div className="h-3 bg-secondary rounded animate-pulse w-32" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (allRepos.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">No repositories found</p>
+            </div>
+        );
+    }
+
+    const primaryLanguage = (languages: Record<string, number>): string | null => {
+        const entries = Object.entries(languages);
+        if (entries.length === 0) {
+            return null;
+        }
+        return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+    };
+
     return (
-        <div className="border border-border rounded-lg overflow-hidden">
-            {MOCK_REPOSITORIES.map((repo, i) => (
-                <div
-                    key={repo.full_name}
-                    className={`flex items-start gap-4 px-4 py-4 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
-                >
-                    <div className="h-9 w-9 rounded-md bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
-                        {repo.full_name.split("/")[1][0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <Link href={`/${repo.full_name}`} className="text-sm font-medium hover:underline">
-                                {repo.full_name}
-                            </Link>
-                            <span
-                                className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary`}
-                            >
-                                {repo.visibility === "private" ? <Lock className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
-                                {repo.visibility}
-                            </span>
+        <>
+            <div className="border border-border rounded-lg overflow-hidden">
+                {allRepos.map((repo, i) => {
+                    const lang = primaryLanguage(repo.languages);
+                    return (
+                        <div
+                            key={repo.id}
+                            className={`flex items-start gap-4 px-4 py-4 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
+                        >
+                            <div className="h-9 w-9 rounded-md bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
+                                {repo.name[0].toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <Link href={`/${repo.ownerName}/${repo.name}`} className="text-sm font-medium hover:underline">
+                                        {repo.ownerName}/{repo.name}
+                                    </Link>
+                                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                        {repo.visibility === "private" ? (
+                                            <Lock className="h-2.5 w-2.5" />
+                                        ) : (
+                                            <Globe className="h-2.5 w-2.5" />
+                                        )}
+                                        {repo.visibility}
+                                    </span>
+                                </div>
+                                {repo.description && (
+                                    <p className="text-sm text-muted-foreground leading-relaxed mb-2">{repo.description}</p>
+                                )}
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    {lang && (
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: languageColor(lang) }} />
+                                            {lang}
+                                        </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                        <Star className="h-3 w-3" />
+                                        {repo.stars.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        {repo.description && <p className="text-sm text-muted-foreground leading-relaxed mb-2">{repo.description}</p>}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            {repo.language && (
-                                <span className="flex items-center gap-1.5">
-                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: languageColor(repo.language) }} />
-                                    {repo.language}
-                                </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                                <Star className="h-3 w-3" />
-                                {repo.stars.toLocaleString()}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <GitFork className="h-3 w-3" />
-                                {repo.forks.toLocaleString()}
-                            </span>
-                            <span>Updated {repo.updatedAt}</span>
-                        </div>
-                    </div>
+                    );
+                })}
+            </div>
+            {hasMore && (
+                <div className="flex justify-center mt-6">
+                    <button
+                        onClick={() => setSize(size + 1)}
+                        disabled={isValidating}
+                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                        Load more
+                    </button>
                 </div>
-            ))}
-        </div>
+            )}
+        </>
     );
 }
 
@@ -794,39 +814,94 @@ function MRResults() {
     );
 }
 
-function UserResults() {
-    return (
-        <div className="border border-border rounded-lg overflow-hidden">
-            {MOCK_USERS.map((user, i) => (
-                <div
-                    key={user.username}
-                    className={`flex items-center gap-4 px-4 py-3.5 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
-                >
-                    <div className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
-                        {user.displayName[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <Link href={`/${user.username}`} className="text-sm font-medium hover:underline">
-                                {user.displayName}
-                            </Link>
-                            <span className="text-xs text-muted-foreground font-mono">{user.username}</span>
+function UserResults({ query }: { query: string }) {
+    const PAGE_SIZE = 20;
+    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<UserSearchResponse>(
+        (index) => (query ? `/api/search/users?query=${encodeURIComponent(query)}&offset=${index * PAGE_SIZE}&limit=${PAGE_SIZE}` : null),
+        { revalidateOnFocus: false, revalidateOnReconnect: false }
+    );
+
+    const allUsers = data?.flatMap((page) => page.users) ?? [];
+    const lastPage = data ? data[data.length - 1] : null;
+    const hasMore = !isLoading && lastPage != null && lastPage.users.length === PAGE_SIZE;
+
+    if (!query) {
+        return <p className="text-sm text-muted-foreground">Enter a query to search users.</p>;
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">Failed to load users</p>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="border border-border rounded-lg overflow-hidden">
+                {Array.from({ length: 5 }, (_, i) => (
+                    <div key={i} className={`flex items-center gap-4 px-4 py-3.5 ${i > 0 ? "border-t border-border" : ""}`}>
+                        <div className="h-10 w-10 rounded-full bg-secondary border border-border shrink-0 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-secondary rounded animate-pulse w-32" />
+                            <div className="h-3 bg-secondary rounded animate-pulse w-20" />
                         </div>
-                        {user.bio && <p className="text-xs text-muted-foreground leading-relaxed">{user.bio}</p>}
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
-                        <span className="flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5" />
-                            {user.repos}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <Users className="h-3.5 w-3.5" />
-                            {user.followers.toLocaleString()}
-                        </span>
+                ))}
+            </div>
+        );
+    }
+
+    if (allUsers.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">No users found</p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="border border-border rounded-lg overflow-hidden">
+                {allUsers.map((user, i) => (
+                    <div
+                        key={user.id}
+                        className={`flex items-center gap-4 px-4 py-3.5 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
+                    >
+                        <div className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
+                            {user.username[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <Link href={`/${user.username}`} className="text-sm font-medium hover:underline">
+                                    {user.username}
+                                </Link>
+                                {user.admin && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                        admin
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </div>
+                ))}
+            </div>
+            {hasMore && (
+                <div className="flex justify-center mt-6">
+                    <button
+                        onClick={() => setSize(size + 1)}
+                        disabled={isValidating}
+                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                        Load more
+                    </button>
                 </div>
-            ))}
-        </div>
+            )}
+        </>
     );
 }
 
@@ -840,11 +915,9 @@ const TABS: { id: SearchType; label: string; icon: React.ElementType }[] = [
     { id: "users", label: "Users", icon: Users },
 ];
 
-const MOCK_COUNTS: Record<Exclude<SearchType, "code">, number> = {
-    repositories: MOCK_REPOSITORIES.length,
+const MOCK_COUNTS: Record<"issues" | "merge-requests", number> = {
     issues: MOCK_ISSUES.length,
     "merge-requests": MOCK_MRS.length,
-    users: MOCK_USERS.length,
 };
 
 function SearchPageContent() {
@@ -857,6 +930,16 @@ function SearchPageContent() {
 
     // Fetch code results to get counts for the sidebar
     const { data: codeData } = useSWR<CodeSearchResponse>(q ? `/api/search/code?query=${encodeURIComponent(q)}` : null, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    });
+
+    const { data: repoData } = useSWR<RepoSearchResponse>(q ? `/api/search/repositories?query=${encodeURIComponent(q)}&limit=1` : null, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    });
+
+    const { data: userData } = useSWR<UserSearchResponse>(q ? `/api/search/users?query=${encodeURIComponent(q)}&limit=1` : null, {
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
     });
@@ -878,7 +961,13 @@ function SearchPageContent() {
         if (id === "code") {
             return q ? codeFileCount : null;
         }
-        return MOCK_COUNTS[id as Exclude<SearchType, "code">];
+        if (id === "repositories") {
+            return q && repoData ? repoData.total : null;
+        }
+        if (id === "users") {
+            return q && userData ? userData.total : null;
+        }
+        return MOCK_COUNTS[id as "issues" | "merge-requests"];
     }
 
     const activeCount = getTabCount(activeType);
@@ -967,10 +1056,10 @@ function SearchPageContent() {
                         )}
 
                         {activeType === "code" && <CodeResults query={q} />}
-                        {activeType === "repositories" && <RepoResults />}
+                        {activeType === "repositories" && <RepoResults query={q} />}
                         {activeType === "issues" && <IssueResults />}
                         {activeType === "merge-requests" && <MRResults />}
-                        {activeType === "users" && <UserResults />}
+                        {activeType === "users" && <UserResults query={q} />}
                     </main>
                 </div>
             </div>

@@ -10,6 +10,7 @@ use crate::{die, err};
 use std::str::FromStr;
 
 use crate::mail::Email;
+use crate::meili::MeiliClient;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
@@ -67,7 +68,13 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
 }
 
 #[route("/api/sso/{service}/callback", method = "GET", err = "json")]
-pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identity, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn sso_callback(
+    sso_request: web::Path<SSORequest>,
+    id: Identity,
+    request: HttpRequest,
+    meili_client: web::Data<MeiliClient>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     if id.identity().is_some() {
         die!(UNAUTHORIZED, "Already logged in");
     }
@@ -105,7 +112,7 @@ pub(crate) async fn sso_callback(sso_request: web::Path<SSORequest>, id: Identit
         }
         None => {
             // User link does not exist -> Create new user
-            SSOProvider::create_user(&*provider_impl, token.as_str(), &db_pool)
+            SSOProvider::create_user(&*provider_impl, token.as_str(), &meili_client, &db_pool)
                 .await
                 .context("Failed to create new user using sso")?
         }

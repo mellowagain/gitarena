@@ -8,6 +8,7 @@ use crate::utils::filesystem::copy_dir_all;
 
 use std::path::Path;
 
+use crate::meili::MeiliClient;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
@@ -40,6 +41,7 @@ pub(crate) async fn create_fork(
     web_user: WebUser,
     body: web::Json<ForkJsonRequest>,
     request: HttpRequest,
+    meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -96,6 +98,8 @@ pub(crate) async fn create_fork(
     let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
 
     tx.commit().await?;
+
+    repo.index_meili(&meili_client).await;
 
     let extensions = request.extensions();
     let repo_owner = extensions.get::<RepoOwner>().ok_or_else(|| anyhow!("Failed to lookup repo owner"))?;

@@ -8,6 +8,7 @@ use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
 
 use crate::mail::Email;
+use crate::meili::MeiliClient;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -23,6 +24,7 @@ pub(crate) async fn post_register(
     id: Identity,
     request: HttpRequest,
     queue: web::Data<AsyncQueue>,
+    meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     if id.identity().is_some() {
@@ -108,6 +110,8 @@ pub(crate) async fn post_register(
     send_verification_mail(&user, email.email, &queue, &db_pool).await?;
 
     id.remember(session.to_string());
+
+    user.index_meili(&meili_client).await;
 
     info!(user.username, user.id = %user.id, "New user signed up");
 

@@ -4,6 +4,7 @@ use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
+use crate::meili::MeiliClient;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::privileges::privilege;
 use crate::repository::{Repository, extract_repo_from_request};
@@ -25,13 +26,14 @@ use tracing::{debug, error, instrument, warn};
 #[derive(Clone, Debug)]
 pub(crate) struct SshServer {
     pub(crate) db_pool: Pool,
+    pub(crate) meili_client: MeiliClient,
 }
 
 impl Server for SshServer {
     type Handler = SshHandler;
 
     fn new_client(&mut self, _peer_addr: Option<SocketAddr>) -> Self::Handler {
-        SshHandler::new(self.db_pool.clone())
+        SshHandler::new(self.db_pool.clone(), self.meili_client.clone())
     }
 
     fn handle_session_error(&mut self, err: <Self::Handler as Handler>::Error) {
@@ -49,6 +51,7 @@ impl Server for SshServer {
 #[derive(Debug)]
 pub(crate) struct SshHandler {
     db_pool: Pool,
+    meili_client: MeiliClient,
 
     user: Option<User>,
     key: Option<SshKey>,
@@ -62,9 +65,10 @@ pub(crate) struct SshHandler {
 }
 
 impl SshHandler {
-    fn new(db_pool: Pool) -> Self {
+    fn new(db_pool: Pool, meili_client: MeiliClient) -> Self {
         Self {
             db_pool,
+            meili_client,
             user: None,
             key: None,
             version: GitProtocol::V1,
@@ -141,13 +145,16 @@ impl Handler for SshHandler {
         };
 
         let vec = self.buffer.clone();
+
         let db_pool = self.db_pool.clone();
+        let meili_client = self.meili_client.clone();
+
         let version = self.version;
 
         // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
         let result = match operation {
             SshOperation::UploadPack(repo) => spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, vec, version))).await?,
-            SshOperation::ReceivePack(repo) => spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, repo, vec))).await?,
+            SshOperation::ReceivePack(repo) => spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, &meili_client, repo, vec))).await?,
         };
 
         match result {
@@ -391,10 +398,10 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version:
 }
 
 #[instrument(err, skip(db_pool, vec))]
-async fn run_receive_pack(db_pool: Pool, mut repo: Repository, vec: Vec<u8>) -> Result<Vec<u8>> {
+async fn run_receive_pack(db_pool: Pool, meili_client: &MeiliClient, mut repo: Repository, vec: Vec<u8>) -> Result<Vec<u8>> {
     let start = Instant::now();
 
-    let output_writer = execute_receive_pack(&db_pool, &mut repo, vec.as_slice()).await?;
+    let output_writer = execute_receive_pack(&db_pool, meili_client, &mut repo, vec.as_slice()).await?;
     let output = output_writer.serialize().await.map(|b| b.to_vec())?;
 
     let elapsed = start.elapsed().as_secs_f64();

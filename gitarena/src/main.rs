@@ -39,6 +39,7 @@ mod issue;
 mod licenses;
 mod log;
 mod mail;
+mod meili;
 mod metrics;
 mod organization;
 mod passkey;
@@ -97,9 +98,10 @@ async fn main() -> Result<()> {
 
     let queue = queue::init().await?;
 
+    let meili_client = meili::init(&db_pool).await?;
     zoekt::init(&db_pool).await?;
 
-    let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
+    let ssh_handle = ssh::init(db_pool.clone(), meili_client.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
         let identity_service = IdentityService::new(
@@ -116,6 +118,7 @@ async fn main() -> Result<()> {
             .app_data(broadcaster.clone())
             .app_data(Data::new(webauthn.clone()))
             .app_data(Data::new(queue.clone()))
+            .app_data(Data::new(meili_client.clone()))
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))

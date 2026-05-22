@@ -8,6 +8,7 @@ use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err};
 
+use crate::meili::MeiliClient;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
@@ -17,7 +18,6 @@ use tracing::info;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
 // todo: This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[utoipa::path(
@@ -39,6 +39,7 @@ pub(crate) async fn import(
     web_user: WebUser,
     body: web::Json<ImportJsonRequest>,
     queue: web::Data<AsyncQueue>,
+    meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -140,6 +141,8 @@ pub(crate) async fn import(
     let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
 
     tx.commit().await?;
+
+    repo.index_meili(&meili_client).await;
 
     info!(
         target.id = %repo.id,

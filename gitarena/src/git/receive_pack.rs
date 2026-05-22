@@ -18,6 +18,7 @@ use std::time::Duration;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::meili::MeiliClient;
 use anyhow::{Context, Result, anyhow};
 use bstr::BString;
 use gix::actor::Signature;
@@ -142,7 +143,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
 }
 
 #[instrument(err, skip(db_pool, data))]
-pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &mut Repository, data: &[u8]) -> Result<GitWriter> {
+pub(crate) async fn execute_receive_pack(db_pool: &Pool, meili_client: &MeiliClient, repo: &mut Repository, data: &[u8]) -> Result<GitWriter> {
     let mut tx = db_pool.begin().await?;
 
     let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
@@ -236,6 +237,8 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &mut Repository, 
         .await?;
 
     tx.commit().await?;
+
+    repo.index_meili(&meili_client).await;
 
     Ok(output_writer)
 }

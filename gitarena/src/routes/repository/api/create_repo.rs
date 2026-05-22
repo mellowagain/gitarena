@@ -8,6 +8,7 @@ use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use crate::database::Pool;
+use crate::meili::MeiliClient;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
@@ -30,7 +31,12 @@ use uuid::Uuid;
     tag = "repository"
 )]
 #[route("/api/repo", method = "POST", err = "json")]
-pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn create(
+    web_user: WebUser,
+    body: web::Json<CreateJsonRequest>,
+    meili_client: web::Data<MeiliClient>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let name = &body.name;
 
@@ -106,6 +112,8 @@ pub(crate) async fn create(web_user: WebUser, body: web::Json<CreateJsonRequest>
     let path = format!("/{}/{}", &owner_name, &repo.name);
 
     tx.commit().await?;
+
+    repo.index_meili(&meili_client).await;
 
     info!(id = %repo.id, owner = owner_name, name = repo.name.as_str(), "New repository created");
 

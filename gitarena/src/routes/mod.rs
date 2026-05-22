@@ -21,6 +21,8 @@ use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::search::code::CodeSearchResponse;
+use crate::routes::search::repositories::RepoSearchResponse;
+use crate::routes::search::users::{SearchUser, UserSearchResponse};
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
@@ -90,6 +92,8 @@ impl Modify for CookieAuth {
         crate::routes::admin::health::get_instance_health,
         crate::routes::admin::users::get_instance_users,
         crate::routes::search::code::get_code_search,
+        crate::routes::search::repositories::get_repo_search,
+        crate::routes::search::users::get_user_search,
         crate::routes::repository::api::collaborators::list_collaborators,
         crate::routes::repository::api::collaborators::upsert_collaborator,
         crate::routes::repository::api::collaborators::remove_collaborator,
@@ -142,6 +146,9 @@ impl Modify for CookieAuth {
         ComponentStatus,
         ExtendedUser,
         CodeSearchResponse,
+        RepoSearchResponse,
+        UserSearchResponse,
+        SearchUser,
         AccessLevel,
         CollaboratorResponse,
         UpsertCollaboratorRequest,

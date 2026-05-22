@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::meili::{MeiliClient, USERS_MEILI_INDEX};
 use actix_identity::Identity;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
@@ -19,7 +20,7 @@ use futures::Future;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
-use tracing::instrument;
+use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
 
@@ -37,6 +38,15 @@ pub(crate) struct User {
 }
 
 impl User {
+    #[instrument(skip(client))]
+    pub(crate) async fn index_meili(&self, client: &MeiliClient) {
+        if let Some(client) = client
+            && let Err(err) = client.index(USERS_MEILI_INDEX).add_documents(&[self], Some("id")).await
+        {
+            error!(?err, "failed to index user in meilisearch");
+        }
+    }
+
     #[instrument(skip(tx))]
     pub(crate) async fn find_using_id(id: Uuid, tx: &mut Transaction<'_, Database>) -> Option<User> {
         sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")

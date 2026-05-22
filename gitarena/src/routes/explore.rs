@@ -79,7 +79,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
     Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str()).fetch_all(&mut **tx).await?)
 }
 
-#[derive(FromRow, Serialize, Deserialize, Debug, ToSchema)]
+#[derive(FromRow, Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExploreRepo {
     id: Uuid,
@@ -95,6 +95,32 @@ pub(crate) struct ExploreRepo {
     issues: i64,
     #[sqlx(default)]
     merge_requests: i64,
+}
+
+impl ExploreRepo {
+    pub(crate) fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub(crate) fn from_repo(repo: crate::repository::Repository, owner_name: String, stars: i64, issues: i64) -> Self {
+        let owner_id = repo.owner_user.or(repo.owner_org).unwrap_or_default();
+        let languages = serde_json::to_value(&repo.languages).unwrap_or_default();
+
+        ExploreRepo {
+            id: repo.id,
+            name: repo.name,
+            description: repo.description,
+            owner_id,
+            owner_name,
+            visibility: repo.visibility,
+            archived: repo.archived,
+            disabled: repo.disabled,
+            languages,
+            stars,
+            issues,
+            merge_requests: 0,
+        }
+    }
 }
 
 #[derive(Debug)]

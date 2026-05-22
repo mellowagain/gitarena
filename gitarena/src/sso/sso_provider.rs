@@ -8,6 +8,7 @@ use crate::user::User;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::meili::MeiliClient;
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
@@ -131,7 +132,7 @@ pub(crate) trait SSOProvider {
 
     async fn get_provider_id(&self, token: &str) -> Result<String>;
 
-    async fn create_user(&self, token: &str, db_pool: &Pool) -> Result<User>;
+    async fn create_user(&self, token: &str, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User>;
 }
 
 #[async_trait]
