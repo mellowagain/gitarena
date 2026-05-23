@@ -30,6 +30,11 @@ jobs:
       - name: build
         run: cargo build --verbose --release
 
+      - name: install git-bug for tests
+        run: |
+          curl -fsSL https://github.com/git-bug/git-bug/releases/download/v0.10.1/git-bug_linux_amd64 -o /usr/local/bin/git-bug
+          chmod +x /usr/local/bin/git-bug
+
       - name: test
         run: cargo test --verbose
 
