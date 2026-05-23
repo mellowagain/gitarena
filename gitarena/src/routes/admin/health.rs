@@ -2,6 +2,7 @@ use crate::config::get_setting;
 use crate::database::Pool;
 use crate::die;
 use crate::mail::TRANSPORTER;
+use crate::meili::MeiliClient;
 use crate::prelude::AwcExtensions;
 use crate::ssh::SSH_TASK_HANDLE;
 use crate::user::WebUser;
@@ -34,7 +35,12 @@ use utoipa::ToSchema;
     tag = "admin"
 )]
 #[route("/api/admin/health", method = "GET", err = "json")]
-pub(crate) async fn get_instance_health(web_user: WebUser, queue: web::Data<AsyncQueue>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn get_instance_health(
+    web_user: WebUser,
+    queue: web::Data<AsyncQueue>,
+    meili_client: web::Data<MeiliClient>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     if !user.admin {
@@ -57,6 +63,11 @@ pub(crate) async fn get_instance_health(web_user: WebUser, queue: web::Data<Asyn
 
     set.spawn(future::ready(Ok(check_workers(&queue))));
     set.spawn(check_email());
+
+    set.spawn({
+        let meili_client = meili_client.clone();
+        async move { check_meilisearch(&meili_client).await }
+    });
 
     let mut components = Vec::with_capacity(set.len() + 1);
 
@@ -216,6 +227,25 @@ async fn check_zoekt(db_pool: &Pool) -> Result<InstanceComponent> {
 
     Ok(InstanceComponent {
         name: "Zoekt".to_string(),
+        status,
+        latency,
+    })
+}
+
+#[instrument(err, skip(meili_client))]
+async fn check_meilisearch(meili_client: &MeiliClient) -> Result<InstanceComponent> {
+    let (latency, status) = if let Some(client) = meili_client {
+        match timeout(Duration::from_secs(5), time_function(|| async { client.is_healthy().await })).await {
+            Ok((latency, true)) => (Some(latency), ComponentStatus::Healthy),
+            Ok((latency, false)) => (Some(latency), ComponentStatus::Unhealthy),
+            Err(_) => (None, ComponentStatus::Degraded("5sec time out reached trying to connect to ssh".to_string())),
+        }
+    } else {
+        (None, ComponentStatus::Disabled)
+    };
+
+    Ok(InstanceComponent {
+        name: "Meilisearch".to_string(),
         status,
         latency,
     })
