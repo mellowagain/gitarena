@@ -19,16 +19,16 @@ workspace = true
 actix-identity = "0.4.0"
 actix-multipart = "0.4.0"
 actix-web = { version = "4.0.1", features = ["secure-cookies"] }
-anyhow = "1.0.52"
+anyhow = { workspace = true }
 askalono = { version = "0.4.4", git = "https://github.com/mellowagain/askalono" } # Currently uses my own fork until https://github.com/jpeddicord/askalono/pull/73 is merged
 askama = { version = "0.16.0", default-features = false, features = ["config", "derive", "std"] }
 async-compression = { version = "0.3.8", features = ["gzip", "tokio"] }
 async-recursion = "1.0.0"
 async-trait = "0.1.52"
 awc = { version = "3.0.0", features = ["rustls"] } # awc uses rustls for the time being because of version conflicts with openssl
-base64 = "0.13.0"
+base64 = { workspace = true }
 bstr = "1.12.1"
-chrono = { version = "0.4.19", features = ["serde"] }
+chrono = { workspace = true }
 console-subscriber = { version = "0.1.3", features = ["parking_lot"] }
 derive_more = { version = "2.1.1", features = ["debug"] }
 either = "1.15.0"
@@ -38,9 +38,10 @@ fs_extra = "1.2.0"
 futures = "0.3.19"
 futures-locks = "0.7.0"
 git2 = "0.20.0"
+gitarena-issues = { path = "../gitarena-issues" }
 gitarena-macros = { path = "../gitarena-macros" }
-gix = { version = "0.75.0", features = ["async-network-client", "max-performance"] }
-hex = "0.4.3"
+gix = { workspace = true, features = ["async-network-client"] }
+hex = { workspace = true }
 image = "0.23.14"
 infer = "0.19.0"
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses
@@ -61,19 +62,19 @@ opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki
 opentelemetry-semantic-conventions = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 qstring = "0.7.2"
-rand = "0.10.1"
+rand = { workspace = true }
 russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
 rust-argon2 = { version = "1.0.0", features = ["crossbeam-utils"] }
-serde = { version = "1.0.133", features = ["derive"] }
+serde = { workspace = true }
 serde_cbor_2 = "0.13.0"
-serde_json = "1.0.75"
+serde_json = { workspace = true }
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] }
 sysinfo = "0.29.0"
 time = "0.3.5"
 tokei = { version = "14.0.0", default-features = false }
 tokio = { version = "1.28.2", features = ["full", "tracing"] }
 tokio-tar = "0.3.0"
-tracing = "0.1.29"
+tracing = { workspace = true }
 tracing-appender = "0.2.0"
 tracing-opentelemetry = "0.32.1"
 tracing-subscriber = { version = "0.3.6", features = ["env-filter", "json", "std"] }
@@ -82,7 +83,7 @@ trust-dns-resolver = { version = "0.23.2", features = ["dnssec-ring"] }
 url = "2.2.2"
 utoipa = { version = "4.2.3", features = ["actix_extras", "chrono", "url", "uuid"] }
 utoipa-rapidoc = { version = "1", features = ["actix-web"] }
-uuid = { version = "1", features = ["v4", "v5", "v7", "serde"] }
+uuid = { workspace = true, features = ["v4", "v5", "v7"] }
 webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 zip = { version = "0.5.13",  default-features = false, features = ["deflate", "time"] }
 log = "0.4.28"

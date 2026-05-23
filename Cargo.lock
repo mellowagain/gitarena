@@ -2481,6 +2481,7 @@ dependencies = [
  "futures",
  "futures-locks",
  "git2",
+ "gitarena-issues",
  "gitarena-macros",
  "gix",
  "hex",
@@ -2530,6 +2531,25 @@ dependencies = [
  "vergen",
  "webauthn-rs",
  "zip",
+]
+
+[[package]]
+name = "gitarena-issues"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "base64 0.13.1",
+ "chrono",
+ "gix",
+ "hex",
+ "rand 0.10.1",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "tracing",
+ "uuid",
+ "which",
 ]
 
 [[package]]
@@ -8808,6 +8828,15 @@ name = "weezl"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a751b3277700db47d3e574514de2eced5e54dc8a5436a3bf7a0b248b2cee16f3"
+
+[[package]]
+name = "which"
+version = "8.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "whoami"

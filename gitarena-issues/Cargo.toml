@@ -1,0 +1,28 @@
+[package]
+name = "gitarena-issues"
+version = { workspace = true }
+authors = { workspace = true }
+edition = "2024"
+license = { workspace = true }
+repository = { workspace = true }
+description = "Rust library for interacting with `git-bug` issues"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+gix = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.11.0"
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3.23.0"
+which = "8.0.2"
