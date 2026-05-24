@@ -163,6 +163,12 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, meili_client: &MeiliCli
 
     ref_update::propagate_capabilities(&mut updates);
 
+    for update in &updates {
+        if update.target_ref.starts_with("refs/bugs/") {
+            die!(FORBIDDEN, "Issues are managed through the GitArena web interface and cannot be pushed directly");
+        }
+    }
+
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
     let store = gitoxide_repo.objects.store().clone();
 

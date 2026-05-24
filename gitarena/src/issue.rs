@@ -1,30 +1,63 @@
-use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
-use derive_more::Display;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use tracing::error;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// Contains issues and their corresponding data; Does *not* contain the actual text content
-#[derive(FromRow, Display, Debug, Serialize)]
-#[display("{title}")]
-pub(crate) struct Issue {
+use crate::meili::{ISSUES_MEILI_INDEX, MeiliClient};
+
+#[derive(FromRow, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssueCache {
     pub(crate) id: Uuid,
+    pub(crate) repo_id: Uuid,
+    pub(crate) git_bug_id: String,
+    pub(crate) index: i32,
 
-    repo: Uuid,
-    index: i32, // Issue # per repository (not global instance)
+    pub(crate) author_id: Uuid,
 
-    pub(crate) author: Uuid,
-    title: String,
+    pub(crate) title: String,
+    pub(crate) body: String,
 
-    pub(crate) milestone: Option<i32>,
-    pub(crate) labels: Vec<i32>,
-    pub(crate) assignees: Vec<i32>,
+    pub(crate) labels: Vec<String>,
+    pub(crate) priority: String,
 
-    closed: bool,
-    confidential: bool,
-    locked: bool,
+    pub(crate) open: bool,
+    pub(crate) confidential: bool,
+    pub(crate) locked: bool,
 
-    #[serde(with = "ts_seconds")]
-    updated_at: DateTime<Utc>,
+    pub(crate) milestone_id: Option<Uuid>,
+    pub(crate) assignees: Vec<Uuid>,
+
+    pub(crate) updated_at: DateTime<Utc>,
+}
+
+impl IssueCache {
+    pub(crate) async fn index_meili(&self, client: &MeiliClient) {
+        if let Some(client) = client
+            && let Err(err) = client.index(ISSUES_MEILI_INDEX).add_documents(&[self], Some("id")).await
+        {
+            error!(?err, "failed to index issue in meilisearch");
+        }
+    }
+
+    pub(crate) async fn deindex_meili(id: Uuid, client: &MeiliClient) {
+        if let Some(client) = client
+            && let Err(err) = client.index(ISSUES_MEILI_INDEX).delete_document(id).await
+        {
+            error!(?err, "failed to deindex issue in meilisearch");
+        }
+    }
+}
+
+#[derive(FromRow, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssueCommentCache {
+    pub(crate) id: Uuid,
+    pub(crate) op_id: String,
+    pub(crate) issue_id: Uuid,
+    pub(crate) author_id: Uuid,
+    pub(crate) body: String,
+    pub(crate) edited_at: Option<DateTime<Utc>>,
 }
