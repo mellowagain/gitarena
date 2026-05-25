@@ -1,0 +1,110 @@
+---
+title: "git-bug compatibility"
+description: "How GitArena stores issues as git objects and interoperates with the git-bug CLI."
+---
+
+GitArena stores issues using the same git object format as [git-bug](https://github.com/git-bug/git-bug). This means issues travel with the repository — clone or fetch and you have the full issue history offline.
+
+## Storage layout
+
+Issues are stored as commit chains under `refs/bugs/` in the repository. Identities (authors) are stored under `refs/identities/`. Neither namespace appears in normal `git fetch` output unless explicitly fetched.
+
+```
+refs/bugs/<64-char-sha256>     ← one ref per issue
+refs/identities/<64-char-sha256>  ← one ref per author identity
+```
+
+Each issue ref points to a chain of commits. Each commit holds a tree with:
+
+| Tree entry | Contents |
+|------------|----------|
+| `ops` | JSON blob containing an operation pack |
+| `create-clock-N` | Empty blob (first commit only); N is the Lamport create clock value |
+| `edit-clock-N` | Empty blob; N is the Lamport edit clock value |
+| `version-4` | Empty blob marking the schema version |
+
+## Identities
+
+Each author identity is a commit under `refs/identities/<sha256>`. The commit tree holds a single `version` entry containing a JSON blob:
+
+```json
+{
+  "version": 2,
+  "times": {},
+  "unix_time": 1700000000,
+  "name": "username",
+  "email": "user@example.com",
+  "nonce": "base64-encoded-nonce"
+}
+```
+
+The identity's SHA-256 is computed over this JSON blob. GitArena generates a deterministic identity for each user based on their user ID and account creation time, so the same GitArena user always maps to the same git-bug identity.
+
+## Operation packs
+
+Each commit's `ops` blob is a JSON operation pack:
+
+```json
+{
+  "author": {
+    "id": "64-char-sha256-of-identity-blob"
+  },
+  "ops": [
+    {
+      "type": 1,
+      "timestamp": 1700000000,
+      "nonce": "base64-encoded-nonce",
+      "title": "Issue title",
+      "message": "Issue body",
+      "files": null
+    }
+  ]
+}
+```
+
+The author field contains only the identity's SHA-256 — no name or email inline. Resolve the identity by reading `refs/identities/<id>`.
+
+### Operation types
+
+| Type | Name | Description |
+|------|------|-------------|
+| 1 | Create | Opens the issue with a title and body |
+| 2 | SetTitle | Renames the issue |
+| 3 | AddComment | Adds a comment |
+| 4 | SetStatus | Opens or closes the issue |
+| 5 | LabelChange | Adds or removes labels |
+| 6 | EditComment | Edits the body of a previous comment or the initial description |
+
+### Issue and operation IDs
+
+The issue ID is the SHA-256 of the serialized JSON for the first (create) operation. Operation IDs use the same method — SHA-256 of their individual JSON bytes. Both are 64 hex characters; git-bug's human-readable "short ID" is the first 7 characters.
+
+## Fetching issues locally
+
+To read issues offline with the `git-bug` CLI, fetch the bug and identity refs explicitly:
+
+```bash
+git fetch origin 'refs/bugs/*:refs/bugs/*' 'refs/identities/*:refs/identities/*'
+git bug list
+git bug show <id>
+```
+
+## What works with git-bug CLI
+
+| Operation | Works |
+|-----------|-------|
+| `git bug list` | Yes |
+| `git bug show` | Yes |
+| `git bug comment` | Yes (when pushed to GitArena — see below) |
+| `git bug status close` / `open` | Yes |
+| `git bug label add/rm` | Yes |
+| `git bug title edit` | Yes |
+| `git bug push` | Blocked |
+
+GitArena blocks direct pushes to `refs/bugs/*`. All writes must go through the web interface or API. Read access is unrestricted — fetch the refs and use `git-bug` locally in read-only mode.
+
+## Postgres read cache
+
+GitArena maintains a `issue_cache` table that mirrors the current snapshot of each issue. This cache is updated on every write and powers the API's list, filter, sort, and search functionality. The git objects are the source of truth; the Postgres rows are derived from them.
+
+The `issue_cache` table does not have a `created_at` column. Creation time is embedded in the UUID v7 primary key and derived from it at query time.

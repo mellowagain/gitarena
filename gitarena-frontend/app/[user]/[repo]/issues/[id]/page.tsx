@@ -764,11 +764,11 @@ export default function IssuePage() {
                         icon: <AlertCircle className="h-[18px] w-[18px]" />,
                         active: true,
                     },
-                    {
-                        label: "Merge Requests",
-                        href: `/${user}/${repo}/merge-requests`,
-                        icon: <GitMerge className="h-[18px] w-[18px]" />,
-                    },
+                    //{
+                    //    label: "Merge Requests",
+                    //    href: `/${user}/${repo}/merge-requests`,
+                    //    icon: <GitMerge className="h-[18px] w-[18px]" />,
+                    //},
                 ]}
                 hasNotifications
             />

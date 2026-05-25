@@ -38,6 +38,7 @@
               "features/markdown",
               "features/authentication",
               "features/issues-and-merge-requests",
+              "features/git-bug-compatibility",
               "features/admin",
               "features/explore",
               "features/search"
