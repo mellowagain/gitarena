@@ -59,6 +59,9 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(issues::comments::edit_issue_comment);
     config.service(issues::comments::delete_issue_comment);
     config.service(issues::labels::list_labels);
+    config.service(issues::labels::create_label);
+    config.service(issues::labels::update_label);
+    config.service(issues::labels::delete_label);
     config.service(issues::milestones::list_milestones);
     config.service(issues::reactions::toggle_issue_reaction);
     config.service(issues::reactions::toggle_comment_reaction);

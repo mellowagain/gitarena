@@ -13,6 +13,7 @@ use gitarena_issues::ops::{change_labels, edit_comment, set_status, set_title};
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Transaction};
+use std::collections::HashSet;
 use tracing::{info, instrument};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -109,9 +110,13 @@ pub(crate) async fn create_issue(
 
     let mut bug = create_bug(&gitoxide_repo, author.clone(), body.title.clone(), body.body.clone())?;
 
-    if let Some(ref labels) = body.labels
+    if let Some(labels) = &body.labels
         && !labels.is_empty()
     {
+        if let Some(scope) = conflicting_scope(labels) {
+            die!(BAD_REQUEST, "Only one label per scope is allowed (conflict: {scope})");
+        }
+
         bug = change_labels(&gitoxide_repo, bug, author, labels.clone(), vec![])?;
     }
 
@@ -302,6 +307,18 @@ pub(crate) async fn update_issue(
     let remove = body.labels_remove.clone().unwrap_or_default();
 
     if !add.is_empty() || !remove.is_empty() {
+        let resulting: Vec<_> = issue
+            .labels
+            .iter()
+            .filter(|l| !remove.contains(l))
+            .cloned()
+            .chain(add.iter().cloned())
+            .collect();
+
+        if let Some(scope) = conflicting_scope(&resulting) {
+            die!(BAD_REQUEST, "Only one label per scope is allowed (conflict: {scope})");
+        }
+
         let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
         change_labels(&gitoxide_repo, bug, author.clone(), add.clone(), remove.clone())?;
 
@@ -503,6 +520,20 @@ pub(crate) struct UpdateIssueRequest {
     locked: Option<bool>,
     assignees: Option<Vec<Uuid>>,
     milestone_id: Option<Option<Uuid>>,
+}
+
+fn conflicting_scope(labels: &[String]) -> Option<String> {
+    let mut seen = HashSet::new();
+
+    for label in labels {
+        if let Some((scope, _)) = label.split_once("::")
+            && !seen.insert(scope)
+        {
+            return Some(scope.to_owned());
+        }
+    }
+
+    None
 }
 
 async fn resolve_username(id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<String> {
