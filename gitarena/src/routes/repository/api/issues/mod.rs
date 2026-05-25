@@ -22,6 +22,7 @@ pub(crate) mod comments;
 pub(crate) mod labels;
 pub(crate) mod milestones;
 pub(crate) mod reactions;
+pub(crate) mod timeline;
 
 #[utoipa::path(
     get,

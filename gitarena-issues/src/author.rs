@@ -1,13 +1,14 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::Utc;
 use gix::actor::Signature;
+use gix::bstr::ByteSlice;
 use gix::date::Time;
 use gix::date::parse::TimeBuf;
 use gix::objs::tree::{Entry, EntryKind};
 use gix::objs::{BlobRef, Tree};
 use gix::{ObjectId, Repository};
 use serde::{Deserialize, Serialize};
-use serde_json::Map;
+use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
@@ -38,7 +39,7 @@ pub struct Author {
 #[derive(Serialize)]
 struct IdentityBlob<'a> {
     version: u8,
-    times: Map<String, serde_json::Value>,
+    times: Map<String, Value>,
     unix_time: i64,
     name: &'a str,
     email: &'a str,
@@ -125,6 +126,37 @@ impl Author {
 
         Ok(())
     }
+}
+
+/// Load the username of an author from the git identity ref stored at `refs/identities/<author_id>`
+///
+/// # Return
+///
+/// `name` field from the identity blob
+pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
+    let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
+    let reference = repo.find_reference(ref_name.as_str()).context("identity ref not found")?;
+
+    let commit_id = reference.id().detach();
+    let commit = repo.find_object(commit_id)?.try_into_commit()?;
+    let commit_ref = commit.decode()?;
+
+    let tree_id = commit_ref.tree();
+    let tree = repo.find_object(tree_id)?.try_into_tree()?;
+    let tree_ref = tree.decode()?;
+
+    for entry in tree_ref.entries {
+        if entry.filename.to_str_lossy() == "version" {
+            let blob = repo.find_object(entry.oid.to_owned())?.try_into_blob()?;
+
+            let value: Value = serde_json::from_slice(&blob.data).context("failed to parse identity blob")?;
+            let name = value["name"].as_str().context("name field missing from identity blob")?;
+
+            return Ok(name.to_owned());
+        }
+    }
+
+    bail!("version entry not found in identity tree")
 }
 
 fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> Vec<u8> {

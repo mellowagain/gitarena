@@ -38,11 +38,11 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
   - [ ] Open, review, approve, merge
   - [ ] Inline comments on diffs 
   - [ ] Merge strategies (merge commit, squash, rebase)
-- [ ] Issue tracker
-  - [ ] open/close issues
-  - [ ] Labels
-  - [ ] Milestones
-  - [ ] Assignees
+- [x] Issue tracker
+  - [x] open/close issues
+  - [x] Labels
+  - [x] Milestones
+  - [x] Assignees
   - [ ] Kanban
 - [ ] Webhooks 
 - [x] REST API

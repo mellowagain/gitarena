@@ -58,6 +58,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(issues::get_issue_detail);
     config.service(issues::update_issue);
     config.service(issues::delete_issue);
+    config.service(issues::timeline::get_issue_timeline);
     config.service(issues::comments::add_issue_comment);
     config.service(issues::comments::edit_issue_comment);
     config.service(issues::comments::delete_issue_comment);

@@ -1,4 +1,4 @@
-use gitarena_issues::author::Author;
+use gitarena_issues::author::{Author, load_author_name};
 use gitarena_issues::bug::create_bug;
 use gitarena_issues::operation::BugStatus;
 use gitarena_issues::ops::{add_comment, set_status};
@@ -101,4 +101,16 @@ fn git_bug_can_read_comment_and_closed_status() {
 
 fn make_author() -> Author {
     Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000)
+}
+
+#[test]
+fn load_author_name_returns_username() {
+    let dir = tempdir().expect("tempdir");
+    let repo = gix::init(dir.path()).expect("gix::init");
+
+    let author = make_author();
+    author.write_identity_if_absent(&repo).expect("write_identity_if_absent");
+
+    let name = load_author_name(&repo, &author.id).expect("load_author_name");
+    assert_eq!(name, "testuser");
 }

@@ -20,6 +20,7 @@ use crate::routes::repository::api::commit_detail::{
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::issues::labels::{CreateLabelRequest, LabelEntry, LabelsResponse, UpdateLabelRequest};
+use crate::routes::repository::api::issues::timeline::TimelineEvent;
 use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
@@ -105,6 +106,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::issues::labels::create_label,
         crate::routes::repository::api::issues::labels::update_label,
         crate::routes::repository::api::issues::labels::delete_label,
+        crate::routes::repository::api::issues::timeline::get_issue_timeline,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -167,6 +169,7 @@ impl Modify for CookieAuth {
         CreateLabelRequest,
         UpdateLabelRequest,
         IssueStatus,
+        TimelineEvent,
     )),
     modifiers(&CookieAuth),
     tags(
