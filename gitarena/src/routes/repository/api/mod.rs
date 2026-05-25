@@ -19,6 +19,8 @@ pub(crate) mod create_repo;
 pub(crate) mod file_content;
 pub(crate) mod fork_repo;
 pub(crate) mod import_repo;
+pub(crate) mod issues;
+pub(crate) mod permissions;
 pub(crate) mod repo_meta;
 pub(crate) mod repo_readme;
 pub(crate) mod star;
@@ -45,9 +47,28 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(star::delete_star);
     config.service(star::put_star);
 
+    config.service(permissions::get_permissions);
+
     config.service(collaborators::list_collaborators);
     config.service(collaborators::upsert_collaborator);
     config.service(collaborators::remove_collaborator);
+
+    config.service(issues::list_issues);
+    config.service(issues::create_issue);
+    config.service(issues::get_issue_detail);
+    config.service(issues::update_issue);
+    config.service(issues::delete_issue);
+    config.service(issues::timeline::get_issue_timeline);
+    config.service(issues::comments::add_issue_comment);
+    config.service(issues::comments::edit_issue_comment);
+    config.service(issues::comments::delete_issue_comment);
+    config.service(issues::labels::list_labels);
+    config.service(issues::labels::create_label);
+    config.service(issues::labels::update_label);
+    config.service(issues::labels::delete_label);
+    config.service(issues::milestones::list_milestones);
+    config.service(issues::reactions::toggle_issue_reaction);
+    config.service(issues::reactions::toggle_comment_reaction);
 }
 
 pub(crate) async fn determine_namespace(namespace: &str, user: &User, tx: &mut Transaction<'_, Database>) -> Result<(Uuid, String)> {

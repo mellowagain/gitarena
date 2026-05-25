@@ -1,3 +1,4 @@
+use crate::issue::IssueStatus;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
@@ -18,6 +19,9 @@ use crate::routes::repository::api::commit_detail::{
 };
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
+use crate::routes::repository::api::issues::labels::{CreateLabelRequest, LabelEntry, LabelsResponse, UpdateLabelRequest};
+use crate::routes::repository::api::issues::timeline::TimelineEvent;
+use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::search::code::CodeSearchResponse;
@@ -97,6 +101,12 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::collaborators::list_collaborators,
         crate::routes::repository::api::collaborators::upsert_collaborator,
         crate::routes::repository::api::collaborators::remove_collaborator,
+        crate::routes::repository::api::permissions::get_permissions,
+        crate::routes::repository::api::issues::labels::list_labels,
+        crate::routes::repository::api::issues::labels::create_label,
+        crate::routes::repository::api::issues::labels::update_label,
+        crate::routes::repository::api::issues::labels::delete_label,
+        crate::routes::repository::api::issues::timeline::get_issue_timeline,
     ),
     components(schemas(
         ApiInfoResponse,
@@ -152,6 +162,14 @@ impl Modify for CookieAuth {
         AccessLevel,
         CollaboratorResponse,
         UpsertCollaboratorRequest,
+        PermissionsResponse,
+        RepoPermissions,
+        LabelEntry,
+        LabelsResponse,
+        CreateLabelRequest,
+        UpdateLabelRequest,
+        IssueStatus,
+        TimelineEvent,
     )),
     modifiers(&CookieAuth),
     tags(

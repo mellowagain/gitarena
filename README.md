@@ -38,11 +38,11 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
   - [ ] Open, review, approve, merge
   - [ ] Inline comments on diffs 
   - [ ] Merge strategies (merge commit, squash, rebase)
-- [ ] Issue tracker
-  - [ ] open/close issues
-  - [ ] Labels
+- [x] Issue tracker
+  - [x] open/close issues
+  - [x] Labels
   - [ ] Milestones
-  - [ ] Assignees
+  - [x] Assignees
   - [ ] Kanban
 - [ ] Webhooks 
 - [x] REST API
@@ -184,6 +184,14 @@ File view:
 
 ![File](docs/readme_screenshots/file-view.png)
 
+Issues overview:
+
+![Issue overview](docs/readme_screenshots/issue-overview.png)
+
+Issue detail:
+
+![Issue detail](docs/readme_screenshots/issue-detail.png)
+
 Create repository:
 
 ![Create](docs/readme_screenshots/new-repo.png)
@@ -203,6 +211,10 @@ Sign up:
 Explore:
 
 ![Explore](docs/readme_screenshots/explore.png)
+
+Search:
+
+![Search](docs/readme_screenshots/search.png)
 
 ## Thank you
 

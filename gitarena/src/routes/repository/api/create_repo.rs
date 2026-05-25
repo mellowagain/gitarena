@@ -3,6 +3,7 @@ use crate::die;
 use crate::git::write;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
+use crate::routes::repository::api::issues::labels::seed_default_labels;
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
@@ -91,6 +92,7 @@ pub(crate) async fn create(
     .await?;
 
     repo.create_fs(&mut tx).await?;
+    seed_default_labels(repo.id, &mut tx).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
     if let Some(readme) = body.readme

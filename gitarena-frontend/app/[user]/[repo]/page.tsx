@@ -69,11 +69,11 @@ function RepoTopBar({ user, repo }: { user: string; repo: string }) {
                     icon: <Code className="h-[18px] w-[18px]" />,
                     active: true,
                 },
-                //{
-                //    label: "Issues",
-                //    href: `/${user}/${repo}/issues`,
-                //    icon: <AlertCircle className="h-[18px] w-[18px]" />,
-                //},
+                {
+                    label: "Issues",
+                    href: `/${user}/${repo}/issues`,
+                    icon: <AlertCircle className="h-[18px] w-[18px]" />,
+                },
                 //{
                 //    label: "Merge Requests",
                 //    href: `/${user}/${repo}/merge-requests`,

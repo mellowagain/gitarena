@@ -1,22 +1,72 @@
 ---
 title: "Issues and merge requests"
-description: "Current status of issue and merge request pages in GitArena."
+description: "Issue tracking, comments, reactions, labels, milestones, and priority in GitArena."
 ---
 
-GitArena currently includes repository pages for issues and merge requests, but the full workflows are still under active development.
+GitArena includes a full issue tracker. Issues are stored as git objects in the repository using the [git-bug](https://github.com/git-bug/git-bug) wire format, with Postgres holding a read cache for fast querying, filtering, and search. See [git-bug compatibility](/features/git-bug-compatibility) for details on the storage format.
+
+## Creating an issue
+
+Open a repository and click the **Issues** tab, then **New issue**. Fill in a title and body (Markdown is supported), then optionally set a priority, labels, assignees, and milestone in the sidebar before submitting.
+
+You can also press `C` on the issues list to open the new issue form.
+
+## Issue fields
+
+| Field | Description |
+|-------|-------------|
+| Title | Required. Up to 256 characters. |
+| Body | Markdown. Supports headings, code blocks, tables, and task lists. |
+| Priority | One of `none`, `low`, `medium`, `high`, or `urgent`. |
+| Labels | One or more labels associated with the repository. Labels have a name, color, and optional description. |
+| Assignees | Users assigned to work on the issue. Any repository collaborator can be assigned. |
+| Milestone | An optional milestone grouping the issue. Milestones can have a title, description, and due date. |
+
+## Comments
+
+Any authenticated user with read access can comment on an issue. Comment authors and users with the **Manage issues** permission can edit or delete their own comments.
+
+## Reactions
+
+Reactions can be added to the issue body or to individual comments. Each emoji can only be added once per user per target. The current set of supported emojis includes standard reactions (`👍`, `👎`, `❤️`, `🎉`, `🚀`), faces, and a set of combination reactions like `😹😭✌️`.
+
+## Labels
+
+Labels are per-repository. Create and manage them in the repository settings. Each label has a name and a hex color; the color appears as a dot in the issue list and detail view.
+
+## Milestones
+
+Milestones group issues. Create them at `/{user}/{repo}/milestones`. A milestone can have a due date, and can be open or closed.
 
 <Note>
-  The current frontend pages use placeholder data. Issue creation, issue updates, merge request creation, diffs, discussions, approvals, and merging are not complete user-facing features yet.
+  Milestone management pages (create, edit, list) are not yet implemented in the frontend. Milestones can be set on issues through the API.
 </Note>
 
-## Issues
+## Closing and reopening
 
-Issue tables exist in the database and some backend code exists, but the issue route is not currently registered as a complete API workflow. The frontend issue list and detail pages are useful for UI development and design review, not production issue tracking.
+Users with the **Manage issues** permission can close or reopen an issue using the status dropdown in the sidebar, or using the close/reopen item in the issue row menu on the issues list.
+
+## Permissions
+
+| Action | Required permission |
+|--------|---------------------|
+| View issues | Read access to the repository |
+| Create issue | Authenticated |
+| Close / reopen | Manage issues |
+| Edit issue title or body | Manage issues, or issue author |
+| Edit own comment | Comment author |
+| Delete comment | Manage issues, or comment author |
+| Delete issue | Manage issues |
+| Add reaction | Authenticated |
+
+## Offline access and git-bug CLI
+
+Because issues use the git-bug wire format, you can read and write issues offline using the `git-bug` CLI after fetching `refs/bugs/*` from the remote. See [git-bug compatibility](/features/git-bug-compatibility).
+
+<Note>
+  Direct pushes to `refs/bugs/*` are blocked by the server. Use the web interface or API for writes.
+</Note>
 
 ## Merge requests
 
-Merge request list and detail pages exist in the frontend with placeholder content. Backend merge request creation, review, and merge behavior is not implemented as a complete feature yet.
-
-## API
-
-Use the [GitHub issues](https://github.com/mellowagain/gitarena/issues) tab for current implementation status.
+Merge request list and detail pages exist in the frontend. Full merge request creation, review workflows, diffs, approvals, and merging are not yet implemented.

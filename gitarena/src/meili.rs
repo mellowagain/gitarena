@@ -1,4 +1,5 @@
 use crate::database::{Database, Pool};
+use crate::issue::IssueCache;
 use crate::repository::Repository;
 use crate::user::User;
 use anyhow::{Context, Result};
@@ -10,6 +11,7 @@ use tracing::{error, info};
 
 pub(crate) static REPOS_MEILI_INDEX: &str = "repositories";
 pub(crate) static USERS_MEILI_INDEX: &str = "users";
+pub(crate) static ISSUES_MEILI_INDEX: &str = "issues";
 
 pub(crate) type MeiliClient = Option<Client>;
 
@@ -31,6 +33,7 @@ pub(crate) async fn init(db_pool: &Pool) -> Result<Option<Client>> {
 
     reindex_repos(&client, &mut tx).await?;
     reindex_users(&client, &mut tx).await?;
+    reindex_issues(&client, &mut tx).await?;
 
     tx.commit().await?;
 
@@ -85,6 +88,33 @@ async fn reindex_users(client: &Client, tx: &mut Transaction<'_, Database>) -> R
         match task.wait_for_completion(&cloned_client, None, Some(Duration::from_mins(5))).await {
             Ok(_) => info!("successfully re-indexed all users into meilisearch"),
             Err(err) => error!(?err, "failed to re-index all users into meilisearch"),
+        }
+    });
+
+    Ok(())
+}
+
+async fn reindex_issues(client: &Client, tx: &mut Transaction<'_, Database>) -> Result<()> {
+    let issues = sqlx::query_as::<_, IssueCache>("select * from issue_cache").fetch_all(&mut **tx).await?;
+
+    client
+        .index(ISSUES_MEILI_INDEX)
+        .set_filterable_attributes(&["repo_id", "open", "confidential", "priority"])
+        .await
+        .context("failed to set filterable attributes on issues meilisearch index")?;
+
+    let task = client
+        .index(ISSUES_MEILI_INDEX)
+        .add_documents(&issues, Some("id"))
+        .await
+        .context("failed to enqueue indexing task all issues to meilisearch")?;
+
+    let cloned_client = client.clone();
+
+    tokio::spawn(async move {
+        match task.wait_for_completion(&cloned_client, None, Some(Duration::from_mins(5))).await {
+            Ok(_) => info!("successfully re-indexed all issues into meilisearch"),
+            Err(err) => error!(?err, "failed to re-index all issues into meilisearch"),
         }
     });
 

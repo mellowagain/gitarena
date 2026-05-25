@@ -17,6 +17,7 @@ use actix_web::{FromRequest, HttpRequest};
 use anyhow::{Error, Result, anyhow};
 use derive_more::{Debug, Display};
 use futures::Future;
+use gitarena_issues::author::Author;
 use ipnetwork::IpNetwork;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
@@ -38,6 +39,11 @@ pub(crate) struct User {
 }
 
 impl User {
+    pub(crate) fn as_git_bug_author(&self) -> Author {
+        let (seconds, _) = self.id.get_timestamp().expect("user id to be uuid v7").to_unix();
+        Author::from_user(self.id, &self.username, &format!("{}@gitarena.local", self.id), seconds as i64)
+    }
+
     #[instrument(skip(client))]
     pub(crate) async fn index_meili(&self, client: &MeiliClient) {
         if let Some(client) = client

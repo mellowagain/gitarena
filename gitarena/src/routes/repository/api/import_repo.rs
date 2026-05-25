@@ -3,6 +3,7 @@ use crate::database::Pool;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::replication::ImportTask;
 use crate::repository::Repository;
+use crate::routes::repository::api::issues::labels::seed_default_labels;
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
@@ -18,6 +19,7 @@ use tracing::info;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
 // todo: This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[utoipa::path(
@@ -125,6 +127,7 @@ pub(crate) async fn import(
     .await?;
 
     repo.create_fs(&mut tx).await?;
+    seed_default_labels(repo.id, &mut tx).await?;
 
     let task = ImportTask {
         source: url.to_string(),

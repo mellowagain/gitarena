@@ -99,29 +99,31 @@ function resolveImageUrl(url: string, user: string, repo: string, branch: string
 
 export function MarkdownRenderer({
     content,
-    fileName,
-    user,
-    repo,
-    branch,
-    filePath,
+    fileName = "",
+    user = "",
+    repo = "",
+    branch = "",
+    filePath = "",
     showSource = false,
     wrapLines = false,
+    className = "p-8 space-y-4 text-sm leading-relaxed",
 }: {
     content: string;
-    fileName: string;
-    user: string;
-    repo: string;
-    branch: string;
-    filePath: string;
+    fileName?: string;
+    user?: string;
+    repo?: string;
+    branch?: string;
+    filePath?: string;
     showSource?: boolean;
     wrapLines?: boolean;
+    className?: string;
 }) {
     if (showSource) {
         return <CodeBlockContent content={content} filename={fileName} wrapLines={wrapLines} />;
     }
 
     return (
-        <div className="p-8 space-y-4 text-sm leading-relaxed">
+        <div className={className}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, rehypeDetails, [rehypeSanitize, sanitizeSchema]]}
@@ -153,6 +155,7 @@ export function MarkdownRenderer({
                                         border: "1px solid var(--border)",
                                         padding: "1rem 1.25rem",
                                         marginBottom: "1rem",
+                                        overflowX: "auto",
                                     }}
                                     PreTag="div"
                                 >
