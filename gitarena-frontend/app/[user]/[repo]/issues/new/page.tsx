@@ -13,6 +13,7 @@ import { jsonFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
+import { useAuth } from "@/hooks/use-auth";
 
 interface LabelsResponse {
     labels: { name: string; color: string }[];
@@ -47,6 +48,7 @@ export default function NewIssuePage() {
     const router = useRouter();
     const user = params.user as string;
     const repo = params.repo as string;
+    const { user: authUser } = useAuth();
 
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
@@ -73,6 +75,15 @@ export default function NewIssuePage() {
     const availableLabels = labelsData?.labels ?? [];
     const availableCollaborators = collaboratorsData ?? [];
     const availableMilestones = milestonesData?.milestones ?? [];
+
+    const assigneeDropdownList = [
+        ...(authUser && !assignees.includes(authUser.id) && !availableCollaborators.some((c) => c.userId === authUser.id)
+            ? [{ userId: authUser.id, username: authUser.username, accessLevel: "" }]
+            : []),
+        ...availableCollaborators
+            .filter((c) => !assignees.includes(c.userId))
+            .sort((a, b) => (a.userId === authUser?.id ? -1 : b.userId === authUser?.id ? 1 : 0)),
+    ];
 
     function toggleLabel(name: string) {
         if (labels.includes(name)) {
@@ -248,25 +259,23 @@ export default function NewIssuePage() {
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start" className="w-48">
-                                    {availableCollaborators.filter((c) => !assignees.includes(c.userId)).length === 0 ? (
+                                    {assigneeDropdownList.length === 0 ? (
                                         <DropdownMenuItem disabled className="text-muted-foreground italic">
                                             No collaborators
                                         </DropdownMenuItem>
                                     ) : (
-                                        availableCollaborators
-                                            .filter((c) => !assignees.includes(c.userId))
-                                            .map(({ userId, username }) => (
-                                                <DropdownMenuItem
-                                                    key={userId}
-                                                    onClick={() => toggleAssignee(userId)}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-                                                        {username[0].toUpperCase()}
-                                                    </div>
-                                                    {username}
-                                                </DropdownMenuItem>
-                                            ))
+                                        assigneeDropdownList.map(({ userId, username }) => (
+                                            <DropdownMenuItem
+                                                key={userId}
+                                                onClick={() => toggleAssignee(userId)}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
+                                                    {username[0].toUpperCase()}
+                                                </div>
+                                                {username}
+                                            </DropdownMenuItem>
+                                        ))
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>

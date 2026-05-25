@@ -277,11 +277,12 @@ export default function IssuesPage() {
     const [activeView, setActiveView] = useState<ViewId>("all");
     const [selectedIssue, setSelectedIssue] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "updated">("newest");
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
 
-    const apiUrl = `/api/repos/${user}/${repo}/issues?status=${activeView}`;
+    const apiUrl = `/api/repos/${user}/${repo}/issues`;
 
     const { data, isLoading, mutate } = useSWR<IssuesResponse>(user && repo ? apiUrl : null, jsonFetcher);
     const { data: labelsData } = useSWR<LabelsResponse>(user && repo ? `/api/repos/${user}/${repo}/labels` : null, jsonFetcher);
@@ -293,15 +294,28 @@ export default function IssuesPage() {
 
     const allIssues = data?.issues ?? [];
 
-    const filteredIssues = allIssues.filter((issue) => {
+    const viewFilteredIssues = allIssues.filter((issue) => {
+        if (activeView === "open") return issue.status === "open";
+        if (activeView === "in_progress") return issue.status === "in_progress";
+        if (activeView === "closed") return issue.status === "completed" || issue.status === "not_planned";
+        return true;
+    });
+
+    const filteredIssues = viewFilteredIssues.filter((issue) => {
         if (searchQuery && !issue.title.toLowerCase().includes(searchQuery.toLowerCase())) {
             return false;
         }
         return true;
     });
 
+    const sortedIssues = [...filteredIssues].sort((a, b) => {
+        if (sortBy === "oldest") return a.index - b.index;
+        if (sortBy === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        return b.index - a.index;
+    });
+
     const counts = {
-        all: data?.total ?? 0,
+        all: allIssues.length,
         open: allIssues.filter((i) => i.status === "open").length,
         in_progress: allIssues.filter((i) => i.status === "in_progress").length,
         closed: allIssues.filter((i) => i.status === "completed" || i.status === "not_planned").length,
@@ -357,7 +371,7 @@ export default function IssuesPage() {
     }, [isResizing]);
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="h-screen bg-background flex flex-col overflow-hidden">
             <TopBar
                 breadcrumb={[{ label: user, href: `/${user}` }, { label: repo, href: `/${user}/${repo}` }, { label: "Issues" }]}
                 navLinks={[
@@ -452,22 +466,9 @@ export default function IssuesPage() {
                     <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                         <div className="flex items-center gap-3">
                             <h2 className="font-medium">{views.find((v) => v.id === activeView)?.label}</h2>
-                            <span className="text-sm text-muted-foreground">{filteredIssues.length} issues</span>
+                            <span className="text-sm text-muted-foreground">{sortedIssues.length} issues</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-9 gap-2 text-muted-foreground">
-                                        Filter
-                                        <ChevronDown className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem>Status</DropdownMenuItem>
-                                    <DropdownMenuItem>Assignee</DropdownMenuItem>
-                                    <DropdownMenuItem>Label</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-9 gap-2 text-muted-foreground">
@@ -476,9 +477,18 @@ export default function IssuesPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem>Newest</DropdownMenuItem>
-                                    <DropdownMenuItem>Oldest</DropdownMenuItem>
-                                    <DropdownMenuItem>Recently updated</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("newest")} className="flex items-center gap-2">
+                                        <span className="flex-1">Newest</span>
+                                        {sortBy === "newest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("oldest")} className="flex items-center gap-2">
+                                        <span className="flex-1">Oldest</span>
+                                        {sortBy === "oldest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("updated")} className="flex items-center gap-2">
+                                        <span className="flex-1">Recently updated</span>
+                                        {sortBy === "updated" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
@@ -506,9 +516,9 @@ export default function IssuesPage() {
                                     <IssueRowSkeleton key={i} />
                                 ))}
                             </div>
-                        ) : filteredIssues.length > 0 ? (
+                        ) : sortedIssues.length > 0 ? (
                             <div>
-                                {filteredIssues.map((issue) => (
+                                {sortedIssues.map((issue) => (
                                     <IssueRow
                                         key={issue.index}
                                         issue={issue}

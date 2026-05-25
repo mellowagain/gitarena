@@ -25,7 +25,7 @@ import { Footer } from "@/components/landing/footer";
 const demoIssues = [
     {
         id: 19,
-        status: "todo",
+        status: "open",
         title: "Allow Git access over SSH",
         labels: [
             { name: "feature::git", color: "#d21386" },
@@ -36,7 +36,7 @@ const demoIssues = [
     },
     {
         id: 50,
-        status: "todo",
+        status: "open",
         title: "Implement password reset self service",
         labels: [
             { name: "feature::users", color: "#d21386" },
@@ -58,7 +58,7 @@ const demoIssues = [
     },
     {
         id: 26,
-        status: "done",
+        status: "completed",
         title: "Extend admin panel to allow changing of settings",
         labels: [
             { name: "feature::admin", color: "#d21386" },
@@ -186,10 +186,10 @@ function IssueStatusIcon({ status }: { status: string }) {
     if (status === "in_progress") {
         return <CircleDot className="h-4 w-4 text-yellow-500 shrink-0" />;
     }
-    if (status === "done") {
-        return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
+    if (status === "completed") {
+        return <CheckCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />;
     }
-    return <Circle className="h-4 w-4 text-muted-foreground shrink-0" />;
+    return <Circle className="h-4 w-4 text-green-500 shrink-0" />;
 }
 
 function MRStatusIcon({ status }: { status: string }) {
@@ -349,23 +349,27 @@ export default async function AboutPage() {
                                 <div>
                                     <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-2">
                                         Issue tracking
-                                        <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
-                                            WIP
-                                        </span>
                                     </p>
                                     <h2 className="text-xl font-semibold mb-2">Bug reports and feature requests, organised</h2>
                                     <p className="text-sm text-muted-foreground mb-5 leading-relaxed max-w-lg">
-                                        Labels, milestones, assignments, and scoped labels to keep large projects tidy without drowning in
-                                        noise.
+                                        Issues live inside the repository as git objects, stored in the same format as{" "}
+                                        <a
+                                            href="https://github.com/git-bug/git-bug"
+                                            className="underline underline-offset-2 hover:text-foreground transition-colors"
+                                        >
+                                            git-bug
+                                        </a>
+                                        . No separate database needed. Enjoy full offline access to your issues.
                                     </p>
                                     <div className="border border-border rounded-md overflow-hidden">
                                         <div className="flex items-center gap-4 px-4 py-2 border-b border-border bg-accent/30 text-xs text-muted-foreground">
                                             <span className="flex items-center gap-1.5">
-                                                <Circle className="h-3 w-3" /> {demoIssues.filter((i) => i.status !== "done").length} open
+                                                <Circle className="h-3 w-3" /> {demoIssues.filter((i) => i.status !== "completed").length}{" "}
+                                                open
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <CheckCircle2 className="h-3 w-3" /> {demoIssues.filter((i) => i.status === "done").length}{" "}
-                                                closed
+                                                <CheckCircle2 className="h-3 w-3" />{" "}
+                                                {demoIssues.filter((i) => i.status === "completed").length} closed
                                             </span>
                                         </div>
                                         {demoIssues.map((issue, i) => (

@@ -1072,12 +1072,23 @@ export default function IssuePage() {
                                                 </button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
-                                                {collaborators.filter((c) => !issue.assignees.includes(c.username)).length === 0 ? (
-                                                    <DropdownMenuItem disabled>No more collaborators</DropdownMenuItem>
-                                                ) : (
-                                                    collaborators
-                                                        .filter((c) => !issue.assignees.includes(c.username))
-                                                        .map((c) => (
+                                                {(() => {
+                                                    const list = [
+                                                        ...(authUser &&
+                                                        !issue.assignees.includes(authUser.username) &&
+                                                        !collaborators.some((c) => c.userId === authUser.id)
+                                                            ? [{ userId: authUser.id, username: authUser.username, accessLevel: "" }]
+                                                            : []),
+                                                        ...collaborators
+                                                            .filter((c) => !issue.assignees.includes(c.username))
+                                                            .sort((a, b) =>
+                                                                a.userId === authUser?.id ? -1 : b.userId === authUser?.id ? 1 : 0
+                                                            ),
+                                                    ];
+                                                    return list.length === 0 ? (
+                                                        <DropdownMenuItem disabled>No more collaborators</DropdownMenuItem>
+                                                    ) : (
+                                                        list.map((c) => (
                                                             <DropdownMenuItem key={c.userId} onClick={() => handleAddAssignee(c.userId)}>
                                                                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0 mr-2">
                                                                     {c.username[0].toUpperCase()}
@@ -1085,7 +1096,8 @@ export default function IssuePage() {
                                                                 {c.username}
                                                             </DropdownMenuItem>
                                                         ))
-                                                )}
+                                                    );
+                                                })()}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     )}
