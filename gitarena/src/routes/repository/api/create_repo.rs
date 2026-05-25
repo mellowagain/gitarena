@@ -92,7 +92,7 @@ pub(crate) async fn create(
     .await?;
 
     repo.create_fs(&mut tx).await?;
-    seed_default_labels(repo.id, &mut *tx).await?;
+    seed_default_labels(repo.id, &mut tx).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
     if let Some(readme) = body.readme

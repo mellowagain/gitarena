@@ -1,4 +1,4 @@
-use crate::database::Pool;
+use crate::database::{Database, Pool};
 use crate::die;
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -7,7 +7,7 @@ use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, PgConnection};
+use sqlx::{FromRow, Transaction};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -261,54 +261,40 @@ pub(crate) async fn delete_label(
 }
 
 /// Seed default labels for a newly created repository.
-pub(crate) async fn seed_default_labels(repo_id: Uuid, tx: &mut PgConnection) -> Result<()> {
-    let labels: &[(&str, &str, &str)] = &[
+pub(crate) async fn seed_default_labels(repo_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<()> {
+    let labels: &[(&str, &str, Option<&str>)] = &[
         // type scope
-        ("type::bug", "#5c6bc0", ""),
-        ("type::feature", "#5c6bc0", ""),
-        ("type::docs", "#5c6bc0", ""),
-        (
-            "type::chore",
-            "#5c6bc0",
-            "Maintenance tasks: dependency updates, CI config, tooling — no production behavior change",
-        ),
-        ("type::refactor", "#5c6bc0", "Internal code restructuring with no functional change"),
-        // priority scope
-        ("priority::critical", "#e53935", ""),
-        ("priority::high", "#fb8c00", ""),
-        ("priority::medium", "#fdd835", ""),
-        ("priority::low", "#90a4ae", ""),
+        ("type::bug", "#5c6bc0", None),
+        ("type::feature", "#5c6bc0", None),
+        ("type::docs", "#5c6bc0", None),
+        ("type::chore", "#5c6bc0", Some("Maintenance tasks: dependency updates, CI config, tooling")),
+        ("type::refactor", "#5c6bc0", Some("Internal code restructuring with no functional change")),
         // status scope
-        ("status::blocked", "#e53935", ""),
+        ("status::blocked", "#e53935", None),
         (
             "status::needs-info",
             "#f4511e",
-            "Waiting on the issue reporter or a user for more information before this can progress",
+            Some("Waiting on the issue reporter or a user for more information"),
         ),
-        ("status::in-progress", "#00897b", ""),
+        ("status::in-progress", "#00897b", None),
         // unscoped
-        ("good first issue", "#2e7d32", ""),
-        ("help wanted", "#388e3c", ""),
-        ("duplicate", "#bdbdbd", ""),
-        ("wontfix", "#bdbdbd", "Acknowledged but won't be addressed — see comments for reasoning"),
-        ("question", "#ab47bc", ""),
-        (
-            "security",
-            "#b71c1c",
-            "Involves a potential security vulnerability — consider reporting privately",
-        ),
+        ("good first issue", "#2e7d32", None),
+        ("help wanted", "#388e3c", None),
+        ("duplicate", "#bdbdbd", None),
+        ("wontfix", "#bdbdbd", Some("Acknowledged but won't be addressed, see comments for reasoning")),
+        ("question", "#ab47bc", None),
+        ("security", "#b71c1c", Some("Involves a potential security vulnerability")),
     ];
 
     for (name, color, description) in labels {
-        tx.execute(
-            sqlx::query("insert into labels (id, repo_id, name, color, description) values ($1, $2, $3, $4, $5)")
-                .bind(Uuid::now_v7())
-                .bind(repo_id)
-                .bind(name)
-                .bind(color)
-                .bind(description),
-        )
-        .await?;
+        sqlx::query("insert into labels (id, repo_id, name, color, description) values ($1, $2, $3, $4, $5)")
+            .bind(Uuid::now_v7())
+            .bind(repo_id)
+            .bind(name)
+            .bind(color)
+            .bind(description)
+            .execute(&mut **tx)
+            .await?;
     }
 
     Ok(())

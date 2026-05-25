@@ -127,7 +127,7 @@ pub(crate) async fn import(
     .await?;
 
     repo.create_fs(&mut tx).await?;
-    seed_default_labels(repo.id, &mut *tx).await?;
+    seed_default_labels(repo.id, &mut tx).await?;
 
     let task = ImportTask {
         source: url.to_string(),
