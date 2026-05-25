@@ -6,7 +6,6 @@ import prettier from "eslint-config-prettier/flat";
 const eslintConfig = defineConfig([
     ...nextVitals,
     ...nextTs,
-    prettier,
     globalIgnores([
         // Default ignores of eslint-config-next:
         ".next/**",
@@ -23,13 +22,22 @@ const eslintConfig = defineConfig([
         },
     },
     {
+        languageOptions: {
+            globals: {
+                React: "readonly",
+            },
+        },
+    },
+    {
         rules: {
             curly: ["error", "all"],
+            "no-undef": ["error"],
             // /docs is a Vercel rewrite to an external host (Mintlify), not a Next.js page.
             // <a> is intentional here to force a full page load through Vercel's rewrite layer.
             "@next/next/no-html-link-for-pages": "off",
         },
     },
+    prettier,
 ]);
 
 export default eslintConfig;

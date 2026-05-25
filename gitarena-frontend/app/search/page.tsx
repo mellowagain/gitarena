@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
+import { jsonFetcher } from "@/lib/fetchers";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
@@ -19,6 +20,8 @@ import {
     FileCode,
     CheckCircle2,
     Circle,
+    CircleDot,
+    XCircle,
     Star,
     Lock,
     Globe,
@@ -105,70 +108,24 @@ interface UserSearchResponse {
     users: SearchUser[];
 }
 
-// ── Mock data (WIP tabs) ───────────────────────────────────────────────────────
+interface IssueSearchResult {
+    index: number;
+    title: string;
+    status: string;
+    labels: string[];
+    commentCount: number;
+    authorUsername: string;
+    repoOwner: string;
+    repoName: string;
+    updatedAt: string;
+}
 
-const MOCK_ISSUES = [
-    {
-        id: 142,
-        repo: "mellowagain/gitarena",
-        title: "SSH key authentication fails on ed25519 keys",
-        status: "open",
-        author: "wycats",
-        createdAt: "3 days ago",
-        comments: 7,
-        labels: ["bug", "auth"],
-    },
-    {
-        id: 87,
-        repo: "mellowagain/gitarena",
-        title: "Add support for GPG commit verification",
-        status: "open",
-        author: "torvalds",
-        createdAt: "1 week ago",
-        comments: 12,
-        labels: ["enhancement"],
-    },
-    {
-        id: 234,
-        repo: "rust-lang/rust",
-        title: "Clippy incorrectly flags iterator chaining patterns",
-        status: "closed",
-        author: "gvanrossum",
-        createdAt: "2 weeks ago",
-        comments: 4,
-        labels: ["bug", "clippy"],
-    },
-    {
-        id: 56,
-        repo: "dhh/rails",
-        title: "N+1 query detection in ActiveRecord associations",
-        status: "open",
-        author: "mellowagain",
-        createdAt: "5 days ago",
-        comments: 18,
-        labels: ["performance"],
-    },
-    {
-        id: 901,
-        repo: "torvalds/linux",
-        title: "Memory leak in XFS journal recovery path",
-        status: "closed",
-        author: "wycats",
-        createdAt: "1 month ago",
-        comments: 31,
-        labels: ["bug", "critical"],
-    },
-    {
-        id: 63,
-        repo: "mellowagain/gitarena",
-        title: "Repository mirroring does not respect SSH proxy settings",
-        status: "open",
-        author: "dhh",
-        createdAt: "2 days ago",
-        comments: 2,
-        labels: ["mirrors"],
-    },
-];
+interface IssueSearchResponse {
+    total: number;
+    issues: IssueSearchResult[];
+}
+
+// ── Mock data (WIP tabs) ───────────────────────────────────────────────────────
 
 const MOCK_MRS = [
     {
@@ -711,54 +668,180 @@ function RepoResults({ query }: { query: string }) {
     );
 }
 
-function IssueResults() {
+interface IssueLabel {
+    name: string;
+    color: string;
+}
+
+interface LabelsResponse {
+    labels: IssueLabel[];
+}
+
+function LabelBadge({ name, color }: { name: string; color: string }) {
+    const scopedIndex = name.indexOf("::");
+    const isScoped = scopedIndex !== -1;
+    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
+    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
+
+    if (isScoped) {
+        return (
+            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
+                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
+                    {scopeKey}
+                </span>
+                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
+                    {scopeValue}
+                </span>
+            </span>
+        );
+    }
     return (
-        <div className="border border-border rounded-lg overflow-hidden">
-            {MOCK_ISSUES.map((issue, i) => (
-                <div
-                    key={`${issue.repo}-${issue.id}`}
-                    className={`pl-1 flex items-stretch hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
-                >
-                    <div className={`w-1 shrink-0 ${issue.status === "open" ? "bg-green-500" : "bg-muted-foreground/40"}`} />
-                    <div className="flex items-start gap-3 flex-1 px-4 py-3">
-                        <div className="mt-0.5 shrink-0">
-                            {issue.status === "open" ? (
-                                <Circle className="h-4 w-4 text-green-500" />
-                            ) : (
-                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
+            {name}
+        </span>
+    );
+}
+
+function IssueResults({ query }: { query: string }) {
+    const PAGE_SIZE = 20;
+    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite<IssueSearchResponse>(
+        (index) => (query ? `/api/search/issues?query=${encodeURIComponent(query)}&offset=${index * PAGE_SIZE}&limit=${PAGE_SIZE}` : null),
+        { revalidateOnFocus: false, revalidateOnReconnect: false }
+    );
+
+    const allIssues = data?.flatMap((page) => page.issues) ?? [];
+    const lastPage = data ? data[data.length - 1] : null;
+    const hasMore = !isLoading && lastPage != null && lastPage.issues.length === PAGE_SIZE;
+
+    const uniqueRepos = useMemo(
+        () => [...new Set(allIssues.map((i) => `${i.repoOwner}/${i.repoName}`))],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [data]
+    );
+
+    const { data: labelColorMap } = useSWR(
+        uniqueRepos.length > 0 ? ["issue-search-labels", ...uniqueRepos] : null,
+        async ([, ...repos]: string[]) => {
+            const results = await Promise.all(repos.map((repo) => jsonFetcher(`/api/repos/${repo}/labels`) as Promise<LabelsResponse>));
+            const map = new Map<string, string>();
+            results.forEach((labelData, i) => {
+                const repo = repos[i];
+                labelData.labels?.forEach((l) => {
+                    map.set(`${repo}::${l.name}`, l.color);
+                });
+            });
+            return map;
+        },
+        { revalidateOnFocus: false }
+    );
+
+    if (!query) {
+        return <p className="text-sm text-muted-foreground">Enter a query to search issues.</p>;
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">Failed to load issues</p>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="border border-border rounded-lg overflow-hidden">
+                {Array.from({ length: 5 }, (_, i) => (
+                    <div key={i} className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
+                        <div className="h-4 w-4 rounded-full bg-secondary border border-border shrink-0 animate-pulse mt-0.5" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-secondary rounded animate-pulse w-64" />
+                            <div className="h-3 bg-secondary rounded animate-pulse w-40" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (allIssues.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
+                <Search className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">No issues found</p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="border border-border rounded-lg overflow-hidden">
+                {allIssues.map((issue, i) => (
+                    <div
+                        key={`${issue.repoOwner}-${issue.repoName}-${issue.index}`}
+                        className={`flex items-stretch hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
+                    >
+                        <div
+                            className={`w-1 shrink-0 ${issue.status === "open" || issue.status === "in_progress" ? "bg-green-500" : "bg-muted-foreground/40"}`}
+                        />
+                        <div className="flex items-start gap-3 flex-1 px-4 py-3">
+                            <div className="mt-0.5 shrink-0">
+                                {issue.status === "open" ? (
+                                    <Circle className="h-4 w-4 text-green-500" />
+                                ) : issue.status === "in_progress" ? (
+                                    <CircleDot className="h-4 w-4 text-yellow-500" />
+                                ) : issue.status === "not_planned" ? (
+                                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <Link
+                                        href={`/${issue.repoOwner}/${issue.repoName}/issues/${issue.index}`}
+                                        className="text-sm font-medium hover:underline"
+                                    >
+                                        {issue.title}
+                                    </Link>
+                                    {issue.labels.map((l) => (
+                                        <LabelBadge
+                                            key={l}
+                                            name={l}
+                                            color={labelColorMap?.get(`${issue.repoOwner}/${issue.repoName}::${l}`) ?? "#888888"}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    <Link href={`/${issue.repoOwner}/${issue.repoName}`} className="hover:underline">
+                                        {issue.repoOwner}/{issue.repoName}
+                                    </Link>
+                                    {" · "}#{issue.index} by {issue.authorUsername}
+                                </div>
+                            </div>
+                            {issue.commentCount > 0 && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                                    <MessageSquare className="h-3.5 w-3.5" />
+                                    {issue.commentCount}
+                                </div>
                             )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <Link href="#" className="text-sm font-medium hover:underline">
-                                    {issue.title}
-                                </Link>
-                                {issue.labels.map((l) => (
-                                    <span
-                                        key={l}
-                                        className="px-1.5 py-0.5 text-[10px] font-medium border border-border rounded bg-secondary text-muted-foreground"
-                                    >
-                                        {l}
-                                    </span>
-                                ))}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                <Link href={`/${issue.repo}`} className="hover:underline">
-                                    {issue.repo}
-                                </Link>
-                                {" · "}#{issue.id} opened {issue.createdAt} by {issue.author}
-                            </div>
-                        </div>
-                        {issue.comments > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                                <MessageSquare className="h-3.5 w-3.5" />
-                                {issue.comments}
-                            </div>
-                        )}
                     </div>
+                ))}
+            </div>
+            {hasMore && (
+                <div className="flex justify-center mt-6">
+                    <button
+                        onClick={() => setSize(size + 1)}
+                        disabled={isValidating}
+                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                        Load more
+                    </button>
                 </div>
-            ))}
-        </div>
+            )}
+        </>
     );
 }
 
@@ -915,11 +998,6 @@ const TABS: { id: SearchType; label: string; icon: React.ElementType }[] = [
     { id: "users", label: "Users", icon: Users },
 ];
 
-const MOCK_COUNTS: Record<"issues" | "merge-requests", number> = {
-    issues: MOCK_ISSUES.length,
-    "merge-requests": MOCK_MRS.length,
-};
-
 function SearchPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -944,6 +1022,11 @@ function SearchPageContent() {
         revalidateOnReconnect: false,
     });
 
+    const { data: issueData } = useSWR<IssueSearchResponse>(q ? `/api/search/issues?query=${encodeURIComponent(q)}&limit=1` : null, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+    });
+
     const codeFileCount = codeData?.result?.FileCount ?? 0;
     const codeMatchCount = codeData?.result?.MatchCount ?? 0;
     const codeDurationMs = codeData ? Math.round((codeData.result?.Duration ?? 0) / 1000) : null;
@@ -964,10 +1047,13 @@ function SearchPageContent() {
         if (id === "repositories") {
             return q && repoData ? repoData.total : null;
         }
+        if (id === "issues") {
+            return q && issueData ? issueData.total : null;
+        }
         if (id === "users") {
             return q && userData ? userData.total : null;
         }
-        return MOCK_COUNTS[id as "issues" | "merge-requests"];
+        return null;
     }
 
     const activeCount = getTabCount(activeType);
@@ -1057,7 +1143,7 @@ function SearchPageContent() {
 
                         {activeType === "code" && <CodeResults query={q} />}
                         {activeType === "repositories" && <RepoResults query={q} />}
-                        {activeType === "issues" && <IssueResults />}
+                        {activeType === "issues" && <IssueResults query={q} />}
                         {activeType === "merge-requests" && <MRResults />}
                         {activeType === "users" && <UserResults query={q} />}
                     </main>
