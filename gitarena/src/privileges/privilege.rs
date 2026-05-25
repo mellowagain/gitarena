@@ -71,7 +71,7 @@ generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
 
 #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
-async fn get_repo_privilege(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Option<Privilege>> {
+pub(crate) async fn get_repo_privilege(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Option<Privilege>> {
     Ok(
         sqlx::query_as::<_, Privilege>("select * from privileges where user_id = $1 and repo_id = $2 limit 1")
             .bind(user.id)

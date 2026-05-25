@@ -20,6 +20,7 @@ pub(crate) mod file_content;
 pub(crate) mod fork_repo;
 pub(crate) mod import_repo;
 pub(crate) mod issues;
+pub(crate) mod permissions;
 pub(crate) mod repo_meta;
 pub(crate) mod repo_readme;
 pub(crate) mod star;
@@ -45,6 +46,8 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(star::post_star);
     config.service(star::delete_star);
     config.service(star::put_star);
+
+    config.service(permissions::get_permissions);
 
     config.service(collaborators::list_collaborators);
     config.service(collaborators::upsert_collaborator);
