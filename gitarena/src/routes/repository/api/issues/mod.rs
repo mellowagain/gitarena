@@ -1,6 +1,6 @@
 use crate::database::{Database, Pool};
 use crate::die;
-use crate::issue::{IssueCache, IssueCommentCache};
+use crate::issue::{IssueCache, IssueCommentCache, IssueStatus};
 use crate::meili::MeiliClient;
 use crate::privileges::privilege;
 use crate::repository::Repository;
@@ -124,8 +124,8 @@ pub(crate) async fn create_issue(
     let priority = body.priority.as_deref().unwrap_or("none");
 
     sqlx::query(
-        "insert into issue_cache (id, repo_id, git_bug_id, \"index\", author_id, title, body, open, priority, labels, assignees, milestone_id) \
-         values ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, $11)",
+        "insert into issue_cache (id, repo_id, git_bug_id, \"index\", author_id, title, body, status, priority, labels, assignees, milestone_id) \
+         values ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9, $10, $11)",
     )
     .bind(issue_id)
     .bind(repo.id)
@@ -290,17 +290,17 @@ pub(crate) async fn update_issue(
             .await?;
     }
 
-    if let Some(open) = body.open {
+    if let Some(new_status) = &body.status {
         let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
-        set_status(&gitoxide_repo, bug, author.clone(), open)?;
+        set_status(&gitoxide_repo, bug, author.clone(), new_status.to_git_bug_status())?;
 
-        sqlx::query("update issue_cache set open = $1, updated_at = now() where id = $2")
-            .bind(open)
+        sqlx::query("update issue_cache set status = $1, updated_at = now() where id = $2")
+            .bind(new_status)
             .bind(issue.id)
             .execute(&mut *tx)
             .await?;
 
-        info!(repo_id = %repo.id, index, open, "issue status changed");
+        info!(repo_id = %repo.id, index, status = ?new_status, "issue status changed");
     }
 
     let add = body.labels_add.clone().unwrap_or_default();
@@ -453,7 +453,7 @@ pub(crate) struct IssueResponse {
     git_bug_id: String,
     title: String,
     body: String,
-    open: bool,
+    status: IssueStatus,
     priority: String,
     labels: Vec<String>,
     author_username: String,
@@ -512,7 +512,7 @@ pub(crate) struct CreateIssueRequest {
 pub(crate) struct UpdateIssueRequest {
     title: Option<String>,
     body: Option<String>,
-    open: Option<bool>,
+    status: Option<IssueStatus>,
     priority: Option<String>,
     labels_add: Option<Vec<String>>,
     labels_remove: Option<Vec<String>>,
@@ -615,7 +615,7 @@ async fn build_issue_response(issue: &IssueCache, viewer_id: Option<Uuid>, tx: &
         git_bug_id: issue.git_bug_id.clone(),
         title: issue.title.clone(),
         body: issue.body.clone(),
-        open: issue.open,
+        status: issue.status.clone(),
         priority: issue.priority.clone(),
         labels: issue.labels.clone(),
         author_username,

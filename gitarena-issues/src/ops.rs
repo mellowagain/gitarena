@@ -78,9 +78,9 @@ pub fn set_title(git_repo: &Repository, bug: Bug, author: Author, new_title: Str
 /// - `git_repo`: Handle to a [`Repository`]
 /// - `bug`: The bug to update
 /// - `author`: Author of the change
-/// - `open`: `true` to open the bug, `false` to close it
+/// - `status`: The new [`BugStatus`] to set
 #[instrument(err, skip(git_repo))]
-pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, open: bool) -> Result<Bug> {
+pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, status: BugStatus) -> Result<Bug> {
     let now = Utc::now().timestamp();
 
     let op = Operation {
@@ -89,7 +89,7 @@ pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, open: bool) -
         nonce: random_nonce(),
         title: None,
         message: None,
-        status: Some(if open { BugStatus::OPEN } else { BugStatus::CLOSED }),
+        status: Some(status),
         added: None,
         removed: None,
         target: None,

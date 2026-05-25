@@ -1,3 +1,4 @@
+use crate::issue::IssueStatus;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
@@ -165,6 +166,7 @@ impl Modify for CookieAuth {
         LabelsResponse,
         CreateLabelRequest,
         UpdateLabelRequest,
+        IssueStatus,
     )),
     modifiers(&CookieAuth),
     tags(

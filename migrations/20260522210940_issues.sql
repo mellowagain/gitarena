@@ -31,6 +31,14 @@ create table if not exists milestones
 create index if not exists milestones_repo_index
     on milestones (repo_id);
 
+do $$
+    begin
+        create type issue_status as enum ('open', 'in_progress', 'completed', 'not_planned');
+    exception
+        when duplicate_object then null;
+    end;
+$$;
+
 create table if not exists issue_cache
 (
     id            uuid                                               not null   primary key,
@@ -40,7 +48,7 @@ create table if not exists issue_cache
     author_id     uuid                                               not null   references users (id) on delete cascade,
     title         text                                               not null,
     body          text    default ''                                 not null,
-    open          boolean default true                               not null,
+    status        issue_status default 'open'                        not null,
     labels        text[]  default '{}'                               not null,
     confidential  boolean default false                              not null,
     locked        boolean default false                              not null,

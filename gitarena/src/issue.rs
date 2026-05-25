@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
+use gitarena_issues::operation::BugStatus;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, Type};
 use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -23,7 +24,7 @@ pub(crate) struct IssueCache {
     pub(crate) labels: Vec<String>,
     pub(crate) priority: String,
 
-    pub(crate) open: bool,
+    pub(crate) status: IssueStatus,
     pub(crate) confidential: bool,
     pub(crate) locked: bool,
 
@@ -47,6 +48,25 @@ impl IssueCache {
             && let Err(err) = client.index(ISSUES_MEILI_INDEX).delete_document(id).await
         {
             error!(?err, "failed to deindex issue in meilisearch");
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Type, ToSchema)]
+#[sqlx(type_name = "issue_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum IssueStatus {
+    Open,
+    InProgress,
+    Completed,
+    NotPlanned,
+}
+
+impl IssueStatus {
+    pub(crate) fn to_git_bug_status(&self) -> BugStatus {
+        match self {
+            Self::Open | Self::InProgress => BugStatus::OPEN,
+            Self::Completed | Self::NotPlanned => BugStatus::CLOSED,
         }
     }
 }

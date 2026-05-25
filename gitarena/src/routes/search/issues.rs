@@ -1,5 +1,5 @@
 use crate::database::{Database, Pool};
-use crate::issue::IssueCache;
+use crate::issue::{IssueCache, IssueStatus};
 use crate::meili::{ISSUES_MEILI_INDEX, MeiliClient};
 use crate::prelude::HttpRequestExtensions;
 use crate::user::WebUser;
@@ -101,7 +101,7 @@ pub(crate) async fn get_issue_search(
             IssueSearchResult {
                 index: issue.index,
                 title: issue.title,
-                open: issue.open,
+                status: issue.status,
                 labels: issue.labels,
                 comment_count: comment_counts
                     .iter()
@@ -124,7 +124,7 @@ pub(crate) async fn get_issue_search(
 pub(crate) struct IssueSearchResult {
     index: i32,
     title: String,
-    open: bool,
+    status: IssueStatus,
     labels: Vec<String>,
     comment_count: i32,
     author_username: String,
