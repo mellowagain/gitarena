@@ -18,6 +18,7 @@ use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{FromRequest, HttpMessage, HttpRequest};
 use anyhow::{Result, anyhow};
+use chrono::{DateTime, Utc};
 use derive_more::{Deref, Display};
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
@@ -62,8 +63,8 @@ pub(crate) struct Repository {
     /// URL of the repo from which this one is mirrored from
     #[debug("{}", mirrored_from.is_some())]
     pub(crate) mirrored_from: Option<String>,
-    /// Archived flag
-    pub(crate) archived: bool,
+    /// Timestamp when the repository was archived
+    pub(crate) archived_at: Option<DateTime<Utc>>,
     /// Disabled flag
     pub(crate) disabled: bool,
     #[serde(skip)]

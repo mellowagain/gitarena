@@ -9,6 +9,7 @@ use sqlx::Transaction;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+pub(crate) mod archive;
 pub(crate) mod blame;
 pub(crate) mod branch_commits;
 pub(crate) mod branch_files;
@@ -41,6 +42,8 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(branches::branches);
 
     config.service(fork_repo::create_fork);
+
+    config.service(archive::toggle_archive);
 
     config.service(star::get_stats);
     config.service(star::post_star);

@@ -37,6 +37,10 @@ pub(crate) async fn toggle_issue_reaction(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let (_, _, index) = path.into_inner();
     let emoji = body.into_inner().emoji;
 
@@ -98,13 +102,17 @@ pub(crate) async fn toggle_issue_reaction(
     err = "json"
 )]
 pub(crate) async fn toggle_comment_reaction(
-    _repo: Repository,
+    repo: Repository,
     web_user: WebUser,
     path: web::Path<(String, String, i32, Uuid)>,
     body: web::Json<ToggleReactionRequest>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
 
     let (_, _, _, comment_id) = path.into_inner();
     let emoji = body.into_inner().emoji;

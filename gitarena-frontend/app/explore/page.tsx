@@ -31,7 +31,7 @@ interface ExploreRepo {
     ownerId: string;
     ownerName: string;
     visibility: string;
-    archived: boolean;
+    archivedAt: string | null;
     disabled: boolean;
     languages: Record<string, number>;
     stars: number;
@@ -90,6 +90,11 @@ function RepoRow({ repo, rank }: { repo: ExploreRepo; rank: number }) {
                             <Globe className="h-3 w-3" />
                             Internal
                         </Badge>
+                    )}
+                    {repo.archivedAt && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                            archived
+                        </span>
                     )}
                 </div>
                 {repo.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>}

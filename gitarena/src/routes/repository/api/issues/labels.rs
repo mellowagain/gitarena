@@ -61,6 +61,11 @@ pub(crate) async fn list_labels(repo: Repository, db_pool: web::Data<Pool>) -> R
 #[route("/api/repos/{namespace}/{repository}/labels", method = "POST", err = "json")]
 pub(crate) async fn create_label(repo: Repository, web_user: WebUser, body: web::Json<CreateLabelRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     if !privilege::check_manage_issues(&repo, Some(&user), &mut tx).await? {
@@ -132,6 +137,11 @@ pub(crate) async fn update_label(
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
     let (_, _, label_id) = path.into_inner();
 
@@ -228,6 +238,11 @@ pub(crate) async fn delete_label(
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
     let (_, _, label_id) = path.into_inner();
 

@@ -44,6 +44,10 @@ pub(crate) async fn add_issue_comment(
     let user = web_user.into_user()?;
     let (_, _, index) = path.into_inner();
 
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     let issue = get_issue_by_index(repo.id, index, &mut tx).await?;
@@ -107,6 +111,10 @@ pub(crate) async fn edit_issue_comment(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let (_, _, index, comment_id) = path.into_inner();
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
 
     let mut tx = db_pool.begin().await?;
 
@@ -176,6 +184,10 @@ pub(crate) async fn delete_issue_comment(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let (_, _, index, comment_id) = path.into_inner();
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
 
     let mut tx = db_pool.begin().await?;
 

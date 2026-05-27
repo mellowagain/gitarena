@@ -8,6 +8,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use crate::database::Database;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use derive_more::Display;
 use gitarena_macros::route;
 use qstring::QString;
@@ -63,7 +64,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         coalesce(repositories.owner_user, repositories.owner_org) as owner_id, \
         coalesce(u.username, o.name) as owner_name, \
         repositories.visibility, \
-        repositories.archived, \
+        repositories.archived_at, \
         repositories.disabled, \
         repositories.languages, \
         count(distinct stars.stargazer) as stars, \
@@ -88,7 +89,7 @@ pub(crate) struct ExploreRepo {
     owner_id: Uuid,
     owner_name: String,
     visibility: RepoVisibility,
-    archived: bool,
+    archived_at: Option<DateTime<Utc>>,
     disabled: bool,
     languages: JsonValue,
     stars: i64,
@@ -113,7 +114,7 @@ impl ExploreRepo {
             owner_id,
             owner_name,
             visibility: repo.visibility,
-            archived: repo.archived,
+            archived_at: repo.archived_at,
             disabled: repo.disabled,
             languages,
             stars,
@@ -157,7 +158,7 @@ impl Display for ExploreOptions<'_> {
         f.write_str("where ")?;
 
         if !self.archived {
-            f.write_str("repositories.archived is false and ")?;
+            f.write_str("repositories.archived_at is null and ")?;
         }
 
         if !self.forked {

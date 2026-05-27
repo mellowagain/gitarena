@@ -95,6 +95,10 @@ pub(crate) async fn create_issue(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     if body.title.trim().is_empty() {
         die!(BAD_REQUEST, "Issue title cannot be empty");
     }
@@ -249,6 +253,10 @@ pub(crate) async fn update_issue(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let (_, _, index) = path.into_inner();
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
 
     let mut tx = db_pool.begin().await?;
 
@@ -414,6 +422,10 @@ pub(crate) async fn delete_issue(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let (_, _, index) = path.into_inner();
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
 
     let mut tx = db_pool.begin().await?;
 

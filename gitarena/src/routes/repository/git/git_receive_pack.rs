@@ -58,7 +58,7 @@ pub(crate) async fn git_receive_pack(
         die!(UNAUTHORIZED, "No permission to push into this repo");
     }
 
-    if repo.archived {
+    if repo.archived_at.is_some() {
         die!(UNAUTHORIZED, "Repository is archived and thus read-only");
     }
 

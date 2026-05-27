@@ -103,6 +103,11 @@ pub(crate) async fn upsert_collaborator(
     body: Json<UpsertCollaboratorRequest>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     if !privilege::check_admin(&repo, Some(&user), &mut tx).await? {
@@ -166,6 +171,11 @@ pub(crate) async fn remove_collaborator(
     path: Path<(String, String, String)>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
+
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     if !privilege::check_admin(&repo, Some(&user), &mut tx).await? {

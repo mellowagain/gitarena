@@ -103,6 +103,7 @@ pub(crate) async fn get_issue_search(
                 title: issue.title,
                 status: issue.status,
                 labels: issue.labels,
+                priority: issue.priority,
                 comment_count: comment_counts
                     .iter()
                     .find(|(id, _)| *id == issue.id)
@@ -126,6 +127,7 @@ pub(crate) struct IssueSearchResult {
     title: String,
     status: IssueStatus,
     labels: Vec<String>,
+    priority: String,
     comment_count: i32,
     author_username: String,
     repo_owner: String,

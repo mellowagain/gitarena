@@ -21,7 +21,7 @@ interface UserProfileRepo {
     name: string;
     description: string;
     visibility: "public" | "internal" | "private";
-    archived: boolean;
+    archivedAt: string | null;
     languages: Record<string, number> | null;
     stars: number;
 }
@@ -61,7 +61,7 @@ interface OrgRepo {
     name: string;
     description: string;
     visibility: string;
-    archived: boolean;
+    archivedAt: string | null;
     languages: Record<string, number> | null;
     stars: number;
 }
@@ -271,6 +271,11 @@ function RepoList({
                                     <Globe className="h-3 w-3" />
                                     Internal
                                 </Badge>
+                            )}
+                            {repo.archivedAt && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                    archived
+                                </span>
                             )}
                             {canPin && (
                                 <button
@@ -523,6 +528,11 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                                         >
                                                             {repo.name}
                                                         </Link>
+                                                        {repo.archivedAt && (
+                                                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                                                archived
+                                                            </span>
+                                                        )}
                                                         {repo.description && (
                                                             <p className="text-xs text-muted-foreground line-clamp-1">{repo.description}</p>
                                                         )}

@@ -10,6 +10,8 @@ import { formatDistanceToNow } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import type { RepoMetadata } from "@/app/[user]/[repo]/page";
+import { ArchivedBanner } from "@/components/archived-banner";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -538,6 +540,7 @@ export default function IssuePage() {
         jsonFetcher
     );
     const { data: permsData } = useSWR<PermissionsResponse>(user && repo ? `/api/repos/${user}/${repo}/permissions` : null, jsonFetcher);
+    const { data: repoMeta } = useSWR<RepoMetadata>(user && repo ? `/api/repos/${user}/${repo}` : null, jsonFetcher);
     const { data: timelineData, mutate: mutateTimeline } = useSWR<TimelineEvent[]>(
         user && repo ? `${apiBase}/timeline` : null,
         jsonFetcher
@@ -725,8 +728,9 @@ export default function IssuePage() {
             .map((e) => ({ kind: "event" as const, timestamp: e.timestamp * 1000, event: e })),
     ].sort((a, b) => a.timestamp - b.timestamp);
 
-    const canManage = permsData?.permissions.manageIssues ?? false;
-    const canEditIssue = canManage || (isAuthenticated && authUser?.username === issue?.authorUsername);
+    const isArchived = repoMeta?.archivedAt != null;
+    const canManage = (permsData?.permissions.manageIssues ?? false) && !isArchived;
+    const canEditIssue = (canManage || (isAuthenticated && authUser?.username === issue?.authorUsername)) && !isArchived;
 
     const statusInfo = (() => {
         switch (issue?.status) {
@@ -772,6 +776,7 @@ export default function IssuePage() {
                 ]}
                 hasNotifications
             />
+            {repoMeta?.archivedAt && <ArchivedBanner archivedAt={repoMeta.archivedAt} />}
 
             <div className="flex-1 flex overflow-hidden">
                 <main className="flex-1 overflow-y-auto">
@@ -935,6 +940,7 @@ export default function IssuePage() {
                                                             onDelete={handleDeleteComment}
                                                             onToggleReaction={handleToggleCommentReaction}
                                                             canEdit={
+                                                                !isArchived &&
                                                                 isAuthenticated &&
                                                                 (comment.authorUsername === authUser?.username || canManage)
                                                             }
@@ -957,7 +963,9 @@ export default function IssuePage() {
                             )}
 
                             <div className="border-t border-border pt-6">
-                                {isAuthenticated && <CommentComposer label="Comment" user={user} repo={repo} onSubmit={handleAddComment} />}
+                                {isAuthenticated && !isArchived && (
+                                    <CommentComposer label="Comment" user={user} repo={repo} onSubmit={handleAddComment} />
+                                )}
                             </div>
                         </div>
                     )}

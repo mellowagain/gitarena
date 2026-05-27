@@ -149,7 +149,7 @@ async fn fetch_extra(ids: &[Uuid], tx: &mut Transaction<'_, Database>) -> Result
         "select repositories.id, \
         coalesce(u.username, o.name) as owner_name, \
         count(distinct stars.stargazer) as stars, \
-        count(distinct issues.id) filter (where not(issues.open = false or issues.confidential = true)) as issues \
+        count(distinct issues.id) filter (where not(issues.status != 'open' or issues.confidential = true)) as issues \
         from repositories \
         left join stars on repositories.id = stars.repo \
         left join users u on repositories.owner_user = u.id \

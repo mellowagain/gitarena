@@ -31,6 +31,7 @@ import prettyBytes from "pretty-bytes";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
+import { ArchivedBanner } from "@/components/archived-banner";
 
 export interface RepoMetadata {
     id: string;
@@ -50,7 +51,7 @@ export interface RepoMetadata {
     forkedFrom?: string;
     mirroredFrom?: string;
 
-    archived: boolean;
+    archivedAt: string | null;
     disabled: boolean;
 }
 
@@ -122,6 +123,8 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
         <div className="min-h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
 
+            {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
+
             <div className="flex flex-1 overflow-hidden">
                 <div className="flex flex-1 items-center justify-center">
                     <div className="flex flex-col gap-5 w-full max-w-2xl px-6">
@@ -133,51 +136,53 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
                             </div>
                         </div>
 
-                        <Tabs defaultValue="create">
-                            <div className="flex items-center justify-between mb-3">
-                                <TabsList>
-                                    <TabsTrigger value="create">Create new repository</TabsTrigger>
-                                    <TabsTrigger value="push">Push existing repository</TabsTrigger>
-                                </TabsList>
+                        {!meta.archivedAt && (
+                            <Tabs defaultValue="create">
+                                <div className="flex items-center justify-between mb-3">
+                                    <TabsList>
+                                        <TabsTrigger value="create">Create new repository</TabsTrigger>
+                                        <TabsTrigger value="push">Push existing repository</TabsTrigger>
+                                    </TabsList>
 
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-2 gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-                                        >
-                                            {protocol}
-                                            <ChevronDown className="h-3 w-3" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => setProtocol("https")}>HTTPS</DropdownMenuItem>
-                                        {sshEnabled && <DropdownMenuItem onClick={() => setProtocol("ssh")}>SSH</DropdownMenuItem>}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-
-                            <TabsContent value="create">
-                                <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
-                                    <div>echo &quot;# {repo}&quot; &gt;&gt; README.md</div>
-                                    <div>git init</div>
-                                    <div>git add README.md</div>
-                                    <div>git commit -m &quot;initial commit&quot;</div>
-                                    <div>git branch -M {branch}</div>
-                                    <div>git remote add origin {cloneUrl}</div>
-                                    <div>git push -u origin {branch}</div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 px-2 gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                                            >
+                                                {protocol}
+                                                <ChevronDown className="h-3 w-3" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setProtocol("https")}>HTTPS</DropdownMenuItem>
+                                            {sshEnabled && <DropdownMenuItem onClick={() => setProtocol("ssh")}>SSH</DropdownMenuItem>}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
-                            </TabsContent>
 
-                            <TabsContent value="push">
-                                <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
-                                    <div>git remote add origin {cloneUrl}</div>
-                                    <div>git branch -M {branch}</div>
-                                    <div>git push -u origin {branch}</div>
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                                <TabsContent value="create">
+                                    <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
+                                        <div>echo &quot;# {repo}&quot; &gt;&gt; README.md</div>
+                                        <div>git init</div>
+                                        <div>git add README.md</div>
+                                        <div>git commit -m &quot;initial commit&quot;</div>
+                                        <div>git branch -M {branch}</div>
+                                        <div>git remote add origin {cloneUrl}</div>
+                                        <div>git push -u origin {branch}</div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="push">
+                                    <div className="rounded-md border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed space-y-0.5">
+                                        <div>git remote add origin {cloneUrl}</div>
+                                        <div>git branch -M {branch}</div>
+                                        <div>git push -u origin {branch}</div>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
+                        )}
                     </div>
                 </div>
 
@@ -216,6 +221,7 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
     return (
         <div className="min-h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
+            {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
 
             <div className="flex flex-1 overflow-hidden">
                 <RepoFileSidebar

@@ -35,6 +35,8 @@ import { formatDistanceToNow } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
+import type { RepoMetadata } from "@/app/[user]/[repo]/page";
+import { ArchivedBanner } from "@/components/archived-banner";
 
 interface IssueLabel {
     name: string;
@@ -287,8 +289,10 @@ export default function IssuesPage() {
     const { data, isLoading, mutate } = useSWR<IssuesResponse>(user && repo ? apiUrl : null, jsonFetcher);
     const { data: labelsData } = useSWR<LabelsResponse>(user && repo ? `/api/repos/${user}/${repo}/labels` : null, jsonFetcher);
     const { data: permsData } = useSWR<PermissionsResponse>(user && repo ? `/api/repos/${user}/${repo}/permissions` : null, jsonFetcher);
+    const { data: repoMeta } = useSWR<RepoMetadata>(user && repo ? `/api/repos/${user}/${repo}` : null, jsonFetcher);
 
-    const canManage = permsData?.permissions.manageIssues ?? false;
+    const isArchived = repoMeta?.archivedAt != null;
+    const canManage = (permsData?.permissions.manageIssues ?? false) && !isArchived;
 
     const labelMap = new Map<string, string>((labelsData?.labels ?? []).map((l) => [l.name, l.color]));
 
@@ -390,6 +394,7 @@ export default function IssuesPage() {
                 ]}
                 hasNotifications
             />
+            {repoMeta?.archivedAt && <ArchivedBanner archivedAt={repoMeta.archivedAt} />}
 
             <div className="flex-1 flex overflow-hidden">
                 <aside
@@ -500,12 +505,14 @@ export default function IssuesPage() {
                                 Labels
                             </Link>
 
-                            <Link href={`/${user}/${repo}/issues/new`}>
-                                <Button size="sm" className="h-9 gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    New Issue
-                                </Button>
-                            </Link>
+                            {!isArchived && (
+                                <Link href={`/${user}/${repo}/issues/new`}>
+                                    <Button size="sm" className="h-9 gap-2">
+                                        <Plus className="h-4 w-4" />
+                                        New Issue
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </div>
 
@@ -538,12 +545,14 @@ export default function IssuesPage() {
                                 <Inbox className="h-16 w-16 mb-4 opacity-30" />
                                 <p className="text-lg font-medium">No issues</p>
                                 <p className="mt-1">Create your first issue to get started</p>
-                                <Link href={`/${user}/${repo}/issues/new`}>
-                                    <Button size="sm" className="mt-6 gap-2">
-                                        <Plus className="h-4 w-4" />
-                                        New Issue
-                                    </Button>
-                                </Link>
+                                {!isArchived && (
+                                    <Link href={`/${user}/${repo}/issues/new`}>
+                                        <Button size="sm" className="mt-6 gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            New Issue
+                                        </Button>
+                                    </Link>
+                                )}
                             </div>
                         )}
                     </div>

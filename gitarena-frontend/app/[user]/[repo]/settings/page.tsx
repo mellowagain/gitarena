@@ -21,15 +21,26 @@ import {
     Tag,
     Check,
     Copy,
-    AlertCircle,
     ChevronDown,
     Archive,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { jsonFetcher, putJsonFetcher, deleteFetcher } from "@/lib/fetchers";
+import { Spinner } from "@/components/ui/spinner";
+import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonVoidFetcher } from "@/lib/fetchers";
 import { TopBar } from "@/components/top-bar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useParams } from "next/navigation";
+import { ArchivedBanner } from "@/components/archived-banner";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -115,7 +126,7 @@ const navItems: { id: Tab; label: string; icon: React.ElementType; wip?: boolean
     { id: "collaboration", label: "Collaboration", icon: Users },
     { id: "branches", label: "Branches & Tags", icon: ShieldCheck, wip: true },
     { id: "integrations", label: "Integrations", icon: Webhook, wip: true },
-    { id: "danger", label: "Danger Zone", icon: AlertTriangle, wip: true },
+    { id: "danger", label: "Advanced", icon: AlertTriangle },
 ];
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
@@ -162,11 +173,12 @@ function SaveButton({ children = "Save changes" }: { children?: React.ReactNode 
     );
 }
 
-function DangerButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+function DangerButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
     return (
         <button
             onClick={onClick}
-            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors"
+            disabled={disabled}
+            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {children}
         </button>
@@ -247,6 +259,7 @@ interface RepoMeta {
     description: string | null;
     visibility: "public" | "internal" | "private";
     defaultBranch: string;
+    archivedAt: string | null;
 }
 
 function CollaborationTab({ namespace, repo }: { namespace: string; repo: string }) {
@@ -843,15 +856,30 @@ function IntegrationsTab() {
 }
 
 function DangerTab({ org, repo }: { org: string; repo: string }) {
-    const [archiveConfirm, setArchiveConfirm] = useState(false);
+    const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
     const [deleteInput, setDeleteInput] = useState("");
+
+    const metaUrl = `/api/repos/${org}/${repo}`;
+    const { data: repoMeta, mutate: mutateMeta } = useSWR<RepoMeta>(metaUrl, jsonFetcher);
+    const isArchived = repoMeta?.archivedAt != null;
+
+    const { trigger: toggleArchive, isMutating: isArchiving } = useSWRMutation<void, Error, string, { archive: boolean }>(
+        `${metaUrl}/archive`,
+        (url, { arg }) => patchJsonVoidFetcher(url, { arg }),
+        {
+            onSuccess: () => {
+                mutateMeta();
+                setArchiveDialogOpen(false);
+            },
+        }
+    );
 
     const fullName = `${org}/${repo}`;
 
     return (
         <div>
-            <SectionHeader title="Danger Zone" description="These actions are irreversible. Please proceed with caution." />
+            <SectionHeader title="Advanced" description="These actions are irreversible. Please proceed with caution." />
 
             <div className="border border-destructive/30 rounded-md overflow-hidden space-y-0">
                 {/* Rename */}
@@ -860,6 +888,9 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Settings className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Rename this repository</p>
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
+                                WIP
+                            </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Renaming will break existing clone URLs. A redirect will be set up automatically from the old name.
@@ -875,6 +906,9 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Transfer ownership</p>
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
+                                WIP
+                            </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Transfer this repository to another user or organization. You will lose admin access unless the new owner
@@ -885,45 +919,26 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <DangerButton>Transfer repository</DangerButton>
                     </div>
                 </div>
-                {/* Archive */}{" "}
+                {/* Archive */}
                 <div className="flex items-start justify-between gap-4 p-4 border-b border-destructive/20">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <Archive className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm font-medium">Archive this repository</p>
+                            <p className="text-sm font-medium">{isArchived ? "Unarchive this repository" : "Archive this repository"}</p>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                            Mark this repository as read-only. Issues, merge requests, and commits will be locked. The repository can be
-                            unarchived later.
+                            {isArchived
+                                ? "Restore this repository to an active state. Issues, merge requests, and commits will be unlocked."
+                                : "Mark this repository as read-only. Issues, merge requests, and commits will be locked. The repository can be unarchived later."}
                         </p>
-                        {archiveConfirm && (
-                            <div className="mt-3 flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md">
-                                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                                <p className="text-xs text-muted-foreground">
-                                    This will make the repository read-only and hide it from search.
-                                </p>
-                            </div>
-                        )}
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                        {archiveConfirm ? (
-                            <>
-                                <button
-                                    onClick={() => setArchiveConfirm(false)}
-                                    className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <DangerButton>Confirm archive</DangerButton>
-                            </>
-                        ) : (
-                            <button
-                                onClick={() => setArchiveConfirm(true)}
-                                className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                            >
-                                Archive repository
-                            </button>
-                        )}
+                    <div className="shrink-0">
+                        <button
+                            onClick={() => setArchiveDialogOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
+                        >
+                            {isArchived ? "Unarchive repository" : "Archive repository"}
+                        </button>
                     </div>
                 </div>
                 {/* Delete */}
@@ -932,6 +947,9 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <p className="text-sm font-medium text-destructive">Delete this repository</p>
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
+                                WIP
+                            </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                             Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
@@ -981,6 +999,39 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                     )}
                 </div>
             </div>
+
+            <AlertDialog
+                open={archiveDialogOpen}
+                onOpenChange={(open) => {
+                    if (!isArchiving) {
+                        setArchiveDialogOpen(open);
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{isArchived ? "Unarchive this repository?" : "Archive this repository?"}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {isArchived
+                                ? "This will restore the repository to an active state. Issues, merge requests, and commits will be unlocked and the repository will appear in search results again."
+                                : "This will make the repository read-only. All issues, merge requests, and commits will be locked. You can unarchive it later from the settings."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                toggleArchive({ archive: !isArchived });
+                            }}
+                            disabled={isArchiving}
+                        >
+                            {isArchiving && <Spinner className="mr-2" />}
+                            {isArchived ? "Unarchive repository" : "Archive repository"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -991,6 +1042,8 @@ export default function RepoSettingsPage() {
     const params = useParams();
     const namespace = (params.user ?? params.org) as string;
     const repoName = params.repo as string;
+
+    const { data: repoMeta } = useSWR<RepoMeta>(`/api/repos/${namespace}/${repoName}`, jsonFetcher);
 
     const [activeTab, setActiveTab] = useState<Tab>("general");
 
@@ -1021,6 +1074,7 @@ export default function RepoSettingsPage() {
                 ]}
                 hasNotifications
             />
+            {repoMeta?.archivedAt && <ArchivedBanner archivedAt={repoMeta.archivedAt} />}
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Left sidebar */}

@@ -10,6 +10,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
 import { gitarenaTheme, detectLanguage } from "@/components/code-block";
+import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import {
     Search,
     Code,
@@ -84,7 +85,7 @@ interface ExploreRepo {
     ownerId: string;
     ownerName: string;
     visibility: string;
-    archived: boolean;
+    archivedAt: string | null;
     disabled: boolean;
     languages: Record<string, number>;
     stars: number;
@@ -113,6 +114,7 @@ interface IssueSearchResult {
     title: string;
     status: string;
     labels: string[];
+    priority: Priority;
     commentCount: number;
     authorUsername: string;
     repoOwner: string;
@@ -631,6 +633,11 @@ function RepoResults({ query }: { query: string }) {
                                         )}
                                         {repo.visibility}
                                     </span>
+                                    {repo.archivedAt && (
+                                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                            archived
+                                        </span>
+                                    )}
                                 </div>
                                 {repo.description && (
                                     <p className="text-sm text-muted-foreground leading-relaxed mb-2">{repo.description}</p>
@@ -796,6 +803,7 @@ function IssueResults({ query }: { query: string }) {
                                     <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                                 )}
                             </div>
+                            <PriorityIndicator priority={issue.priority} />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
                                     <Link
@@ -815,8 +823,8 @@ function IssueResults({ query }: { query: string }) {
                                 <div className="text-xs text-muted-foreground">
                                     <Link href={`/${issue.repoOwner}/${issue.repoName}`} className="hover:underline">
                                         {issue.repoOwner}/{issue.repoName}
-                                    </Link>
-                                    {" · "}#{issue.index} by {issue.authorUsername}
+                                    </Link>{" "}
+                                    <span className="font-mono">#{issue.index}</span>
                                 </div>
                             </div>
                             {issue.commentCount > 0 && (

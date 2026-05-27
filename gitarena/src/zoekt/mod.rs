@@ -64,7 +64,7 @@ pub(crate) async fn init_zoekt_config(repo: &Repository, tx: &mut Transaction<'_
     );
     section.push(ValueName::try_from("web-url-type")?, Some("gitea".into())); // seems compatible with our url schema
 
-    section.push(ValueName::try_from("archived")?, Some(repo.archived.to_string().as_str().into()));
+    section.push(ValueName::try_from("archived")?, Some(repo.archived_at.is_some().to_string().as_str().into()));
     section.push(ValueName::try_from("fork")?, Some(repo.forked_from.is_some().to_string().as_str().into()));
     section.push(
         ValueName::try_from("public")?,

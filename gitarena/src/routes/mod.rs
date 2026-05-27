@@ -11,6 +11,7 @@ use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::organization::api::create_org::CreateOrgRequest;
 use crate::routes::organization::api::members::{AddMemberRequest, OrgMemberEntry};
 use crate::routes::repository::api::CreateJsonResponse;
+use crate::routes::repository::api::archive::ArchiveRequest;
 use crate::routes::repository::api::blame::{BlameHunk, BlameResponse};
 use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
 use crate::routes::repository::api::collaborators::{CollaboratorResponse, UpsertCollaboratorRequest};
@@ -30,6 +31,7 @@ use crate::routes::search::users::{SearchUser, UserSearchResponse};
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
+use crate::routes::user::api::issues::AssignedIssueEntry;
 use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sso::SSOProvidersResponse;
 
@@ -74,6 +76,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::repo_meta::meta,
         crate::routes::repository::api::repo_readme::readme,
         crate::routes::repository::api::fork_repo::create_fork,
+        crate::routes::repository::api::archive::toggle_archive,
         crate::routes::repository::api::star::get_stats,
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,
@@ -86,6 +89,7 @@ impl Modify for CookieAuth {
         crate::routes::user::api::auth::logout::post_logout,
         crate::routes::user::api::auth::me::get_me,
         crate::routes::user::api::profile::get_user_profile,
+        crate::routes::user::api::issues::get_assigned_issues,
         crate::routes::organization::api::create_org::create_org,
         crate::routes::organization::api::org::get_org,
         crate::routes::organization::api::org::delete_org,
@@ -109,6 +113,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::issues::timeline::get_issue_timeline,
     ),
     components(schemas(
+        ArchiveRequest,
         ApiInfoResponse,
         ExploreResponse,
         ExploreRepo,
@@ -144,6 +149,7 @@ impl Modify for CookieAuth {
         UserProfileResponse,
         UserProfileRepo,
         UserProfileStats,
+        AssignedIssueEntry,
         Organization,
         OrgRole,
         OrgMember,

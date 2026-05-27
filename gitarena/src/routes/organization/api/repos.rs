@@ -6,6 +6,7 @@ use crate::user::WebUser;
 use crate::database::Pool;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use gitarena_macros::route;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
@@ -19,7 +20,7 @@ pub(crate) struct OrgRepo {
     name: String,
     description: String,
     visibility: RepoVisibility,
-    archived: bool,
+    archived_at: Option<DateTime<Utc>>,
     languages: JsonValue,
     stars: i64,
 }
@@ -51,7 +52,7 @@ pub(crate) async fn list_repos(name: web::Path<String>, web_user: WebUser, db_po
          repositories.name, \
          repositories.description, \
          repositories.visibility, \
-         repositories.archived, \
+         repositories.archived_at, \
          repositories.languages, \
          count(distinct stars.stargazer) as stars \
          from repositories \

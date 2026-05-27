@@ -7,6 +7,7 @@ use crate::user::{User, WebUser};
 use crate::database::Database;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use gitarena_macros::route;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
@@ -39,7 +40,7 @@ pub(crate) struct UserProfileRepo {
     name: String,
     description: String,
     visibility: RepoVisibility,
-    archived: bool,
+    archived_at: Option<DateTime<Utc>>,
     languages: JsonValue,
     stars: i64,
 }
@@ -89,7 +90,7 @@ async fn get_user_repos(user_id: Uuid, is_self: bool, can_see_internal: bool, tx
          repositories.name, \
          repositories.description, \
          repositories.visibility, \
-         repositories.archived, \
+         repositories.archived_at, \
          repositories.languages, \
          count(distinct stars.stargazer) as stars \
          from repositories \

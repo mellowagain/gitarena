@@ -46,6 +46,10 @@ pub(crate) async fn create_fork(
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
+    if repo.archived_at.is_some() {
+        die!(FORBIDDEN, "Repository is archived and read-only");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     let (target_id, target_name) = if let Some(namespace) = &body.target_namespace {

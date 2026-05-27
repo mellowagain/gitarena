@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -22,11 +22,15 @@ import {
     CheckCircle2,
     X,
     AlertTriangle,
+    Circle,
+    CircleDot,
+    XCircle,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 
 import { formatDistanceToNow, addHours, format } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
@@ -56,7 +60,7 @@ interface UserProfileRepo {
     name: string;
     description: string;
     visibility: "public" | "internal" | "private";
-    archived: boolean;
+    archivedAt: string | null;
     languages: Record<string, number>;
     stars: number;
 }
@@ -71,6 +75,32 @@ interface UserProfileResponse {
         starsEarned: number;
         starsGiven: number;
     };
+}
+
+interface AssignedIssue {
+    id: string;
+    index: number;
+    title: string;
+    status: "open" | "in_progress" | "completed" | "not_planned";
+    priority: Priority;
+    updatedAt: string;
+    repoName: string;
+    repoNamespace: string;
+}
+
+interface IssueDetailResponse {
+    issue: {
+        labels: string[];
+    };
+}
+
+interface IssueLabelEntry {
+    name: string;
+    color: string;
+}
+
+interface RepoLabelsResponse {
+    labels: IssueLabelEntry[];
 }
 
 /** Returns the primary language (most bytes) from the languages map. */
@@ -95,6 +125,78 @@ function WipBadge() {
             <Construction className="h-3 w-3" />
             WIP
         </span>
+    );
+}
+
+function IssueStatusIcon({ status }: { status: string }) {
+    if (status === "open") {
+        return <Circle className="h-3.5 w-3.5 text-green-500 shrink-0" />;
+    }
+    if (status === "in_progress") {
+        return <CircleDot className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
+    }
+    return <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+}
+
+function LabelBadge({ name, color }: { name: string; color: string }) {
+    const scopedIndex = name.indexOf("::");
+    const isScoped = scopedIndex !== -1;
+    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
+    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
+
+    if (isScoped) {
+        return (
+            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
+                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
+                    {scopeKey}
+                </span>
+                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
+                    {scopeValue}
+                </span>
+            </span>
+        );
+    }
+    return (
+        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
+            {name}
+        </span>
+    );
+}
+
+function AssignedIssueRow({ issue }: { issue: AssignedIssue }) {
+    const { data: issueDetail } = useSWR<IssueDetailResponse>(`/api/repos/${issue.repoNamespace}/${issue.repoName}/issues/${issue.index}`);
+    const { data: labelsData } = useSWR<RepoLabelsResponse>(`/api/repos/${issue.repoNamespace}/${issue.repoName}/labels`);
+
+    const labelMap = useMemo(() => {
+        const map = new Map<string, string>();
+        labelsData?.labels.forEach((l) => map.set(l.name, l.color));
+        return map;
+    }, [labelsData]);
+
+    const labelNames = issueDetail?.issue.labels ?? [];
+
+    return (
+        <Link
+            href={`/${issue.repoNamespace}/${issue.repoName}/issues/${issue.index}`}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors first:rounded-t-md last:rounded-b-md"
+        >
+            <IssueStatusIcon status={issue.status} />
+            <PriorityIndicator priority={issue.priority} />
+            <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{issue.title}</div>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-xs text-muted-foreground shrink-0">
+                        {issue.repoNamespace}/{issue.repoName} <span className="font-mono">#{issue.index}</span>
+                    </span>
+                    {labelNames.map((name) => (
+                        <LabelBadge key={name} name={name} color={labelMap.get(name) ?? "#888888"} />
+                    ))}
+                </div>
+            </div>
+            <span className="text-xs text-muted-foreground shrink-0">
+                {formatDistanceToNow(new Date(issue.updatedAt), { addSuffix: true })}
+            </span>
+        </Link>
     );
 }
 
@@ -129,6 +231,9 @@ export default function DashboardPage() {
 
     const { data: profile, isLoading: profileLoading } = useSWR<UserProfileResponse>(user ? `/api/users/${user.username}` : null);
     const { data: emails } = useSWR<EmailResponse[]>(user ? "/api/emails" : null);
+    const { data: assignedIssues, isLoading: assignedIssuesLoading } = useSWR<AssignedIssue[]>(
+        user ? "/api/users/me/assigned-issues" : null
+    );
 
     const primaryEmail = emails?.find((e) => e.primary) ?? null;
     const emailUnverified = primaryEmail !== null && primaryEmail?.verifiedAt === null;
@@ -309,7 +414,7 @@ export default function DashboardPage() {
                                                         <div className="text-sm font-medium">
                                                             <span className="text-muted-foreground font-normal">{user.username}/</span>
                                                             {repo.name}
-                                                            {repo.archived && (
+                                                            {repo.archivedAt && (
                                                                 <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-secondary text-muted-foreground">
                                                                     archived
                                                                 </span>
@@ -350,11 +455,25 @@ export default function DashboardPage() {
                                 <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <AlertCircle className="h-3.5 w-3.5" />
                                     Assigned to you
-                                    <WipBadge />
                                 </h2>
                             </div>
-                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
-                                Assigned issues will appear here once the API is available.
+                            <div className="border border-border rounded-md divide-y divide-border">
+                                {assignedIssuesLoading ? (
+                                    [1, 2, 3].map((i) => (
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                                            <div className="h-3.5 w-3.5 rounded-full bg-accent shrink-0" />
+                                            <div className="flex-1 space-y-1.5">
+                                                <div className="h-3.5 w-56 rounded bg-accent" />
+                                                <div className="h-3 w-32 rounded bg-accent" />
+                                            </div>
+                                            <div className="h-3 w-16 rounded bg-accent shrink-0" />
+                                        </div>
+                                    ))
+                                ) : !assignedIssues || assignedIssues.length === 0 ? (
+                                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">No issues assigned to you.</div>
+                                ) : (
+                                    assignedIssues.map((issue) => <AssignedIssueRow key={issue.id} issue={issue} />)
+                                )}
                             </div>
                         </section>
 
