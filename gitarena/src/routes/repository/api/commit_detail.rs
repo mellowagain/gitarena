@@ -17,13 +17,13 @@ const MAX_LINES_PER_FILE: usize = 5_000;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SignatureInfo {
     /// Display name
-    name: String,
+    pub(crate) name: String,
     /// Email address
-    email: String,
+    pub(crate) email: String,
     /// Unix timestamp
-    timestamp: i64,
+    pub(crate) timestamp: i64,
     /// GitArena user ID, if the email matches a registered user
-    uid: Option<Uuid>,
+    pub(crate) uid: Option<Uuid>,
 }
 
 #[derive(Serialize, ToSchema)]

@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, ChevronDown, History } from "lucide-react";
+import { GitBranch, ChevronDown, History, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -35,6 +35,7 @@ export interface BranchBarProps {
 
 export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchChange }: BranchBarProps) {
     const { data, error, isLoading } = useSWR<BranchesResponse>(`/api/repos/${user}/${repo}/branches`);
+    const { data: tagsData } = useSWR<{ tags: { name: string }[] }>(`/api/repos/${user}/${repo}/tags`);
 
     if (isLoading) {
         return <BranchBarSkeleton />;
@@ -79,8 +80,14 @@ export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchC
                 className="flex items-center gap-1.5 px-2.5 h-9 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md hover:bg-accent/50"
             >
                 <History className="h-3.5 w-3.5" />
-
                 {selectedBranchInfo && <span>{selectedBranchInfo.commitCount}</span>}
+            </Link>
+            <Link
+                href={`/${user}/${repo}/tags`}
+                className="flex items-center gap-1.5 px-2.5 h-9 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md hover:bg-accent/50"
+            >
+                <Tag className="h-3.5 w-3.5" />
+                {tagsData && <span>{tagsData.tags.length}</span>}
             </Link>
         </div>
     );
@@ -90,6 +97,7 @@ export function BranchBarSkeleton() {
     return (
         <div className="flex items-center gap-2 animate-pulse">
             <div className="h-9 flex-1 rounded bg-accent" />
+            <div className="h-9 w-14 rounded bg-accent" />
             <div className="h-9 w-14 rounded bg-accent" />
         </div>
     );

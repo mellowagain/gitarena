@@ -25,6 +25,7 @@ use crate::routes::repository::api::issues::timeline::TimelineEvent;
 use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
+use crate::routes::repository::api::tags::{TagInfo, TagKind, TagsResponse};
 use crate::routes::search::code::CodeSearchResponse;
 use crate::routes::search::repositories::RepoSearchResponse;
 use crate::routes::search::users::{SearchUser, UserSearchResponse};
@@ -111,6 +112,8 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::issues::labels::update_label,
         crate::routes::repository::api::issues::labels::delete_label,
         crate::routes::repository::api::issues::timeline::get_issue_timeline,
+        crate::routes::repository::api::tags::list_tags,
+        crate::routes::repository::api::tags::delete_tag,
     ),
     components(schemas(
         ArchiveRequest,
@@ -176,6 +179,9 @@ impl Modify for CookieAuth {
         UpdateLabelRequest,
         IssueStatus,
         TimelineEvent,
+        TagInfo,
+        TagKind,
+        TagsResponse,
     )),
     modifiers(&CookieAuth),
     tags(

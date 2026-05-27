@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 use crate::error::error_renderer_middleware;
 use crate::metrics::db_pool::spawn_db_pool_metrics_task;

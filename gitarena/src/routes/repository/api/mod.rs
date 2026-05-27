@@ -25,6 +25,7 @@ pub(crate) mod permissions;
 pub(crate) mod repo_meta;
 pub(crate) mod repo_readme;
 pub(crate) mod star;
+pub(crate) mod tags;
 pub(crate) mod validate_repo;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
@@ -40,6 +41,9 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(commit_detail::commit_detail);
     config.service(branch_files::branch_files);
     config.service(branches::branches);
+
+    config.service(tags::list_tags);
+    config.service(tags::delete_tag);
 
     config.service(fork_repo::create_fork);
 
