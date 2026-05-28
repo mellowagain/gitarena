@@ -133,4 +133,5 @@ pub fn default_env(err: &FromEnvError) -> EnvFilter {
         .add_directive("reqwest=info".parse().unwrap())
         .add_directive("rustls=info".parse().unwrap())
         .add_directive("sqlx=warn".parse().unwrap())
+        .add_directive("opentelemetry=info".parse().unwrap())
 }
