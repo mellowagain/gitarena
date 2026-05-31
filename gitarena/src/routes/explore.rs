@@ -68,7 +68,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         repositories.disabled, \
         repositories.languages, \
         count(distinct stars.stargazer) as stars, \
-        count(distinct issues.id) filter (where not(issues.open = false or issues.confidential = true)) as issues \
+        count(distinct issues.id) filter (where not(issues.status = 'completed' or issues.status = 'not_planned' or issues.confidential = true)) as issues \
         from repositories \
         left join stars on repositories.id = stars.repo \
         left join users u on repositories.owner_user = u.id \
