@@ -228,7 +228,7 @@ Search:
 
 Releases:
 
-![Releases](docs/readme_screenshots/releses.png)
+![Releases](docs/readme_screenshots/releases.png)
 
 ## Thank you
 
