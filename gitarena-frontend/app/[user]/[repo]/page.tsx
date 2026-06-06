@@ -24,12 +24,13 @@ import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useSWR from "swr";
+import { jsonFetcher } from "@/lib/fetchers";
 import { ErrorDisplay } from "@/components/error-display";
 import { isMarkdown } from "@/components/markdown-renderer";
 import { FileContent, type FileCommit } from "@/components/file-content";
 import prettyBytes from "pretty-bytes";
 import { formatDistanceToNowStrict } from "date-fns";
-import { shortLocale } from "@/lib/utils";
+import { shortLocale, uuidToDate } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { ArchivedBanner } from "@/components/archived-banner";
 
@@ -209,6 +210,29 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
     const [fileSize, setFileSize] = useState<number | null>(null);
     const [fileCommit, setFileCommit] = useState<FileCommit | null>(null);
     const [isBinary, setIsBinary] = useState(false);
+
+    const {
+        data: latestReleaseData,
+        error: latestReleaseError,
+        isLoading: latestReleaseLoading,
+    } = useSWR<{ id: string; tag: string; title: string }>(`/api/repos/${user}/${repo}/releases/latest`, { shouldRetryOnError: false });
+
+    const latestRelease = latestReleaseLoading
+        ? undefined
+        : latestReleaseData
+          ? {
+                tag: latestReleaseData.tag,
+                name: latestReleaseData.title,
+                date: formatDistanceToNowStrict(uuidToDate(latestReleaseData.id), { addSuffix: true }),
+            }
+          : null;
+
+    const { data: permsData } = useSWR<{ permissions: { push: boolean; admin: boolean } }>(
+        `/api/repos/${user}/${repo}/permissions`,
+        jsonFetcher
+    );
+    const canPush = permsData?.permissions.push ?? false;
+    const canAdmin = permsData?.permissions.admin ?? false;
 
     function handleSelectFile(file: string | null) {
         setSelectedFile(file);
@@ -412,11 +436,11 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                     description={meta.description}
                     projectId={meta.id}
                     license={meta.license}
-                    //websiteUrl="idk"
-                    //createdAt={"creation date"}
                     topics={[]}
                     languages={meta.languages}
-                    //latestRelease={repoData.latestRelease}
+                    latestRelease={latestRelease}
+                    canPush={canPush}
+                    canAdmin={canAdmin}
                     //contributors={repoData.contributors}
                 />
             </div>

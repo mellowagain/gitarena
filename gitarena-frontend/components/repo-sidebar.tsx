@@ -26,6 +26,7 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { ErrorDisplay } from "@/components/error-display";
 import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import prettyBytes from "pretty-bytes";
 import { LanguageBar } from "@/components/language-bar";
@@ -56,7 +57,9 @@ export type RepoSidebarProps = {
     createdAt?: string;
     topics: string[];
     languages: Record<string, number>;
-    latestRelease?: Release;
+    latestRelease?: Release | null;
+    canPush?: boolean;
+    canAdmin?: boolean;
     contributors?: Contributor[];
 };
 
@@ -168,6 +171,8 @@ export function RepoSidebar({
     topics,
     languages,
     latestRelease,
+    canPush = false,
+    canAdmin = false,
     contributors,
 }: RepoSidebarProps) {
     const router = useRouter();
@@ -316,7 +321,7 @@ export function RepoSidebar({
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">About</h3>
                         <div className="flex items-center gap-1.5">
-                            {authUser?.username === user && (
+                            {canAdmin && (
                                 <Link
                                     href={`/${user}/${repo}/settings`}
                                     className="p-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -443,15 +448,31 @@ export function RepoSidebar({
                     </div>
                 )}
 
-                {latestRelease && (
-                    <div className="pt-4 border-t border-border">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Releases</h3>
-                            <Link href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Releases</h3>
+                        {latestRelease !== undefined && (
+                            <Link
+                                href={`/${user}/${repo}/releases`}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
                                 View all
                             </Link>
+                        )}
+                    </div>
+                    {latestRelease === undefined ? (
+                        <div className="flex items-center gap-3 p-3 -mx-3">
+                            <Skeleton className="h-5 w-5 rounded shrink-0" />
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                                <Skeleton className="h-3.5 w-24" />
+                                <Skeleton className="h-3 w-32" />
+                            </div>
                         </div>
-                        <Link href="#" className="flex items-center gap-3 p-3 -mx-3 rounded-md hover:bg-accent/50 transition-colors group">
+                    ) : latestRelease ? (
+                        <Link
+                            href={`/${user}/${repo}/releases`}
+                            className="flex items-center gap-3 p-3 -mx-3 rounded-md hover:bg-accent/50 transition-colors group"
+                        >
                             <Package className="h-5 w-5 text-muted-foreground shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
@@ -465,8 +486,21 @@ export function RepoSidebar({
                                 </div>
                             </div>
                         </Link>
-                    </div>
-                )}
+                    ) : canPush ? (
+                        <Link
+                            href={`/${user}/${repo}/releases/new`}
+                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <Package className="h-4 w-4 shrink-0" />
+                            No releases yet
+                        </Link>
+                    ) : (
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Package className="h-4 w-4 shrink-0" />
+                            No releases yet
+                        </span>
+                    )}
+                </div>
 
                 {contributors && (
                     <div className="pt-4 border-t border-border">

@@ -46,6 +46,7 @@ mod passkey;
 mod prelude;
 mod privileges;
 mod queue;
+mod release;
 mod replication;
 mod repository;
 mod routes;
@@ -53,6 +54,7 @@ mod session;
 mod sse;
 mod ssh;
 mod sso;
+mod storage;
 mod telemetry;
 mod user;
 mod utils;
@@ -101,6 +103,8 @@ async fn main() -> Result<()> {
     let meili_client = meili::init(&db_pool).await?;
     zoekt::init(&db_pool).await?;
 
+    let storage = storage::init(&db_pool).await?;
+
     let ssh_handle = ssh::init(db_pool.clone(), meili_client.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
@@ -119,6 +123,7 @@ async fn main() -> Result<()> {
             .app_data(Data::new(webauthn.clone()))
             .app_data(Data::new(queue.clone()))
             .app_data(Data::new(meili_client.clone()))
+            .app_data(Data::new(storage.clone()))
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))

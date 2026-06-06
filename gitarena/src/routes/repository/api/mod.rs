@@ -22,6 +22,7 @@ pub(crate) mod fork_repo;
 pub(crate) mod import_repo;
 pub(crate) mod issues;
 pub(crate) mod permissions;
+pub(crate) mod releases;
 pub(crate) mod repo_meta;
 pub(crate) mod repo_readme;
 pub(crate) mod star;
@@ -44,6 +45,17 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 
     config.service(tags::list_tags);
     config.service(tags::delete_tag);
+
+    config.service(releases::list_releases);
+    config.service(releases::latest_release);
+    config.service(releases::get_release);
+    config.service(releases::create_release);
+    config.service(releases::update_release);
+    config.service(releases::delete_release);
+    config.service(releases::create_asset);
+    config.service(releases::confirm_asset);
+    config.service(releases::download_asset);
+    config.service(releases::delete_asset);
 
     config.service(fork_repo::create_fork);
 

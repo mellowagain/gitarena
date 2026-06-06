@@ -2,6 +2,7 @@ use crate::issue::IssueStatus;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
+use crate::release::assets::{Arch, Kind, Libc, Os, ReleaseAssets};
 use crate::repository::Repository;
 use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceHealth};
 use crate::routes::admin::stats::InstanceStats;
@@ -23,6 +24,7 @@ use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::issues::labels::{CreateLabelRequest, LabelEntry, LabelsResponse, UpdateLabelRequest};
 use crate::routes::repository::api::issues::timeline::TimelineEvent;
 use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
+use crate::routes::repository::api::releases::{CreateAssetRequest, CreateAssetResponse, CreateReleaseRequest, ReleaseResponse, UpdateReleaseRequest};
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::repository::api::tags::{TagInfo, TagKind, TagsResponse};
@@ -114,6 +116,16 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::issues::timeline::get_issue_timeline,
         crate::routes::repository::api::tags::list_tags,
         crate::routes::repository::api::tags::delete_tag,
+        crate::routes::repository::api::releases::list_releases,
+        crate::routes::repository::api::releases::latest_release,
+        crate::routes::repository::api::releases::get_release,
+        crate::routes::repository::api::releases::create_release,
+        crate::routes::repository::api::releases::update_release,
+        crate::routes::repository::api::releases::delete_release,
+        crate::routes::repository::api::releases::create_asset,
+        crate::routes::repository::api::releases::confirm_asset,
+        crate::routes::repository::api::releases::download_asset,
+        crate::routes::repository::api::releases::delete_asset,
     ),
     components(schemas(
         ArchiveRequest,
@@ -182,6 +194,16 @@ impl Modify for CookieAuth {
         TagInfo,
         TagKind,
         TagsResponse,
+        ReleaseResponse,
+        CreateAssetResponse,
+        CreateReleaseRequest,
+        UpdateReleaseRequest,
+        CreateAssetRequest,
+        ReleaseAssets,
+        Os,
+        Arch,
+        Libc,
+        Kind,
     )),
     modifiers(&CookieAuth),
     tags(

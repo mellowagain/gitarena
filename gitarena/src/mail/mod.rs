@@ -6,6 +6,7 @@
 //! - The **public email** is displayed on the user profile.
 //! - All emails will be used to identify Git commits and incoming emails (e.g. issue creation by email).
 
+use crate::config::get_setting;
 use crate::database::Database;
 use crate::database::Pool;
 use anyhow::{Context, Result, anyhow};
@@ -126,10 +127,8 @@ impl Debug for Email {
     }
 }
 
-pub(crate) async fn get_root_email(db_pool: &Pool) -> Result<String> {
-    let address: String = from_config!("smtp.address" => String);
-
-    Ok(address)
+pub(crate) async fn get_root_email(tx: &mut Transaction<'_, Database>) -> Result<String> {
+    Ok(get_setting("smtp.address", tx).await?)
 }
 
 pub(crate) async fn create_transport(db_pool: &Pool) -> Result<()> {
