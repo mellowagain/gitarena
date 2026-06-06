@@ -1,0 +1,84 @@
+---
+title: "Releases"
+description: "Tag and distribute versioned builds with attached binary assets."
+---
+
+Releases let you attach a name, description, and downloadable files to a point in your repository's history. Each release is tied to a git tag.
+
+<Note>
+  Asset uploads require S3-compatible object storage to be configured. Releases without assets work without object storage. See [object storage](/self-hosting/object-storage) for setup.
+</Note>
+
+## Creating a release
+
+Navigate to **Releases** in a repository and click **New Release**. Fill in:
+
+- **Tag** — the git tag this release corresponds to. If the tag does not exist in the repository, GitArena creates an annotated tag pointing to the current HEAD with the release title and description as the tag message.
+- **Title** — the release name shown in the UI.
+- **Release notes** — Markdown body describing what changed. Supports the full GitArena Markdown dialect including GFM tables, syntax highlighting, and task lists.
+- **Pre-release** — mark the release as a pre-release. Pre-releases are listed separately and excluded from the "latest release" shown in the repository sidebar.
+
+## Uploading assets
+
+Assets are files attached to a release — typically compiled binaries, archives, or checksums. Each asset carries optional metadata: OS, architecture, C library variant (libc), and kind (executable, library, installer, etc.). The UI groups assets by this metadata on the release page.
+
+<Note>
+  Asset uploads require [object storage](/self-hosting/object-storage) to be enabled on the instance.
+</Note>
+
+The upload flow uses presigned URLs so files transfer directly from the browser to object storage without passing through GitArena:
+
+<Steps>
+  <Step title="Create the asset record">
+    GitArena registers the asset in the database and returns a presigned PUT URL valid for 15 minutes.
+  </Step>
+  <Step title="Upload the file">
+    The browser uploads the file directly to object storage using the presigned URL.
+  </Step>
+  <Step title="Confirm the upload">
+    GitArena fetches the object from storage, computes its SHA-256 hash, and marks the asset as available. The hash is shown on the release page for verification.
+  </Step>
+</Steps>
+
+Assets that have not been confirmed (step 3 not completed) are not visible to other users.
+
+## Editing a release
+
+Users with push access to a repository can edit a release title, description, and pre-release flag after publishing. If the underlying git tag is annotated, GitArena also updates the tag message to match the new description.
+
+Existing assets can be deleted from the edit page. New assets can be added at any time.
+
+## Browsing releases
+
+The **Releases** page lists all releases in reverse chronological order (newest first, based on when the release was created). Use the filter tabs to show only stable releases or only pre-releases.
+
+The repository sidebar shows the latest non-pre-release. "Latest" means the most recently created release that is not marked as a pre-release.
+
+## Asset verification
+
+Each confirmed asset displays its SHA-256 hash on the release page. Click the hash to copy it to the clipboard. Verify a downloaded file:
+
+```bash
+sha256sum -c - <<EOF
+<hash>  <filename>
+EOF
+```
+
+## API
+
+All release endpoints are documented in the [API reference](/api-reference/introduction).
+
+Key endpoints:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/repos/{ns}/{repo}/releases` | List all releases |
+| `GET` | `/api/repos/{ns}/{repo}/releases/latest` | Latest non-pre-release |
+| `GET` | `/api/repos/{ns}/{repo}/releases/{id}` | Single release |
+| `POST` | `/api/repos/{ns}/{repo}/releases` | Create a release |
+| `PATCH` | `/api/repos/{ns}/{repo}/releases/{id}` | Update title, description, or pre-release flag |
+| `DELETE` | `/api/repos/{ns}/{repo}/releases/{id}` | Delete a release and its assets |
+| `POST` | `/api/repos/{ns}/{repo}/releases/{id}/assets` | Create an asset and get a presigned upload URL |
+| `PUT` | `/api/repos/{ns}/{repo}/releases/{id}/assets/{assetId}/confirm` | Confirm upload and compute hash |
+| `GET` | `/api/repos/{ns}/{repo}/releases/{id}/assets/{assetId}/download` | Download redirect (presigned GET URL) |
+| `DELETE` | `/api/repos/{ns}/{repo}/releases/{id}/assets/{assetId}` | Delete an asset |

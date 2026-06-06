@@ -112,6 +112,20 @@ Some settings are read at startup, while others are read per request. Restart Gi
 | `ssh.port` | `2222` | Port the SSH server binds to |
 | `ssh.private_key` | Generated | Host private key generated on first startup |
 
+### Object storage (S3)
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `s3.enabled` | `false` | Enable S3-compatible object storage for release asset uploads. |
+| `s3.bucket` | — | Bucket name. Required when `s3.enabled` is `true`. |
+| `s3.region` | — | Bucket region, e.g. `us-east-1`. Required when `s3.enabled` is `true`. |
+| `s3.access_key_id` | — | Access key ID. Required when `s3.enabled` is `true`. |
+| `s3.secret_access_key` | — | Secret access key. Required when `s3.enabled` is `true`. |
+| `s3.endpoint` | — | Custom endpoint URL for non-AWS providers. Optional. |
+| `s3.force_path_style` | `false` | Use path-style URLs. Required for most non-AWS providers. |
+
+See [object storage](/self-hosting/object-storage) for provider-specific setup instructions.
+
 ### GeoIP
 
 GeoIP lookups use an embedded MaxMind database. There are no runtime settings for GeoIP paths or enablement.

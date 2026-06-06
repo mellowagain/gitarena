@@ -35,6 +35,7 @@
             "group": "Features",
             "pages": [
               "features/repositories",
+              "features/releases",
               "features/markdown",
               "features/authentication",
               "features/issues-and-merge-requests",
@@ -50,6 +51,7 @@
               "self-hosting/docker",
               "self-hosting/configuration",
               "self-hosting/reverse-proxy",
+              "self-hosting/object-storage",
               "self-hosting/sso",
               "self-hosting/email",
               "self-hosting/captcha",
