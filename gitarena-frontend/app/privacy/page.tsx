@@ -8,7 +8,7 @@ const tldrPoints = [
     },
     {
         icon: Server,
-        text: "The frontend runs on Vercel (US) with no persistent storage. The backend is on Tencent Cloud Frankfurt (EU). The database is Aiven PostgreSQL 17 on DigitalOcean Amsterdam (EU).",
+        text: "The frontend runs on Vercel (US) with no persistent storage. The backend is on Tencent Cloud Frankfurt (EU). The database is Aiven PostgreSQL 17 on DigitalOcean Amsterdam (EU). Release assets are stored on Cloudflare R2 (EU).",
     },
     {
         icon: Database,
@@ -74,6 +74,7 @@ const sections: Section[] = [
             "Database — account data, sessions, SSH keys, passkeys, issues, merge request comments, and repository metadata are stored in an Aiven-managed PostgreSQL 17 instance running on DigitalOcean in Amsterdam, the Netherlands (EU/EEA). Both Aiven and DigitalOcean act as sub-processors under Art. 28 GDPR.",
             "Observability — logs, metrics, and traces are sent to New Relic, Inc., EU data region (data stored within the EU/EEA). New Relic processes data under a Data Processing Agreement.",
             "Email delivery — transactional emails (account verification, security notices) are sent via Resend, Inc. Resend's SMTP infrastructure is used solely to transmit emails you explicitly trigger. Your email address and the content of those messages are processed by Resend to deliver them. Resend acts as a data processor under Art. 28 GDPR. See resend.com/legal/dpa for their Data Processing Agreement.",
+            "Object storage — release assets (files attached to releases, such as binaries and archives) are stored on Cloudflare R2, operated by Cloudflare, Inc. R2 stores data in the EU (Cloudflare's European storage region). Cloudflare acts as a data processor under Art. 28 GDPR. Only files you explicitly upload to a release are stored here; no personal data is derived from them.",
             "We do not sell, rent, or trade personal data to any third party. We will disclose data to law-enforcement authorities only when required by a valid legal process, and will notify you beforehand where permitted by law.",
         ],
     },
@@ -178,7 +179,7 @@ export default function PrivacyPage() {
                             <div>
                                 <h1 className="text-2xl font-semibold tracking-tight mb-1">Privacy Policy</h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Last updated: 10 May 2026 &nbsp;·&nbsp; Effective: 10 May 2026
+                                    Last updated: 6 June 2026 &nbsp;·&nbsp; Effective: 6 June 2026
                                 </p>
                             </div>
                         </div>
