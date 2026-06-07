@@ -81,7 +81,7 @@ function describeEvent(event: EventResponse): string {
     switch (type) {
         case "git.push": {
             const branch = refName(payload.ref);
-            const commits = Array.isArray(payload.commits) ? payload.commits.length : 0;
+            const commits = typeof payload.commits === "number" ? payload.commits : 0;
             return `Pushed ${commits} commit${commits !== 1 ? "s" : ""} to ${branch}`;
         }
         case "git.force_push":
