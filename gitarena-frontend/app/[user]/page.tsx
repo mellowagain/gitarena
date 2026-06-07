@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher } from "@/lib/fetchers";
 import { ActivityEvent, type EventResponse } from "@/components/activity-event";
 import { ContributionGraph } from "@/components/contribution-graph";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as allLangs from "linguist-languages";
 
 interface UserProfileRepo {
@@ -509,6 +510,10 @@ export default function NamespacePage() {
     const { data: activityFeed, isLoading: activityLoading } = useSWR<EventResponse[]>(`/api/users/${namespace}/events`, jsonFetcher);
 
     const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
+    const [contributionYear, setContributionYear] = useState<number | null>(null);
+
+    const currentYear = new Date().getFullYear();
+    const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
     // Only fetch org if user lookup returned null (404)
     const isUserNotFound = !userLoading && profile === null && !userError;
@@ -645,10 +650,26 @@ export default function NamespacePage() {
                     <section>
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contributions</h2>
+                            <Select
+                                value={contributionYear === null ? "rolling" : String(contributionYear)}
+                                onValueChange={(v) => setContributionYear(v === "rolling" ? null : Number(v))}
+                            >
+                                <SelectTrigger className="h-7 w-32 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="rolling">Last year</SelectItem>
+                                    {yearOptions.map((y) => (
+                                        <SelectItem key={y} value={String(y)}>
+                                            {y}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
                             <div className="min-w-[640px]">
-                                <ContributionGraph username={profile.username} />
+                                <ContributionGraph username={profile.username} year={contributionYear ?? undefined} />
                             </div>
                         </div>
                     </section>

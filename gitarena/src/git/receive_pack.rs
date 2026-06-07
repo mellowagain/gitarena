@@ -1,3 +1,4 @@
+use crate::contributions::{record_commit_contributions, walk_new_commits};
 use crate::events::Event;
 use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
@@ -10,7 +11,6 @@ use crate::repository::Repository;
 use crate::utils::oid;
 use crate::{die, err};
 
-use std::collections::{HashSet, VecDeque};
 use std::convert::TryInto;
 use std::io::Write;
 use std::ops::Deref;
@@ -27,7 +27,6 @@ use anyhow::{Context, Result, anyhow};
 use bstr::BString;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
-use gix::hash::ObjectId;
 use gix::lock::acquire::Fail;
 use gix::objs::{CommitRef, Kind, TagRef};
 use gix::odb::Store;
@@ -275,6 +274,8 @@ pub(crate) async fn execute_receive_pack(
         }
     }
 
+    record_commit_contributions(&updates, &store, repo.id, &mut tx).await?;
+
     let repo_dir_str = repo.get_fs_path(&mut tx).await?;
     let repo_dir = Path::new(&repo_dir_str).to_owned();
 
@@ -326,47 +327,7 @@ fn classify_push(store: &Arc<Store>, old_hex: Option<&str>, new_hex: &str) -> Re
     let old_oid = old_hex.map(|h| oid::from_hex_str(Some(h))).transpose()?;
     let new_oid = oid::from_hex_str(Some(new_hex))?;
 
-    let cache = store.to_cache_arc();
-    let mut buffer = Vec::new();
+    let (found_base, commits) = walk_new_commits(store, old_oid, new_oid);
 
-    let mut visited: HashSet<ObjectId> = HashSet::new();
-
-    let mut queue: VecDeque<ObjectId> = VecDeque::new();
-    queue.push_back(new_oid);
-
-    while let Some(oid) = queue.pop_front() {
-        if old_oid.is_some_and(|o| oid == o) {
-            return Ok((false, visited.len()));
-        }
-
-        if !visited.insert(oid) {
-            continue;
-        }
-
-        if visited.len() > 10_000 {
-            break;
-        }
-
-        let parents: Vec<ObjectId> = {
-            let Ok((data, _)) = cache.find(oid.as_ref(), &mut buffer) else {
-                continue;
-            };
-
-            if data.kind != Kind::Commit {
-                continue;
-            }
-
-            let Ok(commit) = CommitRef::from_bytes(data.data) else {
-                continue;
-            };
-
-            commit.parents.iter().filter_map(|p| ObjectId::from_hex(*p).ok()).collect()
-        };
-
-        for parent in parents {
-            queue.push_back(parent);
-        }
-    }
-
-    Ok((old_oid.is_some(), visited.len()))
+    Ok((!found_base && old_oid.is_some(), commits.len()))
 }

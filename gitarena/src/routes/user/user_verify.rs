@@ -1,11 +1,14 @@
 use crate::database::Pool;
 use crate::die;
 
+use crate::contributions::task::BackfillEmailContributionsTask;
 use crate::events::{Event, Subject};
+use crate::queue::GLOBAL_QUEUE;
 use crate::user::WebUser;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use anyhow::Result;
+use anyhow::{Result, anyhow};
+use fang::{AsyncQueueable, AsyncRunnable};
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
@@ -62,6 +65,15 @@ pub(crate) async fn verify(
     .await?;
 
     transaction.commit().await?;
+
+    // todo: actually take the newly verified emails
+    let task = BackfillEmailContributionsTask { email: email.clone(), user_id };
+
+    GLOBAL_QUEUE
+        .get()
+        .ok_or_else(|| anyhow!("contributions backfill should only be scheduled after queue has been initialized"))?
+        .insert_task(&task as &dyn AsyncRunnable)
+        .await?;
 
     info!(user.id = %user_id, "User verified their e-mail");
 

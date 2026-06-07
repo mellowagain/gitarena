@@ -1,3 +1,4 @@
+use crate::contributions::task::CONTRIBUTIONS_TASK_TYPE;
 use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
 use crate::verification::ExpiredVerifyLinkRemovalTask;
@@ -68,6 +69,23 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
         .build();
 
     zoekt_worker_pool.start().await;
+
+    // contributions pool handles both repo backfill and per-email backfill tasks
+    let mut contributions_pool = AsyncWorkerPool::<AsyncQueue>::builder()
+        .number_of_workers(1_u32)
+        .sleep_params(
+            SleepParams::builder()
+                .sleep_period(Duration::from_secs(30))
+                .min_sleep_period(Duration::from_secs(30))
+                .max_sleep_period(Duration::from_secs(300))
+                .sleep_step(Duration::from_secs(30))
+                .build(),
+        )
+        .task_type(CONTRIBUTIONS_TASK_TYPE.to_string())
+        .queue(queue.clone())
+        .build();
+
+    contributions_pool.start().await;
 
     schedule_cron_jobs(&queue).await?;
 

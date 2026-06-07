@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::{NoContext, Timestamp, Uuid};
 
-const CONTRIBUTION_TYPES: &[&str] = &["git.push", "issue.opened", "issue.closed", "pr.opened", "pr.merged", "pr.reviewed"];
+const CONTRIBUTION_TYPES: &[&str] = &["issue.opened", "issue.closed", "pr.opened", "pr.merged", "pr.reviewed"];
 
 #[utoipa::path(
     get,
@@ -54,7 +54,7 @@ pub(crate) async fn get_contributions(
     let lower = uuid_lower_bound(start_ms);
     let upper = uuid_upper_bound(end_ms);
 
-    let privacy_clause = if is_self {
+    let event_privacy = if is_self {
         String::new()
     } else if let Some(vid) = viewer_id {
         format!(
@@ -67,21 +67,51 @@ pub(crate) async fn get_contributions(
         "and (r.visibility is null or r.visibility != 'private')".to_owned()
     };
 
+    let commit_privacy = if is_self {
+        String::new()
+    } else if let Some(viewer_id) = viewer_id {
+        format!(
+            "and (r.visibility is null or r.visibility != 'private' \
+             or r.owner_user = '{viewer_id}' \
+             or exists (select 1 from organization_members om join repositories ro on ro.owner_org = om.org_id where om.user_id = '{viewer_id}' and ro.id = cc.repo_id) \
+             or exists (select 1 from privileges p where p.repo_id = cc.repo_id and p.user_id = '{viewer_id}'))"
+        )
+    } else {
+        "and (r.visibility is null or r.visibility != 'private')".to_owned()
+    };
+
     let type_list = CONTRIBUTION_TYPES.iter().map(|t| format!("'{t}'")).collect::<Vec<_>>().join(", ");
 
-    let query = format!(
-        "select e.id, e.type, e.payload \
+    let event_query = format!(
+        "select e.id \
          from events e \
          left join repositories r on r.id = e.subject_id_repo \
          where e.actor_id = $1 and e.id >= $2 and e.id < $3 \
          and e.type in ({type_list}) \
-         {privacy_clause}"
+         {event_privacy}"
     );
 
-    let rows = sqlx::query_as::<_, ContribRow>(&query)
+    let contributor_query = format!(
+        "select cc.author_date, count(*)::int as count \
+         from commit_contributions cc \
+         join repositories r on r.id = cc.repo_id \
+         where cc.user_id = $1 \
+         and cc.author_date >= $2 and cc.author_date < $3 \
+         {commit_privacy} \
+         group by cc.author_date"
+    );
+
+    let event_rows = sqlx::query_as::<_, EventContribRow>(&event_query)
         .bind(target.id)
         .bind(lower)
         .bind(upper)
+        .fetch_all(&mut *tx)
+        .await?;
+
+    let contributor_rows = sqlx::query_as::<_, CommitContribRow>(&contributor_query)
+        .bind(target.id)
+        .bind(start.date_naive())
+        .bind(end.date_naive())
         .fetch_all(&mut *tx)
         .await?;
 
@@ -89,21 +119,25 @@ pub(crate) async fn get_contributions(
 
     let mut daily: HashMap<String, i32> = HashMap::new();
 
-    for row in rows {
-        let ts_ms = uuid_to_ms(row.id);
-        let dt = Utc.timestamp_millis_opt(i64::try_from(ts_ms).unwrap_or(i64::MAX)).single().unwrap_or_default();
+    for row in contributor_rows {
+        let date_str = row.author_date.format("%Y-%m-%d").to_string();
+        *daily.entry(date_str).or_insert(0) += row.count;
+    }
+
+    for row in event_rows {
+        let timestamp_ms = row.id.get_timestamp().map_or(0, |ts| {
+            let (secs, nanos) = ts.to_unix();
+            secs * 1000 + u64::from(nanos) / 1_000_000
+        });
+
+        let dt = Utc
+            .timestamp_millis_opt(i64::try_from(timestamp_ms).unwrap_or(i64::MAX))
+            .single()
+            .unwrap_or_default();
+
         let date_str = dt.format("%Y-%m-%d").to_string();
 
-        let count = if row.type_ == "git.push" {
-            row.payload
-                .get("commits")
-                .and_then(|v| v.as_array())
-                .map_or(1, |a| i32::try_from(a.len()).unwrap_or(i32::MAX))
-        } else {
-            1
-        };
-
-        *daily.entry(date_str).or_insert(0) += count;
+        *daily.entry(date_str).or_insert(0) += 1;
     }
 
     let mut contributions: Vec<ContributionDay> = Vec::new();
@@ -139,15 +173,18 @@ pub(crate) struct ContributionDay {
 }
 
 #[derive(FromRow)]
-struct ContribRow {
+struct EventContribRow {
     id: Uuid,
-    #[sqlx(rename = "type")]
-    type_: String,
-    payload: serde_json::Value,
+}
+
+#[derive(FromRow)]
+struct CommitContribRow {
+    author_date: NaiveDate,
+    count: i32,
 }
 
 fn uuid_lower_bound(ts_ms: u64) -> Uuid {
-    let ts = Timestamp::from_unix(NoContext, ts_ms / 1000, (ts_ms % 1000 * 1_000_000) as u32);
+    let ts = Timestamp::from_unix(NoContext, ts_ms / 1000, u32::try_from(ts_ms % 1000 * 1_000_000).unwrap_or(0));
     let mut bytes = *Uuid::new_v7(ts).as_bytes();
     bytes[6] &= 0xF0; // keep version nibble (0x7_), zero counter high nibble
     bytes[7] = 0x00;
@@ -157,22 +194,13 @@ fn uuid_lower_bound(ts_ms: u64) -> Uuid {
 }
 
 fn uuid_upper_bound(ts_ms: u64) -> Uuid {
-    let ts = Timestamp::from_unix(NoContext, ts_ms / 1000, (ts_ms % 1000 * 1_000_000) as u32);
+    let ts = Timestamp::from_unix(NoContext, ts_ms / 1000, u32::try_from(ts_ms % 1000 * 1_000_000).unwrap_or(0));
     let mut bytes = *Uuid::new_v7(ts).as_bytes();
     bytes[6] |= 0x0F; // keep version nibble (0x7_), set counter high nibble to 0xF → 0x7F
     bytes[7] = 0xFF;
     bytes[8] |= 0x3F; // keep variant bits (0b10______), max random → 0xBF
     bytes[9..].fill(0xFF);
     Uuid::from_bytes(bytes)
-}
-
-fn uuid_to_ms(uuid: Uuid) -> u64 {
-    uuid.get_timestamp()
-        .map(|ts| {
-            let (secs, nanos) = ts.to_unix();
-            secs * 1000 + u64::from(nanos) / 1_000_000
-        })
-        .unwrap_or(0)
 }
 
 fn date_range(year: Option<i32>) -> (DateTime<Utc>, DateTime<Utc>) {

@@ -30,6 +30,7 @@ use utoipa_rapidoc::RapiDoc;
 
 mod captcha;
 mod config;
+mod contributions;
 mod crypto;
 mod database;
 mod error;
@@ -104,7 +105,9 @@ async fn main() -> Result<()> {
     let queue = queue::init().await?;
 
     let meili_client = meili::init(&db_pool).await?;
+
     zoekt::init(&db_pool).await?;
+    contributions::init(&db_pool).await?;
 
     let storage = storage::init(&db_pool).await?;
 
