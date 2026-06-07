@@ -29,9 +29,10 @@ pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &A
 
     let smtp_address = get_setting("smtp.address", &mut transaction).await?;
 
-    sqlx::query("insert into user_verifications (id, user_id, hash, expires) values ($1, $2, $3, now() + interval '1 day')")
+    sqlx::query("insert into user_verifications (id, user_id, email, hash, expires) values ($1, $2, $3, $4, now() + interval '1 day')")
         .bind(Uuid::now_v7())
         .bind(user.id)
+        .bind(&email)
         .bind(&hash)
         .execute(&mut *transaction)
         .await?;

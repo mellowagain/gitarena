@@ -31,7 +31,7 @@ pub(crate) async fn verify(
 
     let mut transaction = db_pool.begin().await?;
 
-    let option: Option<(Uuid, Uuid)> = sqlx::query_as("select id, user_id from user_verifications where hash = $1 and expires > now() limit 1")
+    let option: Option<(Uuid, Uuid, String)> = sqlx::query_as("select id, user_id, email from user_verifications where hash = $1 and expires > now() limit 1")
         .bind(token)
         .fetch_optional(&mut *transaction)
         .await?;
@@ -40,11 +40,12 @@ pub(crate) async fn verify(
         die!(FORBIDDEN, "Token does not exist or has expired");
     }
 
-    let (row_id, user_id) = option.unwrap_or_log();
+    let (row_id, user_id, email) = option.unwrap_or_log();
 
-    let email: String = sqlx::query_scalar("update emails set verified_at = current_timestamp where owner = $1 returning email")
+    sqlx::query("update emails set verified_at = current_timestamp where owner = $1 and email = $2")
         .bind(user_id)
-        .fetch_one(&mut *transaction)
+        .bind(&email)
+        .execute(&mut *transaction)
         .await?;
 
     sqlx::query("delete from user_verifications where id = $1")
@@ -66,8 +67,7 @@ pub(crate) async fn verify(
 
     transaction.commit().await?;
 
-    // todo: actually take the newly verified emails
-    let task = BackfillEmailContributionsTask { email: email.clone(), user_id };
+    let task = BackfillEmailContributionsTask { email, user_id };
 
     GLOBAL_QUEUE
         .get()
