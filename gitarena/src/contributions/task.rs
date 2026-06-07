@@ -77,8 +77,6 @@ impl AsyncRunnable for BackfillRepoContributionsTask {
         .fang()?
         .fang()?;
 
-        info!("backfilling contributions: {}", commit_data.len());
-
         insert_contributions(self.repo_id, &commit_data, &mut tx).await.fang()?;
 
         tx.commit().await.fang()?;

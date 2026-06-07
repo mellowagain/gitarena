@@ -164,8 +164,6 @@ pub(crate) async fn insert_contributions(repo_id: Uuid, commit_data: &[(String, 
             user_ids.push(user_id);
             shas.push(sha.clone());
             dates.push(*date);
-        } else {
-            info!("unknown email: {email}");
         }
     }
 
