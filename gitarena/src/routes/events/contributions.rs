@@ -61,7 +61,7 @@ pub(crate) async fn get_contributions(
             "and (r.visibility is null or r.visibility != 'private' \
              or r.owner_user = '{vid}' \
              or exists (select 1 from organization_members om join repositories ro on ro.owner_org = om.org_id where om.user_id = '{vid}' and ro.id = e.subject_id_repo) \
-             or exists (select 1 from repository_collaborators rc where rc.repo = e.subject_id_repo and rc.user_id = '{vid}'))"
+             or exists (select 1 from privileges p where p.repo_id = e.subject_id_repo and p.user_id = '{vid}'))"
         )
     } else {
         "and (r.visibility is null or r.visibility != 'private')".to_owned()

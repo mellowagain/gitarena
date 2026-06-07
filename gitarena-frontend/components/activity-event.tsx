@@ -46,23 +46,23 @@ function getBorderColor(type: string): string {
 }
 
 function EventIcon({ type }: { type: string }) {
-    if (type === "git.push" || type === "git.force_push") return <GitCommit className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type === "git.branch_created" || type === "git.branch_deleted")
-        return <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type === "git.tag_created" || type === "git.tag_deleted") return <Tag className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("star.")) return <Star className="h-4 w-4 text-yellow-500 shrink-0" />;
-    if (type === "issue.opened" || type === "issue.reopened") return <AlertCircle className="h-4 w-4 text-green-500 shrink-0" />;
-    if (type === "issue.closed") return <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("issue.comment_")) return <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("issue.")) return <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type === "pr.merged") return <GitMerge className="h-4 w-4 text-purple-500 shrink-0" />;
-    if (type === "pr.opened") return <GitPullRequest className="h-4 w-4 text-green-500 shrink-0" />;
-    if (type === "pr.reviewed") return <GitPullRequest className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type === "repo.forked") return <GitFork className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("repo.")) return <Package className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("org.")) return <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />;
-    if (type.startsWith("user.")) return <User className="h-4 w-4 text-muted-foreground shrink-0" />;
-    return <Code className="h-4 w-4 text-muted-foreground shrink-0" />;
+    const cls = "h-3.5 w-3.5 shrink-0";
+    if (type === "git.push" || type === "git.force_push") return <GitCommit className={`${cls} text-muted-foreground`} />;
+    if (type === "git.branch_created" || type === "git.branch_deleted") return <GitBranch className={`${cls} text-muted-foreground`} />;
+    if (type === "git.tag_created" || type === "git.tag_deleted") return <Tag className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("star.")) return <Star className={`${cls} text-yellow-500`} />;
+    if (type === "issue.opened" || type === "issue.reopened") return <AlertCircle className={`${cls} text-green-500`} />;
+    if (type === "issue.closed") return <AlertCircle className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("issue.comment_")) return <MessageSquare className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("issue.")) return <AlertCircle className={`${cls} text-muted-foreground`} />;
+    if (type === "pr.merged") return <GitMerge className={`${cls} text-purple-500`} />;
+    if (type === "pr.opened") return <GitPullRequest className={`${cls} text-green-500`} />;
+    if (type === "pr.reviewed") return <GitPullRequest className={`${cls} text-muted-foreground`} />;
+    if (type === "repo.forked") return <GitFork className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("repo.")) return <Package className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("org.")) return <Building2 className={`${cls} text-muted-foreground`} />;
+    if (type.startsWith("user.")) return <User className={`${cls} text-muted-foreground`} />;
+    return <Code className={`${cls} text-muted-foreground`} />;
 }
 
 function refName(ref: unknown): string {
@@ -205,8 +205,10 @@ export function ActivityEvent({ event }: ActivityEventProps) {
     return (
         <div className={`group pl-4 border-l-2 transition-colors ${borderColor}`}>
             <div className="grid items-center gap-x-3 grid-cols-[1rem_1fr_8rem_1rem_11rem_auto]">
-                <EventIcon type={event.type} />
-                <p className="text-sm font-medium truncate">{text}</p>
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <EventIcon type={event.type} />
+                </div>
+                <p className="text-sm font-medium truncate min-w-0">{text}</p>
                 <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
                     <div className="h-4 w-4 flex items-center justify-center rounded-full bg-secondary border border-border text-[9px] font-medium shrink-0">
                         {initial}
