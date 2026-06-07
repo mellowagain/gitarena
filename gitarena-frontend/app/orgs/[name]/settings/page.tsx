@@ -19,13 +19,16 @@ import {
     ShieldCheck,
     Settings,
     Loader2,
+    FileText,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
-import { jsonFetcher, putJsonVoidFetcher, deleteFetcher, patchJsonFetcher } from "@/lib/fetchers";
+import { jsonFetcher, putJsonVoidFetcher, deleteFetcher, patchJsonFetcher, authFetcher } from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { AuditLogEvent } from "@/components/audit-log-event";
+import type { EventResponse } from "@/components/activity-event";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -45,13 +48,14 @@ interface UserByIdResponse {
     username: string;
 }
 
-type Tab = "general" | "members" | "teams" | "security" | "webhooks" | "tokens" | "danger";
+type Tab = "general" | "members" | "teams" | "security" | "audit-log" | "webhooks" | "tokens" | "danger";
 
 const navItems: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "general", label: "General", icon: Building2 },
     { id: "members", label: "Members", icon: Users },
     { id: "teams", label: "Teams", icon: Shield },
     { id: "security", label: "Security", icon: ShieldCheck },
+    { id: "audit-log", label: "Audit Log", icon: FileText },
     { id: "webhooks", label: "Webhooks", icon: Webhook },
     { id: "tokens", label: "Tokens", icon: Key },
     { id: "danger", label: "Danger Zone", icon: AlertTriangle },
@@ -509,6 +513,39 @@ function SecurityTab() {
     );
 }
 
+function AuditLogTab({ orgName }: { orgName: string }) {
+    const { data: events, isLoading } = useSWR<EventResponse[] | null>(`/api/orgs/${orgName}/audit-log`, authFetcher);
+
+    return (
+        <div>
+            <SectionTitle>Audit Log</SectionTitle>
+            <p className="text-sm text-muted-foreground mb-6">
+                Security events for this organization, including membership changes and permission updates.
+            </p>
+
+            {isLoading && (
+                <div className="space-y-3">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                    ))}
+                </div>
+            )}
+            {!isLoading && (!events || events.length === 0) && (
+                <div className="border border-border rounded-md px-4 py-8 text-center text-sm text-muted-foreground">
+                    No security events recorded yet.
+                </div>
+            )}
+            {!isLoading && events && events.length > 0 && (
+                <div className="border border-border rounded-md divide-y divide-border">
+                    {events.map((event) => (
+                        <AuditLogEvent key={event.id} event={event} showActor />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function WebhooksTab() {
     return (
         <div className="space-y-6">
@@ -700,6 +737,7 @@ export default function OrgSettingsPage() {
         members: <MembersTab orgName={orgName} />,
         teams: <TeamsTab />,
         security: <SecurityTab />,
+        "audit-log": <AuditLogTab orgName={orgName} />,
         webhooks: <WebhooksTab />,
         tokens: <TokensTab />,
         danger: <DangerTab orgName={orgName} />,

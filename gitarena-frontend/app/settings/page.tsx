@@ -20,11 +20,20 @@ import {
     Loader2,
     Info,
     Palette,
+    Activity,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
-import { postEmptyFetcher, postJsonVoidFetcher, postJsonFetcher, patchJsonFetcher, putJsonFetcher, deleteFetcher } from "@/lib/fetchers";
+import {
+    postEmptyFetcher,
+    postJsonVoidFetcher,
+    postJsonFetcher,
+    patchJsonFetcher,
+    putJsonFetcher,
+    deleteFetcher,
+    authFetcher,
+} from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Switch } from "@/components/ui/switch";
@@ -35,6 +44,8 @@ import { formatDistanceToNow } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import { toast } from "sonner";
 import DeviceDetector from "device-detector-js";
+import { AuditLogEvent } from "@/components/audit-log-event";
+import type { EventResponse } from "@/components/activity-event";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -105,7 +116,7 @@ function parseDevice(userAgent: string): { label: string; isMobile: boolean } {
     }
 }
 
-type Tab = "profile" | "emails" | "authentication" | "sessions" | "keys" | "repositories" | "api-keys" | "appearance";
+type Tab = "profile" | "emails" | "authentication" | "sessions" | "keys" | "repositories" | "api-keys" | "appearance" | "security-log";
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +127,7 @@ const navItems: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "authentication", label: "Authentication", icon: KeyRound },
     { id: "sessions", label: "Sessions", icon: Monitor },
     { id: "keys", label: "SSH & GPG Keys", icon: Key },
+    { id: "security-log", label: "Security Log", icon: Activity },
     { id: "repositories", label: "Repository Settings", icon: GitBranch },
     { id: "api-keys", label: "API Keys", icon: Code2 },
 ];
@@ -933,6 +945,39 @@ function APIKeysTab() {
     );
 }
 
+function SecurityLogTab() {
+    const { data: events, isLoading } = useSWR<EventResponse[] | null>("/api/users/me/audit-log", authFetcher);
+
+    return (
+        <div>
+            <SectionHeader
+                title="Security Log"
+                description="Recent security events for your account, including logins, session changes, and key management."
+            />
+
+            {isLoading && (
+                <div className="space-y-3">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                    ))}
+                </div>
+            )}
+            {!isLoading && (!events || events.length === 0) && (
+                <div className="border border-border rounded-md px-4 py-8 text-center text-sm text-muted-foreground">
+                    No security events recorded yet.
+                </div>
+            )}
+            {!isLoading && events && events.length > 0 && (
+                <div className="border border-border rounded-md divide-y divide-border">
+                    {events.map((event) => (
+                        <AuditLogEvent key={event.id} event={event} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function AppearanceTab() {
     const [allLanguages, setAllLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
 
@@ -971,6 +1016,7 @@ export default function SettingsPage() {
         authentication: <AuthenticationTab />,
         sessions: <SessionsTab />,
         keys: <KeysTab />,
+        "security-log": <SecurityLogTab />,
         repositories: <RepositoriesTab />,
         "api-keys": <APIKeysTab />,
     };

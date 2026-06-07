@@ -32,11 +32,12 @@ pub(crate) async fn init(db_pool: &Pool) -> Result<()> {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct Event {
     /// ID
     pub(crate) id: Uuid,
 
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) trace_id: Option<Uuid>,
 
     /// Actor user ID

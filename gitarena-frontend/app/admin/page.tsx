@@ -34,6 +34,8 @@ import {
     Compass,
     Bell,
     ExternalLink,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -45,9 +47,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TopBar } from "@/components/top-bar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInstanceConfig } from "@/components/instance-config-provider";
-import { jsonFetcher } from "@/lib/fetchers";
+import { jsonFetcher, authFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
+import type { EventResponse } from "@/components/activity-event";
 
 interface InstanceStats {
     users: number;
@@ -124,13 +128,6 @@ const adminSections = [
     },
 ];
 
-const auditLog = [
-    { id: 1, action: "user.created", actor: "system", target: "torvalds", time: "2 hours ago" },
-    { id: 2, action: "repo.deleted", actor: "mellowagain", target: "old-project", time: "3 hours ago" },
-    { id: 3, action: "settings.updated", actor: "mellowagain", target: "email.smtp_host", time: "5 hours ago" },
-    { id: 4, action: "user.banned", actor: "mellowagain", target: "spammer123", time: "1 day ago" },
-];
-
 function StatusBadge({ status }: { status: string }) {
     const config = {
         healthy: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle2 },
@@ -202,6 +199,63 @@ function formatUserCreatedAt(user: AdminUser) {
     return formatDistanceToNow(uuidToDate(user.id), { addSuffix: true });
 }
 
+function AuditTableRow({ event }: { event: EventResponse }) {
+    const [expanded, setExpanded] = useState(false);
+    const hasPayload = Object.keys(event.payload).length > 0;
+    const hasExpandable = hasPayload || !!event.userAgent;
+
+    return (
+        <>
+            <tr className="border-t border-border first:border-t-0 hover:bg-accent/30 transition-colors">
+                <td className="px-4 py-3 font-mono text-xs">{event.type}</td>
+                <td className="px-4 py-3 text-muted-foreground">{event.actorUsername ?? "system"}</td>
+                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.subjectName ?? "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.ipAddress ?? "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                    {event.traceId ? (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="cursor-default">{event.traceId.slice(0, 8)}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="font-mono">{event.traceId}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    ) : (
+                        "—"
+                    )}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}</td>
+                <td className="px-4 py-3 text-right">
+                    {hasExpandable && (
+                        <button
+                            onClick={() => setExpanded((v) => !v)}
+                            className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
+                            title={expanded ? "Hide details" : "Show details"}
+                        >
+                            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </button>
+                    )}
+                </td>
+            </tr>
+            {expanded && (
+                <tr className="border-t border-border bg-secondary/20">
+                    <td colSpan={7} className="px-4 pt-2 pb-3 space-y-1.5">
+                        {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
+                        {hasPayload && (
+                            <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                                {JSON.stringify(event.payload, null, 2)}
+                            </pre>
+                        )}
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
 export default function AdminDashboardPage() {
     const [activeSection, setActiveSection] = useState("dashboard");
     const instanceConfig = useInstanceConfig();
@@ -213,6 +267,10 @@ export default function AdminDashboardPage() {
               ? "/api/admin/users?sort=newest"
               : null;
     const { data: adminUsers, isLoading: areUsersLoading, error: usersError } = useSWR<AdminUser[]>(usersKey, jsonFetcher);
+    const { data: auditEvents, isLoading: isAuditLoading } = useSWR<EventResponse[] | null>(
+        activeSection === "dashboard" ? "/api/admin/audit-log?limit=5" : activeSection === "audit-log" ? "/api/admin/audit-log" : null,
+        authFetcher
+    );
     const {
         data: health,
         isLoading: isHealthLoading,
@@ -510,26 +568,39 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-sm font-medium flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
                                         Recent Audit Log
-                                        <WipTag />
                                     </h3>
-                                    <Link href="#" className="text-xs text-muted-foreground hover:text-foreground">
-                                        View full log
-                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSection("audit-log")}
+                                        className="text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                        View all
+                                    </button>
                                 </div>
                                 <div className="divide-y divide-border/50">
-                                    {auditLog.map((entry) => (
-                                        <div key={entry.id} className="flex items-center justify-between px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <code className="px-2 py-0.5 text-xs bg-secondary rounded font-mono">{entry.action}</code>
-                                                <span className="text-sm">
-                                                    <span className="font-medium">{entry.actor}</span>
-                                                    <span className="text-muted-foreground"> → </span>
-                                                    <span className="font-medium">{entry.target}</span>
+                                    {isAuditLoading ? (
+                                        Array.from({ length: 3 }).map((_, index) => (
+                                            <div key={index} className="h-12 px-4 py-3 animate-pulse bg-secondary/30" />
+                                        ))
+                                    ) : !auditEvents || auditEvents.length === 0 ? (
+                                        <div className="px-4 py-3 text-sm text-muted-foreground">No audit events yet.</div>
+                                    ) : (
+                                        auditEvents.map((event) => (
+                                            <div key={event.id} className="flex items-center justify-between px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <code className="px-2 py-0.5 text-xs bg-secondary rounded font-mono">{event.type}</code>
+                                                    <span className="text-sm">
+                                                        <span className="font-medium">{event.actorUsername ?? "system"}</span>
+                                                        <span className="text-muted-foreground"> → </span>
+                                                        <span className="font-medium">{event.subjectName ?? "—"}</span>
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground shrink-0">
+                                                    {formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}
                                                 </span>
                                             </div>
-                                            <span className="text-xs text-muted-foreground">{entry.time}</span>
-                                        </div>
-                                    ))}
+                                        ))
+                                    )}
                                 </div>
                             </div>
 
@@ -634,7 +705,7 @@ export default function AdminDashboardPage() {
                                             ))
                                         ) : usersError ? (
                                             <tr>
-                                                <td colSpan={6} className="px-4 py-3 text-sm text-red-500">
+                                                <td colSpan={7} className="px-4 py-3 text-sm text-red-500">
                                                     Unable to load users.
                                                 </td>
                                             </tr>
@@ -683,7 +754,7 @@ export default function AdminDashboardPage() {
                                             })
                                         ) : (
                                             <tr>
-                                                <td colSpan={6} className="px-4 py-3 text-sm text-muted-foreground">
+                                                <td colSpan={7} className="px-4 py-3 text-sm text-muted-foreground">
                                                     No users found.
                                                 </td>
                                             </tr>
@@ -694,7 +765,66 @@ export default function AdminDashboardPage() {
                         </div>
                     )}
 
-                    {!["dashboard", "users"].includes(activeSection) && (
+                    {activeSection === "audit-log" && (
+                        <div className="space-y-6">
+                            <div>
+                                <h1 className="text-2xl font-semibold">Audit Log</h1>
+                                <p className="text-sm text-muted-foreground mt-1">Security-relevant actions performed on this instance.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="relative flex-1 max-w-xs">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    <input
+                                        placeholder="Search events…"
+                                        className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                    />
+                                </div>
+                                <select className="h-9 px-3 bg-card border border-border rounded-md text-sm focus:outline-none">
+                                    <option>All classes</option>
+                                    <option value="security">Security</option>
+                                    <option value="activity">Activity</option>
+                                </select>
+                                <Button variant="outline" size="sm" className="gap-2 ml-auto">
+                                    <Download className="h-4 w-4" />
+                                    Export CSV
+                                </Button>
+                            </div>
+                            <div className="border border-border rounded-lg overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead className="border-b border-border bg-secondary/30">
+                                        <tr>
+                                            {["Action", "Actor", "Target", "IP", "Trace", "Time", ""].map((h) => (
+                                                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {isAuditLoading ? (
+                                            Array.from({ length: 8 }).map((_, index) => (
+                                                <tr key={index}>
+                                                    <td colSpan={7} className="px-4 py-3">
+                                                        <div className="h-4 bg-secondary/50 rounded animate-pulse" />
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : !auditEvents || auditEvents.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                                    No audit events yet.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            auditEvents.map((event) => <AuditTableRow key={event.id} event={event} />)
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {!["dashboard", "users", "audit-log"].includes(activeSection) && (
                         <div className="flex items-center justify-center h-full">
                             <div className="text-center">
                                 <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

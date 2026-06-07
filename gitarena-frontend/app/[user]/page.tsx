@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
@@ -10,10 +10,11 @@ import { Star, Lock, Globe, Calendar, Pin, PinOff, ShieldCheck, Settings, Plus, 
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher } from "@/lib/fetchers";
+import { ActivityEvent, type EventResponse } from "@/components/activity-event";
+import { ContributionGraph } from "@/components/contribution-graph";
 import * as allLangs from "linguist-languages";
 
 interface UserProfileRepo {
@@ -81,117 +82,6 @@ function getTopLanguage(languages: Record<string, number> | null): { name: strin
         hash = top[0].charCodeAt(i) + ((hash << 5) - hash);
     }
     return { name: top[0], color: `hsl(${Math.abs(hash) % 360}, 60%, 55%)` };
-}
-
-function ContributionGraph() {
-    const weeks = 52;
-    const days = 7;
-    const levels = [0, 1, 2, 3, 4];
-
-    const data = Array.from({ length: weeks }, () =>
-        Array.from({ length: days }, () => {
-            const rand = Math.random();
-            if (rand > 0.7) {
-                return Math.floor(Math.random() * 4) + 1;
-            }
-            return 0;
-        })
-    );
-
-    const levelClass = (level: number) => {
-        if (level === 0) {
-            return "bg-secondary";
-        }
-        if (level === 1) {
-            return "bg-foreground/15";
-        }
-        if (level === 2) {
-            return "bg-foreground/35";
-        }
-        if (level === 3) {
-            return "bg-foreground/60";
-        }
-        return "bg-foreground/85";
-    };
-
-    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-    const now = new Date();
-    const dayOfWeek = (now.getDay() + 6) % 7;
-    const endMonday = new Date(now);
-    endMonday.setDate(now.getDate() - dayOfWeek);
-    const startDate = new Date(endMonday);
-    startDate.setDate(endMonday.getDate() - (weeks - 1) * 7);
-
-    const monthLabels: { label: string; col: number }[] = [];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    let lastMonth = -1;
-    for (let w = 0; w < weeks; w++) {
-        const weekStart = new Date(startDate);
-        weekStart.setDate(weekStart.getDate() + w * 7);
-        const month = weekStart.getMonth();
-        if (month !== lastMonth) {
-            monthLabels.push({ label: monthNames[month], col: w });
-            lastMonth = month;
-        }
-    }
-
-    return (
-        <TooltipProvider>
-            <div className="w-full">
-                <div className="grid gap-[3px]" style={{ gridTemplateColumns: `auto repeat(${weeks}, 1fr)` }}>
-                    <div />
-                    {Array.from({ length: weeks }, (_, wi) => {
-                        const ml = monthLabels.find((m) => m.col === wi);
-                        return (
-                            <div key={wi} className="text-[10px] text-muted-foreground leading-none truncate">
-                                {ml ? ml.label : ""}
-                            </div>
-                        );
-                    })}
-
-                    {Array.from({ length: days }, (_, di) => (
-                        <Fragment key={di}>
-                            <div className="text-[10px] text-muted-foreground leading-none flex items-center justify-end pr-1">
-                                {di % 2 === 1 ? dayLabels[di] : ""}
-                            </div>
-                            {data.map((week, wi) => {
-                                const tileDate = new Date(startDate);
-                                tileDate.setDate(tileDate.getDate() + wi * 7 + di);
-                                const dateStr = format(tileDate, "EEEE, d MMMM yyyy");
-                                const tile = (
-                                    <div
-                                        key={wi}
-                                        className={`aspect-square w-full rounded-sm ${levelClass(week[di])} transition-opacity hover:opacity-70`}
-                                    />
-                                );
-                                if (week[di] === 0) {
-                                    return tile;
-                                }
-                                return (
-                                    <Tooltip key={wi}>
-                                        <TooltipTrigger asChild>{tile}</TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>
-                                                {week[di]} contribution{week[di] !== 1 ? "s" : ""} on {dateStr}
-                                            </p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                );
-                            })}
-                        </Fragment>
-                    ))}
-                </div>
-                <div className="flex items-center justify-end gap-1.5 mt-2">
-                    <span className="text-[10px] text-muted-foreground">Less</span>
-                    {levels.map((l) => (
-                        <div key={l} className={`w-[11px] h-[11px] rounded-sm ${levelClass(l)}`} />
-                    ))}
-                    <span className="text-[10px] text-muted-foreground">More</span>
-                </div>
-            </div>
-        </TooltipProvider>
-    );
 }
 
 function ProfileSkeleton({ username }: { username: string }) {
@@ -616,6 +506,7 @@ export default function NamespacePage() {
     } = useSWR<UserProfileResponse | null>(`/api/users/${namespace}`, userFetcherWith404);
 
     const { data: orgs, isLoading: orgsLoading } = useSWR<UserOrgEntry[]>(`/api/users/${namespace}/orgs`, jsonFetcher);
+    const { data: activityFeed, isLoading: activityLoading } = useSWR<EventResponse[]>(`/api/users/${namespace}/events`, jsonFetcher);
 
     const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
 
@@ -757,9 +648,32 @@ export default function NamespacePage() {
                         </div>
                         <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
                             <div className="min-w-[640px]">
-                                <ContributionGraph />
+                                <ContributionGraph username={profile.username} />
                             </div>
                         </div>
+                    </section>
+
+                    <section>
+                        <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Activity</h2>
+                        {activityLoading && (
+                            <div className="space-y-3">
+                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                            </div>
+                        )}
+                        {!activityLoading && (!activityFeed || activityFeed.length === 0) && (
+                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+                                No public activity yet.
+                            </div>
+                        )}
+                        {!activityLoading && activityFeed && activityFeed.length > 0 && (
+                            <div className="space-y-4">
+                                {activityFeed.map((event) => (
+                                    <ActivityEvent key={event.id} event={event} />
+                                ))}
+                            </div>
+                        )}
                     </section>
                 </main>
 

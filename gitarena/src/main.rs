@@ -155,6 +155,7 @@ async fn main() -> Result<()> {
             .configure(routes::user::init)
             .configure(routes::organization::init)
             .configure(routes::admin::init)
+            .configure(routes::events::init)
             .configure(routes::search::init)
             .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last

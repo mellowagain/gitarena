@@ -8,6 +8,8 @@ use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceH
 use crate::routes::admin::stats::InstanceStats;
 use crate::routes::admin::users::ExtendedUser;
 use crate::routes::api::ApiInfoResponse;
+use crate::routes::events::EventResponse;
+use crate::routes::events::contributions::{ContributionDay, ContributionsResponse};
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::organization::api::create_org::CreateOrgRequest;
 use crate::routes::organization::api::members::{AddMemberRequest, OrgMemberEntry};
@@ -44,6 +46,7 @@ use utoipa::{Modify, OpenApi};
 
 pub(crate) mod admin;
 pub(crate) mod api;
+pub(crate) mod events;
 mod explore;
 pub(crate) mod not_found;
 pub(crate) mod organization;
@@ -102,6 +105,12 @@ impl Modify for CookieAuth {
         crate::routes::admin::stats::get_instance_stats,
         crate::routes::admin::health::get_instance_health,
         crate::routes::admin::users::get_instance_users,
+        crate::routes::admin::audit_log::get_admin_audit_log,
+        crate::routes::events::audit_log::get_personal_audit_log,
+        crate::routes::events::user_feed::get_user_feed,
+        crate::routes::events::contributions::get_contributions,
+        crate::routes::events::org_audit_log::get_org_audit_log,
+        crate::routes::events::dashboard::get_dashboard_feed,
         crate::routes::search::code::get_code_search,
         crate::routes::search::repositories::get_repo_search,
         crate::routes::search::users::get_user_search,
@@ -176,6 +185,9 @@ impl Modify for CookieAuth {
         InstanceComponent,
         ComponentStatus,
         ExtendedUser,
+        EventResponse,
+        ContributionsResponse,
+        ContributionDay,
         CodeSearchResponse,
         RepoSearchResponse,
         UserSearchResponse,

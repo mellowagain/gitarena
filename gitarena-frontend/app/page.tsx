@@ -31,6 +31,9 @@ import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
+import { ActivityEvent, type EventResponse } from "@/components/activity-event";
+import { Skeleton } from "@/components/ui/skeleton";
+import { authFetcher } from "@/lib/fetchers";
 
 import { formatDistanceToNow, addHours, format } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
@@ -233,6 +236,10 @@ export default function DashboardPage() {
     const { data: emails } = useSWR<EmailResponse[]>(user ? "/api/emails" : null);
     const { data: assignedIssues, isLoading: assignedIssuesLoading } = useSWR<AssignedIssue[]>(
         user ? "/api/users/me/assigned-issues" : null
+    );
+    const { data: activityFeed, isLoading: activityLoading } = useSWR<EventResponse[] | null>(
+        user ? "/api/users/me/events" : null,
+        authFetcher
     );
 
     const primaryEmail = emails?.find((e) => e.primary) ?? null;
@@ -496,11 +503,26 @@ export default function DashboardPage() {
                             <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-3">
                                 <Activity className="h-3.5 w-3.5" />
                                 Recent Activity
-                                <WipBadge />
                             </h2>
-                            <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
-                                Activity feed will appear here once the API is available.
-                            </div>
+                            {activityLoading && (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-12 w-full" />
+                                    <Skeleton className="h-12 w-full" />
+                                    <Skeleton className="h-12 w-full" />
+                                </div>
+                            )}
+                            {!activityLoading && (!activityFeed || activityFeed.length === 0) && (
+                                <div className="border border-border rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+                                    No recent activity. Start by creating a repository or starring one.
+                                </div>
+                            )}
+                            {!activityLoading && activityFeed && activityFeed.length > 0 && (
+                                <div className="space-y-4">
+                                    {activityFeed.map((event) => (
+                                        <ActivityEvent key={event.id} event={event} />
+                                    ))}
+                                </div>
+                            )}
                         </section>
                     </div>
                 </main>
