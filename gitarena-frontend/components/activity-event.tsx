@@ -204,7 +204,7 @@ export function ActivityEvent({ event }: ActivityEventProps) {
 
     return (
         <div className={`group pl-4 border-l-2 transition-colors ${borderColor}`}>
-            <div className="grid items-center gap-x-3 grid-cols-[1rem_1fr_8rem_1rem_11rem_auto]">
+            <div className="grid items-center gap-x-3 grid-cols-[1rem_1fr_8rem_1rem_11rem_9rem]">
                 <div className="w-4 h-4 flex items-center justify-center shrink-0">
                     <EventIcon type={event.type} />
                 </div>
