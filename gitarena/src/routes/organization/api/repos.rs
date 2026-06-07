@@ -1,5 +1,5 @@
 use crate::die;
-use crate::organization::Organization;
+use crate::organization::{OrgMember, Organization};
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::WebUser;
 
@@ -48,6 +48,11 @@ pub(crate) async fn list_repos(name: web::Path<String>, web_user: WebUser, db_po
 
     let can_see_internal = matches!(web_user, WebUser::Authenticated(_));
 
+    let can_see_private = match &web_user {
+        WebUser::Authenticated(user) => user.admin || OrgMember::get_role(org.id, user.id, &mut tx).await?.is_some(),
+        WebUser::Anonymous => false,
+    };
+
     let mut query = "select repositories.id, \
          repositories.name, \
          repositories.description, \
@@ -58,9 +63,12 @@ pub(crate) async fn list_repos(name: web::Path<String>, web_user: WebUser, db_po
          from repositories \
          left join stars on repositories.id = stars.repo \
          where repositories.owner_org = $1 \
-         and repositories.disabled = false \
-         and repositories.visibility != 'private'"
+         and repositories.disabled = false"
         .to_string();
+
+    if !can_see_private {
+        query.push_str(" and repositories.visibility != 'private'");
+    }
 
     if !can_see_internal {
         query.push_str(" and repositories.visibility != 'internal'");
