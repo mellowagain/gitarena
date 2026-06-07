@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
@@ -201,12 +202,27 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
     );
 }
 
-function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo: string; meta: RepoMetadata; defaultFile?: string }) {
-    const [selectedFile, setSelectedFile] = useState<string | null>(defaultFile ?? null);
+export function RepoPageContent({
+    user,
+    repo,
+    meta,
+    defaultFile,
+    initialBranch,
+    initialFile,
+}: {
+    user: string;
+    repo: string;
+    meta: RepoMetadata;
+    defaultFile?: string;
+    initialBranch?: string;
+    initialFile?: string | null;
+}) {
+    const router = useRouter();
+    const [selectedFile, setSelectedFile] = useState<string | null>(initialFile !== undefined ? initialFile : (defaultFile ?? null));
     const [showSource, setShowSource] = useState(false);
     const [showBlame, setShowBlame] = useState(false);
     const [wrapLines, setWrapLines] = useState(false);
-    const [branch, setBranch] = useState(meta.defaultBranch);
+    const [branch, setBranch] = useState(initialBranch ?? meta.defaultBranch);
     const [fileSize, setFileSize] = useState<number | null>(null);
     const [fileCommit, setFileCommit] = useState<FileCommit | null>(null);
     const [isBinary, setIsBinary] = useState(false);
@@ -240,6 +256,19 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
         setFileCommit(null);
         setShowBlame(false);
         setIsBinary(false);
+        const encodedBranch = encodeURIComponent(branch);
+        if (file) {
+            const encodedFile = file.split("/").map(encodeURIComponent).join("/");
+            router.push(`/${user}/${repo}/tree/${encodedBranch}/${encodedFile}`);
+        } else {
+            router.push(`/${user}/${repo}/tree/${encodedBranch}`);
+        }
+    }
+
+    function handleBranchChange(newBranch: string) {
+        setBranch(newBranch);
+        setSelectedFile(null);
+        router.push(`/${user}/${repo}/tree/${encodeURIComponent(newBranch)}`);
     }
 
     return (
@@ -254,7 +283,7 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                     selectedFile={selectedFile}
                     setSelectedFile={handleSelectFile}
                     branch={branch}
-                    onBranchChange={setBranch}
+                    onBranchChange={handleBranchChange}
                     defaultBranch={meta.defaultBranch}
                 />
 
@@ -375,7 +404,7 @@ function RepoPageContent({ user, repo, meta, defaultFile }: { user: string; repo
                                                 asChild
                                             >
                                                 <Link
-                                                    href={`/${user}/${repo}/commits/${encodeURIComponent(branch)}?path=${encodeURIComponent(selectedFile)}`}
+                                                    href={`/${user}/${repo}/commits/${encodeURIComponent(branch)}/${selectedFile.split("/").map(encodeURIComponent).join("/")}`}
                                                 >
                                                     <History className="h-3.5 w-3.5" />
                                                     History

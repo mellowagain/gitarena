@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
@@ -129,10 +129,10 @@ function groupByDate(commits: FileCommitInfo[]): { label: string; commits: FileC
 }
 
 export default function CommitsPage() {
-    const { user, repo, branch: undecodedBranch } = useParams<{ user: string; repo: string; branch: string }>();
-    const branch = decodeURIComponent(undecodedBranch);
-    const searchParams = useSearchParams();
-    const filePath = searchParams.get("path");
+    const { user, repo, commits: undecodedSegments } = useParams<{ user: string; repo: string; commits: string[] }>();
+    const branch = decodeURIComponent(undecodedSegments[0]);
+    const undecodedBranch = undecodedSegments[0];
+    const filePath = undecodedSegments.length > 1 ? undecodedSegments.slice(1).map(decodeURIComponent).join("/") : null;
 
     const {
         data: branchesData,

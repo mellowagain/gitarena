@@ -5,7 +5,9 @@ const PROTECTED_PATHS = ["/new", "/import", "/settings", "/notifications", "/adm
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    if (!pathname.startsWith("/api/")) {
+    // File paths in tree and commits routes are case-sensitive — skip lowercasing for those
+    const CASE_SENSITIVE_PREFIXES = [/^\/[^/]+\/[^/]+\/tree\//, /^\/[^/]+\/[^/]+\/commits\//];
+    if (!pathname.startsWith("/api/") && !CASE_SENSITIVE_PREFIXES.some((re) => re.test(pathname))) {
         const lowercased = pathname.toLowerCase();
         if (pathname !== lowercased) {
             const url = request.nextUrl.clone();
