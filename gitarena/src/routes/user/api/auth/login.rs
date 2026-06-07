@@ -5,14 +5,17 @@ use crate::session::{Session, send_login_email};
 use crate::user::{User, WebUser};
 use crate::{crypto, die, err};
 
+use crate::events::Event;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::debug;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -70,6 +73,10 @@ pub(crate) async fn post_login(
     }
 
     if !crypto::check_password(&user, password)? {
+        Event::new("auth.login_failed", Uuid::nil(), &request, (&user).into(), None)
+            .save(&mut transaction)
+            .await?;
+
         debug!(user.username, user.id = %user.id, "Received login request with wrong password");
         die!(UNAUTHORIZED, "Invalid credentials");
     }
@@ -90,6 +97,18 @@ pub(crate) async fn post_login(
 
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
+
+    Event::new(
+        "auth.login",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "type": "password"
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     debug!(user.username, user.id = %user.id, "User logged in");
 

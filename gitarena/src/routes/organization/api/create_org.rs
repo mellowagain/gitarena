@@ -4,10 +4,12 @@ use crate::user::WebUser;
 use crate::utils::identifiers::{is_namespace_taken, is_reserved_namespace, is_valid};
 
 use crate::database::Pool;
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -35,7 +37,7 @@ pub(crate) struct CreateOrgRequest {
     tag = "organization"
 )]
 #[route("/api/orgs", method = "POST", err = "json")]
-pub(crate) async fn create_org(web_user: WebUser, body: web::Json<CreateOrgRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn create_org(web_user: WebUser, body: web::Json<CreateOrgRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let name = &body.name;
 
@@ -69,12 +71,27 @@ pub(crate) async fn create_org(web_user: WebUser, body: web::Json<CreateOrgReque
         .fetch_one(&mut *tx)
         .await?;
 
+    Event::new("org.created", user.id, &request, (&org).into(), None).save(&mut tx).await?;
+
     sqlx::query("insert into organization_members (org_id, user_id, role) values ($1, $2, $3)")
         .bind(org.id)
         .bind(user.id)
         .bind(OrgRole::Owner)
         .execute(&mut *tx)
         .await?;
+
+    Event::new(
+        "org.member_added",
+        user.id,
+        &request,
+        (&org).into(),
+        Some(json!({
+            "member": user.id,
+            "role": OrgRole::Owner
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

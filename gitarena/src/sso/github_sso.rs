@@ -5,9 +5,11 @@ use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
 use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::{config, crypto, err};
+use actix_web::HttpRequest;
 
 use crate::database::Database;
 use crate::database::Pool;
+use crate::events::Event;
 use crate::meili::MeiliClient;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
@@ -17,7 +19,7 @@ use oauth2::{AuthUrl, ClientId, ClientSecret, Scope, TokenUrl};
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::Transaction;
 use tracing::instrument;
 use tracing_unwrap::ResultExt;
@@ -109,7 +111,7 @@ impl SSOProvider for GitHubSSO {
     }
 
     #[instrument(skip_all)]
-    async fn create_user(&self, token: &str, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User> {
+    async fn create_user(&self, token: &str, request: &HttpRequest, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User> {
         let mut transaction = db_pool.begin().await?;
 
         let profile_data: SerdeMap = GitHubSSO::request_data("user", token).await?;
@@ -133,6 +135,19 @@ impl SSOProvider for GitHubSSO {
             .bind("sso-login")
             .fetch_one(&mut *transaction)
             .await?;
+
+        Event::new(
+            "user.created",
+            user.id,
+            &request,
+            (&user).into(),
+            Some(json!({
+                "origin": "sso",
+                "provider": "github"
+            })),
+        )
+        .save(&mut transaction)
+        .await?;
 
         let github_id = profile_data
             .get("id")
@@ -184,6 +199,20 @@ impl SSOProvider for GitHubSSO {
             .bind(primary)
             .bind(public)
             .execute(&mut *transaction)
+            .await?;
+
+            Event::new(
+                "email.added",
+                user.id,
+                &request,
+                (&user).into(),
+                Some(json!({
+                    "email": email,
+                    "action": "account_sso_create",
+                    "provider": "github"
+                })),
+            )
+            .save(&mut transaction)
             .await?;
         }
 

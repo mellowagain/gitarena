@@ -4,8 +4,9 @@ use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::user::WebUser;
 
+use crate::events::Event;
 use crate::meili::MeiliClient;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
@@ -39,6 +40,7 @@ pub(crate) async fn toggle_archive(
     repo: Repository,
     web_user: WebUser,
     body: web::Json<ArchiveRequest>,
+    request: HttpRequest,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -56,6 +58,16 @@ pub(crate) async fn toggle_archive(
         .bind(repo.id)
         .fetch_one(&mut *tx)
         .await?;
+
+    Event::new(
+        if body.archive { "repo.archived" } else { "repo.unarchived" },
+        user.id,
+        &request,
+        (&repo).into(),
+        None,
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

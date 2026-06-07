@@ -9,17 +9,18 @@ use crate::user::WebUser;
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 use crate::{die, err};
 
+use crate::events::Event;
 use crate::meili::MeiliClient;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::info;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
 // todo: This whole handler is very similar to `create_repo.rs` so at some point this should be consolidated into one
 
 #[utoipa::path(
@@ -40,6 +41,7 @@ use uuid::Uuid;
 pub(crate) async fn import(
     web_user: WebUser,
     body: web::Json<ImportJsonRequest>,
+    request: HttpRequest,
     queue: web::Data<AsyncQueue>,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
@@ -142,6 +144,18 @@ pub(crate) async fn import(
         .context("failed to enqueue importing task")?;
 
     let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
+
+    Event::new(
+        if body.mirror.unwrap_or_default() { "repo.mirrored" } else { "repo.imported" },
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "from": &url,
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

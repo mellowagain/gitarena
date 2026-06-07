@@ -1,3 +1,4 @@
+use crate::events::Event;
 use crate::git::hooks::post_update;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
@@ -9,8 +10,10 @@ use crate::repository::Repository;
 use crate::utils::oid;
 use crate::{die, err};
 
+use std::collections::{HashSet, VecDeque};
 use std::convert::TryInto;
 use std::io::Write;
+use std::ops::Deref;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -19,10 +22,12 @@ use std::time::Duration;
 use crate::database::Database;
 use crate::database::Pool;
 use crate::meili::MeiliClient;
+use actix_web::HttpRequest;
 use anyhow::{Context, Result, anyhow};
 use bstr::BString;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
+use gix::hash::ObjectId;
 use gix::lock::acquire::Fail;
 use gix::objs::{CommitRef, Kind, TagRef};
 use gix::odb::Store;
@@ -32,10 +37,12 @@ use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use memmem::{Searcher, TwoWaySearcher};
+use serde_json::{Value, json};
 use sqlx::Transaction;
 use tokio::process::Command;
 use tokio::time::timeout;
 use tracing::{instrument, warn};
+use uuid::Uuid;
 
 #[instrument(err, skip(writer, store))]
 pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, store: Arc<Store>, db_pool: &Pool, writer: &mut GitWriter) -> Result<()> {
@@ -142,8 +149,15 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
     Ok(())
 }
 
-#[instrument(err, skip(db_pool, data))]
-pub(crate) async fn execute_receive_pack(db_pool: &Pool, meili_client: &MeiliClient, repo: &mut Repository, data: &[u8]) -> Result<GitWriter> {
+#[instrument(err, skip(db_pool, data, request))]
+pub(crate) async fn execute_receive_pack(
+    db_pool: &Pool,
+    meili_client: &MeiliClient,
+    repo: &mut Repository,
+    data: &[u8],
+    actor_id: Uuid,
+    request: Option<&HttpRequest>,
+) -> Result<GitWriter> {
     let mut tx = db_pool.begin().await?;
 
     let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
@@ -204,6 +218,52 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, meili_client: &MeiliCli
         }
     }
 
+    for update in &updates {
+        let event_data = match RefUpdateType::determinate(&update.old, &update.new)? {
+            RefUpdateType::Create if update.target_ref.starts_with("refs/heads/") => Some(("git.branch_created", json!({ "ref": update.target_ref }))),
+            RefUpdateType::Create if update.target_ref.starts_with("refs/tags/") => {
+                let sha = update.new.as_deref().unwrap_or_default();
+                Some(("git.tag_created", json!({ "ref": update.target_ref, "sha": sha })))
+            }
+            RefUpdateType::Delete if update.target_ref.starts_with("refs/heads/") => {
+                let was = update.old.as_deref().unwrap_or_default();
+                Some(("git.branch_deleted", json!({ "ref": update.target_ref, "was": was })))
+            }
+            RefUpdateType::Delete if update.target_ref.starts_with("refs/tags/") => Some(("git.tag_deleted", json!({ "ref": update.target_ref }))),
+            RefUpdateType::Update if update.target_ref.starts_with("refs/heads/") => {
+                let before = update.old.as_deref().unwrap_or_default();
+                let after = update.new.as_deref().unwrap_or_default();
+
+                let (force, commits) = classify_push(&store, before, after)?;
+
+                if force {
+                    Some(("git.force_push", json!({ "ref": update.target_ref, "before": before, "after": after })))
+                } else {
+                    Some((
+                        "git.push",
+                        json!({ "ref": update.target_ref, "before": before, "after": after, "commits": commits }),
+                    ))
+                }
+            }
+            _ => None,
+        };
+
+        if let Some((event_type, mut payload)) = event_data {
+            let event = match request {
+                Some(req) => {
+                    payload["transport"] = Value::String("http".to_string());
+                    Event::new(event_type, actor_id, req, repo.deref().into(), Some(payload))
+                }
+                None => {
+                    payload["transport"] = Value::String("ssh".to_string());
+                    Event::new_without_request(event_type, actor_id, repo.deref().into(), Some(payload))
+                }
+            };
+
+            event.save(&mut tx).await?;
+        }
+    }
+
     let repo_dir_str = repo.get_fs_path(&mut tx).await?;
     let repo_dir = Path::new(&repo_dir_str).to_owned();
 
@@ -247,4 +307,54 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, meili_client: &MeiliCli
     repo.index_meili(&meili_client).await;
 
     Ok(output_writer)
+}
+
+#[instrument(err, skip(store))]
+fn classify_push(store: &Arc<Store>, old_hex: &str, new_hex: &str) -> Result<(bool, usize)> {
+    let old_oid = oid::from_hex_str(Some(old_hex))?;
+    let new_oid = oid::from_hex_str(Some(new_hex))?;
+
+    let cache = store.to_cache_arc();
+    let mut buffer = Vec::new();
+
+    let mut visited: HashSet<ObjectId> = HashSet::new();
+
+    let mut queue: VecDeque<ObjectId> = VecDeque::new();
+    queue.push_back(new_oid);
+
+    while let Some(oid) = queue.pop_front() {
+        if oid == old_oid {
+            return Ok((false, visited.len()));
+        }
+
+        if !visited.insert(oid) {
+            continue;
+        }
+
+        if visited.len() > 10_000 {
+            break;
+        }
+
+        let parents: Vec<ObjectId> = {
+            let Ok((data, _)) = cache.find(oid.as_ref(), &mut buffer) else {
+                continue;
+            };
+
+            if data.kind != Kind::Commit {
+                continue;
+            }
+
+            let Ok(commit) = CommitRef::from_bytes(data.data) else {
+                continue;
+            };
+
+            commit.parents.iter().filter_map(|p| ObjectId::from_hex(*p).ok()).collect()
+        };
+
+        for parent in parents {
+            queue.push_back(parent);
+        }
+    }
+
+    Ok((true, 0))
 }

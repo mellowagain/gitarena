@@ -1,17 +1,25 @@
 use crate::database::Pool;
 use crate::die;
 
+use crate::events::{Event, Subject};
+use crate::user::WebUser;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::info;
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
 
 #[route("/api/verify/{token}", method = "GET", err = "json")]
-pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn verify(
+    verify_request: web::Path<VerifyRequest>,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let token = &verify_request.token;
 
     if token.len() != 32 || !token.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -31,15 +39,27 @@ pub(crate) async fn verify(verify_request: web::Path<VerifyRequest>, db_pool: we
 
     let (row_id, user_id) = option.unwrap_or_log();
 
-    sqlx::query("update emails set verified_at = current_timestamp where owner = $1")
+    let email: String = sqlx::query_scalar("update emails set verified_at = current_timestamp where owner = $1 returning email")
         .bind(user_id)
-        .execute(&mut *transaction)
+        .fetch_one(&mut *transaction)
         .await?;
 
     sqlx::query("delete from user_verifications where id = $1")
         .bind(row_id)
         .execute(&mut *transaction)
         .await?;
+
+    Event::new(
+        "email.verified",
+        web_user.as_ref().map_or_else(|| Uuid::nil(), |user| user.id),
+        &request,
+        Subject::User(user_id),
+        Some(json!({
+            "email": email,
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     transaction.commit().await?;
 

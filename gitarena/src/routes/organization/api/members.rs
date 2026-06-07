@@ -3,10 +3,12 @@ use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::user::{User, WebUser};
 
 use crate::database::Pool;
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::FromRow;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -84,6 +86,7 @@ pub(crate) async fn add_member(
     web_user: WebUser,
     name: web::Path<String>,
     body: web::Json<AddMemberRequest>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let actor = web_user.into_user()?;
@@ -104,8 +107,10 @@ pub(crate) async fn add_member(
         die!(NOT_FOUND, "User not found");
     };
 
+    let existing_role = OrgMember::get_role(org.id, target.id, &mut tx).await?;
+
     // cannot demote another owner unless you are also owner
-    if let Some(existing_role) = OrgMember::get_role(org.id, target.id, &mut tx).await?
+    if let Some(existing_role) = existing_role
         && existing_role == OrgRole::Owner
         && actor_role.is_none_or(|ar| !OrgMember::has_permission(ar, OrgRole::Owner))
     {
@@ -119,6 +124,24 @@ pub(crate) async fn add_member(
     .bind(target.id)
     .bind(body.role)
     .execute(&mut *tx)
+    .await?;
+
+    Event::new(
+        if existing_role.is_some() {
+            "org.member_role_changed"
+        } else {
+            "org.member_added"
+        },
+        actor.id,
+        &request,
+        (&org).into(),
+        Some(json!({
+            "member": target.id,
+            "old_role": existing_role,
+            "new_role": body.role
+        })),
+    )
+    .save(&mut tx)
     .await?;
 
     tx.commit().await?;
@@ -143,7 +166,12 @@ pub(crate) async fn add_member(
     tag = "organization"
 )]
 #[route("/api/orgs/{name}/members/{username}", method = "DELETE", err = "json")]
-pub(crate) async fn remove_member(web_user: WebUser, path: web::Path<(String, String)>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn remove_member(
+    web_user: WebUser,
+    path: web::Path<(String, String)>,
+    request: HttpRequest,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let actor = web_user.into_user()?;
     let (org_name, target_name) = path.into_inner();
 
@@ -166,6 +194,10 @@ pub(crate) async fn remove_member(web_user: WebUser, path: web::Path<(String, St
 
     let target_role = OrgMember::get_role(org.id, target.id, &mut tx).await?;
 
+    if target_role.is_none() {
+        die!(BAD_REQUEST, "Targetted user is not part of the organization");
+    }
+
     if target_role == Some(OrgRole::Owner) {
         let (owner_count,): (i64,) = sqlx::query_as("select count(*) from organization_members where org_id = $1 and role = 'owner'")
             .bind(org.id)
@@ -177,11 +209,24 @@ pub(crate) async fn remove_member(web_user: WebUser, path: web::Path<(String, St
         }
     }
 
-    sqlx::query("delete from organization_members where org_id = $1 and user_id = $2")
+    let role: OrgRole = sqlx::query_scalar("delete from organization_members where org_id = $1 and user_id = $2 returning role")
         .bind(org.id)
         .bind(target.id)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
+
+    Event::new(
+        "org.member_removed",
+        actor.id,
+        &request,
+        (&org).into(),
+        Some(json!({
+            "member": target.id,
+            "role": role
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

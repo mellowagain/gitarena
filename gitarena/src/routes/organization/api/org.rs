@@ -3,10 +3,12 @@ use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::user::WebUser;
 
 use crate::database::Pool;
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 #[utoipa::path(
@@ -51,7 +53,7 @@ pub(crate) async fn get_org(name: web::Path<String>, db_pool: web::Data<Pool>) -
     tag = "organization"
 )]
 #[route("/api/orgs/{name}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_org(web_user: WebUser, name: web::Path<String>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_org(web_user: WebUser, name: web::Path<String>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut tx = db_pool.begin().await?;
@@ -65,6 +67,19 @@ pub(crate) async fn delete_org(web_user: WebUser, name: web::Path<String>, db_po
     if !role.is_some_and(|r| OrgMember::has_permission(r, OrgRole::Admin)) {
         die!(FORBIDDEN, "Insufficient permissions to delete this organization");
     }
+
+    Event::new(
+        "org.deleted",
+        user.id,
+        &request,
+        (&org).into(),
+        Some(json!({
+            "id": org.id,
+            "name": org.name
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     sqlx::query("delete from organizations where id = $1").bind(org.id).execute(&mut *tx).await?;
 
@@ -100,6 +115,7 @@ pub(crate) async fn update_org(
     web_user: WebUser,
     name: web::Path<String>,
     body: web::Json<UpdateOrgRequest>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -125,6 +141,19 @@ pub(crate) async fn update_org(
         .bind(org.id)
         .execute(&mut *tx)
         .await?;
+
+    Event::new(
+        "org.updated",
+        user.id,
+        &request,
+        (&org).into(),
+        Some(json!({
+            "fields": ["description"],
+            "description": body.description
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

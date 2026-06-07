@@ -15,10 +15,10 @@ use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
 use actix_web::dev::{Service, ServiceResponse};
 use actix_web::http::Method;
-use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue, LOCATION};
+use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue};
 use actix_web::middleware::{NormalizePath, TrailingSlash};
-use actix_web::web::{Data, route, to};
-use actix_web::{App, HttpResponse, HttpServer, web};
+use actix_web::web::{Data, route};
+use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
@@ -33,6 +33,7 @@ mod config;
 mod crypto;
 mod database;
 mod error;
+mod events;
 mod geoip;
 mod git;
 mod issue;
@@ -80,6 +81,8 @@ async fn main() -> Result<()> {
         .map_err(|_| anyhow!("task db pool should not be set more than once"))?;
 
     let _task_handle = spawn_db_pool_metrics_task(db_pool.clone());
+
+    events::init(&db_pool).await?;
 
     licenses::init();
 
@@ -156,10 +159,6 @@ async fn main() -> Result<()> {
             .service(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/rapidoc"))
             .configure(routes::repository::init) // Repository routes need to be always last
             .route("/healthz", web::get().to(|| async { "healthy" }))
-            .route(
-                "/favicon.ico",
-                to(|| async { HttpResponse::MovedPermanently().append_header((LOCATION, "/static/img/favicon.ico")).finish() }),
-            )
     })
     .bind(bind_address.as_str())
     .context("Unable to bind HTTP server.")?;

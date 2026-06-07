@@ -5,10 +5,12 @@ use crate::verification::send_verification_mail;
 use crate::{die, err};
 use gitarena_macros::{from_config, route};
 
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -59,6 +61,7 @@ pub(crate) struct AddEmailRequest {
 pub(crate) async fn post_email(
     body: web::Json<AddEmailRequest>,
     web_user: WebUser,
+    request: HttpRequest,
     queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -93,6 +96,19 @@ pub(crate) async fn post_email(
         .fetch_one(&mut *transaction)
         .await?;
 
+    Event::new(
+        "email.added",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "email": body.email.as_str(),
+            "action": "explicit"
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
+
     transaction.commit().await?;
 
     send_verification_mail(&user, email.email.clone(), &queue, &db_pool).await?;
@@ -114,7 +130,7 @@ pub(crate) async fn post_email(
     tag = "user"
 )]
 #[route("/api/emails/{id}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_email(path: web::Path<Uuid>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_email(path: web::Path<Uuid>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let email_id = path.into_inner();
@@ -136,6 +152,18 @@ pub(crate) async fn delete_email(path: web::Path<Uuid>, web_user: WebUser, db_po
         .bind(email.id)
         .execute(&mut *transaction)
         .await?;
+
+    Event::new(
+        "email.removed",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "email": email.email,
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     transaction.commit().await?;
 
@@ -171,6 +199,7 @@ pub(crate) async fn patch_email(
     path: web::Path<Uuid>,
     body: web::Json<UpdateEmailRequest>,
     web_user: WebUser,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -222,6 +251,21 @@ pub(crate) async fn patch_email(
         .bind(email_id)
         .fetch_one(&mut *transaction)
         .await?;
+
+    Event::new(
+        "email.updated",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "email": email.email,
+            "primary": new_primary,
+            "notification": new_notification,
+            "public": new_public
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     transaction.commit().await?;
 

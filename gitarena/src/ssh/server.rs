@@ -22,6 +22,7 @@ use std::time::Instant;
 use tokio::runtime::Handle;
 use tokio::task::spawn_blocking;
 use tracing::{debug, error, instrument, warn};
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SshServer {
@@ -150,11 +151,14 @@ impl Handler for SshHandler {
         let meili_client = self.meili_client.clone();
 
         let version = self.version;
+        let actor_id = self.user.as_ref().map(|u| u.id).unwrap_or(Uuid::nil());
 
         // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
         let result = match operation {
             SshOperation::UploadPack(repo) => spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, vec, version))).await?,
-            SshOperation::ReceivePack(repo) => spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, &meili_client, repo, vec))).await?,
+            SshOperation::ReceivePack(repo) => {
+                spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, &meili_client, repo, vec, actor_id))).await?
+            }
         };
 
         match result {
@@ -398,10 +402,10 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version:
 }
 
 #[instrument(err, skip(db_pool, vec))]
-async fn run_receive_pack(db_pool: Pool, meili_client: &MeiliClient, mut repo: Repository, vec: Vec<u8>) -> Result<Vec<u8>> {
+async fn run_receive_pack(db_pool: Pool, meili_client: &MeiliClient, mut repo: Repository, vec: Vec<u8>, actor_id: Uuid) -> Result<Vec<u8>> {
     let start = Instant::now();
 
-    let output_writer = execute_receive_pack(&db_pool, meili_client, &mut repo, vec.as_slice()).await?;
+    let output_writer = execute_receive_pack(&db_pool, meili_client, &mut repo, vec.as_slice(), actor_id, None).await?;
     let output = output_writer.serialize().await.map(|b| b.to_vec())?;
 
     let elapsed = start.elapsed().as_secs_f64();

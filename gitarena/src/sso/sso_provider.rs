@@ -5,6 +5,7 @@ use crate::sso::gitlab_sso::GitLabSSO;
 use crate::sso::oauth2_awc_client::async_http_client;
 use crate::sso::sso_provider_type::SSOProviderType;
 use crate::user::User;
+use actix_web::HttpRequest;
 
 use crate::database::Database;
 use crate::database::Pool;
@@ -132,7 +133,7 @@ pub(crate) trait SSOProvider {
 
     async fn get_provider_id(&self, token: &str) -> Result<String>;
 
-    async fn create_user(&self, token: &str, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User>;
+    async fn create_user(&self, token: &str, request: &HttpRequest, meili_client: &MeiliClient, db_pool: &Pool) -> Result<User>;
 }
 
 #[async_trait]

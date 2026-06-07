@@ -7,6 +7,7 @@ use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::verification::send_verification_mail;
 use crate::{captcha, crypto, die};
 
+use crate::events::Event;
 use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
@@ -15,6 +16,7 @@ use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::info;
 use uuid::Uuid;
 
@@ -94,6 +96,18 @@ pub(crate) async fn post_register(
         .fetch_one(&mut *tx)
         .await?;
 
+    Event::new(
+        "user.created",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "origin": "manual"
+        })),
+    )
+    .save(&mut tx)
+    .await?;
+
     let email = sqlx::query_as::<_, Email>(
         "insert into emails (id, owner, email, \"primary\", commit, notification, public) values ($1, $2, $3, true, true, true, true) returning *",
     )
@@ -103,7 +117,32 @@ pub(crate) async fn post_register(
     .fetch_one(&mut *tx)
     .await?;
 
+    Event::new(
+        "email.added",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "email": email,
+            "action": "account_create"
+        })),
+    )
+    .save(&mut tx)
+    .await?;
+
     let session = Session::new(&request, &user, &mut tx).await?;
+
+    Event::new(
+        "auth.login",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "type": "user_created"
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

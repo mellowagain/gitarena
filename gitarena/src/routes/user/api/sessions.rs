@@ -4,12 +4,14 @@ use crate::geoip;
 use crate::session::Session;
 use crate::user::WebUser;
 
+use crate::events::Event;
 use actix_identity::Identity;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use gitarena_macros::route;
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
@@ -93,7 +95,13 @@ pub(crate) async fn get_sessions(id: Identity, web_user: WebUser, db_pool: web::
     tag = "user"
 )]
 #[route("/api/sessions/{hash}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_session(path: web::Path<String>, id: Identity, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_session(
+    path: web::Path<String>,
+    id: Identity,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let target_hash = path.into_inner();
@@ -119,6 +127,19 @@ pub(crate) async fn delete_session(path: web::Path<String>, id: Identity, web_us
         die!(NOT_FOUND, "Session not found");
     }
 
+    Event::new(
+        "session.revoked",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "amount": rows,
+            "session_hash": target_hash
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
+
     transaction.commit().await?;
 
     Ok(HttpResponse::NoContent().finish())
@@ -135,7 +156,7 @@ pub(crate) async fn delete_session(path: web::Path<String>, id: Identity, web_us
     tag = "user"
 )]
 #[route("/api/sessions", method = "DELETE", err = "json")]
-pub(crate) async fn delete_all_sessions(id: Identity, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_all_sessions(id: Identity, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -144,11 +165,24 @@ pub(crate) async fn delete_all_sessions(id: Identity, web_user: WebUser, db_pool
         .await?
         .expect("authenticated user to have a session");
 
-    sqlx::query("delete from sessions where user_id = $1 and hash != $2")
+    let rows = sqlx::query("delete from sessions where user_id = $1 and hash != $2")
         .bind(user.id)
         .bind(&current_session.hash)
         .execute(&mut *transaction)
-        .await?;
+        .await?
+        .rows_affected();
+
+    Event::new(
+        "session.revoked_all",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "amount": rows
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     transaction.commit().await?;
 

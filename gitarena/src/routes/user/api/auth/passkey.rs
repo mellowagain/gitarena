@@ -6,13 +6,14 @@ use crate::session::{Session, send_login_email};
 use crate::user::{User, WebUser};
 use crate::{die, err};
 
+use crate::events::Event;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -66,7 +67,7 @@ pub(crate) struct PasskeyListItem {
     tag = "user"
 )]
 #[route("/api/auth/passkey/{id}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_passkey(path: web::Path<Uuid>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_passkey(path: web::Path<Uuid>, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let WebUser::Authenticated(user) = web_user else {
         die!(UNAUTHORIZED, "Not logged in");
     };
@@ -75,21 +76,33 @@ pub(crate) async fn delete_passkey(path: web::Path<Uuid>, web_user: WebUser, db_
 
     let mut tx = db_pool.begin().await?;
 
-    let result = sqlx::query("delete from passkeys where id = $1 and user_id = $2")
+    let passkey: Option<StoredPasskey> = sqlx::query_as("delete from passkeys where id = $1 and user_id = $2 returning *")
         .bind(passkey_id)
         .bind(user.id)
-        .execute(&mut *tx)
+        .fetch_optional(&mut *tx)
         .await?;
 
-    if result.rows_affected() == 0 {
+    if let Some(passkey) = passkey {
+        Event::new(
+            "passkey.removed",
+            user.id,
+            &request,
+            (&user).into(),
+            Some(json!({
+                "name": passkey.name,
+            })),
+        )
+        .save(&mut tx)
+        .await?;
+
+        tx.commit().await?;
+
+        debug!(user.username, user.id = %user.id, %passkey_id, "Deleted passkey");
+
+        Ok(HttpResponse::NoContent().finish())
+    } else {
         die!(NOT_FOUND, "Passkey not found");
     }
-
-    tx.commit().await?;
-
-    debug!(user.username, user.id = %user.id, %passkey_id, "Deleted passkey");
-
-    Ok(HttpResponse::NoContent().finish())
 }
 
 #[utoipa::path(
@@ -197,10 +210,22 @@ pub(crate) async fn post_register_finish(
     sqlx::query("insert into passkeys (id, user_id, name, credential) values ($1, $2, $3, $4)")
         .bind(passkey_id)
         .bind(user.id)
-        .bind(name)
+        .bind(&name)
         .bind(credential_json)
         .execute(&mut *tx)
         .await?;
+
+    Event::new(
+        "passkey.added",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "name": name,
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 
@@ -311,15 +336,17 @@ pub(crate) async fn post_login_finish(
         .map_err(|e| anyhow!("Passkey authentication failed: {e:?}"))?;
 
     let new_counter = i64::from(auth_result.counter());
-    sqlx::query(
+
+    let name: String = sqlx::query_scalar(
         "update passkeys \
          set credential = jsonb_set(credential, '{cred,counter}', to_jsonb($1::bigint)) \
-         where user_id = $2 and credential->'cred'->>'cred_id' = $3",
+         where user_id = $2 and credential->'cred'->>'cred_id' = $3\
+         returning name",
     )
     .bind(new_counter)
     .bind(user_id)
     .bind(&cred_id_b64)
-    .execute(&mut *tx)
+    .fetch_one(&mut *tx)
     .await?;
 
     let user: User = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
@@ -342,6 +369,19 @@ pub(crate) async fn post_login_finish(
 
     let session = Session::new(&request, &user, &mut tx).await?;
     id.remember(session.to_string());
+
+    Event::new(
+        "auth.login",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "type": "passkey",
+            "passkey": name
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     debug!(user.username, user.id = %user.id, "User logged in via passkey");
 

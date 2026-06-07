@@ -8,11 +8,13 @@ use crate::utils::filesystem::copy_dir_all;
 
 use std::path::Path;
 
+use crate::events::Event;
 use crate::meili::MeiliClient;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::info;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -100,6 +102,18 @@ pub(crate) async fn create_fork(
         .context("Failed to copy repository")?;
 
     let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
+
+    Event::new(
+        "repo.forked",
+        user.id,
+        &request,
+        (&new_repo).into(),
+        Some(json!({
+            "forked_from": repo.id,
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

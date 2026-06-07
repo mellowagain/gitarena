@@ -106,9 +106,8 @@ impl Session {
         self.update_explicit(&ip_address, user_agent, tx).await
     }
 
-    /// Consumes the current session and destroys it
     #[instrument(err, skip(tx))]
-    pub(crate) async fn destroy(self, tx: &mut Transaction<'_, Database>) -> Result<()> {
+    pub(crate) async fn destroy(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         sqlx::query("delete from sessions where user_id = $1 and hash = $2")
             .bind(self.user_id)
             .bind(self.hash.as_str())
@@ -135,7 +134,10 @@ pub(crate) fn extract_ip_and_ua_owned(request: &HttpRequest) -> (IpNetwork, Stri
 
 fn extract_ip(request: &HttpRequest) -> IpNetwork {
     let connection_info = request.connection_info();
-    let ip_str = connection_info.realip_remote_addr().unwrap_or("No user agent sent");
+
+    let ip_str = connection_info
+        .realip_remote_addr()
+        .unwrap_or("No `Forwarded`, `X-Forwarded-For` or socket remote address sent");
 
     match IpNetwork::from_str(ip_str) {
         Ok(ip_network) => ip_network,

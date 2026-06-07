@@ -1,17 +1,20 @@
 use crate::database::{Database, Pool};
 use crate::die;
+use crate::events::Event;
 use crate::issue::{IssueCache, IssueCommentCache, IssueStatus};
 use crate::meili::MeiliClient;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::user::WebUser;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use gitarena_issues::bug::{create_bug, delete_bug, load_bug};
+use gitarena_issues::operation::BugStatus;
 use gitarena_issues::ops::{change_labels, edit_comment, set_status, set_title};
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::{FromRow, Transaction};
 use std::collections::HashSet;
 use tracing::{info, instrument};
@@ -90,6 +93,7 @@ pub(crate) async fn create_issue(
     repo: Repository,
     web_user: WebUser,
     body: web::Json<CreateIssueRequest>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
     meili_client: web::Data<MeiliClient>,
 ) -> Result<impl Responder> {
@@ -148,6 +152,20 @@ pub(crate) async fn create_issue(
 
     let issue = get_issue_by_index(repo.id, next_index, &mut tx).await?;
     let response = build_issue_response(&issue, Some(user.id), &mut tx).await?;
+
+    Event::new(
+        "issue.opened",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "index": next_index,
+            "title": &body.title,
+            "git_bug_id": &response.git_bug_id
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 
@@ -248,6 +266,7 @@ pub(crate) async fn update_issue(
     web_user: WebUser,
     path: web::Path<(String, String, i32)>,
     body: web::Json<UpdateIssueRequest>,
+    request: HttpRequest,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -284,6 +303,22 @@ pub(crate) async fn update_issue(
             .bind(issue.id)
             .execute(&mut *tx)
             .await?;
+
+        Event::new(
+            "issue.updated",
+            user.id,
+            &request,
+            (&repo).into(),
+            Some(json!({
+                "index": index,
+                "title": {
+                    "from": issue.title,
+                    "to": new_title,
+                }
+            })),
+        )
+        .save(&mut tx)
+        .await?;
     }
 
     if let Some(new_body) = &body.body {
@@ -297,17 +332,48 @@ pub(crate) async fn update_issue(
             .bind(issue.id)
             .execute(&mut *tx)
             .await?;
+
+        Event::new(
+            "issue.updated",
+            user.id,
+            &request,
+            (&repo).into(),
+            Some(json!({
+                "index": index,
+                "body": {
+                    "from": issue.body,
+                    "to": new_body,
+                }
+            })),
+        )
+        .save(&mut tx)
+        .await?;
     }
 
     if let Some(new_status) = &body.status {
         let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
-        set_status(&gitoxide_repo, bug, author.clone(), new_status.to_git_bug_status())?;
+        let status = new_status.to_git_bug_status();
+
+        set_status(&gitoxide_repo, bug, author.clone(), status)?;
 
         sqlx::query("update issue_cache set status = $1, updated_at = now() where id = $2")
             .bind(new_status)
             .bind(issue.id)
             .execute(&mut *tx)
             .await?;
+
+        Event::new(
+            if status == BugStatus::OPEN { "issue.reopened" } else { "issue.closed" },
+            user.id,
+            &request,
+            (&repo).into(),
+            Some(json!({
+                "index": index,
+                "status": body.status,
+            })),
+        )
+        .save(&mut tx)
+        .await?;
 
         info!(repo_id = %repo.id, index, status = ?new_status, "issue status changed");
     }
@@ -341,6 +407,22 @@ pub(crate) async fn update_issue(
         .bind(issue.id)
         .execute(&mut *tx)
         .await?;
+
+        Event::new(
+            "issue.updated",
+            user.id,
+            &request,
+            (&repo).into(),
+            Some(json!({
+                "index": index,
+                "labels": {
+                    "from": issue.labels,
+                    "to": resulting,
+                }
+            })),
+        )
+        .save(&mut tx)
+        .await?;
     }
 
     if can_manage {
@@ -350,6 +432,22 @@ pub(crate) async fn update_issue(
                 .bind(issue.id)
                 .execute(&mut *tx)
                 .await?;
+
+            Event::new(
+                "issue.updated",
+                user.id,
+                &request,
+                (&repo).into(),
+                Some(json!({
+                    "index": index,
+                    "confidential": {
+                        "from": issue.confidential,
+                        "to": confidential,
+                    }
+                })),
+            )
+            .save(&mut tx)
+            .await?;
         }
 
         if let Some(locked) = body.locked {
@@ -358,6 +456,18 @@ pub(crate) async fn update_issue(
                 .bind(issue.id)
                 .execute(&mut *tx)
                 .await?;
+
+            Event::new(
+                if locked { "issue.locked" } else { "issue.unlocked" },
+                user.id,
+                &request,
+                (&repo).into(),
+                Some(json!({
+                    "index": index
+                })),
+            )
+            .save(&mut tx)
+            .await?;
         }
 
         if let Some(ref new_assignees) = body.assignees {
@@ -366,6 +476,22 @@ pub(crate) async fn update_issue(
                 .bind(issue.id)
                 .execute(&mut *tx)
                 .await?;
+
+            Event::new(
+                "issue.updated",
+                user.id,
+                &request,
+                (&repo).into(),
+                Some(json!({
+                    "index": index,
+                    "assignees": {
+                        "from": issue.assignees,
+                        "to": new_assignees,
+                    }
+                })),
+            )
+            .save(&mut tx)
+            .await?;
         }
 
         if let Some(ref new_priority) = body.priority {
@@ -374,6 +500,22 @@ pub(crate) async fn update_issue(
                 .bind(issue.id)
                 .execute(&mut *tx)
                 .await?;
+
+            Event::new(
+                "issue.updated",
+                user.id,
+                &request,
+                (&repo).into(),
+                Some(json!({
+                    "index": index,
+                    "priority": {
+                        "from": issue.priority,
+                        "to": new_priority,
+                    }
+                })),
+            )
+            .save(&mut tx)
+            .await?;
         }
 
         if let Some(new_milestone_id) = body.milestone_id {
@@ -382,6 +524,22 @@ pub(crate) async fn update_issue(
                 .bind(issue.id)
                 .execute(&mut *tx)
                 .await?;
+
+            Event::new(
+                "issue.updated",
+                user.id,
+                &request,
+                (&repo).into(),
+                Some(json!({
+                    "index": index,
+                    "milestone": {
+                        "from": issue.milestone_id,
+                        "to": new_milestone_id,
+                    }
+                })),
+            )
+            .save(&mut tx)
+            .await?;
         }
     }
 
@@ -417,6 +575,7 @@ pub(crate) async fn delete_issue(
     repo: Repository,
     web_user: WebUser,
     path: web::Path<(String, String, i32)>,
+    request: HttpRequest,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -439,6 +598,18 @@ pub(crate) async fn delete_issue(
     delete_bug(&gitoxide_repo, &issue.git_bug_id)?;
 
     sqlx::query("delete from issue_cache where id = $1").bind(issue.id).execute(&mut *tx).await?;
+
+    Event::new(
+        "issue.deleted",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "index": index
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

@@ -3,7 +3,8 @@ use crate::ssh::key::{KeyType, SshKey};
 use crate::user::WebUser;
 use crate::{die, err};
 
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Context;
 use anyhow::Result;
 use chrono::serde::ts_seconds_option;
@@ -12,6 +13,7 @@ use gitarena_macros::route;
 use russh::keys::ssh_encoding::Encode;
 use russh::keys::{HashAlg, PublicKey};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -31,7 +33,12 @@ use uuid::Uuid;
     tag = "user"
 )]
 #[route("/api/ssh-key", method = "PUT", err = "json")]
-pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn put_ssh_key(
+    body: web::Json<AddKeyJsonRequest>,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
     let mut tx = db_pool.begin().await?;
 
@@ -86,6 +93,19 @@ pub(crate) async fn put_ssh_key(body: web::Json<AddKeyJsonRequest>, web_user: We
     .bind(buffer)
     .bind(body.expiration_date)
     .fetch_one(&mut *tx)
+    .await?;
+
+    Event::new(
+        "ssh_key.added",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "title": key_title,
+            "fingerprint": fingerprint
+        })),
+    )
+    .save(&mut tx)
     .await?;
 
     tx.commit().await?;

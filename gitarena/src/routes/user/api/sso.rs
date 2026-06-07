@@ -9,6 +9,7 @@ use crate::{die, err};
 
 use std::str::FromStr;
 
+use crate::events::Event;
 use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
@@ -18,6 +19,7 @@ use anyhow::{Context, Result};
 use gitarena_macros::{from_config, route};
 use oauth2::TokenResponse;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::debug;
 use utoipa::ToSchema;
 
@@ -112,7 +114,7 @@ pub(crate) async fn sso_callback(
         }
         None => {
             // User link does not exist -> Create new user
-            SSOProvider::create_user(&*provider_impl, token.as_str(), &meili_client, &db_pool)
+            SSOProvider::create_user(&*provider_impl, token.as_str(), &request, &meili_client, &db_pool)
                 .await
                 .context("Failed to create new user using sso")?
         }
@@ -144,6 +146,19 @@ pub(crate) async fn sso_callback(
 
     let session = Session::new(&request, &user, &mut transaction).await?;
     id.remember(session.to_string());
+
+    Event::new(
+        "auth.login",
+        user.id,
+        &request,
+        (&user).into(),
+        Some(json!({
+            "type": "sso",
+            "provider": provider.to_string(),
+        })),
+    )
+    .save(&mut transaction)
+    .await?;
 
     debug!(
         %provider,

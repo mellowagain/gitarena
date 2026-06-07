@@ -6,11 +6,13 @@ use crate::privileges::repo_visibility::RepoVisibility;
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
 
+use crate::events::Event;
 use actix_web::web::{Data, Json, Path};
-use actix_web::{HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -99,8 +101,9 @@ pub(crate) async fn list_collaborators(repo: Repository, web_user: WebUser, db_p
 pub(crate) async fn upsert_collaborator(
     repo: Repository,
     web_user: WebUser,
-    db_pool: Data<Pool>,
     body: Json<UpsertCollaboratorRequest>,
+    request: HttpRequest,
+    db_pool: Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -126,6 +129,8 @@ pub(crate) async fn upsert_collaborator(
         die!(BAD_REQUEST, "Viewer collaborators can only be added to private repositories");
     }
 
+    let old_privilege = privilege::get_repo_privilege(&repo, &user, &mut tx).await?;
+
     sqlx::query(
         "insert into privileges (user_id, repo_id, access_level) values ($1, $2, $3) \
          on conflict (user_id, repo_id) do update set access_level = excluded.access_level",
@@ -134,6 +139,20 @@ pub(crate) async fn upsert_collaborator(
     .bind(repo.id)
     .bind(&body.access_level)
     .execute(&mut *tx)
+    .await?;
+
+    Event::new(
+        if old_privilege.is_some() { "privilege.changed" } else { "privilege.granted" },
+        user.id,
+        &request,
+        (&target).into(),
+        Some(json!({
+            "repo": repo.id,
+            "old_level": old_privilege.map(|level| level.access_level),
+            "new_level": body.access_level
+        })),
+    )
+    .save(&mut tx)
     .await?;
 
     tx.commit().await?;
@@ -166,9 +185,10 @@ pub(crate) async fn upsert_collaborator(
 #[route("/api/repos/{namespace}/{repository}/collaborators/{username}", method = "DELETE", err = "json")]
 pub(crate) async fn remove_collaborator(
     repo: Repository,
-    web_user: WebUser,
-    db_pool: Data<Pool>,
     path: Path<(String, String, String)>,
+    web_user: WebUser,
+    request: HttpRequest,
+    db_pool: Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
@@ -201,6 +221,18 @@ pub(crate) async fn remove_collaborator(
     if result.rows_affected() == 0 {
         die!(NOT_FOUND, "Collaborator not found");
     }
+
+    Event::new(
+        "privilege.revoked",
+        user.id,
+        &request,
+        (&target).into(),
+        Some(json!({
+            "repo": repo.id
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

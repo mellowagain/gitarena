@@ -4,7 +4,8 @@ use crate::user::{User, WebUser};
 
 use crate::database::Database;
 use crate::database::Pool;
-use actix_web::{HttpResponse, Responder, web};
+use crate::events::Event;
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Serialize;
@@ -97,7 +98,7 @@ pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web:
     tag = "repository"
 )]
 #[route("/api/repo/{namespace}/{repository}/star", method = "POST", err = "json")]
-pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn post_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -107,6 +108,8 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
     }
 
     add_star(&user, &repo, &mut transaction).await?;
+
+    Event::new("star.added", user.id, &request, (&repo).into(), None).save(&mut transaction).await?;
 
     transaction.commit().await?;
 
@@ -130,7 +133,7 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, db_pool: web:
     tag = "repository"
 )]
 #[route("/api/repo/{namespace}/{repository}/star", method = "DELETE", err = "json")]
-pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut transaction = db_pool.begin().await?;
@@ -141,12 +144,17 @@ pub(crate) async fn delete_star(repo: Repository, web_user: WebUser, db_pool: we
 
     remove_star(&user, &repo, &mut transaction).await?;
 
+    Event::new("star.removed", user.id, &request, (&repo).into(), None)
+        .save(&mut transaction)
+        .await?;
+
     transaction.commit().await?;
 
     Ok(HttpResponse::NoContent().finish())
 }
 
 // not utopia annotated because its not a json api, but TODO we should change this
+// TODO SLATED FOR DELETION
 #[route("/api/repo/{namespace}/{repository}/star", method = "PUT", err = "text")]
 pub(crate) async fn put_star(repo: Repository, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let user = web_user.into_user()?;

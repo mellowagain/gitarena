@@ -1,17 +1,19 @@
 use crate::database::Pool;
 use crate::die;
+use crate::events::Event;
 use crate::issue::IssueCommentCache;
 use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::routes::repository::api::issues::{CommentResponse, get_issue_by_index};
 use crate::user::WebUser;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use chrono::Utc;
 use gitarena_issues::bug::load_bug;
 use gitarena_issues::ops::{add_comment, edit_comment};
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -39,6 +41,7 @@ pub(crate) async fn add_issue_comment(
     web_user: WebUser,
     path: web::Path<(String, String, i32)>,
     body: web::Json<AddCommentRequest>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -70,6 +73,19 @@ pub(crate) async fn add_issue_comment(
         .bind(&body.body)
         .execute(&mut *tx)
         .await?;
+
+    Event::new(
+        "issue.comment_added",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "index": index,
+            "body": body.body
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 
@@ -107,6 +123,7 @@ pub(crate) async fn edit_issue_comment(
     web_user: WebUser,
     path: web::Path<(String, String, i32, Uuid)>,
     body: web::Json<EditCommentRequest>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -146,6 +163,20 @@ pub(crate) async fn edit_issue_comment(
         .execute(&mut *tx)
         .await?;
 
+    Event::new(
+        "issue.comment_updated",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "index": index,
+            "from": comment.body,
+            "to": body.body
+        })),
+    )
+    .save(&mut tx)
+    .await?;
+
     tx.commit().await?;
 
     Ok(HttpResponse::Ok().json(CommentResponse {
@@ -180,6 +211,7 @@ pub(crate) async fn delete_issue_comment(
     repo: Repository,
     web_user: WebUser,
     path: web::Path<(String, String, i32, Uuid)>,
+    request: HttpRequest,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let user = web_user.into_user()?;
@@ -207,6 +239,20 @@ pub(crate) async fn delete_issue_comment(
         .bind(comment_id)
         .execute(&mut *tx)
         .await?;
+
+    Event::new(
+        "issue.comment_deleted",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "index": index,
+            "comment_author": comment.author_id,
+            "body": comment.body
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 

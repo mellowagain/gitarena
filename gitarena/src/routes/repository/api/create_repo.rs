@@ -9,11 +9,13 @@ use crate::user::{User, WebUser};
 use crate::utils::identifiers::{is_fs_legal, is_reserved_repo_name, is_valid};
 
 use crate::database::Pool;
+use crate::events::Event;
 use crate::meili::MeiliClient;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
+use serde_json::json;
 use tracing::{info, instrument};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -35,6 +37,7 @@ use uuid::Uuid;
 pub(crate) async fn create(
     web_user: WebUser,
     body: web::Json<CreateJsonRequest>,
+    request: HttpRequest,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -112,6 +115,18 @@ pub(crate) async fn create(
 
     let domain = get_optional_setting::<String>("domain", &mut tx).await?.unwrap_or_default();
     let path = format!("/{}/{}", &owner_name, &repo.name);
+
+    Event::new(
+        "repo.created",
+        user.id,
+        &request,
+        (&repo).into(),
+        Some(json!({
+            "visibility": repo.visibility,
+        })),
+    )
+    .save(&mut tx)
+    .await?;
 
     tx.commit().await?;
 
