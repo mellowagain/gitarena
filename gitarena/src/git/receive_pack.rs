@@ -219,36 +219,47 @@ pub(crate) async fn execute_receive_pack(
     }
 
     for update in &updates {
-        let event_data = match RefUpdateType::determinate(&update.old, &update.new)? {
-            RefUpdateType::Create if update.target_ref.starts_with("refs/heads/") => Some(("git.branch_created", json!({ "ref": update.target_ref }))),
+        let events: Vec<(&'static str, Value)> = match RefUpdateType::determinate(&update.old, &update.new)? {
+            RefUpdateType::Create if update.target_ref.starts_with("refs/heads/") => {
+                let after = update.new.as_deref().unwrap_or_default();
+                let (_, commits) = classify_push(&store, None, after)?;
+
+                vec![
+                    ("git.branch_created", json!({ "ref": update.target_ref })),
+                    (
+                        "git.push",
+                        json!({ "ref": update.target_ref, "before": null, "after": after, "commits": commits }),
+                    ),
+                ]
+            }
             RefUpdateType::Create if update.target_ref.starts_with("refs/tags/") => {
                 let sha = update.new.as_deref().unwrap_or_default();
-                Some(("git.tag_created", json!({ "ref": update.target_ref, "sha": sha })))
+                vec![("git.tag_created", json!({ "ref": update.target_ref, "sha": sha }))]
             }
             RefUpdateType::Delete if update.target_ref.starts_with("refs/heads/") => {
                 let was = update.old.as_deref().unwrap_or_default();
-                Some(("git.branch_deleted", json!({ "ref": update.target_ref, "was": was })))
+                vec![("git.branch_deleted", json!({ "ref": update.target_ref, "was": was }))]
             }
-            RefUpdateType::Delete if update.target_ref.starts_with("refs/tags/") => Some(("git.tag_deleted", json!({ "ref": update.target_ref }))),
+            RefUpdateType::Delete if update.target_ref.starts_with("refs/tags/") => vec![("git.tag_deleted", json!({ "ref": update.target_ref }))],
             RefUpdateType::Update if update.target_ref.starts_with("refs/heads/") => {
                 let before = update.old.as_deref().unwrap_or_default();
                 let after = update.new.as_deref().unwrap_or_default();
 
-                let (force, commits) = classify_push(&store, before, after)?;
+                let (force, commits) = classify_push(&store, Some(before), after)?;
 
                 if force {
-                    Some(("git.force_push", json!({ "ref": update.target_ref, "before": before, "after": after })))
+                    vec![("git.force_push", json!({ "ref": update.target_ref, "before": before, "after": after }))]
                 } else {
-                    Some((
+                    vec![(
                         "git.push",
                         json!({ "ref": update.target_ref, "before": before, "after": after, "commits": commits }),
-                    ))
+                    )]
                 }
             }
-            _ => None,
+            _ => vec![],
         };
 
-        if let Some((event_type, mut payload)) = event_data {
+        for (event_type, mut payload) in events {
             let event = match request {
                 Some(req) => {
                     payload["transport"] = Value::String("http".to_string());
@@ -309,9 +320,10 @@ pub(crate) async fn execute_receive_pack(
     Ok(output_writer)
 }
 
+/// returns whether the commit was a force push and the amount of commits
 #[instrument(err, skip(store))]
-fn classify_push(store: &Arc<Store>, old_hex: &str, new_hex: &str) -> Result<(bool, usize)> {
-    let old_oid = oid::from_hex_str(Some(old_hex))?;
+fn classify_push(store: &Arc<Store>, old_hex: Option<&str>, new_hex: &str) -> Result<(bool, usize)> {
+    let old_oid = old_hex.map(|h| oid::from_hex_str(Some(h))).transpose()?;
     let new_oid = oid::from_hex_str(Some(new_hex))?;
 
     let cache = store.to_cache_arc();
@@ -323,7 +335,7 @@ fn classify_push(store: &Arc<Store>, old_hex: &str, new_hex: &str) -> Result<(bo
     queue.push_back(new_oid);
 
     while let Some(oid) = queue.pop_front() {
-        if oid == old_oid {
+        if old_oid.is_some_and(|o| oid == o) {
             return Ok((false, visited.len()));
         }
 
@@ -356,5 +368,5 @@ fn classify_push(store: &Arc<Store>, old_hex: &str, new_hex: &str) -> Result<(bo
         }
     }
 
-    Ok((true, 0))
+    Ok((old_oid.is_some(), visited.len()))
 }
