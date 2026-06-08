@@ -13,6 +13,7 @@ resource "tencentcloud_lighthouse_firewall_template" "main_firewall" {
   template_rules {
     protocol                  = "TCP"
     port                      = "80,443"
+    cidr_block                = "0.0.0.0/0"
     action                    = "ACCEPT"
     firewall_rule_description = "caddy"
   }
@@ -20,6 +21,7 @@ resource "tencentcloud_lighthouse_firewall_template" "main_firewall" {
   template_rules {
     protocol                  = "TCP"
     port                      = "22,2222"
+    cidr_block                = "0.0.0.0/0"
     action                    = "ACCEPT"
     firewall_rule_description = "ssh"
   }
@@ -27,6 +29,7 @@ resource "tencentcloud_lighthouse_firewall_template" "main_firewall" {
   template_rules {
     protocol                  = "ICMP"
     port                      = "ALL"
+    cidr_block                = "0.0.0.0/0"
     action                    = "ACCEPT"
     firewall_rule_description = "ping"
   }
