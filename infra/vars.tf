@@ -29,13 +29,11 @@ variable "vercel_api_token" {
 
 variable "vercel_team" {
   type      = string
-  sensitive = true
 }
 
 // NewRelic
 variable "newrelic_account_id" {
   type      = string
-  sensitive = true
 }
 
 variable "newrelic_api_token" {
