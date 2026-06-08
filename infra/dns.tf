@@ -23,7 +23,7 @@ resource "cloudflare_dns_record" "mail" {
   content  = resend_domain.main.spf_mx_record.value
   priority = resend_domain.main.spf_mx_record.priority
   proxied  = false
-  ttl      = resend_domain.main.spf_mx_record.ttl
+  ttl      = try(tonumber(resend_domain.main.spf_mx_record.ttl), 3600)
 }
 
 resource "cloudflare_dns_record" "mail_txt" {
@@ -32,7 +32,7 @@ resource "cloudflare_dns_record" "mail_txt" {
   type    = resend_domain.main.spf_txt_record.type
   content = resend_domain.main.spf_txt_record.value
   proxied = false
-  ttl     = resend_domain.main.spf_txt_record.ttl
+  ttl     = try(tonumber(resend_domain.main.spf_txt_record.ttl), 3600)
 }
 
 resource "cloudflare_dns_record" "mail_dkim" {
@@ -41,5 +41,5 @@ resource "cloudflare_dns_record" "mail_dkim" {
   type    = resend_domain.main.dkim_records[0].type
   content = resend_domain.main.dkim_records[0].value
   proxied = false
-  ttl     = resend_domain.main.dkim_records[0].ttl
+  ttl     = try(tonumber(resend_domain.main.dkim_records[0].ttl), 3600)
 }
