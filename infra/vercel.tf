@@ -13,7 +13,7 @@ resource "vercel_project_environment_variable" "next_public_api_url" {
   project_id = vercel_project.main.id
 
   key       = "NEXT_PUBLIC_API_URL"
-  value     = "https://api.git.mari.zip"
+  value     = var.backend_domain
   sensitive = false
 
   target = ["production", "preview", "development"]
