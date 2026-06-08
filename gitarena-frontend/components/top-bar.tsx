@@ -175,7 +175,11 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                 {item.href ? (
                                     <Link
                                         href={item.href}
-                                        className="text-base text-muted-foreground hover:text-foreground transition-colors"
+                                        className={
+                                            i === breadcrumb.length - 1
+                                                ? "text-base font-medium hover:opacity-80 transition-opacity"
+                                                : "text-base text-muted-foreground hover:text-foreground transition-colors"
+                                        }
                                     >
                                         {item.label}
                                     </Link>

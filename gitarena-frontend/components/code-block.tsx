@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as prismLanguages from "react-syntax-highlighter/dist/esm/languages/prism/index.js";
 import * as linguistLanguages from "linguist-languages";
@@ -234,10 +234,60 @@ export function detectLanguage(filename: string): string {
     return FILENAME_TO_LANGUAGE.get(basename) ?? EXT_TO_LANGUAGE.get(ext) ?? ext;
 }
 
+function parseLineHash(hash: string): { start: number; end: number } | null {
+    const m = hash.match(/^#L(\d+)(?:-L(\d+))?$/);
+    if (!m) return null;
+    const start = parseInt(m[1], 10);
+    const end = m[2] ? parseInt(m[2], 10) : start;
+    return { start, end };
+}
+
+const LINE_HASH_EVENT = "urlhashchange";
+
+function subscribeHash(cb: () => void) {
+    window.addEventListener("popstate", cb);
+    window.addEventListener(LINE_HASH_EVENT, cb);
+    return () => {
+        window.removeEventListener("popstate", cb);
+        window.removeEventListener(LINE_HASH_EVENT, cb);
+    };
+}
+
 export function CodeBlockContent({ content, filename, wrapLines = false }: { content: string; filename: string; wrapLines?: boolean }) {
     const basename = filename.split("/").pop() ?? filename;
     const ext = basename.split(".").pop()?.toLowerCase() ?? "";
     const language = FILENAME_TO_LANGUAGE.get(basename) ?? EXT_TO_LANGUAGE.get(ext) ?? ext;
+
+    const hash = useSyncExternalStore(
+        subscribeHash,
+        () => window.location.hash,
+        () => ""
+    );
+    const highlightRange = parseLineHash(hash);
+    const [anchorLine, setAnchorLine] = useState<number | null>(null);
+    const skipScrollRef = React.useRef(false);
+
+    useEffect(() => {
+        if (highlightRange && !skipScrollRef.current) {
+            document.getElementById(`L${highlightRange.start}`)?.scrollIntoView({ block: "center" });
+        }
+        skipScrollRef.current = false;
+    }, [hash]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function handleLineClick(e: React.MouseEvent, lineNum: number) {
+        const effectiveAnchor = anchorLine ?? highlightRange?.start ?? null;
+        skipScrollRef.current = true;
+        if (e.shiftKey && effectiveAnchor !== null) {
+            const start = Math.min(effectiveAnchor, lineNum);
+            const end = Math.max(effectiveAnchor, lineNum);
+            const h = start === end ? `L${start}` : `L${start}-L${end}`;
+            history.pushState(null, "", `#${h}`);
+        } else {
+            setAnchorLine(lineNum);
+            history.pushState(null, "", `#L${lineNum}`);
+        }
+        window.dispatchEvent(new Event(LINE_HASH_EVENT));
+    }
 
     return (
         <SyntaxHighlighter
@@ -246,16 +296,27 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
             PreTag="div"
             renderer={({ rows, stylesheet }) => (
                 <div className={`font-mono text-sm leading-relaxed pr-6 [font-variant-ligatures:none] ${wrapLines ? "" : "min-w-max"}`}>
-                    {(rows as AstElement[]).map((row, i) => (
-                        <div key={i} className="flex hover:bg-accent/30 group py-0.5">
-                            <span className="w-14 shrink-0 text-right pr-4 text-muted-foreground/40 select-none group-hover:text-muted-foreground/60 sticky left-0 bg-background">
-                                {i + 1}
-                            </span>
-                            <span className={wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}>
-                                {row.children.map((node, j) => renderNode(node, stylesheet, j))}
-                            </span>
-                        </div>
-                    ))}
+                    {(rows as AstElement[]).map((row, i) => {
+                        const lineNum = i + 1;
+                        const isHighlighted = highlightRange !== null && lineNum >= highlightRange.start && lineNum <= highlightRange.end;
+                        return (
+                            <div
+                                key={i}
+                                id={`L${lineNum}`}
+                                className={`flex group py-0.5 ${isHighlighted ? "bg-yellow-500/10 hover:bg-yellow-500/15" : "hover:bg-accent/30"}`}
+                            >
+                                <span
+                                    onClick={(e) => handleLineClick(e, lineNum)}
+                                    className={`w-14 shrink-0 text-right pr-4 select-none sticky left-0 cursor-pointer hover:text-primary ${isHighlighted ? "bg-yellow-500/20 text-yellow-600/60 group-hover:text-yellow-600/80" : "bg-background text-muted-foreground/40 group-hover:text-muted-foreground/60"}`}
+                                >
+                                    {lineNum}
+                                </span>
+                                <span className={`pl-2 ${wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}`}>
+                                    {row.children.map((node, j) => renderNode(node, stylesheet, j))}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         >

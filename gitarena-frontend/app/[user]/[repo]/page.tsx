@@ -60,7 +60,10 @@ export interface RepoMetadata {
 function RepoTopBar({ user, repo }: { user: string; repo: string }) {
     return (
         <TopBar
-            breadcrumb={[{ label: user, href: `/${user}` }, { label: repo }]}
+            breadcrumb={[
+                { label: user, href: `/${user}` },
+                { label: repo, href: `/${user}/${repo}` },
+            ]}
             search={{
                 placeholder: "Search files, commits, issues...",
                 scope: { label: `${user}/${repo}`, prefix: `repo:"${user}/${repo}"` },

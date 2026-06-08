@@ -9,7 +9,7 @@ use fang::{AsyncQueueable, AsyncRunnable, FangError, typetag};
 use git2::Sort;
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
-use tracing::{debug, info, instrument};
+use tracing::{debug, instrument};
 use uuid::Uuid;
 
 pub(crate) static CONTRIBUTIONS_TASK_TYPE: &str = "contributions";
