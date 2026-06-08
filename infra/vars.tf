@@ -1,12 +1,12 @@
 // Local vars
 variable "frontend_domain" {
   type    = string
-  default = "https://git.mari.zip"
+  default = "git.mari.zip"
 }
 
 variable "backend_domain" {
   type    = string
-  default = "https://api.git.mari.zip"
+  default = "api.git.mari.zip"
 }
 
 variable "local_ip_block" {
@@ -29,6 +29,10 @@ variable "tencent_cloud_secret_key" {
 variable "cloudflare_api_token" {
   type      = string
   sensitive = true
+}
+
+variable "cloudflare_zone_id" {
+  type = string
 }
 
 // Aiven
