@@ -110,3 +110,17 @@ provider "registry.opentofu.org/vercel/vercel" {
     "zh:fb984f9e18673acdd72ca4d29bf8bad34376bd9ff3252437e24c770862c85454",
   ]
 }
+
+provider "registry.terraform.io/jhoward321/resend" {
+  version     = "0.1.3"
+  constraints = "0.1.3"
+  hashes = [
+    "h1:EfoTJu8ZDYwSgyHJ0cILBwWhHdUxqiPAaSsIFRqxZ2w=",
+    "zh:1386c1a76e0b058535f35dd4718ebb4be2fbc6967aae7132bdb65b67b2c8af2a",
+    "zh:1d4e78bd3eebacf3ee3a1f6c5d635615a893a2d385956e82566775ea6d387c92",
+    "zh:3995967d8e4796ccdcff64d733589ef11bc4c30cad06ecb1eb45c0b33684a7e8",
+    "zh:447d7da914070a63aba10127b0eebbb1a507c1787d23873618b16fa702060502",
+    "zh:8135e0e17b8ee698f3dc76756f974a4b1b3e0a37a9f68cb04b7804bc701319f0",
+    "zh:9a37fddac3c1705e7916549406abf3a2dcee39d59aa97e76cc70b8f0a25b7a75",
+  ]
+}
