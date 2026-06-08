@@ -35,6 +35,10 @@ variable "cloudflare_zone_id" {
   type = string
 }
 
+variable "cloudflare_account_id" {
+  type = string
+}
+
 // Aiven
 variable "aiven_api_token" {
   type      = string
