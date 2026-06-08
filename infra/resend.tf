@@ -1,4 +1,4 @@
 resource "resend_domain" "main" {
-  name   = "send.${var.frontend_domain}"
+  name   = var.frontend_domain
   region = "eu-west-1"
 }
