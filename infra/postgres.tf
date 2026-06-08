@@ -10,7 +10,7 @@ resource "aiven_pg" "main" {
     pg_version = "17"
 
     ip_filter_string = [
-      "162.62.58.144/32", // todo: change to tencent ip once its hooked up to tf
+      "${tencentcloud_lighthouse_instance.main.public_addresses[0]}/32",
       var.local_ip_block,
     ]
   }
