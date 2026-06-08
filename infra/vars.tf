@@ -1,3 +1,10 @@
+// Local vars
+variable "local_ip_block" {
+  type = string
+  sensitive = true
+}
+
+
 // Tencent Cloud
 variable "tencent_cloud_secret_id" {
   type      = string
