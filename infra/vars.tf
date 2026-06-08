@@ -28,12 +28,12 @@ variable "vercel_api_token" {
 }
 
 variable "vercel_team" {
-  type      = string
+  type = string
 }
 
 // NewRelic
 variable "newrelic_account_id" {
-  type      = string
+  type = string
 }
 
 variable "newrelic_api_token" {
