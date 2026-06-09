@@ -16,7 +16,7 @@ resource "tencentcloud_lighthouse_firewall_rule" "main_firewall" {
 
   firewall_rules {
     protocol                  = "TCP"
-    port                      = "80,443"
+    port                      = "443,80"
     cidr_block                = "0.0.0.0/0"
     action                    = "ACCEPT"
     firewall_rule_description = "caddy"
