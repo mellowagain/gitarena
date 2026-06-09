@@ -28,3 +28,13 @@ resource "vercel_project_environment_variable" "next_public_api_url" {
 
   target = ["production", "preview", "development"]
 }
+
+resource "terraform_data" "vercel_redeploy_reminder" {
+  triggers_replace = {
+    env_vars = vercel_project_environment_variable.next_public_api_url.value
+  }
+
+  provisioner "local-exec" {
+    command = "echo 'Vercel env vars changed, redeploy to apply: https://vercel.com/dashboard'"
+  }
+}
