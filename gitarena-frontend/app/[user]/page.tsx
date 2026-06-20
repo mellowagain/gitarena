@@ -12,7 +12,8 @@ import { ErrorDisplay } from "@/components/error-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { jsonFetcher } from "@/lib/fetchers";
+import { jsonFetcher, nullOn404Fetcher } from "@/lib/fetchers";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { ActivityEvent, type EventResponse } from "@/components/activity-event";
 import { ContributionGraph } from "@/components/contribution-graph";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,6 +57,11 @@ interface OrgInfo {
 interface OrgMemberRaw {
     userId: string;
     role: "owner" | "admin" | "member";
+}
+
+interface ProfileReadmeResponse {
+    file_name: string;
+    content: string;
 }
 
 interface OrgRepo {
@@ -267,6 +273,11 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
         activeTab === "repos" ? `/api/orgs/${name}/repos` : null,
         jsonFetcher
     );
+    const { data: readme, isLoading: readmeLoading } = useSWR<ProfileReadmeResponse | null>(
+        `/api/repo/${name}/${name}/tree/HEAD/readme`,
+        nullOn404Fetcher,
+        { shouldRetryOnError: false }
+    );
 
     if (isLoading || membersLoading) {
         return <ProfileSkeleton username={name} />;
@@ -375,8 +386,20 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                     <div className="p-6 space-y-8">
                         {/* ── Overview tab ── */}
                         {activeTab === "overview" && (
-                            <div className="text-sm text-muted-foreground">
-                                <p>No recent activity to display yet.</p>
+                            <div>
+                                {readmeLoading && <Skeleton className="h-48 w-full rounded-md" />}
+                                {!readmeLoading && readme && (
+                                    <div className="border border-border rounded-md p-5">
+                                        <MarkdownRenderer
+                                            content={readme.content}
+                                            fileName={readme.file_name}
+                                            user={name}
+                                            repo={name}
+                                            branch="HEAD"
+                                        />
+                                    </div>
+                                )}
+                                {!readmeLoading && !readme && <p className="text-sm text-muted-foreground">No overview yet.</p>}
                             </div>
                         )}
 
@@ -508,6 +531,11 @@ export default function NamespacePage() {
 
     const { data: orgs, isLoading: orgsLoading } = useSWR<UserOrgEntry[]>(`/api/users/${namespace}/orgs`, jsonFetcher);
     const { data: activityFeed, isLoading: activityLoading } = useSWR<EventResponse[]>(`/api/users/${namespace}/events`, jsonFetcher);
+    const { data: readme, isLoading: readmeLoading } = useSWR<ProfileReadmeResponse | null>(
+        `/api/repo/${namespace}/${namespace}/tree/HEAD/readme`,
+        nullOn404Fetcher,
+        { shouldRetryOnError: false }
+    );
 
     const [pinnedKeys, setPinnedKeys] = useState<Set<string>>(new Set());
     const [contributionYear, setContributionYear] = useState<number | null>(null);
@@ -647,6 +675,18 @@ export default function NamespacePage() {
                 </aside>
 
                 <main className="flex-1 min-w-0 overflow-y-auto p-4 lg:p-6 space-y-8">
+                    {readmeLoading && <Skeleton className="h-48 w-full rounded-md" />}
+                    {!readmeLoading && readme && (
+                        <section className="border border-border rounded-md p-5">
+                            <MarkdownRenderer
+                                content={readme.content}
+                                fileName={readme.file_name}
+                                user={namespace}
+                                repo={namespace}
+                                branch="HEAD"
+                            />
+                        </section>
+                    )}
                     <section>
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contributions</h2>

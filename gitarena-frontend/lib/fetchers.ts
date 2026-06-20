@@ -162,6 +162,21 @@ export async function putJsonVoidFetcher<TArg>(url: string, { arg }: { arg: TArg
 }
 
 /**
+ * Fetcher that returns null on 404 instead of throwing.
+ * Useful for optional resources like profile READMEs.
+ */
+export async function nullOn404Fetcher<T>(url: string): Promise<T | null> {
+    const res = await fetch(url);
+    if (res.status === 404) {
+        return null;
+    }
+    if (!res.ok) {
+        throw new Error(res.statusText);
+    }
+    return res.json();
+}
+
+/**
  * Fetcher for DELETE requests.
  */
 export async function deleteFetcher(url: string): Promise<void> {
