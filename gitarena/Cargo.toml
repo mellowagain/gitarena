@@ -39,7 +39,7 @@ fs2 = "0.4.3"
 fs_extra = "1.2.0"
 futures = "0.3.19"
 futures-locks = "0.7.0"
-git2 = "0.20.0"
+git2 = "0.21.0"
 gitarena-issues = { path = "../gitarena-issues" }
 gitarena-macros = { path = "../gitarena-macros" }
 gix = { workspace = true, features = ["async-network-client"] }
