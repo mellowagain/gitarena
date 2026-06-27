@@ -43,9 +43,9 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
 - [x] Issue tracker
   - [x] open/close issues
   - [x] Labels
-  - [ ] Milestones
+  - [x] Milestones
   - [x] Assignees
-  - [ ] Kanban
+  - [x] Kanban
 - [ ] Webhooks 
 - [x] REST API
 - [ ] Protected branches
