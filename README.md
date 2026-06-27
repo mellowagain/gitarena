@@ -26,7 +26,7 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
     - [x] Asset upload
     - [x] Version tagging UI
   - [x] Archiving
-  - [ ] Download as `.zip` and `.tar.gz`
+  - [x] Download as `.zip` and `.tar.gz`
 - [x] Web-based code browser
   - [x] Syntax-highlighted file view
   - [x] Blame

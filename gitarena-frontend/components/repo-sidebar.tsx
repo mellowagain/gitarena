@@ -7,6 +7,7 @@ import {
     Copy,
     Check,
     ChevronDown,
+    Download,
     ExternalLink,
     Scale,
     Users,
@@ -50,6 +51,7 @@ type Contributor = {
 export type RepoSidebarProps = {
     user: string;
     repo: string;
+    branch?: string;
     description: string;
     projectId: string;
     license?: string;
@@ -163,6 +165,7 @@ function repoUrlToPath(url: string) {
 export function RepoSidebar({
     user,
     repo,
+    branch,
     description,
     projectId,
     license,
@@ -315,6 +318,26 @@ export function RepoSidebar({
                         <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-muted-foreground">{cloneUrl}</code>
                         <CopyButton text={cloneUrl} />
                     </div>
+                    {branch && (
+                        <div className="flex gap-2 mt-2">
+                            <a
+                                href={`/api/${user}/${repo}/tree/${encodeURIComponent(branch)}/download/targz`}
+                                download
+                                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-accent/50 transition-colors"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                .tar.gz
+                            </a>
+                            <a
+                                href={`/api/${user}/${repo}/tree/${encodeURIComponent(branch)}/download/zip`}
+                                download
+                                className="flex flex-1 items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-accent/50 transition-colors"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                .zip
+                            </a>
+                        </div>
+                    )}
                 </div>
 
                 <div className="pt-4 border-t border-border">

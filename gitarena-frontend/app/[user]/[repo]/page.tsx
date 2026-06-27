@@ -465,6 +465,7 @@ export function RepoPageContent({
                 <RepoSidebar
                     user={user}
                     repo={repo}
+                    branch={branch}
                     description={meta.description}
                     projectId={meta.id}
                     license={meta.license}

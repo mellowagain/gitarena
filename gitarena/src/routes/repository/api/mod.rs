@@ -17,6 +17,7 @@ pub(crate) mod branches;
 pub(crate) mod collaborators;
 pub(crate) mod commit_detail;
 pub(crate) mod create_repo;
+pub(crate) mod download;
 pub(crate) mod file_content;
 pub(crate) mod fork_repo;
 pub(crate) mod import_repo;
@@ -42,6 +43,9 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(commit_detail::commit_detail);
     config.service(branch_files::branch_files);
     config.service(branches::branches);
+
+    config.service(download::tar_gz_file);
+    config.service(download::zip_file);
 
     config.service(tags::list_tags);
     config.service(tags::delete_tag);
