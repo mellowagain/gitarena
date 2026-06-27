@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
     AlertCircle,
-    GitMerge,
     ChevronDown,
     CheckCircle2,
     Circle,
@@ -44,6 +43,7 @@ import {
     MessageSquare,
     Milestone,
     Loader2,
+    Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -118,6 +118,19 @@ interface PermissionsResponse {
         manageIssues: boolean;
         admin: boolean;
     };
+}
+
+interface MilestoneListItem {
+    id: string;
+    title: string;
+    closed: boolean;
+    dueDate: string | null;
+    openIssues: number;
+    closedIssues: number;
+}
+
+interface MilestonesResponse {
+    milestones: MilestoneListItem[];
 }
 
 function LabelBadge({
@@ -541,6 +554,7 @@ export default function IssuePage() {
     );
     const { data: permsData } = useSWR<PermissionsResponse>(user && repo ? `/api/repos/${user}/${repo}/permissions` : null, jsonFetcher);
     const { data: repoMeta } = useSWR<RepoMetadata>(user && repo ? `/api/repos/${user}/${repo}` : null, jsonFetcher);
+    const { data: milestonesData } = useSWR<MilestonesResponse>(user && repo ? `/api/repos/${user}/${repo}/milestones` : null, jsonFetcher);
     const { data: timelineData, mutate: mutateTimeline } = useSWR<TimelineEvent[]>(
         user && repo ? `${apiBase}/timeline` : null,
         jsonFetcher
@@ -584,6 +598,10 @@ export default function IssuePage() {
     const [removingAssignee, setRemovingAssignee] = useState<string | null>(null);
     const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
     const [priorityOpen, setPriorityOpen] = useState(false);
+    const [isUpdatingMilestone, setIsUpdatingMilestone] = useState(false);
+    const [milestoneOpen, setMilestoneOpen] = useState(false);
+
+    const allMilestones = milestonesData?.milestones ?? [];
 
     const handleToggleIssueReaction = async (emoji: string) => {
         await toggleIssueReaction({ emoji });
@@ -698,6 +716,17 @@ export default function IssuePage() {
             await mutate();
         } finally {
             setIsUpdatingPriority(false);
+        }
+    };
+
+    const handleSetMilestone = async (milestoneId: string | null) => {
+        setIsUpdatingMilestone(true);
+        try {
+            await updateIssue({ milestoneId });
+            await mutate();
+        } finally {
+            setIsUpdatingMilestone(false);
+            setMilestoneOpen(false);
         }
     };
 
@@ -1202,16 +1231,60 @@ export default function IssuePage() {
                                 )}
                             </div>
 
-                            {issue.milestone && (
-                                <div>
-                                    <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Milestone</h3>
-                                    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm">
-                                        <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        <span className="flex-1">{issue.milestone.title}</span>
-                                        {issue.milestone.closed && <span className="text-xs text-muted-foreground italic">closed</span>}
-                                    </div>
-                                </div>
-                            )}
+                            <div>
+                                <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Milestone</h3>
+                                {canManage ? (
+                                    <DropdownMenu open={isUpdatingMilestone ? false : milestoneOpen} onOpenChange={setMilestoneOpen}>
+                                        <DropdownMenuTrigger asChild>
+                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    {issue.milestone ? (
+                                                        <span>{issue.milestone.title}</span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">No milestone</span>
+                                                    )}
+                                                </div>
+                                                {isUpdatingMilestone ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                                )}
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start" className="w-52">
+                                            {issue.milestone && (
+                                                <DropdownMenuItem onClick={() => handleSetMilestone(null)}>
+                                                    <X className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                    No milestone
+                                                </DropdownMenuItem>
+                                            )}
+                                            {allMilestones.filter((m) => !m.closed || m.id === issue.milestone?.id).length === 0 &&
+                                                !issue.milestone && <DropdownMenuItem disabled>No milestones available</DropdownMenuItem>}
+                                            {allMilestones
+                                                .filter((m) => !m.closed || m.id === issue.milestone?.id)
+                                                .map((m) => (
+                                                    <DropdownMenuItem
+                                                        key={m.id}
+                                                        onClick={m.id !== issue.milestone?.id ? () => handleSetMilestone(m.id) : undefined}
+                                                    >
+                                                        <Milestone className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                                        <span className="flex-1 truncate">{m.title}</span>
+                                                        {m.id === issue.milestone?.id && <Check className="h-4 w-4 ml-2 shrink-0" />}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    issue.milestone && (
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm">
+                                            <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <span className="flex-1">{issue.milestone.title}</span>
+                                            {issue.milestone.closed && <span className="text-xs text-muted-foreground italic">closed</span>}
+                                        </div>
+                                    )
+                                )}
+                            </div>
 
                             <div>
                                 <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Timestamps</h3>

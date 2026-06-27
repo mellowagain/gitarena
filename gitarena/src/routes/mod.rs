@@ -24,6 +24,7 @@ use crate::routes::repository::api::commit_detail::{
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
 use crate::routes::repository::api::issues::labels::{CreateLabelRequest, LabelEntry, LabelsResponse, UpdateLabelRequest};
+use crate::routes::repository::api::issues::milestones::{CreateMilestoneRequest, MilestoneEntry, MilestonesResponse, UpdateMilestoneRequest};
 use crate::routes::repository::api::issues::timeline::TimelineEvent;
 use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
 use crate::routes::repository::api::releases::{CreateAssetRequest, CreateAssetResponse, CreateReleaseRequest, ReleaseResponse, UpdateReleaseRequest};
@@ -122,6 +123,10 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::issues::labels::create_label,
         crate::routes::repository::api::issues::labels::update_label,
         crate::routes::repository::api::issues::labels::delete_label,
+        crate::routes::repository::api::issues::milestones::list_milestones,
+        crate::routes::repository::api::issues::milestones::create_milestone,
+        crate::routes::repository::api::issues::milestones::update_milestone,
+        crate::routes::repository::api::issues::milestones::delete_milestone,
         crate::routes::repository::api::issues::timeline::get_issue_timeline,
         crate::routes::repository::api::tags::list_tags,
         crate::routes::repository::api::tags::delete_tag,
@@ -201,6 +206,10 @@ impl Modify for CookieAuth {
         LabelsResponse,
         CreateLabelRequest,
         UpdateLabelRequest,
+        MilestoneEntry,
+        MilestonesResponse,
+        CreateMilestoneRequest,
+        UpdateMilestoneRequest,
         IssueStatus,
         TimelineEvent,
         TagInfo,

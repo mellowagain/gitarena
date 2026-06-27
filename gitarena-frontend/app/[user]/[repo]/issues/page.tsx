@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
     AlertCircle,
-    GitMerge,
     Search,
     ChevronDown,
     Plus,
@@ -29,6 +28,8 @@ import {
     Code,
     Tag,
     Trash2,
+    Milestone,
+    Kanban,
 } from "lucide-react";
 import { jsonFetcher, patchJsonFetcher, deleteFetcher } from "@/lib/fetchers";
 import { formatDistanceToNow } from "date-fns";
@@ -279,7 +280,7 @@ export default function IssuesPage() {
     const [activeView, setActiveView] = useState<ViewId>("all");
     const [selectedIssue, setSelectedIssue] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "updated">("newest");
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "updated" | "priority">("newest");
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -312,9 +313,12 @@ export default function IssuesPage() {
         return true;
     });
 
+    const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3, none: 4 };
+
     const sortedIssues = [...filteredIssues].sort((a, b) => {
         if (sortBy === "oldest") return a.index - b.index;
         if (sortBy === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        if (sortBy === "priority") return (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4);
         return b.index - a.index;
     });
 
@@ -494,6 +498,10 @@ export default function IssuesPage() {
                                         <span className="flex-1">Recently updated</span>
                                         {sortBy === "updated" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setSortBy("priority")} className="flex items-center gap-2">
+                                        <span className="flex-1">Priority</span>
+                                        {sortBy === "priority" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
@@ -503,6 +511,22 @@ export default function IssuesPage() {
                             >
                                 <Tag className="h-4 w-4" />
                                 Labels
+                            </Link>
+
+                            <Link
+                                href={`/${user}/${repo}/milestones`}
+                                className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
+                            >
+                                <Milestone className="h-4 w-4" />
+                                Milestones
+                            </Link>
+
+                            <Link
+                                href={`/${user}/${repo}/issues/board`}
+                                className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
+                                title="Kanban board"
+                            >
+                                <Kanban className="h-4 w-4" />
                             </Link>
 
                             {!isArchived && (

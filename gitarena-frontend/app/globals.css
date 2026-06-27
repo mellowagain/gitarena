@@ -116,6 +116,26 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@layer utilities {
+    .scrollbar-dark {
+        scrollbar-width: thin;
+        scrollbar-color: oklch(0.25 0 0) transparent;
+    }
+    .scrollbar-dark::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scrollbar-dark::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .scrollbar-dark::-webkit-scrollbar-thumb {
+        background: oklch(0.25 0 0);
+        border-radius: 3px;
+    }
+    .scrollbar-dark::-webkit-scrollbar-thumb:hover {
+        background: oklch(0.35 0 0);
+    }
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;
