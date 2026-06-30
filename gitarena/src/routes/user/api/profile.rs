@@ -109,7 +109,7 @@ async fn get_user_repos(user_id: Uuid, is_self: bool, can_see_internal: bool, tx
 
     query.push_str(" group by repositories.id order by stars desc, repositories.id desc");
 
-    Ok(sqlx::query_as(&query).bind(user_id).fetch_all(&mut **tx).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(query)).bind(user_id).fetch_all(&mut **tx).await?)
 }
 
 async fn get_user_stats(user_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<UserProfileStats> {

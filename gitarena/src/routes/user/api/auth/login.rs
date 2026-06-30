@@ -7,7 +7,7 @@ use crate::{crypto, die, err};
 
 use crate::events::Event;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
@@ -35,7 +35,6 @@ pub(crate) async fn post_login(
     body: web::Json<LoginJsonRequest>,
     web_user: WebUser,
     request: HttpRequest,
-    id: Identity,
     queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
@@ -96,7 +95,7 @@ pub(crate) async fn post_login(
     }
 
     let session = Session::new(&request, &user, &mut transaction).await?;
-    id.remember(session.to_string());
+    Identity::login(&*request.extensions(), session.to_string())?;
 
     Event::new(
         "auth.login",

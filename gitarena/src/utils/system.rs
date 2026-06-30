@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use futures_locks::RwLock;
 use once_cell::sync::Lazy;
-use sysinfo::{RefreshKind, System, SystemExt};
+use sysinfo::{RefreshKind, System};
 use tracing::{Instrument, info_span};
 
 pub(crate) static SYSTEM_INFO: Lazy<RwLock<System>> = Lazy::new(init);
@@ -10,7 +10,7 @@ pub(crate) static SYSTEM_INFO: Lazy<RwLock<System>> = Lazy::new(init);
 fn init() -> RwLock<System> {
     let mut interval = tokio::time::interval(Duration::from_mins(5));
 
-    let system = System::new_with_specifics(RefreshKind::new().with_memory());
+    let system = System::new_with_specifics(RefreshKind::nothing().with_memory(sysinfo::MemoryRefreshKind::everything()));
     let lock = RwLock::new(system);
 
     tokio::spawn(

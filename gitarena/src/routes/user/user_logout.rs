@@ -11,19 +11,19 @@ use tracing::debug;
 
 #[route("/logout", method = "POST", err = "text")]
 pub(crate) async fn logout(_request: HttpRequest, id: Identity, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    if id.identity().is_none() {
+    if id.id().is_err() {
         // Maybe just redirect to home page?
         die!(UNAUTHORIZED, "Already logged out");
     }
 
     let mut transaction = db_pool.begin().await?;
 
-    if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await.ok().flatten() {
+    if let Some(session) = Session::from_identity(id.id().ok(), &mut transaction).await.ok().flatten() {
         debug!(user.id = %session.user_id, "User logged out");
         session.destroy(&mut transaction).await?;
     }
 
-    id.forget();
+    id.logout();
 
     transaction.commit().await?;
 

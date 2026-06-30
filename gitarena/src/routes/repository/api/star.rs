@@ -188,7 +188,11 @@ pub(crate) async fn get_fork_count(repo: &Repository, web_user: &WebUser, tx: &m
 
     let query = format!("select count(*) from repositories where forked_from = $1 and disabled = false and {visibility_filter}");
 
-    let (count,): (i64,) = sqlx::query_as(query.as_str()).bind(repo.id).fetch_optional(&mut **tx).await?.unwrap_or((0,));
+    let (count,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(query))
+        .bind(repo.id)
+        .fetch_optional(&mut **tx)
+        .await?
+        .unwrap_or((0,));
 
     Ok(count)
 }

@@ -64,7 +64,7 @@ pub(crate) async fn get_sessions(id: Identity, web_user: WebUser, db_pool: web::
         .fetch_all(&mut *transaction)
         .await?;
 
-    let current_session = Session::from_identity(id.identity(), &mut transaction)
+    let current_session = Session::from_identity(id.id().ok(), &mut transaction)
         .await?
         .expect("authenticated user to have a session");
 
@@ -108,7 +108,7 @@ pub(crate) async fn delete_session(
 
     let mut transaction = db_pool.begin().await?;
 
-    let current_session = Session::from_identity(id.identity(), &mut transaction)
+    let current_session = Session::from_identity(id.id().ok(), &mut transaction)
         .await?
         .expect("authenticated user to have a session");
 
@@ -161,7 +161,7 @@ pub(crate) async fn delete_all_sessions(id: Identity, web_user: WebUser, request
 
     let mut transaction = db_pool.begin().await?;
 
-    let current_session = Session::from_identity(id.identity(), &mut transaction)
+    let current_session = Session::from_identity(id.id().ok(), &mut transaction)
         .await?
         .expect("authenticated user to have a session");
 

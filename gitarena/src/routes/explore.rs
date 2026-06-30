@@ -77,7 +77,7 @@ async fn get_repositories(options: &ExploreOptions<'_>, tx: &mut Transaction<'_,
         {options}",
     );
 
-    Ok(sqlx::query_as::<_, ExploreRepo>(query.as_str()).fetch_all(&mut **tx).await?)
+    Ok(sqlx::query_as::<_, ExploreRepo>(sqlx::AssertSqlSafe(query)).fetch_all(&mut **tx).await?)
 }
 
 #[derive(FromRow, Serialize, Deserialize, Debug, Clone, ToSchema)]

@@ -4,7 +4,7 @@ use crate::meili::MeiliClient;
 use crate::ssh::server::SshServer;
 use anyhow::{Context, Result};
 use gitarena_macros::from_config;
-use russh::keys::ssh_encoding::LineEnding;
+use russh::keys::ssh_key::LineEnding;
 use russh::keys::{Algorithm, PrivateKey};
 use russh::server::{Config, RunningServerHandle, Server};
 use russh::{MethodKind, MethodSet, SshId};

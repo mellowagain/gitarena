@@ -63,9 +63,13 @@ pub(crate) async fn get_dashboard_feed(web_user: WebUser, query: web::Query<Even
     );
 
     let events: Vec<EventResponse> = if let Some(ref type_filter) = params.type_filter {
-        sqlx::query_as(&query).bind(user.id).bind(type_filter).fetch_all(&mut *tx).await?
+        sqlx::query_as(sqlx::AssertSqlSafe(query.as_str()))
+            .bind(user.id)
+            .bind(type_filter)
+            .fetch_all(&mut *tx)
+            .await?
     } else {
-        sqlx::query_as(&query).bind(user.id).fetch_all(&mut *tx).await?
+        sqlx::query_as(sqlx::AssertSqlSafe(query.as_str())).bind(user.id).fetch_all(&mut *tx).await?
     };
 
     tx.commit().await?;

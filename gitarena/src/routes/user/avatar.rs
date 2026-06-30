@@ -85,10 +85,10 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
     let mut field = match payload.try_next().await {
         Ok(Some(field)) => field,
         Ok(None) => die!(BAD_REQUEST, "No multipart field found"),
-        Err(err) => return Err(err.into()),
+        Err(err) => return Err(anyhow::anyhow!("{err}")),
     };
 
-    let content_disposition = field.content_disposition();
+    let content_disposition = field.content_disposition().ok_or_else(|| err!(BAD_REQUEST, "No content disposition header"))?;
     let file_name = content_disposition.get_filename().ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
     let extension = file_name
         .rsplit_once('.')
@@ -97,7 +97,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
 
     let mut bytes = web::BytesMut::new();
 
-    while let Some(chunk) = field.try_next().await.context("Failed to read multipart data chunk")? {
+    while let Some(chunk) = field.try_next().await.map_err(|e| anyhow::anyhow!("{e}"))? {
         bytes.extend_from_slice(chunk.as_ref());
     }
 
@@ -136,7 +136,9 @@ fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResp
 
     if let Ok(modified_system_time) = meta_data.modified() {
         let modified_unix_time = modified_system_time.duration_since(SystemTime::UNIX_EPOCH)?;
-        let naive_date_time = NaiveDateTime::from_timestamp(modified_unix_time.as_secs().cast_signed(), modified_unix_time.subsec_nanos());
+        let naive_date_time = chrono::DateTime::from_timestamp(modified_unix_time.as_secs().cast_signed(), modified_unix_time.subsec_nanos())
+            .map(|dt| dt.naive_utc())
+            .unwrap_or_default();
 
         // TODO: Convert time zone from local machine to GMT properly
         let format = naive_date_time.format("%a, %d %b %Y %H:%M:%S GMT").to_string();

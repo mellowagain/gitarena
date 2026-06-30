@@ -70,9 +70,9 @@ pub(crate) async fn create(
     let (owner_id, owner_name) = determine_namespace(&body.namespace, &user, &mut tx).await?;
     let owner_col = if body.namespace == user.username { "owner_user" } else { "owner_org" };
 
-    let (exists,): (bool,) = sqlx::query_as(&format!(
+    let (exists,): (bool,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
-    ))
+    )))
     .bind(owner_id)
     .bind(name)
     .fetch_one(&mut *tx)
@@ -82,9 +82,9 @@ pub(crate) async fn create(
         die!(CONFLICT, "Repository name already in use for this namespace");
     }
 
-    let repo: Repository = sqlx::query_as::<_, Repository>(&format!(
+    let repo: Repository = sqlx::query_as::<_, Repository>(sqlx::AssertSqlSafe(format!(
         "insert into repositories (id, {owner_col}, name, description, visibility, default_branch) values ($1, $2, $3, $4, $5, $6) returning *"
-    ))
+    )))
     .bind(Uuid::now_v7())
     .bind(owner_id)
     .bind(name)

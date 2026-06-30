@@ -1,5 +1,7 @@
 use crate::author::Author;
 use anyhow::Result;
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -100,5 +102,5 @@ pub struct OperationPack {
 #[must_use]
 pub fn random_nonce() -> String {
     let bytes: [u8; 20] = rand::rng().random();
-    base64::encode(bytes)
+    general_purpose::STANDARD.encode(bytes)
 }

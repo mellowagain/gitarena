@@ -51,12 +51,16 @@ pub(crate) async fn put_ssh_key(
         err!(BAD_REQUEST, "Failed to parse SSH public key")
     })?;
 
-    let key_title = if !body.title.is_empty() {
+    let comment_str;
+    let key_title: &str = if !body.title.is_empty() {
         &body.title
-    } else if !public_key.comment().is_empty() {
-        public_key.comment()
     } else {
-        die!(BAD_REQUEST, "Key requires a title");
+        let comment = public_key.comment();
+        if comment.is_empty() {
+            die!(BAD_REQUEST, "Key requires a title");
+        }
+        comment_str = comment.to_string();
+        &comment_str
     };
 
     let Ok(algorithm) = KeyType::try_from(&public_key.algorithm()) else {

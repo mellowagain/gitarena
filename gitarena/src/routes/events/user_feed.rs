@@ -79,7 +79,7 @@ pub(crate) async fn get_user_feed(
     );
 
     let events: Vec<EventResponse> = if let Some(ref type_filter) = params.type_filter {
-        sqlx::query_as(&query)
+        sqlx::query_as(sqlx::AssertSqlSafe(query.as_str()))
             .bind(target.id)
             .bind(params.limit)
             .bind(params.offset)
@@ -87,7 +87,7 @@ pub(crate) async fn get_user_feed(
             .fetch_all(&mut *tx)
             .await?
     } else {
-        sqlx::query_as(&query)
+        sqlx::query_as(sqlx::AssertSqlSafe(query.as_str()))
             .bind(target.id)
             .bind(params.limit)
             .bind(params.offset)

@@ -1,9 +1,9 @@
 use proc_macro::TokenStream;
-use proc_macro_error::{emit_call_site_error, emit_error};
+use proc_macro_error2::{emit_call_site_error, emit_error};
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{DeriveInput, Lit, Meta, NestedMeta, parse_macro_input};
+use syn::{DeriveInput, LitInt, LitStr, parse_macro_input};
 
 pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as DeriveInput);
@@ -13,60 +13,41 @@ pub(crate) fn ipc_packet(input: TokenStream) -> TokenStream {
     let mut packet_id = None;
 
     input.attrs.retain(|attribute| {
-        if let Ok(Meta::List(list)) = attribute.parse_meta() {
-            let ipc = list.path.segments.first().is_some_and(|segment| segment.ident == "ipc");
+        if !attribute.path().is_ident("ipc") {
+            return true;
+        }
 
-            if ipc {
-                for args in list.nested {
-                    if let NestedMeta::Meta(Meta::NameValue(pair)) = args
-                        && let Some(segment) = pair.path.segments.first()
-                    {
-                        let identifier = segment.ident.to_string();
-                        let value = pair.lit;
+        if let Err(e) = attribute.parse_nested_meta(|meta| {
+            let ident = meta.path.get_ident().map(|i| i.to_string()).unwrap_or_default();
+            let value = meta.value()?;
 
-                        match identifier.as_str() {
-                            "packet" => {
-                                if let Lit::Str(value) = value {
-                                    category = Some(value.value());
-                                } else {
-                                    emit_error! {
-                                        value.span(),
-                                        "packet requires a string argument"
-                                    }
-                                }
-                            }
-                            "id" => {
-                                if let Lit::Int(value) = value {
-                                    packet_id = if let Ok(id) = value.base10_parse::<u64>() {
-                                        Some(id)
-                                    } else {
-                                        emit_error! {
-                                            value.span(),
-                                            "id argument could not be parsed into u64"
-                                        }
-
-                                        None
-                                    };
-                                } else {
-                                    emit_error! {
-                                        value.span(),
-                                        "id requires a int argument"
-                                    }
-                                }
-                            }
-                            _ => emit_error! {
-                                segment.span(),
-                                "unknown identifier, expected `packet` or `id`"
-                            },
+            match ident.as_str() {
+                "packet" => {
+                    let s: LitStr = value.parse()?;
+                    category = Some(s.value());
+                }
+                "id" => {
+                    let n: LitInt = value.parse()?;
+                    match n.base10_parse::<u64>() {
+                        Ok(id) => {
+                            packet_id = Some(id);
+                        }
+                        Err(_) => {
+                            emit_error!(n.span(), "id argument could not be parsed into u64");
                         }
                     }
                 }
-
-                return false;
+                _ => {
+                    emit_error!(meta.path.span(), "unknown identifier, expected `packet` or `id`");
+                }
             }
+
+            Ok(())
+        }) {
+            emit_call_site_error!("{}", e);
         }
 
-        true
+        false
     });
 
     if let (Some(category), Some(packet_id)) = (category, packet_id) {

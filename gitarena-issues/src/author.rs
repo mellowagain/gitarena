@@ -1,4 +1,6 @@
 use anyhow::{Context, Result, bail};
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use chrono::Utc;
 use gix::actor::Signature;
 use gix::bstr::ByteSlice;
@@ -58,7 +60,7 @@ impl Author {
     /// - `created_at`: Unix timestamp when the user was created
     pub fn from_user(user_id: Uuid, username: &str, email: &str, created_at: i64) -> Self {
         let nonce_hash = Sha256::digest(format!("gitarena-identity:{user_id}").as_bytes());
-        let nonce = base64::encode(&nonce_hash[..20]);
+        let nonce = general_purpose::STANDARD.encode(&nonce_hash[..20]);
 
         let identity_json = build_identity_json(username, email, &nonce, created_at);
 
