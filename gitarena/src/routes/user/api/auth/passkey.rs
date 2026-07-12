@@ -133,9 +133,13 @@ pub(crate) async fn post_register_start(web_user: WebUser, webauthn: web::Data<W
     // we use uuid v5 with the user id because the web authn spec requires a stable user identifier
     let user_handle = Uuid::new_v5(&Uuid::NAMESPACE_OID, user.id.as_bytes());
 
-    let (ccr, skr) = webauthn
+    let (mut ccr, skr) = webauthn
         .start_passkey_registration(user_handle, &user.username, &user.username, Some(exclude_credentials))
         .context("Failed to start passkey registration")?;
+
+    let authenticator_selection = ccr.public_key.authenticator_selection.get_or_insert_default();
+    authenticator_selection.resident_key = None;
+    authenticator_selection.require_resident_key = true;
 
     let challenge_id = Uuid::new_v4();
     WebAuthnChallenge::insert_registration(challenge_id, user.id, &skr, &mut tx).await?;
@@ -340,7 +344,7 @@ pub(crate) async fn post_login_finish(
     let name: String = sqlx::query_scalar(
         "update passkeys \
          set credential = jsonb_set(credential, '{cred,counter}', to_jsonb($1::bigint)) \
-         where user_id = $2 and credential->'cred'->>'cred_id' = $3\
+         where user_id = $2 and credential->'cred'->>'cred_id' = $3 \
          returning name",
     )
     .bind(new_counter)
