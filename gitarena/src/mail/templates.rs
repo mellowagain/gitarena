@@ -38,7 +38,8 @@ impl OrgInviteTemplate<'_> {
 pub(crate) struct NewLoginTemplate<'a> {
     pub(crate) time: &'a str,
     pub(crate) location: &'a str,
-    pub(crate) user_agent: &'a str,
+    pub(crate) device: &'a str,
+    pub(crate) method: &'a str,
 
     pub(crate) instance_name: &'a str,
     pub(crate) domain: &'a str,

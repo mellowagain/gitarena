@@ -391,7 +391,7 @@ pub(crate) async fn post_login_finish(
 
     tx.commit().await?;
 
-    send_login_email(&user, &request, &queue, &db_pool).await?;
+    send_login_email(&user, "Passkey", &request, &queue, &db_pool).await?;
 
     Ok(HttpResponse::Ok().json(MeResponse {
         id: user.id,

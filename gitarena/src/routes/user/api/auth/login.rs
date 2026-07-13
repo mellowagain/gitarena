@@ -55,10 +55,13 @@ pub(crate) async fn post_login(
     }
 
     let mut transaction = db_pool.begin().await?;
+    let first_cred;
 
     let option: Option<User> = if identifier.contains('@') {
+        first_cred = "E-Mail";
         User::find_using_email(identifier, &mut transaction).await
     } else {
+        first_cred = "Username";
         User::find_using_name(identifier, &mut transaction).await
     };
 
@@ -114,7 +117,7 @@ pub(crate) async fn post_login(
 
     transaction.commit().await?;
 
-    send_login_email(&user, &request, &queue, &db_pool).await?;
+    send_login_email(&user, &format!("{first_cred} and password"), &request, &queue, &db_pool).await?;
 
     Ok(HttpResponse::Ok().json(MeResponse {
         id: user.id,

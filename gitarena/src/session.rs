@@ -11,6 +11,7 @@ use crate::geoip;
 use crate::mail::Email;
 use crate::mail::task::MailTask;
 use crate::mail::templates::NewLoginTemplate;
+use crate::passkey::name_from_user_agent;
 use actix_web::HttpRequest;
 use anyhow::{Context, Result, anyhow};
 use askama::Template;
@@ -164,7 +165,7 @@ fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
 }
 
 #[instrument(skip(queue, db_pool))]
-pub(crate) async fn send_login_email(user: &User, request: &HttpRequest, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
+pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRequest, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
     let (log_user_agent, log_ip, domain, smtp_enabled, smtp_address) = from_config!(
         "sessions.log_user_agent" => bool,
         "sessions.log_ip" => bool,
@@ -206,7 +207,14 @@ pub(crate) async fn send_login_email(user: &User, request: &HttpRequest, queue: 
             "n/a".to_string()
         };
 
-        (location, if log_user_agent { user_agent } else { "n/a" })
+        (
+            location,
+            if log_user_agent {
+                name_from_user_agent(user_agent)
+            } else {
+                "n/a".to_string()
+            },
+        )
     };
 
     let now = Local::now();
@@ -214,7 +222,8 @@ pub(crate) async fn send_login_email(user: &User, request: &HttpRequest, queue: 
     let template = NewLoginTemplate {
         time: &now.format("%Y-%m-%d %H:%M:%S").to_string(),
         location: location.as_str(),
-        user_agent,
+        device: &user_agent,
+        method,
         instance_name: "GitArena",
         domain: domain.as_str(),
     };
