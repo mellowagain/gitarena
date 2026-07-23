@@ -130,8 +130,8 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
 
             {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
 
-            <div className="flex flex-1 overflow-hidden">
-                <div className="flex flex-1 items-center justify-center">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+                <div className="flex flex-1 min-w-0 items-center justify-center">
                     <div className="flex flex-col gap-5 w-full max-w-2xl px-6">
                         <div className="flex flex-col items-center gap-3 text-center">
                             <GitBranch className="h-8 w-8 text-muted-foreground shrink-0" />
@@ -252,6 +252,7 @@ export function RepoPageContent({
     );
     const canPush = permsData?.permissions.push ?? false;
     const canAdmin = permsData?.permissions.admin ?? false;
+    const rawFileUrl = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/${user}/${repo}/tree/${branch}/~blob/${selectedFile}`;
 
     function handleSelectFile(file: string | null) {
         setSelectedFile(file);
@@ -279,7 +280,7 @@ export function RepoPageContent({
             <RepoTopBar user={user} repo={repo} />
             {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 <RepoFileSidebar
                     user={user}
                     repo={repo}
@@ -293,20 +294,26 @@ export function RepoPageContent({
                 <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                     {selectedFile && (
                         <>
-                            <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-                                <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3 shrink-0 lg:px-5">
+                                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                                     <FileText className="h-[18px] w-[18px] text-muted-foreground shrink-0" />
-                                    <div className="flex items-center gap-2 shrink-0 group/filename peer/filename">
-                                        <span className="font-medium">
-                                            <span className="group-hover/filename:hidden">{selectedFile.split("/").pop()}</span>
-                                            <span className="hidden group-hover/filename:inline text-muted-foreground">{selectedFile}</span>
+                                    <div className="group/filename peer/filename flex min-w-0 flex-1 items-center gap-2 lg:flex-none lg:shrink-0">
+                                        <span className="min-w-0 truncate font-medium">
+                                            <span className="block truncate lg:group-hover/filename:hidden">
+                                                {selectedFile.split("/").pop()}
+                                            </span>
+                                            <span className="hidden truncate text-muted-foreground lg:group-hover/filename:block">
+                                                {selectedFile}
+                                            </span>
                                         </span>
                                         {(!isMarkdown(selectedFile) || showSource) && fileSize !== null && (
-                                            <span className="text-sm text-muted-foreground">{prettyBytes(fileSize)}</span>
+                                            <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
+                                                {prettyBytes(fileSize)}
+                                            </span>
                                         )}
                                     </div>
                                     {fileCommit && (
-                                        <div className="flex flex-col border-l border-border pl-3 ml-1 min-w-0 peer-hover/filename:invisible">
+                                        <div className="hidden min-w-0 flex-col border-l border-border pl-3 ml-1 peer-hover/filename:invisible lg:flex">
                                             <div className="flex items-center gap-1.5">
                                                 {(() => {
                                                     const lines = fileCommit.message.split("\n").filter((l) => l.trim() !== "");
@@ -362,40 +369,48 @@ export function RepoPageContent({
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex shrink-0 items-center gap-2">
                                     {(!isMarkdown(selectedFile) || showSource) && (
                                         <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setWrapLines((w) => !w)}
-                                                className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
-                                            >
-                                                <WrapText className="h-3.5 w-3.5" />
-                                                Wrap
-                                            </Button>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        aria-label="Wrap lines"
+                                                        onClick={() => setWrapLines((w) => !w)}
+                                                        className={`hover:text-foreground lg:w-auto lg:px-3 ${wrapLines ? "text-foreground" : "text-muted-foreground"}`}
+                                                    >
+                                                        <WrapText className="h-3.5 w-3.5" />
+                                                        <span className="hidden lg:inline">Wrap</span>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Wrap lines</TooltipContent>
+                                            </Tooltip>
                                             {!isBinary && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setShowBlame((b) => !b)}
-                                                    className={`h-8 px-3 gap-2 text-sm hover:text-foreground ${showBlame ? "text-foreground" : "text-muted-foreground"}`}
-                                                >
-                                                    <GitCommitHorizontal className="h-3.5 w-3.5" />
-                                                    Blame
-                                                </Button>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon-sm"
+                                                            aria-label="Toggle blame"
+                                                            onClick={() => setShowBlame((b) => !b)}
+                                                            className={`hover:text-foreground lg:w-auto lg:px-3 ${showBlame ? "text-foreground" : "text-muted-foreground"}`}
+                                                        >
+                                                            <GitCommitHorizontal className="h-3.5 w-3.5" />
+                                                            <span className="hidden lg:inline">Blame</span>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Toggle blame</TooltipContent>
+                                                </Tooltip>
                                             )}
                                             <Button
                                                 asChild
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                                className="hidden h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"
                                             >
-                                                <a
-                                                    href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${selectedFile}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
+                                                <a href={rawFileUrl} target="_blank" rel="noreferrer">
                                                     <ExternalLink className="h-3.5 w-3.5" />
                                                     Raw
                                                 </a>
@@ -403,7 +418,7 @@ export function RepoPageContent({
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                                className="hidden h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"
                                                 asChild
                                             >
                                                 <Link
@@ -413,30 +428,58 @@ export function RepoPageContent({
                                                     History
                                                 </Link>
                                             </Button>
+                                            <DropdownMenu modal={false}>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        className="text-muted-foreground hover:text-foreground lg:hidden"
+                                                        aria-label="More file actions"
+                                                    >
+                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-40">
+                                                    <DropdownMenuItem asChild>
+                                                        <a href={rawFileUrl} target="_blank" rel="noreferrer">
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                            Raw
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <Link
+                                                            href={`/${user}/${repo}/commits/${encodeURIComponent(branch)}/${selectedFile.split("/").map(encodeURIComponent).join("/")}`}
+                                                        >
+                                                            <History className="h-3.5 w-3.5" />
+                                                            History
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     )}
                                     {isMarkdown(selectedFile) && (
                                         <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
                                             <button
                                                 onClick={() => setShowSource(false)}
-                                                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
                                                     !showSource
                                                         ? "bg-background text-foreground"
                                                         : "text-muted-foreground hover:text-foreground"
                                                 }`}
                                             >
-                                                <BookOpen className="h-3.5 w-3.5" />
+                                                <BookOpen className="hidden h-3.5 w-3.5 sm:block" />
                                                 Preview
                                             </button>
                                             <button
                                                 onClick={() => setShowSource(true)}
-                                                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
                                                     showSource
                                                         ? "bg-background text-foreground"
                                                         : "text-muted-foreground hover:text-foreground"
                                                 }`}
                                             >
-                                                <Code className="h-3.5 w-3.5" />
+                                                <Code className="hidden h-3.5 w-3.5 sm:block" />
                                                 Code
                                             </button>
                                         </div>
@@ -486,7 +529,7 @@ export function RepoPageSkeleton({ user, repo }: { user: string; repo: string })
         <div className="min-h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 <RepoFileSidebarSkeleton />
 
                 {/* Main content */}

@@ -453,11 +453,14 @@ function TimelineLabel({ name, color }: { name: string; color?: string }) {
         const scopeKey = name.slice(0, scopedIndex);
         const scopeValue = name.slice(scopedIndex + 2);
         return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden">
-                <span className="px-1.5 py-0.5 font-medium" style={color ? { backgroundColor: `${color}35`, color } : undefined}>
+            <span className="inline-flex max-w-full items-center overflow-hidden rounded text-xs">
+                <span
+                    className="min-w-0 truncate px-1.5 py-0.5 font-medium"
+                    style={color ? { backgroundColor: `${color}35`, color } : undefined}
+                >
                     {scopeKey}
                 </span>
-                <span className="px-1.5 py-0.5" style={color ? { backgroundColor: `${color}20`, color } : undefined}>
+                <span className="min-w-0 truncate px-1.5 py-0.5" style={color ? { backgroundColor: `${color}20`, color } : undefined}>
                     {scopeValue}
                 </span>
             </span>
@@ -466,7 +469,7 @@ function TimelineLabel({ name, color }: { name: string; color?: string }) {
 
     return (
         <span
-            className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+            className="inline-flex max-w-full items-center truncate rounded px-1.5 py-0.5 text-xs font-medium"
             style={color ? { backgroundColor: `${color}20`, color } : undefined}
         >
             {name}
@@ -512,15 +515,19 @@ function TimelineEventItem({ event, labelColor }: { event: TimelineEvent; labelC
     }
 
     return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+        <div className="flex items-start gap-2 py-1 text-sm text-muted-foreground">
             {icon}
-            <AuthorAvatar author={event.authorUsername} />
-            <Link href={`/${event.authorUsername}`} className="font-medium text-foreground/70 hover:underline shrink-0">
-                {event.authorUsername}
-            </Link>
-            <span>{action}</span>
-            {detail}
-            <span className="ml-auto shrink-0 text-xs">{relative}</span>
+            <div className="min-w-0 flex-1">
+                <div className="min-w-0 leading-5">
+                    <Link href={`/${event.authorUsername}`} className="font-medium text-foreground/70 hover:underline">
+                        {event.authorUsername}
+                    </Link>{" "}
+                    <span>{action}</span>
+                    {detail && <> {detail} </>}
+                </div>
+                <span className="mt-1 block text-xs sm:hidden">{relative}</span>
+            </div>
+            <span className="ml-auto hidden shrink-0 text-xs sm:block">{relative}</span>
         </div>
     );
 }
@@ -781,7 +788,7 @@ export default function IssuePage() {
     }));
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex min-h-screen flex-col bg-background lg:h-screen">
             <TopBar
                 breadcrumb={[
                     { label: user, href: `/${user}` },
@@ -807,8 +814,8 @@ export default function IssuePage() {
             />
             {repoMeta?.archivedAt && <ArchivedBanner archivedAt={repoMeta.archivedAt} />}
 
-            <div className="flex-1 flex overflow-hidden">
-                <main className="flex-1 overflow-y-auto">
+            <div className="flex flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
+                <main className="w-full min-w-0 lg:flex-1 lg:overflow-y-auto">
                     {isLoading || !issue ? (
                         <DetailSkeleton />
                     ) : (
@@ -1000,7 +1007,7 @@ export default function IssuePage() {
                     )}
                 </main>
 
-                <aside className="w-72 border-l border-border shrink-0 overflow-y-auto p-5 space-y-6">
+                <aside className="w-full shrink-0 space-y-6 border-t border-border p-5 lg:w-72 lg:overflow-y-auto lg:border-t-0 lg:border-l">
                     {isLoading || !issue ? (
                         <>
                             <Skeleton className="h-20 w-full" />

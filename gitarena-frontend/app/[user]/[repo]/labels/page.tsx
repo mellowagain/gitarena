@@ -101,11 +101,11 @@ function LabelChip({ label }: { label: Label }) {
     const text = contrastColor(label.color);
     if (scope) {
         return (
-            <span className="inline-flex items-stretch rounded-full text-xs font-medium overflow-hidden">
-                <span style={{ backgroundColor: label.color, color: text }} className="px-2.5 py-1 opacity-70">
+            <span className="inline-flex max-w-full items-stretch overflow-hidden rounded-full text-xs font-medium">
+                <span style={{ backgroundColor: label.color, color: text }} className="min-w-0 truncate px-2.5 py-1 opacity-70">
                     {scope}
                 </span>
-                <span style={{ backgroundColor: label.color, color: text }} className="px-2.5 py-1">
+                <span style={{ backgroundColor: label.color, color: text }} className="min-w-0 truncate px-2.5 py-1">
                     {value}
                 </span>
             </span>
@@ -114,7 +114,7 @@ function LabelChip({ label }: { label: Label }) {
     return (
         <span
             style={{ backgroundColor: label.color, color: text }}
-            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+            className="inline-flex max-w-full items-center truncate rounded-full px-2.5 py-1 text-xs font-medium"
         >
             {label.name}
         </span>
@@ -283,11 +283,13 @@ type EditState = {
 
 function LabelRowSkeleton() {
     return (
-        <div className="flex items-center gap-4 px-4 py-3.5">
+        <div className="flex flex-col items-start gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4">
             <Skeleton className="h-5 w-28 rounded-full" />
-            <Skeleton className="h-4 flex-1 max-w-xs" />
-            <Skeleton className="h-7 w-16" />
-            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-4 w-full max-w-xs sm:flex-1" />
+            <div className="flex w-full justify-end gap-2 sm:w-auto">
+                <Skeleton className="h-7 w-16" />
+                <Skeleton className="h-7 w-16" />
+            </div>
         </div>
     );
 }
@@ -406,8 +408,8 @@ export default function LabelsPage() {
             <main className="flex-1 overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
                     {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
+                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
                             <h1 className="text-2xl font-semibold flex items-center gap-2">
                                 <Tag className="h-5 w-5 text-muted-foreground" />
                                 Labels
@@ -419,7 +421,7 @@ export default function LabelsPage() {
                             </p>
                         </div>
                         {canManageIssues && (
-                            <Button size="sm" className="gap-2" onClick={startNew} disabled={editState?.id === null}>
+                            <Button size="sm" className="w-full gap-2 sm:w-auto" onClick={startNew} disabled={editState?.id === null}>
                                 <Plus className="h-4 w-4" />
                                 New label
                             </Button>
@@ -510,15 +512,15 @@ export default function LabelsPage() {
                                                     {/* Row */}
                                                     {!isEditing(label.id) ? (
                                                         <div
-                                                            className={`flex items-center gap-4 px-4 py-3.5 hover:bg-accent/30 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
+                                                            className={`flex flex-col items-start gap-2 px-4 py-3.5 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:gap-4 ${i > 0 ? "border-t border-border" : ""}`}
                                                         >
-                                                            <div className="w-36 shrink-0">
+                                                            <div className="w-full min-w-0 sm:w-36 sm:shrink-0">
                                                                 <LabelChip label={label} />
                                                             </div>
-                                                            <p className="flex-1 text-sm text-muted-foreground truncate">
+                                                            <p className="w-full min-w-0 truncate text-sm text-muted-foreground sm:flex-1">
                                                                 {label.description}
                                                             </p>
-                                                            <div className="flex items-center gap-1 shrink-0">
+                                                            <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
                                                                 {canManageIssues &&
                                                                     (deleteConfirm === label.id ? (
                                                                         <div className="flex items-center gap-2">

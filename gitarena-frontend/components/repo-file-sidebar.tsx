@@ -343,8 +343,8 @@ export function RepoFileSidebar({
     return (
         <aside
             ref={sidebarRef}
-            className="border-r border-border flex flex-col shrink-0 bg-card/30 relative"
-            style={{ width: sidebarWidth }}
+            className="w-full lg:w-[var(--repo-file-sidebar-width)] border-b lg:border-r lg:border-b-0 border-border flex flex-col shrink-0 bg-card/30 relative"
+            style={{ "--repo-file-sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
         >
             <div className="p-4 border-b border-border space-y-3">
                 <BranchBar user={user} repo={repo} defaultBranch={defaultBranch} selectedBranch={branch} onBranchChange={onBranchChange} />
@@ -379,7 +379,7 @@ export function RepoFileSidebar({
             )}
 
             <div
-                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-ring/50 transition-colors"
+                className="absolute right-0 top-0 bottom-0 hidden lg:block w-1 cursor-col-resize hover:bg-ring/50 transition-colors"
                 onMouseDown={() => setIsResizing(true)}
             />
         </aside>
@@ -388,7 +388,7 @@ export function RepoFileSidebar({
 
 export function RepoFileSidebarSkeleton() {
     return (
-        <aside className="w-80 border-r border-border flex flex-col shrink-0 bg-card/30 animate-pulse">
+        <aside className="w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border flex flex-col shrink-0 bg-card/30 animate-pulse">
             <div className="p-4 border-b border-border space-y-3">
                 {/* Branch dropdown + history button */}
                 <div className="flex items-center gap-2">

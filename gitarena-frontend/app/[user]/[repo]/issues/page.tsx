@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { useParams, useRouter } from "next/navigation";
@@ -146,7 +146,7 @@ function IssueRow({
         <Link
             href={`/${user}/${repo}/issues/${issue.index}`}
             onClick={onSelect}
-            className={`group flex items-center gap-4 px-5 py-3 border-b border-border cursor-pointer transition-colors ${
+            className={`group flex items-center gap-2 border-b border-border px-3 py-3 cursor-pointer transition-colors sm:gap-4 sm:px-5 ${
                 isSelected ? "bg-accent" : "hover:bg-accent/50"
             }`}
         >
@@ -160,10 +160,12 @@ function IssueRow({
 
             <div className="flex-1 min-w-0 flex items-center gap-2">
                 <span className="truncate">{issue.title}</span>
-                {issue.labels.map((name) => {
-                    const color = labelMap.get(name) ?? "#888888";
-                    return <LabelBadge key={name} name={name} color={color} />;
-                })}
+                <div className="hidden lg:contents">
+                    {issue.labels.map((name) => {
+                        const color = labelMap.get(name) ?? "#888888";
+                        return <LabelBadge key={name} name={name} color={color} />;
+                    })}
+                </div>
             </div>
 
             {issue.commentCount > 0 && (
@@ -173,7 +175,7 @@ function IssueRow({
                 </div>
             )}
 
-            <div className="shrink-0 w-7">
+            <div className="hidden shrink-0 w-7 lg:block">
                 {issue.assignees.length > 0 && (
                     <div
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-sm font-medium"
@@ -184,16 +186,17 @@ function IssueRow({
                 )}
             </div>
 
-            <span className="shrink-0 text-sm text-muted-foreground w-10 text-right">
+            <span className="hidden shrink-0 text-sm text-muted-foreground w-10 text-right lg:block">
                 {formatDistanceToNow(new Date(issue.updatedAt), { locale: shortLocale })}
             </span>
 
             {canManage && (
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <button
-                            className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-secondary rounded transition-all"
+                            className="shrink-0 rounded p-1.5 opacity-100 transition-all hover:bg-secondary lg:opacity-0 lg:group-hover:opacity-100"
                             onClick={(e) => e.preventDefault()}
+                            aria-label="Issue actions"
                         >
                             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                         </button>
@@ -262,7 +265,7 @@ function IssueRow({
 
 function IssueRowSkeleton() {
     return (
-        <div className="flex items-center gap-4 px-5 py-3 border-b border-border">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-3 sm:gap-4 sm:px-5">
             <Skeleton className="h-[18px] w-[18px] rounded-full shrink-0" />
             <Skeleton className="h-4 w-8 shrink-0" />
             <Skeleton className="h-4 flex-1" />
@@ -379,7 +382,7 @@ export default function IssuesPage() {
     }, [isResizing]);
 
     return (
-        <div className="h-screen bg-background flex flex-col overflow-hidden">
+        <div className="min-h-screen bg-background flex flex-col lg:h-screen lg:overflow-hidden">
             <TopBar
                 breadcrumb={[{ label: user, href: `/${user}` }, { label: repo, href: `/${user}/${repo}` }, { label: "Issues" }]}
                 navLinks={[
@@ -400,11 +403,11 @@ export default function IssuesPage() {
             />
             {repoMeta?.archivedAt && <ArchivedBanner archivedAt={repoMeta.archivedAt} />}
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex flex-1 flex-col min-h-0 lg:flex-row lg:overflow-hidden">
                 <aside
                     ref={sidebarRef}
-                    className="border-r border-border shrink-0 flex flex-col bg-card/30 relative"
-                    style={{ width: sidebarWidth }}
+                    className="relative flex w-full shrink-0 flex-col border-b border-border bg-card/30 lg:w-[var(--issues-sidebar-width)] lg:border-r lg:border-b-0"
+                    style={{ "--issues-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
                 >
                     <div className="p-4">
                         <div className="relative">
@@ -419,8 +422,8 @@ export default function IssuesPage() {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-3 pb-4">
-                        <div className="space-y-1">
+                    <div className="px-3 pb-4 lg:flex-1 lg:overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-1 lg:block lg:space-y-1">
                             {views.map((view) => {
                                 const Icon = view.icon;
                                 const isActive = activeView === view.id;
@@ -435,7 +438,7 @@ export default function IssuesPage() {
                                         }`}
                                     >
                                         <Icon className="h-[18px] w-[18px] shrink-0" />
-                                        <span className="flex-1 text-left">{view.label}</span>
+                                        <span className="min-w-0 flex-1 truncate text-left">{view.label}</span>
                                         <span className="text-sm text-muted-foreground">{counts[view.id]}</span>
                                     </button>
                                 );
@@ -443,7 +446,7 @@ export default function IssuesPage() {
                         </div>
                     </div>
 
-                    <div className="px-4 py-4 border-t border-border">
+                    <div className="hidden px-4 py-4 border-t border-border lg:block">
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Issues are stored natively in git using the{" "}
                             <a
@@ -458,7 +461,7 @@ export default function IssuesPage() {
                         </p>
                     </div>
 
-                    <div className="px-4 pb-4 border-t border-border pt-4">
+                    <div className="hidden px-4 pb-4 border-t border-border pt-4 lg:block">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <kbd className="px-2 py-1 bg-secondary rounded text-xs">C</kbd>
                             <span>New issue</span>
@@ -466,19 +469,22 @@ export default function IssuesPage() {
                     </div>
 
                     <div
-                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-ring/50 transition-colors"
+                        className="absolute right-0 top-0 bottom-0 hidden w-1 cursor-col-resize hover:bg-ring/50 transition-colors lg:block"
                         onMouseDown={startResizing}
                     />
                 </aside>
 
-                <main className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-                        <div className="flex items-center gap-3">
-                            <h2 className="font-medium">{views.find((v) => v.id === activeView)?.label}</h2>
-                            <span className="text-sm text-muted-foreground">{sortedIssues.length} issues</span>
+                <main className="flex w-full min-w-0 flex-col lg:flex-1 lg:overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3 shrink-0 sm:px-5">
+                        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                            <h2 className="truncate font-medium">{views.find((v) => v.id === activeView)?.label}</h2>
+                            <span className="shrink-0 text-sm text-muted-foreground">
+                                {sortedIssues.length}
+                                <span className="hidden sm:inline"> issues</span>
+                            </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <DropdownMenu>
+                        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                            <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-9 gap-2 text-muted-foreground">
                                         Sort
@@ -507,7 +513,7 @@ export default function IssuesPage() {
 
                             <Link
                                 href={`/${user}/${repo}/labels`}
-                                className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
+                                className="hidden items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors lg:flex"
                             >
                                 <Tag className="h-4 w-4" />
                                 Labels
@@ -515,7 +521,7 @@ export default function IssuesPage() {
 
                             <Link
                                 href={`/${user}/${repo}/milestones`}
-                                className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
+                                className="hidden items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors lg:flex"
                             >
                                 <Milestone className="h-4 w-4" />
                                 Milestones
@@ -523,24 +529,57 @@ export default function IssuesPage() {
 
                             <Link
                                 href={`/${user}/${repo}/issues/board`}
-                                className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
-                                title="Kanban board"
+                                className="hidden items-center gap-2 h-9 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors lg:flex"
+                                aria-label="Kanban board"
                             >
                                 <Kanban className="h-4 w-4" />
                             </Link>
 
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="text-muted-foreground lg:hidden"
+                                        aria-label="More issue links"
+                                    >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/${user}/${repo}/labels`}>
+                                            <Tag className="h-4 w-4" />
+                                            Labels
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/${user}/${repo}/milestones`}>
+                                            <Milestone className="h-4 w-4" />
+                                            Milestones
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/${user}/${repo}/issues/board`}>
+                                            <Kanban className="h-4 w-4" />
+                                            Board
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
                             {!isArchived && (
                                 <Link href={`/${user}/${repo}/issues/new`}>
-                                    <Button size="sm" className="h-9 gap-2">
+                                    <Button size="sm" className="h-8 w-8 gap-2 px-0 lg:h-9 lg:w-auto lg:px-3">
                                         <Plus className="h-4 w-4" />
-                                        New Issue
+                                        <span className="sr-only lg:not-sr-only">New Issue</span>
                                     </Button>
                                 </Link>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="lg:flex-1 lg:overflow-y-auto">
                         {isLoading ? (
                             <div>
                                 {Array.from({ length: 5 }).map((_, i) => (
@@ -565,7 +604,7 @@ export default function IssuesPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground lg:h-full lg:py-0">
                                 <Inbox className="h-16 w-16 mb-4 opacity-30" />
                                 <p className="text-lg font-medium">No issues</p>
                                 <p className="mt-1">Create your first issue to get started</p>

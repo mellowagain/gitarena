@@ -26,7 +26,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { ErrorDisplay } from "@/components/error-display";
-import { RepoPageSkeleton } from "@/app/[user]/[repo]/page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import prettyBytes from "pretty-bytes";
@@ -284,7 +283,7 @@ export function RepoSidebar({
     }
 
     if (isLoading) {
-        return <RepoPageSkeleton user={user} repo={repo} />;
+        return <RepoSidebarSkeleton />;
     }
 
     if (error || !data) {
@@ -292,9 +291,9 @@ export function RepoSidebar({
     }
 
     return (
-        <aside className="w-[340px] border-l border-border shrink-0 overflow-y-auto">
+        <aside className="order-first w-full shrink-0 overflow-y-auto border-b border-border lg:order-none lg:w-[340px] lg:border-l lg:border-b-0">
             <div className="p-5 space-y-5">
-                <div>
+                <div className="hidden lg:block">
                     <div className="flex items-center justify-between mb-2.5">
                         <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Clone</h3>
                         <DropdownMenu>
@@ -340,7 +339,7 @@ export function RepoSidebar({
                     )}
                 </div>
 
-                <div className="pt-4 border-t border-border">
+                <div className="lg:pt-4 lg:border-t lg:border-border">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">About</h3>
                         <div className="flex items-center gap-1.5">
@@ -426,7 +425,7 @@ export function RepoSidebar({
                         </div>
                     )}
                     <div className="space-y-2 text-sm">
-                        <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="hidden items-center justify-between text-muted-foreground lg:flex">
                             <span>Project ID</span>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -437,7 +436,7 @@ export function RepoSidebar({
                                 </TooltipContent>
                             </Tooltip>
                         </div>
-                        <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="hidden items-center justify-between text-muted-foreground lg:flex">
                             <span>Size</span>
                             <span className="text-foreground">{prettyBytes(data.size)}</span>
                         </div>
@@ -558,10 +557,10 @@ export function RepoSidebar({
 
 export function RepoSidebarSkeleton() {
     return (
-        <aside className="w-[340px] border-l border-border shrink-0 overflow-y-auto animate-pulse">
+        <aside className="order-first w-full shrink-0 overflow-y-auto border-b border-border animate-pulse lg:order-none lg:w-[340px] lg:border-l lg:border-b-0">
             <div className="p-5 space-y-5">
                 {/* Clone section */}
-                <div className="space-y-2">
+                <div className="hidden space-y-2 lg:block">
                     <div className="flex items-center justify-between">
                         <div className="h-3 w-12 rounded bg-accent" />
                         <div className="h-5 w-16 rounded bg-accent" />
@@ -570,7 +569,7 @@ export function RepoSidebarSkeleton() {
                 </div>
 
                 {/* About section */}
-                <div className="pt-4 border-t border-border space-y-3">
+                <div className="space-y-3 lg:pt-4 lg:border-t lg:border-border">
                     <div className="flex items-center justify-between">
                         <div className="h-3 w-12 rounded bg-accent" />
                         <div className="flex gap-1.5">
@@ -588,7 +587,7 @@ export function RepoSidebarSkeleton() {
                         ))}
                     </div>
                     {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="flex items-center justify-between">
+                        <div key={i} className={`${i < 3 ? "hidden lg:flex" : "flex"} items-center justify-between`}>
                             <div className="h-3 w-16 rounded bg-accent" />
                             <div className="h-3 w-20 rounded bg-accent" />
                         </div>

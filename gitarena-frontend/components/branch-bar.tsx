@@ -51,7 +51,7 @@ export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchC
 
     return (
         <div className="flex items-center gap-2">
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="sm" className="flex-1 justify-between h-9">
                         <span className="flex items-center gap-2">

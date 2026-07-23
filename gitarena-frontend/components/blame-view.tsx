@@ -135,24 +135,26 @@ export function BlameView({ user, repo, hunks, content, filename, wrapLines = fa
             style={gitarenaTheme}
             PreTag="div"
             renderer={({ rows, stylesheet }) => (
-                <div className={`font-mono text-sm leading-relaxed pr-6 [font-variant-ligatures:none] ${wrapLines ? "" : "min-w-max"}`}>
-                    <div className="flex items-center justify-between mb-3 ml-4 py-3 pr-6 border-b border-border/30">
-                        <div className="flex items-center gap-3">
-                            <div className="w-1 mr-3 shrink-0" />
+                <div
+                    className={`pr-3 font-mono text-sm leading-relaxed [font-variant-ligatures:none] sm:pr-6 ${wrapLines ? "" : "lg:min-w-max"}`}
+                >
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-border/30 px-3 py-3 sm:ml-4 sm:pr-6">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="hidden w-1 mr-3 shrink-0 lg:block" />
                             <div className="flex items-center gap-2 text-sm text-muted-foreground/50 select-none">
-                                <span>older</span>
+                                <span className="hidden sm:inline">older</span>
                                 <div
-                                    className="h-2.5 w-36 rounded-full"
+                                    className="h-2.5 w-20 rounded-full sm:w-36"
                                     style={{ background: "linear-gradient(to right, #60a5fa, #f87171)" }}
                                 />
-                                <span>newer</span>
+                                <span className="hidden sm:inline">newer</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 select-none">
-                            <span className="text-sm text-muted-foreground/50">
+                        <div className="flex shrink-0 items-center gap-2 select-none">
+                            <span className="text-xs text-muted-foreground/50 sm:text-sm">
                                 {uniqueAuthors.length} {uniqueAuthors.length === 1 ? "contributor" : "contributors"}
                             </span>
-                            <div className="flex">
+                            <div className="hidden sm:flex">
                                 {uniqueAuthors.slice(0, 5).map((author, idx) => (
                                     <div
                                         key={author.authorName}
@@ -187,13 +189,18 @@ export function BlameView({ user, repo, hunks, content, filename, wrapLines = fa
                         const borderClass = pos?.first ? "border-t border-border" : "";
 
                         return (
-                            <div key={i} className={`flex hover:bg-accent/30 group${isHunkStart ? " mt-1" : ""} ${borderClass}`}>
+                            <div
+                                key={i}
+                                className={`group relative flex flex-wrap pl-3 hover:bg-accent/30 lg:flex-nowrap lg:pl-0${isHunkStart ? " mt-1" : ""} ${borderClass}`}
+                            >
                                 <div
-                                    className="w-1 shrink-0 mr-3 self-stretch"
+                                    className="absolute inset-y-0 left-0 w-1 lg:static lg:mr-3 lg:shrink-0 lg:self-stretch"
                                     style={{ backgroundColor: barColor, borderRadius: barRadius }}
                                 />
 
-                                <div className="w-72 shrink-0 pr-4 border-r border-border/50 mr-4 overflow-hidden py-0.5">
+                                <div
+                                    className={`${hunk ? "block" : "hidden"} w-full overflow-hidden border-b border-border/50 py-1.5 pr-3 lg:mr-4 lg:block lg:w-72 lg:shrink-0 lg:border-r lg:border-b-0 lg:py-0.5 lg:pr-4`}
+                                >
                                     {hunk ? (
                                         <div className="flex flex-col gap-0.5">
                                             <div className="flex items-center gap-1.5 min-w-0">
@@ -225,7 +232,7 @@ export function BlameView({ user, repo, hunks, content, filename, wrapLines = fa
                                     {lineNumber}
                                 </span>
 
-                                <span className={`py-0.5 ${wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}`}>
+                                <span className={`min-w-0 flex-1 py-0.5 ${wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}`}>
                                     {row.children.map((node, j) => renderNode(node, stylesheet, j))}
                                 </span>
                             </div>

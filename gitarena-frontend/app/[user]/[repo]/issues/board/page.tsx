@@ -20,6 +20,7 @@ import {
 import { AlertCircle, Code, Circle, CircleDot, CheckCircle2, XCircle, List, Search } from "lucide-react";
 import { jsonFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface IssueListItem {
     index: number;
@@ -149,7 +150,7 @@ function DroppableColumn({
     user,
     repo,
     isLoading,
-    canManage,
+    canDrag,
 }: {
     status: string;
     label: string;
@@ -160,12 +161,12 @@ function DroppableColumn({
     user: string;
     repo: string;
     isLoading: boolean;
-    canManage: boolean;
+    canDrag: boolean;
 }) {
-    const { setNodeRef, isOver } = useDroppable({ id: status });
+    const { setNodeRef, isOver } = useDroppable({ id: status, disabled: !canDrag });
 
     return (
-        <div className="flex flex-col flex-1 min-w-52">
+        <div className="flex w-full flex-col md:min-w-52 md:flex-1">
             <div className="flex items-center gap-2 mb-3 px-1 shrink-0">
                 <Icon className={`h-4 w-4 shrink-0 ${color}`} />
                 <span className="font-medium text-sm">{label}</span>
@@ -175,8 +176,8 @@ function DroppableColumn({
             </div>
             <div
                 ref={setNodeRef}
-                className={`flex-1 min-h-0 overflow-y-auto scrollbar-dark rounded-lg p-2 space-y-2 transition-colors ${
-                    isOver && canManage ? "bg-accent/50 ring-2 ring-ring/40" : "bg-secondary/30"
+                className={`scrollbar-dark space-y-2 rounded-lg p-2 transition-colors md:min-h-0 md:flex-1 md:overflow-y-auto ${
+                    isOver && canDrag ? "bg-accent/50 ring-2 ring-ring/40" : "bg-secondary/30"
                 }`}
             >
                 {isLoading ? (
@@ -186,7 +187,7 @@ function DroppableColumn({
                     </>
                 ) : issues.length === 0 ? (
                     <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">No issues</div>
-                ) : canManage ? (
+                ) : canDrag ? (
                     issues.map((issue) => <DraggableCard key={issue.index} issue={issue} labelMap={labelMap} user={user} repo={repo} />)
                 ) : (
                     issues.map((issue) => (
@@ -211,6 +212,8 @@ export default function BoardPage() {
     const { data: permsData } = useSWR<PermissionsResponse>(user && repo ? `/api/repos/${user}/${repo}/permissions` : null, jsonFetcher);
 
     const canManage = permsData?.permissions.manageIssues ?? false;
+    const isMobile = useIsMobile();
+    const canDrag = canManage && !isMobile;
 
     const [pendingStatus, setPendingStatus] = useState<Record<number, string>>({});
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -248,7 +251,7 @@ export default function BoardPage() {
     }
 
     async function handleDragEnd(event: DragEndEvent) {
-        if (!canManage) {
+        if (!canDrag) {
             setDraggedIndex(null);
             return;
         }
@@ -287,7 +290,7 @@ export default function BoardPage() {
     }
 
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+        <div className="flex min-h-screen flex-col bg-background text-foreground md:h-screen md:overflow-hidden">
             <TopBar
                 breadcrumb={[
                     { label: user, href: `/${user}` },
@@ -306,28 +309,32 @@ export default function BoardPage() {
                 ]}
             />
 
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
-                <div className="relative max-w-xs">
+            <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
+                <div className="relative min-w-0 flex-1 sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Filter issues…"
-                        className="h-8 pl-9 pr-3 w-56 bg-secondary border-0 rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="h-8 w-full rounded-md border-0 bg-secondary pr-3 pl-9 text-sm placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
                 </div>
                 <Link
                     href={`/${user}/${repo}/issues`}
-                    className="ml-auto flex items-center gap-2 h-8 px-3 text-sm text-muted-foreground border border-border rounded-md hover:text-foreground hover:bg-accent/50 transition-colors"
+                    className="ml-auto flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
                     <List className="h-4 w-4" />
                     List view
                 </Link>
             </div>
 
-            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <div className="flex-1 min-h-0 flex gap-4 overflow-x-auto px-5 py-5">
+            <DndContext
+                sensors={sensors}
+                onDragStart={canDrag ? handleDragStart : undefined}
+                onDragEnd={canDrag ? handleDragEnd : undefined}
+            >
+                <div className="flex flex-1 flex-col gap-6 px-4 py-5 md:min-h-0 md:flex-row md:gap-4 md:overflow-x-auto md:px-5">
                     {COLUMNS.map(({ status, label, Icon, color }) => (
                         <DroppableColumn
                             key={status}
@@ -340,13 +347,13 @@ export default function BoardPage() {
                             user={user}
                             repo={repo}
                             isLoading={isLoading}
-                            canManage={canManage}
+                            canDrag={canDrag}
                         />
                     ))}
                 </div>
 
                 <DragOverlay>
-                    {draggedIssue && (
+                    {canDrag && draggedIssue && (
                         <div style={{ width: draggedWidth ?? undefined }} className="overflow-hidden">
                             <IssueCard issue={draggedIssue} labelMap={labelMap} isDragOverlay />
                         </div>
