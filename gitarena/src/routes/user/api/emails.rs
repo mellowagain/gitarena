@@ -80,10 +80,12 @@ pub(crate) async fn post_email(
 
     let mut transaction = db_pool.begin().await?;
 
-    let (exists,): (bool,) = sqlx::query_as(&format!("select exists(select 1 from emails where email = $1{verified_filter} limit 1)"))
-        .bind(body.email.as_str())
-        .fetch_one(&mut *transaction)
-        .await?;
+    let (exists,): (bool,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "select exists(select 1 from emails where email = $1{verified_filter} limit 1)"
+    )))
+    .bind(body.email.as_str())
+    .fetch_one(&mut *transaction)
+    .await?;
 
     if exists {
         die!(CONFLICT, "Email address already in use");

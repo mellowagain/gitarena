@@ -1,46 +1,53 @@
 use proc_macro::TokenStream;
-use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
+use proc_macro_error2::{abort, abort_call_site, abort_if_dirty, emit_error};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{ToTokens, quote};
+use syn::parse::Parser;
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{AttributeArgs, FnArg, ItemFn, Lit, LitStr, Meta, NestedMeta, Pat, parse_macro_input};
+use syn::{Expr, ExprAssign, ExprLit, FnArg, ItemFn, Lit, LitStr, Pat, Token, parse_macro_input};
 
 #[allow(clippy::too_many_lines)]
 pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut args = parse_macro_input!(args as AttributeArgs);
+    let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
+    let mut args: Vec<Expr> = match parser.parse(args.clone()) {
+        Ok(exprs) => exprs.into_iter().collect(),
+        Err(e) => return e.to_compile_error().into(),
+    };
+
     let mut input = parse_macro_input!(input as ItemFn);
 
     let mut error_type = ErrorDisplayType::Unset;
     let mut error_type_index = 0;
     let mut sanitized_first_arg = None;
 
-    for (index, meta) in args.iter().enumerate() {
-        match meta {
-            NestedMeta::Meta(meta) => {
-                if let Meta::NameValue(name_value) = meta {
-                    if let Some(segment) = name_value.path.segments.first() {
+    for (index, expr) in args.iter().enumerate() {
+        match expr {
+            Expr::Assign(ExprAssign { left, right, .. }) => {
+                if let Expr::Path(path) = left.as_ref() {
+                    if let Some(segment) = path.path.segments.first() {
                         let lowered = segment.ident.to_string().to_lowercase();
 
                         if lowered.as_str() == "err"
-                            && let Some(parsed_error_type) = match_error_type(&name_value.lit)
+                            && let Some(parsed_error_type) = match_error_type(right.as_ref())
                         {
                             error_type = parsed_error_type;
                             error_type_index = index;
                         }
                     } else {
                         emit_error! {
-                            meta.span(),
+                            path.path.span(),
                             "meta name cannot be empty"
                         }
                     }
                 }
             }
-            NestedMeta::Lit(literal) if index == 0 => {
-                if let Some(meta) = sanitize_first_argument(literal) {
-                    sanitized_first_arg = Some(meta);
+            Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) if index == 0 => {
+                if let Some(sanitized) = sanitize_first_argument(&s) {
+                    sanitized_first_arg = Some(sanitized);
                 }
             }
-            NestedMeta::Lit(_) => { /* ignored - actix web will error if the attribute is invalid */ }
+            _ => { /* ignored - actix web will error if the attribute is invalid */ }
         }
     }
 
@@ -55,8 +62,8 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     args.remove(error_type_index);
 
     // This cannot be done inline (with &mut) because of https://github.com/rust-lang/rust/issues/59159
-    if let Some(meta) = sanitized_first_arg {
-        args.insert(0, meta);
+    if let Some(sanitized) = sanitized_first_arg {
+        args.insert(0, sanitized);
         args.remove(1);
     }
 
@@ -178,9 +185,9 @@ impl ToTokens for ErrorDisplayType {
     }
 }
 
-fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
-    if let Lit::Str(str) = input {
-        let value = str.value().to_lowercase();
+fn match_error_type(input: &Expr) -> Option<ErrorDisplayType> {
+    if let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = input {
+        let value = s.value().to_lowercase();
 
         return match value.as_str() {
             "html" => Some(ErrorDisplayType::Html),
@@ -218,19 +225,20 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
 
 /// Transforms routes which are only a "/" to an empty string. This allows scoped routes to have index
 /// pages without having to declare their route with a literal empty string (which is quite confusing).
-fn sanitize_first_argument(literal: &Lit) -> Option<NestedMeta> {
-    if let Lit::Str(str) = literal {
-        let value = str.value();
+fn sanitize_first_argument(str: &LitStr) -> Option<Expr> {
+    let value = str.value();
 
-        if value.is_empty() {
-            emit_error! {
-                str.span(),
-                "route cannot be empty";
-                help = "if you want to match on index, use \"/\""
-            }
-        } else if value == "/" {
-            return Some(NestedMeta::Lit(Lit::Str(LitStr::new("", str.span()))));
+    if value.is_empty() {
+        emit_error! {
+            str.span(),
+            "route cannot be empty";
+            help = "if you want to match on index, use \"/\""
         }
+    } else if value == "/" {
+        return Some(Expr::Lit(ExprLit {
+            attrs: vec![],
+            lit: Lit::Str(LitStr::new("", str.span())),
+        }));
     }
 
     None

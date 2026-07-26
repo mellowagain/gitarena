@@ -50,12 +50,12 @@ pub(crate) async fn get_instance_users(web_user: WebUser, request: HttpRequest, 
 
     let mut tx = db_pool.begin().await?;
 
-    let users = sqlx::query_as::<_, ExtendedUser>(&format!(
+    let users = sqlx::query_as::<_, ExtendedUser>(sqlx::AssertSqlSafe(format!(
         "select u.*, e.email, e.verified_at from users u \
          join emails e on e.owner = u.id and e.\"primary\" = true \
          order by u.id {order} \
          limit {limit}"
-    ))
+    )))
     .fetch_all(&mut *tx)
     .await?;
 

@@ -772,7 +772,7 @@ pub(super) async fn load_reactions(target: ReactionTarget, viewer_id: Option<Uui
          from reactions where {column} = $1 group by emoji order by emoji"
     );
 
-    Ok(sqlx::query_as(&query).bind(id).bind(viewer_id).fetch_all(&mut **tx).await?)
+    Ok(sqlx::query_as(sqlx::AssertSqlSafe(query)).bind(id).bind(viewer_id).fetch_all(&mut **tx).await?)
 }
 
 #[instrument(err, skip(tx))]

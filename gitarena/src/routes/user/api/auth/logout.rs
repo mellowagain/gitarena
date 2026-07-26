@@ -28,7 +28,7 @@ pub(crate) async fn post_logout(web_user: WebUser, id: Identity, request: HttpRe
 
     let mut transaction = db_pool.begin().await?;
 
-    if let Some(session) = Session::from_identity(id.identity(), &mut transaction).await? {
+    if let Some(session) = Session::from_identity(id.id().ok(), &mut transaction).await? {
         debug!(user.id = %session.user_id, "User logged out");
 
         session.destroy(&mut transaction).await?;
@@ -38,7 +38,7 @@ pub(crate) async fn post_logout(web_user: WebUser, id: Identity, request: HttpRe
             .await?;
     }
 
-    id.forget();
+    id.logout();
 
     transaction.commit().await?;
 

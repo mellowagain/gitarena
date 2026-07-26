@@ -80,32 +80,38 @@ pub(crate) async fn get_admin_audit_log(web_user: WebUser, query: web::Query<Adm
 
     let events = match (&class_filter, &params.type_filter) {
         (Some(class), Some(type_filter)) => {
-            sqlx::query_as::<_, EventResponse>(&format!("{base_query} and e.class = $1 and e.type = $2 order by e.id desc limit $3 offset $4"))
-                .bind(class)
-                .bind(type_filter)
-                .bind(limit)
-                .bind(offset)
-                .fetch_all(&mut *tx)
-                .await?
+            sqlx::query_as::<_, EventResponse>(sqlx::AssertSqlSafe(format!(
+                "{base_query} and e.class = $1 and e.type = $2 order by e.id desc limit $3 offset $4"
+            )))
+            .bind(class)
+            .bind(type_filter)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *tx)
+            .await?
         }
         (Some(class), None) => {
-            sqlx::query_as::<_, EventResponse>(&format!("{base_query} and e.class = $1 order by e.id desc limit $2 offset $3"))
-                .bind(class)
-                .bind(limit)
-                .bind(offset)
-                .fetch_all(&mut *tx)
-                .await?
+            sqlx::query_as::<_, EventResponse>(sqlx::AssertSqlSafe(format!(
+                "{base_query} and e.class = $1 order by e.id desc limit $2 offset $3"
+            )))
+            .bind(class)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *tx)
+            .await?
         }
         (None, Some(type_filter)) => {
-            sqlx::query_as::<_, EventResponse>(&format!("{base_query} and e.type = $1 order by e.id desc limit $2 offset $3"))
-                .bind(type_filter)
-                .bind(limit)
-                .bind(offset)
-                .fetch_all(&mut *tx)
-                .await?
+            sqlx::query_as::<_, EventResponse>(sqlx::AssertSqlSafe(format!(
+                "{base_query} and e.type = $1 order by e.id desc limit $2 offset $3"
+            )))
+            .bind(type_filter)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *tx)
+            .await?
         }
         (None, None) => {
-            sqlx::query_as::<_, EventResponse>(&format!("{base_query} order by e.id desc limit $1 offset $2"))
+            sqlx::query_as::<_, EventResponse>(sqlx::AssertSqlSafe(format!("{base_query} order by e.id desc limit $1 offset $2")))
                 .bind(limit)
                 .bind(offset)
                 .fetch_all(&mut *tx)

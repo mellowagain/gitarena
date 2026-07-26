@@ -8,8 +8,10 @@ use crate::{die, err};
 
 use crate::events::Event;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
@@ -152,6 +154,7 @@ pub(crate) async fn post_register_start(web_user: WebUser, webauthn: web::Data<W
 #[derive(Serialize, ToSchema)]
 pub(crate) struct RegisterStartResponse {
     pub(crate) challenge_id: Uuid,
+    #[schema(value_type = Object)]
     pub(crate) options: CreationChallengeResponse,
 }
 
@@ -305,7 +308,6 @@ pub(crate) async fn post_login_finish(
     body: web::Json<LoginFinishRequest>,
     web_user: WebUser,
     request: HttpRequest,
-    id: Identity,
     webauthn: web::Data<Webauthn>,
     queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
@@ -372,7 +374,7 @@ pub(crate) async fn post_login_finish(
     }
 
     let session = Session::new(&request, &user, &mut tx).await?;
-    id.remember(session.to_string());
+    Identity::login(&*request.extensions(), session.to_string())?;
 
     Event::new(
         "auth.login",
@@ -403,9 +405,10 @@ pub(crate) async fn post_login_finish(
 #[derive(Deserialize, ToSchema)]
 pub(crate) struct LoginFinishRequest {
     pub(crate) challenge_id: Uuid,
+    #[schema(value_type = Object)]
     pub(crate) credential: PublicKeyCredential,
 }
 
 fn base64_url_encode(bytes: &[u8]) -> String {
-    base64::encode_config(bytes, base64::URL_SAFE_NO_PAD)
+    general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }

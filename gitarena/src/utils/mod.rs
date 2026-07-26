@@ -1,7 +1,7 @@
+use hickory_resolver::TokioResolver;
 use once_cell::sync::Lazy;
 use std::future::Future;
 use std::time::Instant;
-use trust_dns_resolver::TokioAsyncResolver;
 
 pub(crate) mod admin_panel_layer;
 pub(crate) mod filesystem;
@@ -9,8 +9,12 @@ pub(crate) mod identifiers;
 pub(crate) mod oid;
 pub(crate) mod system;
 
-pub(crate) static DNS_RESOLVER: Lazy<TokioAsyncResolver> =
-    Lazy::new(|| TokioAsyncResolver::tokio_from_system_conf().expect("to be able to initialize dns resolver"));
+pub(crate) static DNS_RESOLVER: Lazy<TokioResolver> = Lazy::new(|| {
+    TokioResolver::builder_tokio()
+        .expect("to be able to read system dns config")
+        .build()
+        .expect("to be able to initialize dns resolver")
+});
 
 /// Counts the amount of seconds the provided [Future][future] took to execute.
 /// The [Future][future] _should_ not return a output, as it will be discarded and not returned.

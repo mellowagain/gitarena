@@ -23,7 +23,7 @@ use gix::odb::Store;
 use gix::odb::pack::FindExt;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::ZipWriter;
-use zip::write::FileOptions as ZipFileOptions;
+use zip::write::SimpleFileOptions as ZipFileOptions;
 
 #[utoipa::path(
     get,
@@ -286,5 +286,5 @@ fn unix_secs_to_zip_datetime(unix_secs: i64) -> zip::DateTime {
 
     let dos_dt = dos_date_time::DateTime::try_from(dt).unwrap_or(dos_date_time::DateTime::MIN);
 
-    zip::DateTime::from_msdos(dos_dt.date().to_raw(), dos_dt.time().to_raw())
+    zip::DateTime::try_from_msdos(dos_dt.date().to_raw(), dos_dt.time().to_raw()).unwrap_or_default()
 }

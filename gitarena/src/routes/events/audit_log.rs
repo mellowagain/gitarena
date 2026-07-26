@@ -44,15 +44,17 @@ pub(crate) async fn get_personal_audit_log(web_user: WebUser, query: web::Query<
                       where e.actor_id = $1 and e.class = 'security'";
 
     let events: Vec<EventResponse> = if let Some(ref type_filter) = params.type_filter {
-        sqlx::query_as(&format!("{base_query} and e.type = $2 order by e.id desc limit $3 offset $4"))
-            .bind(user.id)
-            .bind(type_filter)
-            .bind(params.limit)
-            .bind(params.offset)
-            .fetch_all(&mut *tx)
-            .await?
+        sqlx::query_as(sqlx::AssertSqlSafe(format!(
+            "{base_query} and e.type = $2 order by e.id desc limit $3 offset $4"
+        )))
+        .bind(user.id)
+        .bind(type_filter)
+        .bind(params.limit)
+        .bind(params.offset)
+        .fetch_all(&mut *tx)
+        .await?
     } else {
-        sqlx::query_as(&format!("{base_query} order by e.id desc limit $2 offset $3"))
+        sqlx::query_as(sqlx::AssertSqlSafe(format!("{base_query} order by e.id desc limit $2 offset $3")))
             .bind(user.id)
             .bind(params.limit)
             .bind(params.offset)

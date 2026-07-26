@@ -14,7 +14,6 @@ use chrono::{DateTime, Local};
 use derive_more::Display;
 use gitarena_macros::from_config;
 use lettre::message::Mailbox;
-use lettre::transport::smtp::PoolConfig;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use once_cell::sync::OnceCell;
@@ -23,6 +22,7 @@ use sqlx::{FromRow, Transaction};
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 use std::time::{Duration, UNIX_EPOCH};
 use tracing::debug;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub(crate) mod task;
@@ -30,12 +30,13 @@ pub(crate) mod templates;
 
 pub(crate) static TRANSPORTER: OnceCell<AsyncSmtpTransport<Tokio1Executor>> = OnceCell::new();
 
-#[derive(FromRow, Display, Serialize)]
+#[derive(FromRow, Display, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[display("{email}")]
 pub(crate) struct Email {
     pub(crate) id: Uuid,
     #[serde(skip)]
+    #[schema(ignore)]
     pub(crate) owner: Uuid,
     #[allow(clippy::struct_field_names)]
     pub(crate) email: String,
@@ -154,13 +155,11 @@ pub(crate) async fn create_transport(db_pool: &Pool) -> Result<()> {
             .context("Unable to create TLS connection")?
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
-            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(server.as_str())
             .port(u16::try_from(port).context("port too big for u16")?)
             .credentials(credentials)
-            .pool_config(PoolConfig::new().max_size(5).idle_timeout(Duration::from_secs(30)))
             .build()
     };
 

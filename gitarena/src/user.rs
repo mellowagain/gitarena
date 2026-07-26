@@ -23,14 +23,16 @@ use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(FromRow, Display, Debug, Serialize, Clone)]
+#[derive(FromRow, Display, Debug, Serialize, Clone, ToSchema)]
 #[display("{username}")]
 pub(crate) struct User {
     pub(crate) id: Uuid,
     pub(crate) username: String,
     #[serde(skip_serializing)]
+    #[schema(ignore)]
     #[display("[redacted]")]
     #[debug("[redacted]")]
     pub(crate) password: String,
@@ -219,7 +221,7 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
 ) -> Result<WebUser> {
     let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
 
-    match id.identity() {
+    match id.id().ok() {
         Some(identity) => {
             let mut transaction = db_pool.begin().await?;
 
@@ -233,7 +235,7 @@ async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Ident
 
                 user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
             } else {
-                id.forget();
+                id.logout();
 
                 WebUser::Anonymous
             };

@@ -14,7 +14,7 @@ use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use gitarena_macros::{from_config, route};
 use oauth2::TokenResponse;
@@ -77,7 +77,7 @@ pub(crate) async fn sso_callback(
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
-    if id.identity().is_some() {
+    if id.id().is_ok() {
         die!(UNAUTHORIZED, "Already logged in");
     }
 
@@ -145,7 +145,7 @@ pub(crate) async fn sso_callback(
     // don't protect in this case against cross-site request forgery.
 
     let session = Session::new(&request, &user, &mut transaction).await?;
-    id.remember(session.to_string());
+    Identity::login(&*request.extensions(), session.to_string())?;
 
     Event::new(
         "auth.login",

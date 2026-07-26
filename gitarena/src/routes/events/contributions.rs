@@ -101,14 +101,14 @@ pub(crate) async fn get_contributions(
          group by cc.author_date"
     );
 
-    let event_rows = sqlx::query_as::<_, EventContribRow>(&event_query)
+    let event_rows = sqlx::query_as::<_, EventContribRow>(sqlx::AssertSqlSafe(event_query))
         .bind(target.id)
         .bind(lower)
         .bind(upper)
         .fetch_all(&mut *tx)
         .await?;
 
-    let contributor_rows = sqlx::query_as::<_, CommitContribRow>(&contributor_query)
+    let contributor_rows = sqlx::query_as::<_, CommitContribRow>(sqlx::AssertSqlSafe(contributor_query))
         .bind(target.id)
         .bind(start.date_naive())
         .bind(end.date_naive())

@@ -9,6 +9,8 @@ use crate::mail::Email;
 use actix_web::http::header::{CONTENT_TYPE, WWW_AUTHENTICATE};
 use actix_web::{HttpRequest, HttpResponse};
 use anyhow::Result;
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use either::Either;
 use sqlx::Transaction;
 use tracing::{debug, instrument};
@@ -113,7 +115,7 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
         die!(UNAUTHORIZED, "Unsupported authentication type, only Basic auth allowed");
     }
 
-    let credentials = String::from_utf8(base64::decode(base64_credentials)?)?;
+    let credentials = String::from_utf8(general_purpose::STANDARD.decode(base64_credentials)?)?;
 
     Ok(credentials
         .split_once(':')

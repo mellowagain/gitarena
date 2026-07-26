@@ -11,7 +11,7 @@ use crate::events::Event;
 use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
@@ -29,7 +29,7 @@ pub(crate) async fn post_register(
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
-    if id.identity().is_some() {
+    if id.id().is_ok() {
         // Maybe just redirect to home page?
         die!(UNAUTHORIZED, "Already logged in");
     }
@@ -148,7 +148,7 @@ pub(crate) async fn post_register(
 
     send_verification_mail(&user, email.email, &queue, &db_pool).await?;
 
-    id.remember(session.to_string());
+    Identity::login(&*request.extensions(), session.to_string())?;
 
     user.index_meili(&meili_client).await;
 

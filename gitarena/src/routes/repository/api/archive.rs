@@ -54,10 +54,12 @@ pub(crate) async fn toggle_archive(
 
     let value = if body.archive { "now()" } else { "null" };
 
-    let repo: Repository = sqlx::query_as(&format!("update repositories set archived_at = {value} where id = $1 returning *"))
-        .bind(repo.id)
-        .fetch_one(&mut *tx)
-        .await?;
+    let repo: Repository = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "update repositories set archived_at = {value} where id = $1 returning *"
+    )))
+    .bind(repo.id)
+    .fetch_one(&mut *tx)
+    .await?;
 
     Event::new(
         if body.archive { "repo.archived" } else { "repo.unarchived" },

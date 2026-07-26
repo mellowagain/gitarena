@@ -4,7 +4,7 @@ use crate::ipc_packet::ipc_packet as internal_ipc_packet;
 use crate::route::route as internal_route;
 
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
+use proc_macro_error2::proc_macro_error;
 
 mod config;
 mod ipc_packet;

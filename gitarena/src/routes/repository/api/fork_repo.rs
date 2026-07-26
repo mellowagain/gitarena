@@ -69,9 +69,9 @@ pub(crate) async fn create_fork(
     let is_org_fork = target_id != user.id;
     let owner_col = if is_org_fork { "owner_org" } else { "owner_user" };
 
-    let (exists,): (bool,) = sqlx::query_as(&format!(
+    let (exists,): (bool,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "select exists(select 1 from repositories where {owner_col} = $1 and lower(name) = lower($2) limit 1)"
-    ))
+    )))
     .bind(target_id)
     .bind(&repo.name)
     .fetch_one(&mut *tx)
@@ -81,9 +81,9 @@ pub(crate) async fn create_fork(
         die!(CONFLICT, "Repository name already in use in this namespace");
     }
 
-    let new_repo = sqlx::query_as::<_, Repository>(&format!(
+    let new_repo = sqlx::query_as::<_, Repository>(sqlx::AssertSqlSafe(format!(
         "insert into repositories (id, {owner_col}, name, description, visibility, forked_from) values ($1, $2, $3, $4, $5, $6) returning *"
-    ))
+    )))
     .bind(Uuid::now_v7())
     .bind(target_id)
     .bind(&repo.name)

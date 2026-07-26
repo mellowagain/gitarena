@@ -10,10 +10,12 @@ use std::env;
 
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
-use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::body::{BoxBody, EitherBody};
+use actix_identity::IdentityMiddleware;
+use actix_session::config::PersistentSession;
+use actix_session::{SessionMiddleware, storage::CookieSessionStore};
+use actix_web::cookie::Key;
 use actix_web::cookie::SameSite;
-use actix_web::dev::{Service, ServiceResponse};
+use actix_web::dev::Service;
 use actix_web::http::Method;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue};
 use actix_web::middleware::{NormalizePath, TrailingSlash};
@@ -95,6 +97,7 @@ async fn main() -> Result<()> {
     let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain" => String);
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.as_deref().is_some_and(|d| d.starts_with("https"));
+    let secret_key = Key::derive_from(secret.as_bytes());
 
     let webauthn_origin: Option<String> = from_optional_config!("webauthn.origin" => String);
     let webauthn_domain = domain.unwrap_or_else(|| "http://localhost:8320".to_owned());
@@ -114,14 +117,13 @@ async fn main() -> Result<()> {
     let ssh_handle = ssh::init(db_pool.clone(), meili_client.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
-        let identity_service = IdentityService::new(
-            CookieIdentityPolicy::new(secret.as_bytes())
-                .name("gitarena-auth")
-                .max_age(TimeDuration::days(10))
-                .http_only(true)
-                .same_site(SameSite::Lax)
-                .secure(secure),
-        );
+        let session_middleware = SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
+            .cookie_name("gitarena-auth".to_owned())
+            .cookie_http_only(true)
+            .cookie_same_site(SameSite::Lax)
+            .cookie_secure(secure)
+            .session_lifecycle(PersistentSession::default().session_ttl(TimeDuration::days(10)))
+            .build();
 
         App::new()
             .app_data(Data::new(db_pool.clone()))
@@ -133,11 +135,12 @@ async fn main() -> Result<()> {
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .wrap(identity_service)
+            .wrap(IdentityMiddleware::default())
+            .wrap(session_middleware)
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
-                    let mut res: ServiceResponse<EitherBody<BoxBody>> = fut.await?;
+                    let mut res = fut.await?;
 
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response

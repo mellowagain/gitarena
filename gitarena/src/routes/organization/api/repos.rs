@@ -76,7 +76,10 @@ pub(crate) async fn list_repos(name: web::Path<String>, web_user: WebUser, db_po
 
     query.push_str(" group by repositories.id order by stars desc, repositories.id desc");
 
-    let repos = sqlx::query_as::<_, OrgRepo>(&query).bind(org.id).fetch_all(&mut *tx).await?;
+    let repos = sqlx::query_as::<_, OrgRepo>(sqlx::AssertSqlSafe(query))
+        .bind(org.id)
+        .fetch_all(&mut *tx)
+        .await?;
 
     tx.commit().await?;
 

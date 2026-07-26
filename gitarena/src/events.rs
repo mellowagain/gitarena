@@ -44,6 +44,7 @@ pub(crate) struct Event {
     /// May be nil UUID if no user id exists for the triggering users (only on `auth.login_failed` and maybe on `email.verified` and `git.*`)
     pub(crate) actor_id: Uuid,
     /// IP Address
+    #[schema(value_type = Option<String>)]
     pub(crate) ip_address: Option<IpNetwork>,
     /// User agent
     pub(crate) user_agent: Option<String>,
