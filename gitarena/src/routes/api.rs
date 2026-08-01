@@ -1,4 +1,5 @@
 use crate::database::Pool;
+use crate::storage::Storage;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::{from_config, route};
@@ -7,7 +8,7 @@ use utoipa::ToSchema;
 
 /// General GitArena information
 #[derive(Serialize, ToSchema)]
-#[serde(rename_all(serialize = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ApiInfoResponse {
     /// Application name
     app: &'static str,
@@ -23,6 +24,8 @@ pub(crate) struct ApiInfoResponse {
     commit: &'static str,
     /// Port of the SSH server, if running
     ssh_port: Option<i32>,
+    /// Whether object storage is available
+    object_storage_available: bool,
 }
 
 #[utoipa::path(
@@ -34,7 +37,7 @@ pub(crate) struct ApiInfoResponse {
     tag = "api"
 )]
 #[route("/api", method = "GET", err = "json")]
-pub(crate) async fn api(db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -> Result<impl Responder> {
     let (domain, ssh_enabled, ssh_port) = from_config!(
         "domain" => String,
         "ssh.enabled" => bool,
@@ -49,5 +52,6 @@ pub(crate) async fn api(db_pool: web::Data<Pool>) -> Result<impl Responder> {
         repository: env!("CARGO_PKG_REPOSITORY"),
         commit: env!("VERGEN_GIT_SHA"),
         ssh_port: if ssh_enabled { Some(ssh_port) } else { None },
+        object_storage_available: storage.as_ref().is_some(),
     }))
 }

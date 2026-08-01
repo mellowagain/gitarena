@@ -28,6 +28,7 @@ import {
     ExternalLink,
     AlertTriangle,
 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface SignatureInfo {
     name: string;
@@ -367,9 +368,7 @@ export default function CommitDetailPage() {
 
                                 <div className="flex items-center gap-2.5 text-sm text-muted-foreground flex-wrap">
                                     <div className="flex items-center gap-1.5">
-                                        <div className="h-5 w-5 flex items-center justify-center rounded-full bg-secondary border border-border text-[10px] font-semibold shrink-0">
-                                            {data.commit.author.name[0].toUpperCase()}
-                                        </div>
+                                        <UserAvatar userId={data.commit.author.uid} username={data.commit.author.name} size="sm" />
                                         <span className="font-medium text-foreground">{data.commit.author.name}</span>
                                     </div>
                                     <span className="text-muted-foreground/40">·</span>
@@ -474,9 +473,12 @@ export default function CommitDetailPage() {
                         <div>
                             <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Author</h3>
                             <div className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-md">
-                                <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-semibold shrink-0">
-                                    {data.commit.author.name[0].toUpperCase()}
-                                </div>
+                                <UserAvatar
+                                    userId={data.commit.author.uid}
+                                    username={data.commit.author.name}
+                                    size="md"
+                                    className="size-7"
+                                />
                                 <div className="min-w-0">
                                     <p className="text-sm font-medium">{data.commit.author.name}</p>
                                     <p className="text-xs text-muted-foreground truncate">{data.commit.author.email}</p>
@@ -488,9 +490,12 @@ export default function CommitDetailPage() {
                             <div>
                                 <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Committer</h3>
                                 <div className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-md">
-                                    <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-semibold shrink-0">
-                                        {data.commit.committer.name[0].toUpperCase()}
-                                    </div>
+                                    <UserAvatar
+                                        userId={data.commit.committer.uid}
+                                        username={data.commit.committer.name}
+                                        size="md"
+                                        className="size-7"
+                                    />
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium">{data.commit.committer.name}</p>
                                         <p className="text-xs text-muted-foreground truncate">{data.commit.committer.email}</p>

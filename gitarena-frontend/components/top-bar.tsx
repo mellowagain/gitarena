@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -243,9 +244,9 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                             <DropdownMenuTrigger asChild>
                                 <button
                                     aria-label="Account menu"
-                                    className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-base font-medium transition-all hover:ring-2 hover:ring-ring"
+                                    className="flex h-9 w-9 items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-ring"
                                 >
-                                    {user.username?.[0]?.toUpperCase()}
+                                    <UserAvatar userId={user.id} username={user.username} size="lg" className="size-9" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
@@ -431,8 +432,8 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="flex items-center justify-center h-9 w-9 rounded-full bg-secondary text-base font-medium hover:ring-2 hover:ring-ring transition-all ml-1">
-                                        {user.username?.[0]?.toUpperCase()}
+                                    <button className="flex items-center justify-center h-9 w-9 rounded-full hover:ring-2 hover:ring-ring transition-all ml-1">
+                                        <UserAvatar userId={user.id} username={user.username} size="lg" className="size-9" />
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56">

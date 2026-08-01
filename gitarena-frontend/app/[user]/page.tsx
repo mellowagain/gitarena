@@ -18,6 +18,7 @@ import { ActivityEvent, type EventResponse } from "@/components/activity-event";
 import { ContributionGraph } from "@/components/contribution-graph";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as allLangs from "linguist-languages";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface UserProfileRepo {
     id: string;
@@ -232,18 +233,16 @@ function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; vari
             <Link
                 href={user ? `/${username}` : "#"}
                 title={user ? `${username} (${member.role})` : member.role}
-                className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-medium hover:ring-2 hover:ring-ring transition-all"
+                className="h-7 w-7 rounded-full hover:ring-2 hover:ring-ring transition-all"
             >
-                {username[0].toUpperCase()}
+                <UserAvatar userId={member.userId} username={username} size="md" className="size-7" />
             </Link>
         );
     }
 
     return (
         <div className="flex items-center gap-4 px-4 py-3.5 hover:bg-accent/30 transition-colors border-t border-border first:border-t-0">
-            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-secondary border border-border text-sm font-semibold shrink-0">
-                {username[0].toUpperCase()}
-            </div>
+            <UserAvatar userId={member.userId} username={username} size="lg" className="size-9" />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     {user ? (
@@ -588,9 +587,12 @@ export default function NamespacePage() {
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 <aside className="w-full lg:w-64 shrink-0 lg:border-r border-b lg:border-b-0 border-border overflow-y-auto p-5">
                     <div className="mb-4 flex items-center gap-4 lg:block">
-                        <div className="h-16 w-16 lg:h-20 lg:w-20 flex items-center justify-center rounded-full bg-secondary border-2 border-border text-2xl lg:text-3xl font-semibold text-foreground lg:mb-3 shrink-0">
-                            {profile.username[0].toUpperCase()}
-                        </div>
+                        <UserAvatar
+                            userId={profile.id}
+                            username={profile.username}
+                            size="xl"
+                            className="size-16 border-2 text-2xl lg:mb-3 lg:size-20 lg:text-3xl"
+                        />
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <p className="text-base font-semibold leading-tight">{profile.username}</p>

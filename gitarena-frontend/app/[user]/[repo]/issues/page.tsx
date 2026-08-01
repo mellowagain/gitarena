@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface IssueLabel {
     name: string;
@@ -51,7 +52,9 @@ interface IssueListItem {
     priority: Priority;
     labels: string[];
     commentCount: number;
+    authorId: string;
     authorUsername: string;
+    assigneeIds: string[];
     assignees: string[];
     updatedAt: string;
 }
@@ -177,12 +180,7 @@ function IssueRow({
 
             <div className="hidden shrink-0 w-7 lg:block">
                 {issue.assignees.length > 0 && (
-                    <div
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-sm font-medium"
-                        title={issue.assignees[0]}
-                    >
-                        {issue.assignees[0][0].toUpperCase()}
-                    </div>
+                    <UserAvatar userId={issue.assigneeIds[0]} username={issue.assignees[0]} size="md" className="size-7" />
                 )}
             </div>
 

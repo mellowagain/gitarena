@@ -225,6 +225,7 @@ pub(crate) async fn get_issue_detail(
 
         comments.push(CommentResponse {
             id: comment.id,
+            author_id: comment.author_id,
             author_username,
             body: comment.body.clone(),
             edited_at: comment.edited_at,
@@ -640,7 +641,9 @@ pub(crate) struct IssueResponse {
     status: IssueStatus,
     priority: String,
     labels: Vec<String>,
+    author_id: Uuid,
     author_username: String,
+    assignee_ids: Vec<Uuid>,
     assignees: Vec<String>,
     milestone: Option<MilestoneBrief>,
     comment_count: i32,
@@ -666,6 +669,7 @@ pub(crate) struct IssuesListResponse {
 #[serde(rename_all(serialize = "camelCase"))]
 pub(crate) struct CommentResponse {
     pub(crate) id: Uuid,
+    pub(crate) author_id: Uuid,
     pub(crate) author_username: String,
     pub(crate) body: String,
     pub(crate) edited_at: Option<DateTime<Utc>>,
@@ -802,7 +806,9 @@ async fn build_issue_response(issue: &IssueCache, viewer_id: Option<Uuid>, tx: &
         status: issue.status.clone(),
         priority: issue.priority.clone(),
         labels: issue.labels.clone(),
+        author_id: issue.author_id,
         author_username,
+        assignee_ids: issue.assignees.clone(),
         assignees,
         milestone,
         comment_count: comment_count as i32,

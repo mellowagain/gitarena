@@ -9,6 +9,7 @@ import { jsonFetcher } from "@/lib/fetchers";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { gitarenaTheme, detectLanguage } from "@/components/code-block";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import {
@@ -962,9 +963,7 @@ function UserResults({ query }: { query: string }) {
                         key={user.id}
                         className={`flex items-center gap-4 px-4 py-3.5 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
                     >
-                        <div className="h-10 w-10 rounded-full bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
-                            {user.username[0].toUpperCase()}
-                        </div>
+                        <UserAvatar userId={user.id} username={user.username} size="xl" />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
                                 <Link href={`/${user.username}`} className="text-sm font-medium hover:underline">

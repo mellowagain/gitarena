@@ -15,6 +15,7 @@ import { HashCopy } from "@/components/hash-copy";
 import type { FileCommitInfo } from "@/components/repo-file-sidebar";
 import type { BranchesResponse } from "@/components/branch-bar";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface BranchCommitsResponse {
     commits: FileCommitInfo[];
@@ -59,9 +60,7 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
                     )}
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
-                        <div className="h-4 w-4 flex items-center justify-center rounded-full bg-secondary border border-border text-[9px] font-semibold shrink-0">
-                            {commit.authorName[0].toUpperCase()}
-                        </div>
+                        <UserAvatar userId={commit.authorUid} username={commit.authorName} size="xs" />
                         <span className="font-medium text-foreground/80">{commit.authorName}</span>
                         <span className="text-muted-foreground/40">·</span>
                         <span>{relativeDate}</span>

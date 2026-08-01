@@ -10,6 +10,7 @@ import { ErrorDisplay } from "@/components/error-display";
 import { jsonFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import DeviceDetector from "device-detector-js";
 import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
@@ -188,17 +189,6 @@ function OsIcon({ os, className }: { os: OS; className?: string }) {
     return <HelpCircle className={cls} />;
 }
 
-function Avatar({ name, size = "sm" }: { name: string; size?: "sm" | "xs" }) {
-    const dim = size === "sm" ? "h-6 w-6 text-[10px]" : "h-5 w-5 text-[10px]";
-    return (
-        <div
-            className={`${dim} rounded-full bg-secondary border border-border flex items-center justify-center font-semibold text-muted-foreground shrink-0`}
-        >
-            {name[0].toUpperCase()}
-        </div>
-    );
-}
-
 function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string; repo: string; releaseId: string }) {
     const [copied, setCopied] = useState(false);
     const KindIcon = asset.kind ? KIND_ICON[asset.kind] : FileArchive;
@@ -334,7 +324,7 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                         </span>
                         {authorData ? (
                             <span className="flex items-center gap-1.5">
-                                <Avatar name={authorData.username} size="xs" />
+                                <UserAvatar userId={authorData.id} username={authorData.username} size="sm" />
                                 {authorData.username}
                             </span>
                         ) : (

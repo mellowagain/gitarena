@@ -6,4 +6,5 @@ export interface InstanceConfig {
     repository: string;
     commit: string;
     sshPort?: number;
+    objectStorageAvailable: boolean;
 }

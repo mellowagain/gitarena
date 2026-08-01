@@ -52,6 +52,7 @@ import { useInstanceConfig } from "@/components/instance-config-provider";
 import { jsonFetcher, authFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface InstanceStats {
     users: number;
@@ -521,9 +522,7 @@ export default function AdminDashboardPage() {
                                                         className="flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors"
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                                                                {user.username.charAt(0).toUpperCase()}
-                                                            </div>
+                                                            <UserAvatar userId={user.id} username={user.username} size="lg" />
                                                             <div>
                                                                 <div className="text-sm font-medium">{user.username}</div>
                                                                 <div className="text-xs text-muted-foreground">{user.email}</div>
@@ -717,9 +716,7 @@ export default function AdminDashboardPage() {
                                                     <tr key={user.id} className="hover:bg-accent/30 transition-colors">
                                                         <td className="px-4 py-3">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                                                                    {user.username.charAt(0).toUpperCase()}
-                                                                </div>
+                                                                <UserAvatar userId={user.id} username={user.username} size="lg" />
                                                                 <span className="font-medium">{user.username}</span>
                                                             </div>
                                                         </td>

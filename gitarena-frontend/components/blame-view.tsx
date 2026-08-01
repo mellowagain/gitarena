@@ -2,11 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { gitarenaTheme, detectLanguage } from "@/components/code-block";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export interface BlameHunk {
     commitId: string;
@@ -50,23 +50,7 @@ function renderNode(node: AstNode, stylesheet: Record<string, React.CSSPropertie
 }
 
 function BlameAvatar({ authorName, authorUid, size = 16 }: { authorName: string; authorUid: string | null; size?: number }) {
-    if (authorUid !== null) {
-        return (
-            <Image
-                src={`/api/avatar/${authorUid}`}
-                alt={authorName}
-                width={size}
-                height={size}
-                className="rounded-full shrink-0 object-cover"
-                style={{ width: size, height: size }}
-            />
-        );
-    }
-    return (
-        <div className="rounded-full bg-secondary flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-            <span className="text-[9px] font-medium text-muted-foreground">{authorName[0]?.toUpperCase() ?? "?"}</span>
-        </div>
-    );
+    return <UserAvatar userId={authorUid} username={authorName} size={size === 20 ? "sm" : "xs"} />;
 }
 
 /**

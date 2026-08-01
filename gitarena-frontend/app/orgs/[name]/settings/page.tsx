@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -299,9 +300,7 @@ function MemberRow({
 
     return (
         <div className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors border-t border-border first:border-t-0">
-            <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-medium shrink-0">
-                {username[0]?.toUpperCase() ?? "?"}
-            </div>
+            <UserAvatar userId={member.userId} username={username} size="md" className="size-7" />
             <div className="flex-1 min-w-0">
                 {user ? (
                     <Link href={`/${username}`} className="text-sm font-medium hover:underline">

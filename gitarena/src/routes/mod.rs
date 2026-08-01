@@ -40,6 +40,7 @@ use crate::routes::user::api::auth::me::MeResponse;
 use crate::routes::user::api::issues::AssignedIssueEntry;
 use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sso::SSOProvidersResponse;
+use crate::routes::user::avatar::UploadAvatarResponse;
 
 use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
@@ -97,6 +98,9 @@ impl Modify for CookieAuth {
         crate::routes::user::api::auth::me::get_me,
         crate::routes::user::api::profile::get_user_profile,
         crate::routes::user::api::issues::get_assigned_issues,
+        crate::routes::user::avatar::get_avatar,
+        crate::routes::user::avatar::put_avatar,
+        crate::routes::user::avatar::delete_avatar,
         crate::routes::organization::api::create_org::create_org,
         crate::routes::organization::api::org::get_org,
         crate::routes::organization::api::org::delete_org,
@@ -179,6 +183,7 @@ impl Modify for CookieAuth {
         UserProfileRepo,
         UserProfileStats,
         AssignedIssueEntry,
+        UploadAvatarResponse,
         Organization,
         OrgRole,
         OrgMember,

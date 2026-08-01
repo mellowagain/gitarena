@@ -31,6 +31,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -239,13 +240,13 @@ function NewRepositoryForm() {
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
-                                                    <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium shrink-0">
-                                                        {selectedOption?.isOrg ? (
+                                                    {selectedOption?.isOrg ? (
+                                                        <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary shrink-0">
                                                             <Building2 className="h-3.5 w-3.5" />
-                                                        ) : (
-                                                            (selectedOption?.label?.[0]?.toUpperCase() ?? "?")
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    ) : (
+                                                        <UserAvatar userId={user?.id} username={selectedOption?.label ?? ""} size="md" />
+                                                    )}
                                                     <span>{selectedNamespace || "Select owner"}</span>
                                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
                                                 </button>
@@ -254,9 +255,13 @@ function NewRepositoryForm() {
                                                 {namespaceOptions.map((opt) => (
                                                     <DropdownMenuItem key={opt.value} onClick={() => setNamespaceOverride(opt.value)}>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="flex items-center justify-center h-5 w-5 rounded bg-secondary text-xs font-medium shrink-0">
-                                                                {opt.isOrg ? <Building2 className="h-3 w-3" /> : opt.label[0].toUpperCase()}
-                                                            </div>
+                                                            {opt.isOrg ? (
+                                                                <div className="flex items-center justify-center h-5 w-5 rounded bg-secondary shrink-0">
+                                                                    <Building2 className="h-3 w-3" />
+                                                                </div>
+                                                            ) : (
+                                                                <UserAvatar userId={user?.id} username={opt.label} size="sm" />
+                                                            )}
                                                             {opt.label}
                                                             {opt.isOrg && (
                                                                 <span className="ml-auto text-[10px] text-muted-foreground">org</span>
@@ -268,9 +273,7 @@ function NewRepositoryForm() {
                                         </DropdownMenu>
                                     ) : (
                                         <div className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md">
-                                            <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary text-xs font-medium">
-                                                {user?.username?.[0]?.toUpperCase() ?? "?"}
-                                            </div>
+                                            <UserAvatar userId={user?.id} username={user?.username ?? ""} size="md" />
                                             <span>{user?.username ?? "…"}</span>
                                         </div>
                                     )}

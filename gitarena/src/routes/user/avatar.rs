@@ -1,78 +1,79 @@
 use crate::database::Pool;
-use crate::mail::Email;
-use crate::prelude::{AwcExtensions, HttpRequestExtensions};
-use crate::user::WebUser;
+use crate::storage::Storage;
+use crate::user::{User, WebUser};
 use crate::{die, err};
+use actix_web::http::header::{CACHE_CONTROL, CONTENT_TYPE, ETAG};
+use actix_web::{HttpResponse, Responder, web};
+use anyhow::{Context, Result, bail};
+use gitarena_macros::route;
+use http::Method;
+use object_store::ObjectStoreExt;
+use object_store::signer::Signer;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-use std::fs;
-use std::io::Cursor;
-use std::path::Path;
-use std::time::SystemTime;
-
-use actix_multipart::Multipart;
-use actix_web::http::header::{CACHE_CONTROL, LAST_MODIFIED};
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result};
-use awc::Client;
-use awc::http::header::IF_MODIFIED_SINCE;
-use chrono::{Duration, NaiveDateTime};
-use futures::TryStreamExt;
-use gitarena_macros::{from_config, route};
-use image::ImageFormat;
-use opentelemetry_instrumentation_actix_web::ClientExt;
-use serde::Deserialize;
-use tracing::{Span, instrument};
-
+#[utoipa::path(
+    get,
+    path = "/api/avatar/{user_id}",
+    params(("user_id" = Uuid, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "User avatar", content_type = "image/webp"),
+        (status = 404, description = "User or avatar not found"),
+        (status = 503, description = "Object storage unavailable"),
+    ),
+    tag = "user"
+)]
 #[route("/api/avatar/{user_id}", method = "GET", err = "text")]
-pub(crate) async fn get_avatar(avatar_request: web::Path<AvatarRequest>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let (gravatar_enabled, avatars_dir): (bool, String) = from_config!(
-        "avatars.gravatar" => bool,
-        "avatars.dir" => String
-    );
+pub(crate) async fn get_avatar(request: web::Path<AvatarRequest>, storage: web::Data<Storage>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+    let Some(store) = storage.as_ref().as_ref() else {
+        die!(SERVICE_UNAVAILABLE, "Object storage is not available");
+    };
 
-    let query_string = request.q_string();
+    let mut tx = db_pool.begin().await?;
 
-    if !query_string.has("override") {
-        let path_str = format!("{}/{}.jpg", avatars_dir, avatar_request.user_id);
-        let path = Path::new(path_str.as_str());
+    let user = User::find_using_id(request.user_id, &mut tx)
+        .await
+        .ok_or_else(|| err!(NOT_FOUND, "user not found"))?;
 
-        // User has set an avatar, return it
-        if path.is_file() {
-            return send_image(path, &request).context("Failed to read local image file");
+    tx.commit().await?;
+
+    Ok(match store.get(&user.avatar_s3_key()).await {
+        Ok(result) => {
+            let mut response = HttpResponse::Ok();
+            response
+                .append_header((CONTENT_TYPE, "image/webp"))
+                .append_header((CACHE_CONTROL, "public, max-age=604800"));
+
+            if let Some(e_tag) = &result.meta.e_tag {
+                response.append_header((ETAG, e_tag.as_str()));
+            }
+
+            response.streaming(result.into_stream())
         }
-    }
-
-    // User has not set an avatar, so if Gravatar integration is enabled return it
-    if gravatar_enabled {
-        let mut transaction = db_pool.begin().await?;
-
-        let email = if let Some(email) = query_string.get("override") {
-            email.to_owned()
-        } else {
-            Email::find_primary_email(avatar_request.user_id, &mut transaction)
-                .await?
-                .ok_or_else(|| err!(NOT_FOUND, "User not found"))?
-                .email
-        };
-
-        return send_gravatar(email.as_str(), &request).await.context("Failed to request Gravatar image");
-    }
-
-    // Gravatar integration is not enabled, return fallback icon
-    // TODO: Maybe generate own identicons? -> There are crates for this
-
-    let path_str = format!("{avatars_dir}/default.jpg");
-    let path = Path::new(path_str.as_str());
-
-    send_image(path, &request).context("Failed to read default avatar file")
+        Err(object_store::Error::NotFound { .. }) => die!(NOT_FOUND, "user did not upload avatar"),
+        Err(err) => bail!(err),
+    })
 }
 
-#[route("/api/avatar", method = "PUT", err = "text")]
-pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    if matches!(web_user, WebUser::Anonymous) {
-        die!(UNAUTHORIZED, "No logged in");
-    }
+#[utoipa::path(
+    post,
+    path = "/api/avatar",
+    responses(
+        (status = 200, description = "Avatar upload URL", body = UploadAvatarResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "User disabled"),
+        (status = 503, description = "Object storage unavailable"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "user"
+)]
+#[route("/api/avatar", method = "POST", err = "json")]
+pub(crate) async fn put_avatar(web_user: WebUser, storage: web::Data<Storage>) -> Result<impl Responder> {
+    let Some(store) = storage.as_ref().as_ref() else {
+        die!(SERVICE_UNAVAILABLE, "Object storage is not available");
+    };
 
     let user = web_user.into_user()?;
 
@@ -80,124 +81,53 @@ pub(crate) async fn put_avatar(web_user: WebUser, mut payload: Multipart, db_poo
         die!(FORBIDDEN, "User is disabled");
     }
 
-    let avatars_dir: String = from_config!("avatars.dir" => String);
+    let upload_url = store
+        .signed_url(Method::PUT, &user.avatar_s3_key(), Duration::from_mins(15))
+        .await
+        .context("failed to generate upload url")?;
 
-    let mut field = match payload.try_next().await {
-        Ok(Some(field)) => field,
-        Ok(None) => die!(BAD_REQUEST, "No multipart field found"),
-        Err(err) => return Err(err.into()),
+    Ok(HttpResponse::Ok().json(UploadAvatarResponse {
+        upload_url: upload_url.to_string(),
+    }))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/avatar",
+    responses(
+        (status = 204, description = "Avatar deleted"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "User disabled"),
+        (status = 503, description = "Object storage unavailable"),
+    ),
+    security(("cookieAuth" = [])),
+    tag = "user"
+)]
+#[route("/api/avatar", method = "DELETE", err = "json")]
+pub(crate) async fn delete_avatar(web_user: WebUser, storage: web::Data<Storage>) -> Result<impl Responder> {
+    let Some(store) = storage.as_ref().as_ref() else {
+        die!(SERVICE_UNAVAILABLE, "Object storage is not available");
     };
 
-    let content_disposition = field.content_disposition();
-    let file_name = content_disposition.get_filename().ok_or_else(|| err!(BAD_REQUEST, "No file name"))?;
-    let extension = file_name
-        .rsplit_once('.')
-        .map(|(_, ext)| ext.to_owned())
-        .ok_or_else(|| err!(BAD_REQUEST, "Invalid file name"))?;
+    let user = web_user.into_user()?;
 
-    let mut bytes = web::BytesMut::new();
-
-    while let Some(chunk) = field.try_next().await.context("Failed to read multipart data chunk")? {
-        bytes.extend_from_slice(chunk.as_ref());
+    if user.disabled {
+        die!(FORBIDDEN, "User is disabled");
     }
 
-    let frozen_bytes = bytes.freeze();
-
-    web::block(move || -> Result<()> {
-        let format = ImageFormat::from_extension(extension).ok_or_else(|| err!(BAD_REQUEST, "Unsupported image format"))?;
-
-        let mut cursor = Cursor::new(frozen_bytes.as_ref());
-
-        let mut img = image::load(&mut cursor, format)?;
-        img = img.thumbnail_exact(500, 500); // TODO: Check whenever this removes metadata such as location (If not remove metadata)
-
-        let path_str = format!("{}/{}.jpg", avatars_dir, user.id);
-        let path = Path::new(path_str.as_str());
-
-        img.save_with_format(path, ImageFormat::Jpeg)?;
-
-        Ok(())
-    })
-    .await
-    .context("Failed to save image")?
-    .context("Failed to save image")?;
-
-    Ok(HttpResponse::Created().finish())
-}
-
-#[instrument(err, skip(request), fields(path = path.as_ref().display().to_string()))]
-fn send_image<P: AsRef<Path>>(path: P, request: &HttpRequest) -> Result<HttpResponse> {
-    let path = path.as_ref();
-
-    let mut response = HttpResponse::Ok();
-    response.content_type("image/jpeg");
-
-    let meta_data = fs::metadata(path)?;
-
-    if let Ok(modified_system_time) = meta_data.modified() {
-        let modified_unix_time = modified_system_time.duration_since(SystemTime::UNIX_EPOCH)?;
-        let naive_date_time = NaiveDateTime::from_timestamp(modified_unix_time.as_secs().cast_signed(), modified_unix_time.subsec_nanos());
-
-        // TODO: Convert time zone from local machine to GMT properly
-        let format = naive_date_time.format("%a, %d %b %Y %H:%M:%S GMT").to_string();
-
-        if let Some(if_modified_since) = request.get_header("if-modified-since") {
-            let request_date_time = NaiveDateTime::parse_from_str(if_modified_since, "%a, %d %b %Y %H:%M:%S %Z")?;
-
-            let duration = naive_date_time.signed_duration_since(request_date_time);
-
-            // Image is still OK on client side cache
-            if duration > Duration::seconds(0) {
-                return Ok(HttpResponse::NotModified().append_header((LAST_MODIFIED, format)).finish());
-            }
-        }
-
-        response.append_header((LAST_MODIFIED, format));
-    }
-
-    let file_content = fs::read(path)?;
-
-    Ok(response.body(file_content))
-}
-
-/// Returns a streaming `HttpResponse` with the gravatar image
-#[instrument(err, skip_all, fields(hash))]
-async fn send_gravatar(email: &str, request: &HttpRequest) -> Result<HttpResponse> {
-    let md5hash = md5::compute(email);
-    let hash_str = format!("{md5hash:x}");
-
-    Span::current().record("hash", &hash_str);
-
-    let url = format!("https://www.gravatar.com/avatar/{hash_str}?s=500&r=pg&d=identicon");
-
-    let mut client = Client::gitarena().get(url);
-
-    if let Some(header_value) = request.get_header("if-modified-since") {
-        client = client.append_header((IF_MODIFIED_SINCE, header_value));
-    }
-
-    let gateway_response = client
-        .trace_request()
-        .send()
-        .await
-        .map_err(|err| err!(BAD_GATEWAY, "Failed to send request to Gravatar: {}", err))?;
-
-    let mut response = HttpResponse::build(gateway_response.status());
-
-    let headers = gateway_response.headers();
-
-    if let Some(cache_control) = headers.get("cache-control") {
-        response.append_header((CACHE_CONTROL, cache_control.to_str()?));
-    }
-
-    if let Some(last_modified) = headers.get("last-modified") {
-        response.append_header((LAST_MODIFIED, last_modified.to_str()?));
-    }
-
-    Ok(response.streaming(gateway_response))
+    store.delete(&user.avatar_s3_key()).await?;
+    Ok(HttpResponse::NoContent().finish())
 }
 
 #[derive(Deserialize)]
 pub(crate) struct AvatarRequest {
+    /// User ID
     user_id: Uuid,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UploadAvatarResponse {
+    /// S3 pre-signed URL to upload avatar to
+    upload_url: String,
 }

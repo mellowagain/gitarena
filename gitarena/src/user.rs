@@ -19,6 +19,7 @@ use derive_more::{Debug, Display};
 use futures::Future;
 use gitarena_issues::author::Author;
 use ipnetwork::IpNetwork;
+use object_store::path::Path;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
 use tracing::{error, instrument};
@@ -51,6 +52,10 @@ impl User {
         {
             error!(?err, "failed to index user in meilisearch");
         }
+    }
+
+    pub(crate) fn avatar_s3_key(&self) -> Path {
+        Path::from(format!("avatars/{}.webp", self.id))
     }
 
     #[instrument(skip(tx))]

@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import DeviceDetector from "device-detector-js";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
+import { AvatarManagement } from "@/components/avatar-management";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -238,8 +239,6 @@ function ProfileTab() {
     }
 
     const username = me?.username ?? "";
-    const initial = username ? username[0].toUpperCase() : "?";
-
     return (
         <div className="space-y-0">
             <SectionHeader title="Profile" description="This information will be visible to other users on GitArena." />
@@ -247,18 +246,7 @@ function ProfileTab() {
             {/* Avatar */}
             <div className="mb-6">
                 <FieldLabel>Avatar</FieldLabel>
-                <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-secondary border border-border flex items-center justify-center text-xl font-semibold">
-                        {initial}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <button className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors">
-                            <Plus className="h-3.5 w-3.5" />
-                            Upload avatar
-                        </button>
-                        <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 1 MB.</p>
-                    </div>
-                </div>
+                {me && <AvatarManagement userId={me.id} username={me.username} />}
             </div>
 
             <Divider />

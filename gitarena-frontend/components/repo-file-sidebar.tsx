@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { ErrorDisplay } from "@/components/error-display";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export type FileNode = {
     name: string;
@@ -114,9 +115,7 @@ function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo:
 
     return (
         <>
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
-                {commit.authorName[0].toUpperCase()}
-            </div>
+            <UserAvatar userId={commit.authorUid} username={commit.authorName} size="md" />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     <span className="font-medium text-foreground">{commit.authorName}</span>

@@ -49,6 +49,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface IssueDetail {
     id: string;
@@ -60,7 +61,9 @@ interface IssueDetail {
     priority: string;
     labels: string[];
     commentCount: number;
+    authorId: string;
     authorUsername: string;
+    assigneeIds: string[];
     assignees: string[];
     milestone: { id: string; title: string; closed: boolean; dueDate: string | null } | null;
     reactions: ReactionGroup[];
@@ -75,6 +78,7 @@ interface ReactionGroup {
 
 interface IssueComment {
     id: string;
+    authorId: string;
     authorUsername: string;
     body: string;
     editedAt: string | null;
@@ -196,14 +200,6 @@ function LabelBadge({
     );
 }
 
-function AuthorAvatar({ author }: { author: string }) {
-    return (
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-            {author[0].toUpperCase()}
-        </div>
-    );
-}
-
 const EMOJI_CATEGORIES = [
     { label: "Classics", emojis: ["👍", "👎", "❤️", "🎉", "🚀", "🫶", "🙏", "🔥"] },
     { label: "Faces", emojis: ["😄", "😕", "😭", "😂", "🤬", "🥹", "🤣", "👀", "😈", "😔", "🤦"] },
@@ -316,7 +312,7 @@ function CommentBlock({
     return (
         <div className="group pl-4 border-l-2 transition-colors border-border hover:border-muted-foreground/40">
             <div className="flex items-center gap-2 mb-2">
-                <AuthorAvatar author={comment.authorUsername} />
+                <UserAvatar userId={comment.authorId} username={comment.authorUsername} size="sm" />
                 <span className="text-sm font-medium">{comment.authorUsername}</span>
                 <span className="text-xs text-muted-foreground">{formatDistanceToNow(uuidToDate(comment.id), { addSuffix: true })}</span>
                 {comment.editedAt && (
@@ -909,7 +905,7 @@ export default function IssuePage() {
 
                             <div className="group/desc mb-8 pl-5 border-l-4 border-muted-foreground/20 hover:border-muted-foreground/40 transition-colors">
                                 <div className="flex items-center gap-2 mb-3">
-                                    <AuthorAvatar author={issue.authorUsername} />
+                                    <UserAvatar userId={issue.authorId} username={issue.authorUsername} size="sm" />
                                     <span className="text-sm font-medium">{issue.authorUsername}</span>
                                     <span className="text-xs text-muted-foreground">
                                         {formatDistanceToNow(uuidToDate(issue.id), { addSuffix: true })}
@@ -1075,14 +1071,12 @@ export default function IssuePage() {
                             <div>
                                 <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Assignees</h3>
                                 <div className="space-y-1.5">
-                                    {issue.assignees.map((assignee) => (
+                                    {issue.assignees.map((assignee, index) => (
                                         <div
-                                            key={assignee}
+                                            key={issue.assigneeIds[index] ?? assignee}
                                             className="group/assignee flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm"
                                         >
-                                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-                                                {assignee[0].toUpperCase()}
-                                            </div>
+                                            <UserAvatar userId={issue.assigneeIds[index]} username={assignee} size="sm" />
                                             <span className="flex-1">{assignee}</span>
                                             {canManage && (
                                                 <button
@@ -1134,9 +1128,12 @@ export default function IssuePage() {
                                                     ) : (
                                                         list.map((c) => (
                                                             <DropdownMenuItem key={c.userId} onClick={() => handleAddAssignee(c.userId)}>
-                                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0 mr-2">
-                                                                    {c.username[0].toUpperCase()}
-                                                                </div>
+                                                                <UserAvatar
+                                                                    userId={c.userId}
+                                                                    username={c.username}
+                                                                    size="sm"
+                                                                    className="mr-2"
+                                                                />
                                                                 {c.username}
                                                             </DropdownMenuItem>
                                                         ))

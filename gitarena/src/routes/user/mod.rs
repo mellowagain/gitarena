@@ -1,7 +1,7 @@
 use actix_web::web::ServiceConfig;
 
 pub(crate) mod api;
-mod avatar;
+pub(crate) mod avatar;
 mod user_create;
 mod user_keys;
 mod user_logout;
@@ -17,6 +17,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
 
     config.service(avatar::get_avatar);
     config.service(avatar::put_avatar);
+    config.service(avatar::delete_avatar);
 
     config.service(user_keys::get_keys);
 }

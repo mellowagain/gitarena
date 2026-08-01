@@ -4,7 +4,7 @@ use crate::events::Event;
 use crate::issue::IssueCommentCache;
 use crate::privileges::privilege;
 use crate::repository::Repository;
-use crate::routes::repository::api::issues::{CommentResponse, get_issue_by_index};
+use crate::routes::repository::api::issues::{CommentResponse, get_issue_by_index, resolve_username};
 use crate::user::WebUser;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -91,6 +91,7 @@ pub(crate) async fn add_issue_comment(
 
     Ok(HttpResponse::Created().json(CommentResponse {
         id: comment_id,
+        author_id: user.id,
         author_username: user.username,
         body: body.into_inner().body,
         edited_at: None,
@@ -147,6 +148,8 @@ pub(crate) async fn edit_issue_comment(
         die!(FORBIDDEN, "Insufficient permissions");
     }
 
+    let author_username = resolve_username(comment.author_id, &mut tx).await?;
+
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
 
     let author = user.as_git_bug_author();
@@ -181,7 +184,8 @@ pub(crate) async fn edit_issue_comment(
 
     Ok(HttpResponse::Ok().json(CommentResponse {
         id: comment_id,
-        author_username: user.username,
+        author_id: comment.author_id,
+        author_username,
         body: body.into_inner().body,
         edited_at: Some(now),
         reactions: vec![],

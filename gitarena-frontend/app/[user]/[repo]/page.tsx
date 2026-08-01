@@ -34,6 +34,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale, uuidToDate } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { ArchivedBanner } from "@/components/archived-banner";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export interface RepoMetadata {
     id: string;
@@ -357,9 +358,7 @@ export function RepoPageContent({
                                                 </Tooltip>
                                             </div>
                                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                                                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-medium">
-                                                    {fileCommit.authorName[0].toUpperCase()}
-                                                </div>
+                                                <UserAvatar userId={fileCommit.authorUid} username={fileCommit.authorName} size="xs" />
                                                 <span className="font-medium text-foreground/80 shrink-0">{fileCommit.authorName}</span>
                                                 <span className="text-muted-foreground/40">·</span>
                                                 <span className="font-mono text-muted-foreground/60 shrink-0">

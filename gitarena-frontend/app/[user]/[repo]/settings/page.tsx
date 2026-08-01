@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useParams } from "next/navigation";
 import { ArchivedBanner } from "@/components/archived-banner";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -318,9 +319,7 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                 {collaborators &&
                     collaborators.map((c, i) => (
                         <div key={c.userId} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-7 w-7 flex items-center justify-center rounded-full bg-secondary border border-border text-xs font-medium shrink-0">
-                                {c.username[0].toUpperCase()}
-                            </div>
+                            <UserAvatar userId={c.userId} username={c.username} size="md" className="size-7" />
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium">{c.username}</p>
                             </div>

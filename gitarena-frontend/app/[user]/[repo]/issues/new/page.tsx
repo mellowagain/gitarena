@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { useAuth } from "@/hooks/use-auth";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface LabelsResponse {
     labels: { name: string; color: string }[];
@@ -237,9 +238,7 @@ export default function NewIssuePage() {
                                         key={uid}
                                         className="group/assignee flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm"
                                     >
-                                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-                                            {name[0].toUpperCase()}
-                                        </div>
+                                        <UserAvatar userId={uid} username={name} size="sm" />
                                         <span className="flex-1">{name}</span>
                                         <button
                                             className="opacity-0 group-hover/assignee:opacity-100 transition-opacity"
@@ -270,9 +269,7 @@ export default function NewIssuePage() {
                                                 onClick={() => toggleAssignee(userId)}
                                                 className="flex items-center gap-2"
                                             >
-                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-                                                    {username[0].toUpperCase()}
-                                                </div>
+                                                <UserAvatar userId={userId} username={username} size="sm" />
                                                 {username}
                                             </DropdownMenuItem>
                                         ))

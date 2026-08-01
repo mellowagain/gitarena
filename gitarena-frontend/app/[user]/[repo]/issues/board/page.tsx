@@ -21,6 +21,7 @@ import { AlertCircle, Code, Circle, CircleDot, CheckCircle2, XCircle, List, Sear
 import { jsonFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface IssueListItem {
     index: number;
@@ -29,7 +30,9 @@ interface IssueListItem {
     priority: Priority;
     labels: string[];
     commentCount: number;
+    authorId: string;
     authorUsername: string;
+    assigneeIds: string[];
     assignees: string[];
     updatedAt: string;
 }
@@ -97,14 +100,7 @@ function IssueCard({ issue, labelMap, isDragOverlay }: { issue: IssueListItem; l
                     <p className="text-sm font-medium leading-snug line-clamp-2">{issue.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">#{issue.index}</p>
                 </div>
-                {issue.assignees.length > 0 && (
-                    <div
-                        className="shrink-0 h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs font-medium"
-                        title={issue.assignees[0]}
-                    >
-                        {issue.assignees[0][0].toUpperCase()}
-                    </div>
-                )}
+                {issue.assignees.length > 0 && <UserAvatar userId={issue.assigneeIds[0]} username={issue.assignees[0]} size="md" />}
             </div>
             {issue.labels.length > 0 && (
                 <div className="flex flex-wrap gap-1">

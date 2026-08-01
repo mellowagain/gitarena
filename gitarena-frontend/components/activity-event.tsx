@@ -18,6 +18,7 @@ import {
     GitBranch,
 } from "lucide-react";
 import Link from "next/link";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export interface EventResponse {
     id: string;
@@ -191,7 +192,6 @@ export function ActivityEvent({ event }: ActivityEventProps) {
     const borderColor = getBorderColor(event.type);
 
     const actorUsername = event.actorUsername ?? "anonymous";
-    const initial = actorUsername[0].toUpperCase();
 
     const subjectHref =
         event.subjectIdRepo && event.subjectNamespace
@@ -210,9 +210,11 @@ export function ActivityEvent({ event }: ActivityEventProps) {
                 </div>
                 <p className="text-sm font-medium truncate min-w-0">{text}</p>
                 <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
-                    <div className="h-4 w-4 flex items-center justify-center rounded-full bg-secondary border border-border text-[9px] font-medium shrink-0">
-                        {initial}
-                    </div>
+                    {event.actorUsername ? (
+                        <UserAvatar userId={event.actorId} username={event.actorUsername} size="xs" />
+                    ) : (
+                        <UserAvatar username={actorUsername} size="xs" />
+                    )}
                     {event.actorUsername ? (
                         <Link href={`/${event.actorUsername}`} className="truncate hover:text-foreground transition-colors">
                             {event.actorUsername}
