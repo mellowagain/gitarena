@@ -27,7 +27,7 @@ pub(crate) async fn execute_upload_pack_v2(data: &[u8], repo: &Repository) -> Re
 
 #[instrument(err, skip(data, repo))]
 pub(crate) async fn execute_upload_pack_v1(data: &[u8], repo: &Repository) -> Result<Vec<u8>> {
-    let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
+    let mut readable_iter = StreamingPeekableIter::new(data, &[], false);
     readable_iter.fail_on_err_lines(true);
 
     let git_body = read_data_lines(&mut readable_iter).await?;

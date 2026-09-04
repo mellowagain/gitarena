@@ -11,6 +11,8 @@ use crate::repository::{Repository, extract_repo_from_request};
 use crate::ssh::key::SshKey;
 use crate::user::User;
 use anyhow::{Context, Result, anyhow};
+use gix::protocol::transport::packetline::PacketLineRef;
+use gix::protocol::transport::packetline::decode::{Stream, streaming};
 use opentelemetry::KeyValue;
 use russh::keys::{HashAlg, PublicKey};
 use russh::server::{Auth, Handler, Msg, Server, Session};
@@ -145,21 +147,24 @@ impl Handler for SshHandler {
             return Ok(());
         };
 
+        let SshOperation::ReceivePack(repo) = operation else {
+            self.buffer.clear();
+
+            session.exit_status_request(channel, 0)?;
+            session.close(channel)?;
+
+            return Ok(());
+        };
+
         let vec = self.buffer.clone();
 
         let db_pool = self.db_pool.clone();
         let meili_client = self.meili_client.clone();
 
-        let version = self.version;
         let actor_id = self.user.as_ref().map(|u| u.id).unwrap_or(Uuid::nil());
 
         // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
-        let result = match operation {
-            SshOperation::UploadPack(repo) => spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, vec, version))).await?,
-            SshOperation::ReceivePack(repo) => {
-                spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, &meili_client, repo, vec, actor_id))).await?
-            }
-        };
+        let result = spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, &meili_client, repo, vec, actor_id))).await?;
 
         match result {
             Ok(output) if output.is_empty() => {
@@ -186,10 +191,43 @@ impl Handler for SshHandler {
         Ok(true)
     }
 
-    #[instrument(skip(_session))]
-    async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
-        if !self.cancelled {
-            self.buffer.extend_from_slice(data);
+    #[instrument(skip(session))]
+    async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
+        if self.cancelled {
+            return Ok(());
+        }
+
+        self.buffer.extend_from_slice(data);
+
+        let Some(SshOperation::UploadPack(repo)) = self.operation.as_ref() else {
+            return Ok(());
+        };
+
+        let repo = repo.clone();
+
+        while let Some(length) = next_request_length(&self.buffer, self.version)? {
+            let request = self.buffer.drain(..length).collect::<Vec<u8>>();
+
+            let db_pool = self.db_pool.clone();
+            let repo = repo.clone();
+            let version = self.version;
+
+            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, request, version))).await?;
+
+            match result {
+                Ok(output) => session.data(channel, output)?,
+                Err(err) => {
+                    warn!(?err, "SSH git upload-pack round failed");
+
+                    self.operation = None;
+                    self.buffer.clear();
+
+                    session.exit_status_request(channel, 1)?;
+                    session.close(channel)?;
+
+                    return Ok(());
+                }
+            }
         }
 
         Ok(())
@@ -371,6 +409,25 @@ impl Handler for SshHandler {
 enum SshOperation {
     UploadPack(Repository),
     ReceivePack(Repository),
+}
+
+fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usize>> {
+    let mut offset = 0;
+
+    loop {
+        let (line, consumed) = match streaming(&buffer[offset..])? {
+            Stream::Complete { line, bytes_consumed } => (line, bytes_consumed),
+            Stream::Incomplete { .. } => return Ok(None),
+        };
+
+        offset += consumed;
+
+        match (line, version) {
+            (PacketLineRef::Flush, GitProtocol::V2) => return Ok(Some(offset)),
+            (PacketLineRef::Data(data), GitProtocol::V1) if data.trim_ascii_end() == b"done" => return Ok(Some(offset)),
+            _ => {}
+        }
+    }
 }
 
 #[instrument(err, skip(db_pool, vec))]
