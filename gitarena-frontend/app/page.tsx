@@ -541,7 +541,7 @@ export default function DashboardPage() {
                                     New repository
                                 </Link>
                                 <Link
-                                    href="/new/import"
+                                    href="/import"
                                     className="flex items-center gap-2.5 px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
                                 >
                                     <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
