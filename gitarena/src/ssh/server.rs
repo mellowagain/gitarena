@@ -45,7 +45,14 @@ impl Server for SshServer {
             Some(russh::Error::ConnectionTimeout) => debug!(?err, "SSH client connection timed out"),
             Some(russh::Error::KeepaliveTimeout) => debug!(?err, "SSH client connection keep alive timed out"),
             Some(russh::Error::InactivityTimeout) => debug!(?err, "SSH client connection inactivity timed out"),
-            Some(russh::Error::IO(io)) if io.kind() == io::ErrorKind::UnexpectedEof => debug!(?err, "SSH client disconnected early"),
+            Some(russh::Error::IO(io))
+                if matches!(
+                    io.kind(),
+                    io::ErrorKind::UnexpectedEof | io::ErrorKind::ConnectionReset | io::ErrorKind::BrokenPipe
+                ) =>
+            {
+                debug!(?err, "SSH client disconnected early");
+            }
             _ => error!(?err, "SSH session error"),
         }
     }
