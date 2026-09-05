@@ -17,8 +17,7 @@ pub(crate) async fn capabilities(service_header: Option<&str>) -> Result<Bytes> 
     writer.write_text("version 2").await?;
 
     writer.write_text(concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION"))).await?;
-    writer.write_text("ls-refs").await?;
-    writer.write_text("unborn").await?;
+    writer.write_text("ls-refs=unborn").await?;
     writer.write_text("fetch").await?;
     writer.write_text("server-option").await?;
     writer.write_text("object-format=sha1").await?;

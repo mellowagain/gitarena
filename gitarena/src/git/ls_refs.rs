@@ -97,6 +97,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
                             return None;
                         }
                     }
+                    None if options.unborn => line = format!("unborn {name} symref-target:{sym_target}"),
                     None => return None, // Reference points to a symbolic target that doesn't exist?
                 }
             } else if options.unborn {
