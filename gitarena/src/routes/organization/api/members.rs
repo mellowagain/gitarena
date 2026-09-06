@@ -97,9 +97,11 @@ pub(crate) async fn add_member(
         die!(NOT_FOUND, "Organization not found");
     };
 
-    let actor_role = OrgMember::get_role(org.id, actor.id, &mut tx).await?;
+    let Some(actor_role) = OrgMember::get_role(org.id, actor.id, &mut tx).await? else {
+        die!(BAD_REQUEST, "Cannot manage members without having a role yourself");
+    };
 
-    if !actor_role.is_some_and(|role| OrgMember::has_permission(role, OrgRole::Admin)) {
+    if !OrgMember::has_permission(actor_role, OrgRole::Admin) {
         die!(FORBIDDEN, "Insufficient permissions to manage members");
     }
 
@@ -112,9 +114,14 @@ pub(crate) async fn add_member(
     // cannot demote another owner unless you are also owner
     if let Some(existing_role) = existing_role
         && existing_role == OrgRole::Owner
-        && actor_role.is_none_or(|ar| !OrgMember::has_permission(ar, OrgRole::Owner))
+        && !OrgMember::has_permission(actor_role, OrgRole::Owner)
     {
         die!(FORBIDDEN, "Only an owner can change another owners role");
+    }
+
+    // GHSA-9qj6-wpf9-x967: guard against actors upgrading members past their own role
+    if body.role == OrgRole::Owner && !OrgMember::has_permission(actor_role, OrgRole::Owner) {
+        die!(FORBIDDEN, "Cannot add or upgrade a user to a role higher than your own");
     }
 
     sqlx::query(
