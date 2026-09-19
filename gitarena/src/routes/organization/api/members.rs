@@ -32,6 +32,7 @@ pub(crate) struct OrgMemberEntry {
         (status = 200, description = "List of members", body = Vec<OrgMemberEntry>),
         (status = 404, description = "Organization not found"),
     ),
+    security((), ("cookieAuth" = [])),
     tag = "organization"
 )]
 #[route("/api/orgs/{name}/members", method = "GET", err = "json")]

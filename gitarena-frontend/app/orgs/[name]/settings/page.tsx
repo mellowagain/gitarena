@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { TokenManager } from "@/components/token-manager";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -560,18 +561,13 @@ function WebhooksTab() {
     );
 }
 
-function TokensTab() {
+function TokensTab({ org }: { org: OrgInfo }) {
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-                <SectionTitle>Organization tokens</SectionTitle>
-                <WipTag />
-            </div>
-            <div className="flex items-center gap-2 p-4 border border-amber-500/30 rounded-md bg-amber-500/5">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-muted-foreground">Organization tokens are not yet available.</p>
-            </div>
-        </div>
+        <TokenManager
+            owner={{ kind: "org", id: org.id, name: org.name }}
+            title="Organization tokens"
+            description="Tokens that act on behalf of the organization, scoped to all of its resources or a selection of repositories."
+        />
     );
 }
 
@@ -738,7 +734,7 @@ export default function OrgSettingsPage() {
         security: <SecurityTab />,
         "audit-log": <AuditLogTab orgName={orgName} />,
         webhooks: <WebhooksTab />,
-        tokens: <TokensTab />,
+        tokens: <TokensTab org={org} />,
         danger: <DangerTab orgName={orgName} />,
     };
 

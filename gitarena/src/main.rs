@@ -58,6 +58,7 @@ mod ssh;
 mod sso;
 mod storage;
 mod telemetry;
+mod token;
 mod user;
 mod utils;
 mod verification;

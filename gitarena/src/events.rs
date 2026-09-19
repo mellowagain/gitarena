@@ -174,6 +174,7 @@ impl EventClass {
             _ if event.starts_with("passkey.") => EventClass::Security,
             _ if event.starts_with("email.") => EventClass::Security,
             _ if event.starts_with("privilege.") => EventClass::Security,
+            _ if event.starts_with("token.") => EventClass::Security,
 
             "user.created" => EventClass::Activity,
             "user.updated" => EventClass::Activity,

@@ -87,6 +87,15 @@ impl Repository {
         repo
     }
 
+    pub(crate) async fn find_by_id(id: Uuid, tx: &mut Transaction<'_, Database>) -> Option<Repository> {
+        sqlx::query_as::<_, Repository>("select * from repositories where id = $1 limit 1")
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await
+            .ok()
+            .flatten()
+    }
+
     #[instrument(err, skip(tx))]
     pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let mut init_ops = RepositoryInitOptions::new();

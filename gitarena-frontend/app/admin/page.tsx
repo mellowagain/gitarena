@@ -53,6 +53,7 @@ import { jsonFetcher, authFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { TokenManager } from "@/components/token-manager";
 
 interface InstanceStats {
     users: number;
@@ -821,7 +822,17 @@ export default function AdminDashboardPage() {
                         </div>
                     )}
 
-                    {!["dashboard", "users", "audit-log"].includes(activeSection) && (
+                    {activeSection === "access-tokens" && (
+                        <div className="max-w-3xl">
+                            <TokenManager
+                                owner={{ kind: "instance" }}
+                                title="Access Tokens"
+                                description="Instance-wide tokens and the runner tokens used to register CI runners that are not tied to a single owner."
+                            />
+                        </div>
+                    )}
+
+                    {!["dashboard", "users", "audit-log", "access-tokens"].includes(activeSection) && (
                         <div className="flex items-center justify-center h-full">
                             <div className="text-center">
                                 <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

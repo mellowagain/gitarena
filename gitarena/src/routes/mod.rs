@@ -34,6 +34,9 @@ use crate::routes::repository::api::tags::{TagInfo, TagKind, TagsResponse};
 use crate::routes::search::code::CodeSearchResponse;
 use crate::routes::search::repositories::RepoSearchResponse;
 use crate::routes::search::users::{SearchUser, UserSearchResponse};
+use crate::routes::tokens::TokenResponse;
+use crate::routes::tokens::create::{CreateTokenRequest, CreateTokenResponse};
+use crate::routes::tokens::update::UpdateTokenRequest;
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
@@ -41,6 +44,7 @@ use crate::routes::user::api::issues::AssignedIssueEntry;
 use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sso::SSOProvidersResponse;
 use crate::routes::user::avatar::UploadAvatarResponse;
+use crate::token::{Token, TokenPermission, TokenScope, TokenType};
 
 use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
@@ -55,11 +59,14 @@ pub(crate) mod organization;
 pub(crate) mod proxy;
 pub(crate) mod repository;
 pub(crate) mod search;
+pub(crate) mod tokens;
 pub(crate) mod user;
 
 pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(api::api);
     config.service(explore::explore);
+
+    tokens::init(config);
 }
 
 struct CookieAuth;
@@ -144,6 +151,12 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::releases::confirm_asset,
         crate::routes::repository::api::releases::download_asset,
         crate::routes::repository::api::releases::delete_asset,
+        crate::routes::tokens::permissions::get_token_permissions,
+        crate::routes::tokens::list::list_tokens,
+        crate::routes::tokens::list::get_token,
+        crate::routes::tokens::create::create_token,
+        crate::routes::tokens::update::update_token,
+        crate::routes::tokens::revoke::revoke_token,
     ),
     components(schemas(
         ArchiveRequest,
@@ -230,6 +243,14 @@ impl Modify for CookieAuth {
         Arch,
         Libc,
         Kind,
+        Token,
+        TokenType,
+        TokenScope,
+        TokenPermission,
+        TokenResponse,
+        CreateTokenRequest,
+        CreateTokenResponse,
+        UpdateTokenRequest,
     )),
     modifiers(&CookieAuth),
     tags(
@@ -240,6 +261,7 @@ impl Modify for CookieAuth {
         (name = "user", description = "User account management"),
         (name = "search", description = "Search endpoints"),
         (name = "admin", description = "Instance management for admins"),
+        (name = "token", description = "API token management"),
     )
 )]
 pub(crate) struct ApiDoc;

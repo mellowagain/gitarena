@@ -16,7 +16,6 @@ import {
     EyeOff,
     Smartphone,
     LogOut,
-    AlertCircle,
     Loader2,
     Info,
     Palette,
@@ -47,6 +46,7 @@ import DeviceDetector from "device-detector-js";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
 import { AvatarManagement } from "@/components/avatar-management";
+import { TokenManager } from "@/components/token-manager";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -915,21 +915,24 @@ function RepositoriesTab() {
 }
 
 function APIKeysTab() {
-    return (
-        <div>
-            <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-lg font-semibold">API Keys</h2>
-                <WipTag />
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">API key management is coming soon.</p>
+    const { user: me, isLoading } = useAuth();
 
-            <div className="flex items-start gap-3 p-4 border border-amber-500/30 bg-amber-500/5 rounded-md">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    Treat your API keys like passwords. Do not share them or include them in version-controlled code.
-                </p>
+    if (isLoading || !me) {
+        return (
+            <div>
+                <div className="h-5 w-28 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-4 w-80 bg-muted animate-pulse rounded mb-6" />
+                <div className="h-48 bg-muted animate-pulse rounded-md" />
             </div>
-        </div>
+        );
+    }
+
+    return (
+        <TokenManager
+            owner={{ kind: "user", username: me.username }}
+            title="API Keys"
+            description="Personal access tokens authenticate API requests and Git operations over HTTP on your behalf."
+        />
     );
 }
 

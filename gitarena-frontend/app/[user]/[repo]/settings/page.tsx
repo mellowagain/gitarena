@@ -42,10 +42,11 @@ import {
 import { useParams } from "next/navigation";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { TokenManager } from "@/components/token-manager";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = "general" | "collaboration" | "branches" | "integrations" | "danger";
+type Tab = "general" | "collaboration" | "branches" | "integrations" | "tokens" | "danger";
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ const navItems: { id: Tab; label: string; icon: React.ElementType; wip?: boolean
     { id: "collaboration", label: "Collaboration", icon: Users },
     { id: "branches", label: "Branches & Tags", icon: ShieldCheck, wip: true },
     { id: "integrations", label: "Integrations", icon: Webhook, wip: true },
+    { id: "tokens", label: "Deploy Tokens", icon: KeyRound },
     { id: "danger", label: "Advanced", icon: AlertTriangle },
 ];
 
@@ -257,6 +259,7 @@ interface UpsertCollaboratorArg {
 }
 
 interface RepoMeta {
+    id: string;
     description: string | null;
     visibility: "public" | "internal" | "private";
     defaultBranch: string;
@@ -1037,6 +1040,26 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
+function TokensTab({ repoId }: { repoId: string | undefined }) {
+    if (!repoId) {
+        return (
+            <div>
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-4 w-80 mb-6" />
+                <Skeleton className="h-48 w-full rounded-md" />
+            </div>
+        );
+    }
+
+    return (
+        <TokenManager
+            owner={{ kind: "repo", id: repoId }}
+            title="Deploy Tokens"
+            description="Tokens scoped to this repository alone, for deployments and other automation that only needs access here."
+        />
+    );
+}
+
 export default function RepoSettingsPage() {
     const params = useParams();
     const namespace = (params.user ?? params.org) as string;
@@ -1051,6 +1074,7 @@ export default function RepoSettingsPage() {
         collaboration: <CollaborationTab namespace={namespace} repo={repoName} />,
         branches: <BranchesTab />,
         integrations: <IntegrationsTab />,
+        tokens: <TokensTab repoId={repoMeta?.id} />,
         danger: <DangerTab org={namespace} repo={repoName} />,
     };
 

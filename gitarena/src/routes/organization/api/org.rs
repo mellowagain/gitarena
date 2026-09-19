@@ -21,6 +21,7 @@ use utoipa::ToSchema;
         (status = 200, description = "Organization info", body = Organization),
         (status = 404, description = "Organization not found"),
     ),
+    security((), ("cookieAuth" = [])),
     tag = "organization"
 )]
 #[route("/api/orgs/{name}", method = "GET", err = "json")]
