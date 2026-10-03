@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/error-display";
-import { Github, Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
+import { Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
+import { GitHubIcon } from "@/components/github-icon";
 import { useAuth } from "@/hooks/use-auth";
 import type { AuthUser } from "@/hooks/use-auth";
 import useSWR from "swr";
@@ -350,7 +351,7 @@ function LoginContent() {
                                                 className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
                                                 title="GitHub"
                                             >
-                                                <Github className="h-5 w-5" />
+                                                <GitHubIcon className="h-5 w-5" />
                                             </a>
                                         )}
                                         {data?.gitlab && (

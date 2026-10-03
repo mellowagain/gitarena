@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Github, GitBranch, FileText, Folder } from "lucide-react";
+import { ArrowRight, GitBranch, FileText, Folder } from "lucide-react";
+import { GitHubIcon } from "@/components/github-icon";
 
 export function Hero() {
     return (
@@ -32,7 +33,7 @@ export function Hero() {
                                 <ArrowRight className="w-4 h-4" />
                             </Button>
                             <Button size="lg" variant="outline" className="gap-2">
-                                <Github className="w-4 h-4" />
+                                <GitHubIcon className="w-4 h-4" />
                                 View Source
                             </Button>
                         </div>

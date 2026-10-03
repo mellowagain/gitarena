@@ -47,10 +47,7 @@ export interface UpdateTokenRequest {
 
 /** Who a token belongs to, which decides the API owner filter and the types that can be created. */
 export type TokenOwner =
-    | { kind: "user"; username: string }
-    | { kind: "org"; id: string; name: string }
-    | { kind: "repo"; id: string }
-    | { kind: "instance" };
+    { kind: "user"; username: string } | { kind: "org"; id: string; name: string } | { kind: "repo"; id: string } | { kind: "instance" };
 
 export const tokenTypeLabels: Record<TokenType, string> = {
     personal: "Personal",
