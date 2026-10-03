@@ -1,17 +1,15 @@
 name: Docker build
 
 on:
-  - push
-  - pull_request_target
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
   packages: write
   id-token: write
   attestations: write
-
-concurrency:
-  group: docker-${{ github.event.pull_request.head.sha || github.sha }}
 
 env:
   REGISTRY: ghcr.io
