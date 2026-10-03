@@ -16,7 +16,6 @@ import {
     GitMerge,
     FolderGit2,
     Download,
-    Github,
     Link as LinkIcon,
     ArrowRight,
     CheckCircle2,
@@ -25,6 +24,7 @@ import {
     ChevronDown,
     Building2,
 } from "lucide-react";
+import { GitHubIcon } from "@/components/github-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
@@ -184,7 +184,7 @@ export default function ImportRepositoryPage() {
 
     const sourceOptions = [
         { id: "url" as ImportSource, label: "Clone URL", icon: LinkIcon, desc: "Import from any Git URL" },
-        { id: "github" as ImportSource, label: "GitHub", icon: Github, desc: "Connect your GitHub account" },
+        { id: "github" as ImportSource, label: "GitHub", icon: GitHubIcon, desc: "Connect your GitHub account" },
         { id: "gitlab" as ImportSource, label: "GitLab", icon: GitLabIcon, desc: "Connect your GitLab account" },
         { id: "bitbucket" as ImportSource, label: "Bitbucket", icon: BitbucketIcon, desc: "Connect your Bitbucket account" },
     ];
@@ -328,7 +328,7 @@ export default function ImportRepositoryPage() {
                             ) : (
                                 <div className="p-8 border border-dashed border-border rounded-lg text-center space-y-4">
                                     <div className="flex justify-center">
-                                        {source === "github" && <Github className="h-12 w-12 text-muted-foreground" />}
+                                        {source === "github" && <GitHubIcon className="h-12 w-12 text-muted-foreground" />}
                                         {source === "gitlab" && <GitLabIcon className="h-12 w-12 text-muted-foreground" />}
                                         {source === "bitbucket" && <BitbucketIcon className="h-12 w-12 text-muted-foreground" />}
                                     </div>

@@ -96,8 +96,7 @@ interface CommitDetailResponse {
 }
 
 type AstNode =
-    | { type: "text"; value: string }
-    | { type: "element"; tagName: string; properties: { className?: string[] }; children: AstNode[] };
+    { type: "text"; value: string } | { type: "element"; tagName: string; properties: { className?: string[] }; children: AstNode[] };
 
 type AstElement = Extract<AstNode, { type: "element" }>;
 

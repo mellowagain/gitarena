@@ -750,8 +750,7 @@ export default function IssuePage() {
     const issue = data?.issue;
 
     type FeedItem =
-        | { kind: "comment"; timestamp: number; comment: IssueComment }
-        | { kind: "event"; timestamp: number; event: TimelineEvent };
+        { kind: "comment"; timestamp: number; comment: IssueComment } | { kind: "event"; timestamp: number; event: TimelineEvent };
 
     const feedItems: FeedItem[] = [
         ...comments.map((c) => ({ kind: "comment" as const, timestamp: uuidToDate(c.id).getTime(), comment: c })),
