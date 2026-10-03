@@ -10,6 +10,9 @@ permissions:
   id-token: write
   attestations: write
 
+concurrency:
+  group: docker-${{ github.event.pull_request.head.sha || github.sha }}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
