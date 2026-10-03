@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
         let identity_service = IdentityService::new(
             CookieIdentityPolicy::new(secret.as_bytes())
                 .name("gitarena-auth")
-                .max_age(TimeDuration::days(10))
+                .max_age(TimeDuration::days(30))
                 .http_only(true)
                 .same_site(SameSite::Lax)
                 .secure(secure),

@@ -1,6 +1,7 @@
 use crate::contributions::task::CONTRIBUTIONS_TASK_TYPE;
 use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
+use crate::session::ExpiredSessionsRemovalTask;
 use crate::verification::ExpiredVerifyLinkRemovalTask;
 use crate::zoekt::task::ZOEKT_TASK_TYPE;
 use anyhow::{Context, Result};
@@ -114,6 +115,17 @@ async fn schedule_cron_jobs(queue: &AsyncQueue) -> Result<()> {
 
         info!(id = %task.id, pattern = extract_pattern(&cron), "scheduled cron job: remove expired webauthn challenges");
     }
+    {
+        let cron = ExpiredSessionsRemovalTask {};
+
+        let task = queue
+            .schedule_task(&cron as &dyn AsyncRunnable)
+            .await
+            .context("failed to schedule remove expired sessions cron job")?;
+
+        info!(id = %task.id, pattern = extract_pattern(&cron), "scheduled cron job: remove expired sessions");
+    }
+
     Ok(())
 }
 

@@ -97,12 +97,21 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
     const orgName = owner.kind === "org" ? owner.name : null;
     const namespace = username ?? orgName;
 
-    const { data: orgs, isLoading: orgsLoading } = useSWR<OrgEntry[]>(username ? `/api/users/${username}/orgs` : null);
-    const { data: profile, isLoading: profileLoading } = useSWR<UserProfileResponse>(username ? `/api/users/${username}` : null);
-    const { data: orgRepos, isLoading: orgReposLoading } = useSWR<RepoEntry[]>(orgName ? `/api/orgs/${orgName}/repos` : null);
+    const { data: orgs, isLoading: orgsLoading, error: orgsError } = useSWR<OrgEntry[]>(username ? `/api/users/${username}/orgs` : null);
+    const {
+        data: profile,
+        isLoading: profileLoading,
+        error: profileError,
+    } = useSWR<UserProfileResponse>(username ? `/api/users/${username}` : null);
+    const {
+        data: orgRepos,
+        isLoading: orgReposLoading,
+        error: orgReposError,
+    } = useSWR<RepoEntry[]>(orgName ? `/api/orgs/${orgName}/repos` : null);
 
     const repos = username ? profile?.repos : orgRepos;
     const reposLoading = username ? profileLoading : orgReposLoading;
+    const reposError = username ? profileError : orgReposError;
 
     // Organization tokens can only be limited to repositories, so they get no organization tab
     const [tab, setTab] = useState<ScopeTab>(username ? "orgs" : "repos");
@@ -114,6 +123,7 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
 
     const showingOrgs = tab === "orgs";
     const isLoading = showingOrgs ? orgsLoading : reposLoading;
+    const error = showingOrgs ? orgsError : reposError;
     const total = showingOrgs ? (orgs?.length ?? 0) : (repos?.length ?? 0);
     const matching = showingOrgs ? matchingOrgs.length : matchingRepos.length;
     const selectedHere = showingOrgs ? scopeOrgs : scopeRepos;
@@ -165,7 +175,6 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
                     placeholder={showingOrgs ? "Filter organizations…" : "Filter repositories…"}
                     className="flex-1 min-w-0 bg-transparent text-xs focus:outline-none placeholder:text-muted-foreground"
                 />
-                <span className="text-xs text-muted-foreground tabular-nums shrink-0">{selectedHere.length} selected</span>
             </div>
 
             <div className="max-h-56 overflow-y-auto scrollbar-dark p-1.5">
@@ -180,7 +189,13 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
                     </div>
                 )}
 
-                {!isLoading && total === 0 && (
+                {!isLoading && error && (
+                    <p className="px-2.5 py-6 text-center text-xs text-muted-foreground">
+                        {showingOrgs ? "Failed to load your organizations." : "Failed to load the repositories."}
+                    </p>
+                )}
+
+                {!isLoading && !error && total === 0 && (
                     <p className="px-2.5 py-6 text-center text-xs text-muted-foreground">
                         {showingOrgs ? "You are not a member of any organization." : "There are no repositories to choose from."}
                     </p>

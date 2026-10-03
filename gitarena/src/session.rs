@@ -1,4 +1,4 @@
-use crate::prelude::HttpRequestExtensions;
+use crate::prelude::{HttpRequestExtensions, MapToFangError};
 use crate::user::User;
 
 use std::error::Error;
@@ -7,21 +7,22 @@ use std::net::Ipv6Addr;
 use std::str::FromStr;
 
 use crate::database::{Database, Pool};
-use crate::geoip;
 use crate::mail::Email;
 use crate::mail::task::MailTask;
 use crate::mail::templates::NewLoginTemplate;
 use crate::passkey::name_from_user_agent;
+use crate::{TASK_DB_POOL, geoip};
 use actix_web::HttpRequest;
 use anyhow::{Context, Result, anyhow};
 use askama::Template;
+use async_trait::async_trait;
 use chrono::{DateTime, Local};
-use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
+use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, typetag};
 use gitarena_macros::from_config;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
-use tracing::{instrument, warn};
+use tracing::{info, instrument, warn};
 use tracing_unwrap::ResultExt;
 use uuid::Uuid;
 
@@ -237,4 +238,40 @@ pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRe
 
     queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "fang::serde")]
+pub(crate) struct ExpiredSessionsRemovalTask {}
+
+#[async_trait]
+#[typetag::serde]
+impl AsyncRunnable for ExpiredSessionsRemovalTask {
+    #[instrument(skip(_client))]
+    async fn run(&self, _client: &dyn AsyncQueueable) -> Result<(), FangError> {
+        let db_pool = TASK_DB_POOL.get().ok_or_else(|| FangError {
+            description: "task db pool OnceCell is empty".to_string(),
+        })?;
+
+        let mut tx = db_pool.begin().await.fang()?;
+
+        let result = sqlx::query("delete from sessions where updated_at < now() - interval '30 days'")
+            .execute(&mut *tx)
+            .await
+            .fang()?;
+
+        tx.commit().await.fang()?;
+
+        info!(count = %result.rows_affected(), "deleted expired user sessions");
+        Ok(())
+    }
+
+    fn uniq(&self) -> bool {
+        true
+    }
+
+    fn cron(&self) -> Option<Scheduled> {
+        // daily at 4am
+        Some(Scheduled::CronPattern("0 0 4 * * * *".to_string()))
+    }
 }
