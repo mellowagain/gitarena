@@ -36,6 +36,7 @@ import {
     Copy,
     Check,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -398,7 +399,7 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                                 <OsIcon os={os} className="h-4 w-4 text-muted-foreground" />
                                                 <span className="text-sm font-semibold text-foreground">{OS_LABEL[os]}</span>
                                                 {os === userOs && <span className="text-xs text-muted-foreground">(your platform)</span>}
-                                                <div className="flex-1 h-px bg-border/60" />
+                                                <Separator className="flex-1 bg-border/60" />
                                             </div>
                                             <div className="space-y-0.5 pl-1">
                                                 {byOs.map((asset) => (
@@ -418,7 +419,7 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                         <div className="flex items-center gap-2 mb-2">
                                             <KindIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-sm font-semibold text-foreground">{KIND_LABEL[kind]}</span>
-                                            <div className="flex-1 h-px bg-border/60" />
+                                            <Separator className="flex-1 bg-border/60" />
                                         </div>
                                         <div className="space-y-0.5 pl-1">
                                             {byKind.map((asset) => (

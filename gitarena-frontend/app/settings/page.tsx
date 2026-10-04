@@ -52,6 +52,7 @@ import { TokenManager } from "@/components/token-manager";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ function WipTag() {
 }
 
 function Divider() {
-    return <div className="border-t border-border my-8" />;
+    return <Separator className="my-8" />;
 }
 
 // ── Tab panels ─────────────────────────────────────────────────────────────────

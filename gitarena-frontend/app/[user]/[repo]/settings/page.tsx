@@ -46,6 +46,7 @@ import { TokenManager } from "@/components/token-manager";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -205,7 +206,7 @@ function ToggleRow({
 }
 
 function Divider() {
-    return <div className="border-t border-border my-8" />;
+    return <Separator className="my-8" />;
 }
 
 const roleColors: Record<Role, string> = {

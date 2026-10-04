@@ -11,6 +11,7 @@ import { GitHubIcon } from "@/components/github-icon";
 import { useAuth } from "@/hooks/use-auth";
 import useSWR from "swr";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 
 interface SSOProviders {
     github: boolean;
@@ -132,7 +133,7 @@ export default function RegisterPage() {
                                 <span className="hidden sm:inline">Merge Requests</span>
                             </Button>
                         </Link>
-                        <div className="w-px h-7 bg-border mx-3" />
+                        <Separator orientation="vertical" className="mx-3 data-[orientation=vertical]:h-7" />
                         <Link href="/login">
                             <Button variant="secondary" size="sm" className="h-10 px-4 text-base">
                                 Sign in
@@ -318,7 +319,7 @@ export default function RegisterPage() {
                             <>
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-border" />
+                                        <Separator />
                                     </div>
                                     <div className="relative flex justify-center text-sm">
                                         <span className="bg-background px-4 text-muted-foreground">or continue with</span>

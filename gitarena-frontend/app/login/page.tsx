@@ -18,6 +18,7 @@ import { postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -146,7 +147,7 @@ function LoginContent() {
                                 <span className="hidden sm:inline">Merge Requests</span>
                             </Button>
                         </Link>
-                        <div className="w-px h-7 bg-border mx-3" />
+                        <Separator orientation="vertical" className="mx-3 data-[orientation=vertical]:h-7" />
                         <Link href="/register">
                             <Button variant="secondary" size="sm" className="h-10 px-4 text-base">
                                 Sign up
@@ -325,7 +326,7 @@ function LoginContent() {
                             <>
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-border" />
+                                        <Separator />
                                     </div>
                                     <div className="relative flex justify-center text-sm">
                                         <span className="bg-background px-4 text-muted-foreground">or continue with</span>

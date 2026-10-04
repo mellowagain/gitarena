@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { GitBranch, ChevronRight, Scale, CheckCircle2, TriangleAlert, FileSearch, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 
 type Step = { title: string; body: string };
 
@@ -278,7 +279,7 @@ export default function TakedownPage() {
                                     </div>
                                 </fieldset>
 
-                                <div className="h-px bg-border" />
+                                <Separator />
 
                                 {/* Content identification */}
                                 <fieldset className="space-y-4">
@@ -340,7 +341,7 @@ export default function TakedownPage() {
                                     </div>
                                 </fieldset>
 
-                                <div className="h-px bg-border" />
+                                <Separator />
 
                                 {/* Declarations */}
                                 <fieldset className="space-y-4">

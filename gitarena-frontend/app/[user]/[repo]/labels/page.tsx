@@ -13,6 +13,7 @@ import { HexColorPicker } from "react-colorful";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 
 type Label = {
     id: string;
@@ -199,7 +200,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
                   />
 
                   {/* Divider */}
-                  <div className="border-t border-border" />
+                  <Separator />
 
                   {/* Presets */}
                   <div>
@@ -229,7 +230,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
                   </div>
 
                   {/* Divider */}
-                  <div className="border-t border-border" />
+                  <Separator />
 
                   {/* Hex input inside popover */}
                   <div className="flex items-center gap-2">

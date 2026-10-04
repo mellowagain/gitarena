@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ function FieldHint({ children }: { children: React.ReactNode }) {
 }
 
 function Divider() {
-    return <div className="border-t border-border my-6" />;
+    return <Separator className="my-6" />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

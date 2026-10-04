@@ -26,6 +26,7 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Kbd } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -146,7 +147,7 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
                             Search in <span className="font-mono font-medium">{search.scope.label}</span>
                         </span>
                     </button>
-                    <div className="border-t border-border" />
+                    <Separator />
                     <button
                         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
                         onClick={() => navigate(false)}
@@ -424,7 +425,9 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                             )
                         )}
 
-                    {navLinks && navLinks.length > 0 && <div className="w-px h-7 bg-border mx-2" />}
+                    {navLinks && navLinks.length > 0 && (
+                        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-7" />
+                    )}
 
                     {isAuthenticated && user ? (
                         <>
