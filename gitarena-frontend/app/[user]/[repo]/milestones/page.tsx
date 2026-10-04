@@ -14,6 +14,7 @@ import { jsonFetcher, postJsonFetcher, patchJsonFetcher, deleteFetcher } from "@
 import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, RefreshCw, Calendar, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MilestoneEntry {
     id: string;
@@ -279,32 +280,20 @@ export default function MilestonesPage() {
                     )}
 
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 border-b border-border">
-                        <button
-                            onClick={() => setActiveTab("open")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                                activeTab === "open"
-                                    ? "border-foreground text-foreground"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            <Circle className="h-4 w-4" />
-                            Open
-                            <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{openCount}</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("closed")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                                activeTab === "closed"
-                                    ? "border-foreground text-foreground"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Closed
-                            <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{closedCount}</span>
-                        </button>
-                    </div>
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
+                        <TabsList variant="line">
+                            <TabsTrigger value="open" className="px-4">
+                                <Circle className="h-4 w-4" />
+                                Open
+                                <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{openCount}</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="closed" className="px-4">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Closed
+                                <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{closedCount}</span>
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
 
                     {/* Loading */}
                     {isLoading && (

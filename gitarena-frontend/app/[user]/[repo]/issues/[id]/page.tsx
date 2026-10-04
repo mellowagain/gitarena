@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
 import {
@@ -388,23 +389,21 @@ function CommentComposer({
 
     return (
         <div className="flex items-start gap-3">
-            <div className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                <div className="flex items-center border-b border-border">
-                    <button
-                        onClick={() => setPreview(false)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${!preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
+            <Tabs
+                value={preview ? "preview" : "write"}
+                onValueChange={(v) => setPreview(v === "preview")}
+                className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+            >
+                <TabsList variant="line" className="gap-0">
+                    <TabsTrigger value="write" className="py-1.5 text-xs">
                         Write
-                    </button>
-                    <button
-                        onClick={() => setPreview(true)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                        <Eye className="h-3 w-3" />
+                    </TabsTrigger>
+                    <TabsTrigger value="preview" className="py-1.5 text-xs">
+                        <Eye className="size-3" />
                         Preview
-                    </button>
-                </div>
-                {preview ? (
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="preview">
                     <div className="px-3 py-2 min-h-[160px]">
                         {text.trim() ? (
                             <MarkdownRenderer content={text} user={user} repo={repo} className="space-y-4 text-sm leading-relaxed" />
@@ -412,7 +411,8 @@ function CommentComposer({
                             <span className="text-muted-foreground italic">Nothing to preview.</span>
                         )}
                     </div>
-                ) : (
+                </TabsContent>
+                <TabsContent value="write">
                     <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -420,7 +420,7 @@ function CommentComposer({
                         rows={6}
                         className="w-full px-3 py-2 bg-transparent text-base resize-none focus:outline-none"
                     />
-                )}
+                </TabsContent>
                 <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card/50">
                     <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                     <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ function CommentComposer({
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Tabs>
         </div>
     );
 }

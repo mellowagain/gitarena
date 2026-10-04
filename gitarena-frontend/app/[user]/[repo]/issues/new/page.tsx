@@ -7,6 +7,7 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, CheckCircle2, X, Eye, Loader2, Milestone } from "lucide-react";
 import { jsonFetcher, postJsonFetcher } from "@/lib/fetchers";
@@ -168,25 +169,21 @@ export default function NewIssuePage() {
 
                         <div className="mb-8">
                             <label className="text-sm font-medium block mb-1.5">Description</label>
-                            <div className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                                <div className="flex items-center border-b border-border">
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreview(false)}
-                                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${!preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                                    >
+                            <Tabs
+                                value={preview ? "preview" : "write"}
+                                onValueChange={(v) => setPreview(v === "preview")}
+                                className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+                            >
+                                <TabsList variant="line" className="gap-0">
+                                    <TabsTrigger value="write" className="py-1.5 text-xs">
                                         Write
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreview(true)}
-                                        className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                                    >
-                                        <Eye className="h-3 w-3" />
+                                    </TabsTrigger>
+                                    <TabsTrigger value="preview" className="py-1.5 text-xs">
+                                        <Eye className="size-3" />
                                         Preview
-                                    </button>
-                                </div>
-                                {preview ? (
+                                    </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="preview">
                                     <div className="px-3 py-2 min-h-[240px]">
                                         {body.trim() ? (
                                             <MarkdownRenderer
@@ -199,7 +196,8 @@ export default function NewIssuePage() {
                                             <span className="text-muted-foreground italic">Nothing to preview.</span>
                                         )}
                                     </div>
-                                ) : (
+                                </TabsContent>
+                                <TabsContent value="write">
                                     <textarea
                                         value={body}
                                         onChange={(e) => setBody(e.target.value)}
@@ -207,11 +205,11 @@ export default function NewIssuePage() {
                                         rows={10}
                                         className="w-full px-3 py-2 bg-transparent text-base resize-none focus:outline-none"
                                     />
-                                )}
+                                </TabsContent>
                                 <div className="flex items-center px-3 py-2 border-t border-border bg-card/50">
                                     <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                                 </div>
-                            </div>
+                            </Tabs>
                         </div>
 
                         <div className="flex items-center justify-between">

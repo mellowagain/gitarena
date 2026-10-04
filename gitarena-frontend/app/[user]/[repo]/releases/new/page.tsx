@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -462,35 +463,21 @@ export default function NewReleasePage() {
                     {/* Description */}
                     <div>
                         <label className="text-sm font-medium block mb-1.5">Release notes</label>
-                        <div className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                            <div className="flex items-center border-b border-border">
-                                <button
-                                    type="button"
-                                    onClick={() => setPreview(false)}
-                                    disabled={isPublishing}
-                                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        !preview
-                                            ? "text-foreground border-b-2 border-foreground -mb-px"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
+                        <Tabs
+                            value={preview ? "preview" : "write"}
+                            onValueChange={(v) => setPreview(v === "preview")}
+                            className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+                        >
+                            <TabsList variant="line" className="gap-0">
+                                <TabsTrigger value="write" className="py-1.5 text-xs" disabled={isPublishing}>
                                     Write
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPreview(true)}
-                                    disabled={isPublishing}
-                                    className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                                        preview
-                                            ? "text-foreground border-b-2 border-foreground -mb-px"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    <Eye className="h-3 w-3" />
+                                </TabsTrigger>
+                                <TabsTrigger value="preview" className="py-1.5 text-xs" disabled={isPublishing}>
+                                    <Eye className="size-3" />
                                     Preview
-                                </button>
-                            </div>
-                            {preview ? (
+                                </TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="preview">
                                 <div className="px-3 py-2 min-h-[200px]">
                                     {description.trim() ? (
                                         <MarkdownRenderer
@@ -503,7 +490,8 @@ export default function NewReleasePage() {
                                         <span className="text-muted-foreground italic">Nothing to preview.</span>
                                     )}
                                 </div>
-                            ) : (
+                            </TabsContent>
+                            <TabsContent value="write">
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
@@ -512,11 +500,11 @@ export default function NewReleasePage() {
                                     rows={8}
                                     className="w-full px-3 py-2 bg-transparent text-sm resize-none focus:outline-none disabled:opacity-50"
                                 />
-                            )}
+                            </TabsContent>
                             <div className="flex items-center px-3 py-2 border-t border-border bg-card/50">
                                 <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                             </div>
-                        </div>
+                        </Tabs>
                     </div>
 
                     {/* Pre-release toggle */}

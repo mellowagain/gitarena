@@ -44,6 +44,7 @@ import {
     XCircle,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const currentUser = { name: "Mari" };
 const repoData = { org: "mellowagain", name: "test" };
@@ -684,27 +685,26 @@ function CommentComposer() {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0 mt-1">
                 {currentUser.name[0].toUpperCase()}
             </div>
-            <div className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                <div className="flex items-center border-b border-border">
-                    <button
-                        onClick={() => setPreview(false)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${!preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
+            <Tabs
+                value={preview ? "preview" : "write"}
+                onValueChange={(v) => setPreview(v === "preview")}
+                className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+            >
+                <TabsList variant="line" className="gap-0">
+                    <TabsTrigger value="write" className="py-1.5 text-xs">
                         Write
-                    </button>
-                    <button
-                        onClick={() => setPreview(true)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                        <Eye className="h-3 w-3" />
+                    </TabsTrigger>
+                    <TabsTrigger value="preview" className="py-1.5 text-xs">
+                        <Eye className="size-3" />
                         Preview
-                    </button>
-                </div>
-                {preview ? (
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="preview">
                     <div className="px-3 py-2 min-h-[80px] text-sm text-foreground/80">
                         {text.trim() ? renderMarkdown(text) : <span className="text-muted-foreground italic">Nothing to preview.</span>}
                     </div>
-                ) : (
+                </TabsContent>
+                <TabsContent value="write">
                     <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -712,7 +712,7 @@ function CommentComposer() {
                         rows={3}
                         className="w-full px-3 py-2 bg-transparent text-sm resize-none focus:outline-none"
                     />
-                )}
+                </TabsContent>
                 <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card/50">
                     <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                     <div className="flex items-center gap-2">
@@ -743,7 +743,7 @@ function CommentComposer() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Tabs>
         </div>
     );
 }
@@ -919,284 +919,282 @@ export default function MergeRequestPage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1 border-b border-border mb-6">
-                            {(["conversation", "commits", "changes"] as const).map((tab) => {
-                                const icons = { conversation: MessageSquare, commits: GitCommit, changes: FileCode };
-                                const labels = { conversation: "Conversation", commits: `Commits`, changes: "Changes" };
-                                const counts = {
-                                    conversation: activity.filter((a) => a.type === "comment" || a.type === "diff_comment").length,
-                                    commits: mergeRequest.commits,
-                                    changes: mergeRequest.filesChanged,
-                                };
-                                const Icon = icons[tab];
-                                return (
-                                    <button
-                                        key={tab}
-                                        onClick={() => setActiveTab(tab)}
-                                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === tab ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-                                    >
-                                        <span className="flex items-center gap-2">
+                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="gap-6">
+                            <TabsList variant="line">
+                                {(["conversation", "commits", "changes"] as const).map((tab) => {
+                                    const icons = { conversation: MessageSquare, commits: GitCommit, changes: FileCode };
+                                    const labels = { conversation: "Conversation", commits: `Commits`, changes: "Changes" };
+                                    const counts = {
+                                        conversation: activity.filter((a) => a.type === "comment" || a.type === "diff_comment").length,
+                                        commits: mergeRequest.commits,
+                                        changes: mergeRequest.filesChanged,
+                                    };
+                                    const Icon = icons[tab];
+                                    return (
+                                        <TabsTrigger key={tab} value={tab} className="gap-2 px-4">
                                             <Icon className="h-4 w-4" />
                                             {labels[tab]}
                                             <span className="text-xs opacity-60">{counts[tab]}</span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        </TabsTrigger>
+                                    );
+                                })}
+                            </TabsList>
 
-                        {activeTab === "conversation" && (
-                            <>
-                                <div className="group/desc mb-8 pl-5 border-l-4 border-muted-foreground/20 hover:border-muted-foreground/40 transition-colors">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
-                                            {mergeRequest.author[0].toUpperCase()}
-                                        </div>
-                                        <span className="text-sm font-medium">{mergeRequest.author}</span>
-                                        <span className="text-xs text-muted-foreground">opened {mergeRequest.createdAt}</span>
-                                        <div className="ml-auto flex items-center gap-1 opacity-0 group-hover/desc:opacity-100 transition-opacity">
-                                            <button className="p-1 hover:bg-accent rounded transition-colors">
-                                                <Smile className="h-3.5 w-3.5 text-muted-foreground" />
-                                            </button>
-                                            <button className="p-1 hover:bg-accent rounded transition-colors">
-                                                <Edit className="h-3.5 w-3.5 text-muted-foreground" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="text-sm text-foreground/80">{renderMarkdown(mergeRequest.description)}</div>
-                                    <div className="flex items-center gap-1.5 mt-3">
-                                        <button className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-accent text-foreground transition-colors">
-                                            <span>👍</span>
-                                            <span>3</span>
-                                        </button>
-                                        <button className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-                                            <span>🚀</span>
-                                            <span>1</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="mb-8">
-                                    <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">Activity</h3>
-                                    <div className="space-y-5">
-                                        {activity.map((item) => {
-                                            if (item.type === "event") {
-                                                return <ActivityEvent key={item.id} item={item} />;
-                                            }
-                                            if (item.type === "diff_comment") {
-                                                return <DiffCommentBlock key={item.id} item={item} />;
-                                            }
-                                            return <CommentBlock key={item.id} item={item} />;
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="border border-border rounded-md overflow-hidden mb-8">
-                                    <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/60">
-                                        <CIIcon className={`h-5 w-5 ${ciStatusConfig[mergeRequest.ciStatus].color}`} />
-                                        <span className="font-medium text-sm">All checks have passed</span>
-                                    </div>
-                                    <div className="px-4 py-3 space-y-2">
-                                        {mergeRequest.ciJobs.map((job) => {
-                                            const jobConfig = ciStatusConfig[job.status];
-                                            const JobIcon = jobConfig.icon;
-                                            return (
-                                                <div key={job.name} className="flex items-center gap-3 text-sm">
-                                                    <JobIcon className={`h-4 w-4 ${jobConfig.color}`} />
-                                                    <span className="font-mono text-xs">{job.name}</span>
-                                                    <span className="text-muted-foreground text-xs">{jobConfig.label}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="px-4 py-3 bg-card/60 border-t border-border flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <Check className="h-4 w-4 text-green-500" />
-                                            <span className="text-green-500 font-medium">Ready to merge</span>
-                                            <span className="text-muted-foreground">· No conflicts</span>
-                                        </div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button size="sm" className="gap-2">
-                                                    Merge
-                                                    <ChevronDown className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>Create a merge commit</DropdownMenuItem>
-                                                <DropdownMenuItem>Squash and merge</DropdownMenuItem>
-                                                <DropdownMenuItem>Rebase and merge</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </div>
-
-                                <div className="border-t border-border pt-6">
-                                    <CommentComposer />
-                                </div>
-                            </>
-                        )}
-
-                        {activeTab === "commits" && (
-                            <div className="space-y-1.5">
-                                {commitHistory.map((commit) => {
-                                    const ciConf = ciStatusConfig[commit.ci];
-                                    const CICommitIcon = ciConf.icon;
-                                    const isCopied = copiedHash === commit.hash;
-                                    return (
-                                        <div
-                                            key={commit.hash}
-                                            className="group flex items-center gap-3 px-4 py-3 border border-border rounded-md hover:bg-accent/40 transition-colors"
-                                        >
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <CICommitIcon className={`h-4 w-4 shrink-0 ${ciConf.color}`} />
-                                                </TooltipTrigger>
-                                                <TooltipContent>{ciConf.label}</TooltipContent>
-                                            </Tooltip>
-                                            <GitCommit className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="truncate text-sm">{commit.message}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {commit.author} · {commit.date}
-                                                </p>
+                            <TabsContent value="conversation">
+                                <>
+                                    <div className="group/desc mb-8 pl-5 border-l-4 border-muted-foreground/20 hover:border-muted-foreground/40 transition-colors">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
+                                                {mergeRequest.author[0].toUpperCase()}
                                             </div>
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                <code className="px-2 py-0.5 bg-secondary rounded text-xs font-mono">
-                                                    {commit.shortHash}
-                                                </code>
-                                                <button
-                                                    onClick={() => copyHash(commit.hash)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all"
-                                                    title="Copy full hash"
-                                                >
-                                                    {isCopied ? (
-                                                        <Check className="h-3.5 w-3.5 text-green-500" />
-                                                    ) : (
-                                                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    )}
+                                            <span className="text-sm font-medium">{mergeRequest.author}</span>
+                                            <span className="text-xs text-muted-foreground">opened {mergeRequest.createdAt}</span>
+                                            <div className="ml-auto flex items-center gap-1 opacity-0 group-hover/desc:opacity-100 transition-opacity">
+                                                <button className="p-1 hover:bg-accent rounded transition-colors">
+                                                    <Smile className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                                <button className="p-1 hover:bg-accent rounded transition-colors">
+                                                    <Edit className="h-3.5 w-3.5 text-muted-foreground" />
                                                 </button>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        <div className="text-sm text-foreground/80">{renderMarkdown(mergeRequest.description)}</div>
+                                        <div className="flex items-center gap-1.5 mt-3">
+                                            <button className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-accent text-foreground transition-colors">
+                                                <span>👍</span>
+                                                <span>3</span>
+                                            </button>
+                                            <button className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                                                <span>🚀</span>
+                                                <span>1</span>
+                                            </button>
+                                        </div>
+                                    </div>
 
-                        {activeTab === "changes" && (
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground pb-4 border-b border-border">
-                                    <span>{mergeRequest.filesChanged} files changed</span>
-                                    <span className="text-green-500 font-medium">+{mergeRequest.additions}</span>
-                                    <span className="text-red-500 font-medium">-{mergeRequest.deletions}</span>
+                                    <div className="mb-8">
+                                        <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                                            Activity
+                                        </h3>
+                                        <div className="space-y-5">
+                                            {activity.map((item) => {
+                                                if (item.type === "event") {
+                                                    return <ActivityEvent key={item.id} item={item} />;
+                                                }
+                                                if (item.type === "diff_comment") {
+                                                    return <DiffCommentBlock key={item.id} item={item} />;
+                                                }
+                                                return <CommentBlock key={item.id} item={item} />;
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-border rounded-md overflow-hidden mb-8">
+                                        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/60">
+                                            <CIIcon className={`h-5 w-5 ${ciStatusConfig[mergeRequest.ciStatus].color}`} />
+                                            <span className="font-medium text-sm">All checks have passed</span>
+                                        </div>
+                                        <div className="px-4 py-3 space-y-2">
+                                            {mergeRequest.ciJobs.map((job) => {
+                                                const jobConfig = ciStatusConfig[job.status];
+                                                const JobIcon = jobConfig.icon;
+                                                return (
+                                                    <div key={job.name} className="flex items-center gap-3 text-sm">
+                                                        <JobIcon className={`h-4 w-4 ${jobConfig.color}`} />
+                                                        <span className="font-mono text-xs">{job.name}</span>
+                                                        <span className="text-muted-foreground text-xs">{jobConfig.label}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="px-4 py-3 bg-card/60 border-t border-border flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <Check className="h-4 w-4 text-green-500" />
+                                                <span className="text-green-500 font-medium">Ready to merge</span>
+                                                <span className="text-muted-foreground">· No conflicts</span>
+                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button size="sm" className="gap-2">
+                                                        Merge
+                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>Create a merge commit</DropdownMenuItem>
+                                                    <DropdownMenuItem>Squash and merge</DropdownMenuItem>
+                                                    <DropdownMenuItem>Rebase and merge</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-border pt-6">
+                                        <CommentComposer />
+                                    </div>
+                                </>
+                            </TabsContent>
+
+                            <TabsContent value="commits">
+                                <div className="space-y-1.5">
+                                    {commitHistory.map((commit) => {
+                                        const ciConf = ciStatusConfig[commit.ci];
+                                        const CICommitIcon = ciConf.icon;
+                                        const isCopied = copiedHash === commit.hash;
+                                        return (
+                                            <div
+                                                key={commit.hash}
+                                                className="group flex items-center gap-3 px-4 py-3 border border-border rounded-md hover:bg-accent/40 transition-colors"
+                                            >
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <CICommitIcon className={`h-4 w-4 shrink-0 ${ciConf.color}`} />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>{ciConf.label}</TooltipContent>
+                                                </Tooltip>
+                                                <GitCommit className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="truncate text-sm">{commit.message}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {commit.author} · {commit.date}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <code className="px-2 py-0.5 bg-secondary rounded text-xs font-mono">
+                                                        {commit.shortHash}
+                                                    </code>
+                                                    <button
+                                                        onClick={() => copyHash(commit.hash)}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all"
+                                                        title="Copy full hash"
+                                                    >
+                                                        {isCopied ? (
+                                                            <Check className="h-3.5 w-3.5 text-green-500" />
+                                                        ) : (
+                                                            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                            </TabsContent>
 
-                                <FileDiff
-                                    filename="src/auth/ssh_key.rs"
-                                    additions={58}
-                                    deletions={4}
-                                    hunks={[
-                                        {
-                                            header: "@@ -38,10 +38,18 @@ impl SSHKey {",
-                                            lines: [
-                                                { type: "context", lineOld: 38, lineNew: 38, content: "pub struct SSHKey {" },
-                                                { type: "context", lineOld: 39, lineNew: 39, content: "    pub id: i64," },
-                                                { type: "context", lineOld: 40, lineNew: 40, content: "    pub user_id: i64," },
-                                                { type: "remove", lineOld: 41, lineNew: null, content: "    pub key: String," },
-                                                { type: "add", lineOld: null, lineNew: 41, content: "    pub public_key: String," },
-                                                { type: "add", lineOld: null, lineNew: 42, content: "    pub fingerprint: String," },
-                                                { type: "add", lineOld: null, lineNew: 43, content: "    pub key_type: KeyType," },
-                                                {
-                                                    type: "context",
-                                                    lineOld: 42,
-                                                    lineNew: 44,
-                                                    content: "    pub created_at: DateTime<Utc>,",
-                                                },
-                                                { type: "context", lineOld: 43, lineNew: 45, content: "}" },
-                                            ],
-                                        },
-                                        {
-                                            header: "@@ -61,6 +69,12 @@ pub fn parse_key(raw: &str) -> SSHKey {",
-                                            lines: [
-                                                {
-                                                    type: "context",
-                                                    lineOld: 61,
-                                                    lineNew: 69,
-                                                    content: "pub fn parse_key(raw: &str) -> Result<SSHKey, ParseError> {",
-                                                },
-                                                {
-                                                    type: "remove",
-                                                    lineOld: 62,
-                                                    lineNew: null,
-                                                    content: '    if raw.is_empty() { panic!("empty key"); }',
-                                                },
-                                                {
-                                                    type: "add",
-                                                    lineOld: null,
-                                                    lineNew: 70,
-                                                    content: "    if raw.is_empty() { return Err(ParseError::EmptyKey); }",
-                                                },
-                                                {
-                                                    type: "context",
-                                                    lineOld: 63,
-                                                    lineNew: 71,
-                                                    content: "    let parts: Vec<&str> = raw.split(' ').collect();",
-                                                },
-                                                {
-                                                    type: "add",
-                                                    lineOld: null,
-                                                    lineNew: 72,
-                                                    content: "    if parts.len() < 2 { return Err(ParseError::InvalidFormat); }",
-                                                },
-                                                {
-                                                    type: "context",
-                                                    lineOld: 64,
-                                                    lineNew: 73,
-                                                    content: "    let key_type = parts[0].parse::<KeyType>()?;",
-                                                },
-                                                {
-                                                    type: "context",
-                                                    lineOld: 65,
-                                                    lineNew: 74,
-                                                    content: "    let data = base64::decode(parts[1])?;",
-                                                },
-                                            ],
-                                        },
-                                    ]}
-                                />
+                            <TabsContent value="changes">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-4 text-sm text-muted-foreground pb-4 border-b border-border">
+                                        <span>{mergeRequest.filesChanged} files changed</span>
+                                        <span className="text-green-500 font-medium">+{mergeRequest.additions}</span>
+                                        <span className="text-red-500 font-medium">-{mergeRequest.deletions}</span>
+                                    </div>
 
-                                <FileDiff
-                                    filename="src/auth/mod.rs"
-                                    additions={12}
-                                    deletions={2}
-                                    hunks={[
-                                        {
-                                            header: "@@ -1,8 +1,18 @@",
-                                            lines: [
-                                                { type: "context", lineOld: 1, lineNew: 1, content: "mod error;" },
-                                                { type: "add", lineOld: null, lineNew: 2, content: "mod ssh_key;" },
-                                                { type: "add", lineOld: null, lineNew: 3, content: "mod fingerprint;" },
-                                                { type: "context", lineOld: 2, lineNew: 4, content: "" },
-                                                { type: "context", lineOld: 3, lineNew: 5, content: "pub use error::AuthError;" },
-                                                { type: "remove", lineOld: 4, lineNew: null, content: "pub use key::SSHKey;" },
-                                                {
-                                                    type: "add",
-                                                    lineOld: null,
-                                                    lineNew: 6,
-                                                    content: "pub use ssh_key::{SSHKey, KeyType, ParseError};",
-                                                },
-                                                {
-                                                    type: "add",
-                                                    lineOld: null,
-                                                    lineNew: 7,
-                                                    content: "pub use fingerprint::generate_fingerprint;",
-                                                },
-                                            ],
-                                        },
-                                    ]}
-                                />
-                            </div>
-                        )}
+                                    <FileDiff
+                                        filename="src/auth/ssh_key.rs"
+                                        additions={58}
+                                        deletions={4}
+                                        hunks={[
+                                            {
+                                                header: "@@ -38,10 +38,18 @@ impl SSHKey {",
+                                                lines: [
+                                                    { type: "context", lineOld: 38, lineNew: 38, content: "pub struct SSHKey {" },
+                                                    { type: "context", lineOld: 39, lineNew: 39, content: "    pub id: i64," },
+                                                    { type: "context", lineOld: 40, lineNew: 40, content: "    pub user_id: i64," },
+                                                    { type: "remove", lineOld: 41, lineNew: null, content: "    pub key: String," },
+                                                    { type: "add", lineOld: null, lineNew: 41, content: "    pub public_key: String," },
+                                                    { type: "add", lineOld: null, lineNew: 42, content: "    pub fingerprint: String," },
+                                                    { type: "add", lineOld: null, lineNew: 43, content: "    pub key_type: KeyType," },
+                                                    {
+                                                        type: "context",
+                                                        lineOld: 42,
+                                                        lineNew: 44,
+                                                        content: "    pub created_at: DateTime<Utc>,",
+                                                    },
+                                                    { type: "context", lineOld: 43, lineNew: 45, content: "}" },
+                                                ],
+                                            },
+                                            {
+                                                header: "@@ -61,6 +69,12 @@ pub fn parse_key(raw: &str) -> SSHKey {",
+                                                lines: [
+                                                    {
+                                                        type: "context",
+                                                        lineOld: 61,
+                                                        lineNew: 69,
+                                                        content: "pub fn parse_key(raw: &str) -> Result<SSHKey, ParseError> {",
+                                                    },
+                                                    {
+                                                        type: "remove",
+                                                        lineOld: 62,
+                                                        lineNew: null,
+                                                        content: '    if raw.is_empty() { panic!("empty key"); }',
+                                                    },
+                                                    {
+                                                        type: "add",
+                                                        lineOld: null,
+                                                        lineNew: 70,
+                                                        content: "    if raw.is_empty() { return Err(ParseError::EmptyKey); }",
+                                                    },
+                                                    {
+                                                        type: "context",
+                                                        lineOld: 63,
+                                                        lineNew: 71,
+                                                        content: "    let parts: Vec<&str> = raw.split(' ').collect();",
+                                                    },
+                                                    {
+                                                        type: "add",
+                                                        lineOld: null,
+                                                        lineNew: 72,
+                                                        content: "    if parts.len() < 2 { return Err(ParseError::InvalidFormat); }",
+                                                    },
+                                                    {
+                                                        type: "context",
+                                                        lineOld: 64,
+                                                        lineNew: 73,
+                                                        content: "    let key_type = parts[0].parse::<KeyType>()?;",
+                                                    },
+                                                    {
+                                                        type: "context",
+                                                        lineOld: 65,
+                                                        lineNew: 74,
+                                                        content: "    let data = base64::decode(parts[1])?;",
+                                                    },
+                                                ],
+                                            },
+                                        ]}
+                                    />
+
+                                    <FileDiff
+                                        filename="src/auth/mod.rs"
+                                        additions={12}
+                                        deletions={2}
+                                        hunks={[
+                                            {
+                                                header: "@@ -1,8 +1,18 @@",
+                                                lines: [
+                                                    { type: "context", lineOld: 1, lineNew: 1, content: "mod error;" },
+                                                    { type: "add", lineOld: null, lineNew: 2, content: "mod ssh_key;" },
+                                                    { type: "add", lineOld: null, lineNew: 3, content: "mod fingerprint;" },
+                                                    { type: "context", lineOld: 2, lineNew: 4, content: "" },
+                                                    { type: "context", lineOld: 3, lineNew: 5, content: "pub use error::AuthError;" },
+                                                    { type: "remove", lineOld: 4, lineNew: null, content: "pub use key::SSHKey;" },
+                                                    {
+                                                        type: "add",
+                                                        lineOld: null,
+                                                        lineNew: 6,
+                                                        content: "pub use ssh_key::{SSHKey, KeyType, ParseError};",
+                                                    },
+                                                    {
+                                                        type: "add",
+                                                        lineOld: null,
+                                                        lineNew: 7,
+                                                        content: "pub use fingerprint::generate_fingerprint;",
+                                                    },
+                                                ],
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 </main>
 

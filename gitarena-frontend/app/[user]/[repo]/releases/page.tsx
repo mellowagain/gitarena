@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -503,35 +504,21 @@ export default function ReleasesPage() {
                 </div>
 
                 {/* Filter tabs */}
-                <div className="flex items-center gap-0.5 border-b border-border">
-                    {(["all", "stable", "pre-release"] as const).map((f) => {
-                        const count = f === "all" ? totalCount : f === "stable" ? stableCount : preCount;
-                        return (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-4 py-2.5 text-sm capitalize border-b-2 transition-colors -mb-px ${
-                                    filter === f
-                                        ? "border-foreground text-foreground font-medium"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                {f === "pre-release" ? "Pre-release" : f.charAt(0).toUpperCase() + f.slice(1)}
-                                <span
-                                    className={`ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full border ${
-                                        filter === f
-                                            ? "border-border bg-secondary text-foreground"
-                                            : "border-transparent bg-secondary text-muted-foreground"
-                                    }`}
-                                >
-                                    {count}
-                                </span>
-                            </button>
-                        );
-                    })}
-
-                    <div className="flex-1" />
-                </div>
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+                    <TabsList variant="line" className="gap-0.5">
+                        {(["all", "stable", "pre-release"] as const).map((f) => {
+                            const count = f === "all" ? totalCount : f === "stable" ? stableCount : preCount;
+                            return (
+                                <TabsTrigger key={f} value={f} className="px-4 py-2.5 font-normal data-[state=active]:font-medium">
+                                    {f === "pre-release" ? "Pre-release" : f.charAt(0).toUpperCase() + f.slice(1)}
+                                    <span className="px-1.5 py-0.5 text-[10px] rounded-full border border-transparent bg-secondary text-muted-foreground in-data-[state=active]:border-border in-data-[state=active]:text-foreground">
+                                        {count}
+                                    </span>
+                                </TabsTrigger>
+                            );
+                        })}
+                    </TabsList>
+                </Tabs>
 
                 {/* Release cards */}
                 <div className="space-y-4">
