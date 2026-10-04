@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Plus, BookOpen, Search, Users, ExternalLink, ShieldCheck, ChevronDown, UserRound } from "lucide-react";
 import {
@@ -17,6 +17,14 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+    Breadcrumb,
+    BreadcrumbItem as BreadcrumbListItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -169,26 +177,39 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
     return (
         <header className="border-b border-border shrink-0 sticky top-0 z-40 bg-background">
             <div className="flex h-14 w-full min-w-0 items-center gap-2 px-3 lg:hidden">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Link href="/" className="shrink-0 text-base font-semibold tracking-tight hover:opacity-80">
-                        GITARENA
-                    </Link>
-                    {mobileBreadcrumb && (
-                        <>
-                            <span className="shrink-0 select-none text-lg text-muted-foreground/40">/</span>
-                            {mobileBreadcrumb.href ? (
-                                <Link
-                                    href={mobileBreadcrumb.href}
-                                    className="min-w-0 truncate text-base font-medium transition-opacity hover:opacity-80"
-                                >
-                                    {mobileBreadcrumb.label}
+                <Breadcrumb className="min-w-0 flex-1">
+                    <BreadcrumbList className="flex-nowrap gap-2 sm:gap-2 text-base text-foreground">
+                        <BreadcrumbListItem className="shrink-0">
+                            <BreadcrumbLink asChild>
+                                <Link href="/" className="font-semibold tracking-tight hover:opacity-80 hover:text-foreground">
+                                    GITARENA
                                 </Link>
-                            ) : (
-                                <span className="min-w-0 truncate text-base font-medium">{mobileBreadcrumb.label}</span>
-                            )}
-                        </>
-                    )}
-                </div>
+                            </BreadcrumbLink>
+                        </BreadcrumbListItem>
+                        {mobileBreadcrumb && (
+                            <>
+                                <BreadcrumbSeparator className="shrink-0 select-none text-lg text-muted-foreground/40">
+                                    /
+                                </BreadcrumbSeparator>
+                                <BreadcrumbListItem className="min-w-0">
+                                    {mobileBreadcrumb.href ? (
+                                        <BreadcrumbLink asChild>
+                                            <Link
+                                                href={mobileBreadcrumb.href}
+                                                aria-current="page"
+                                                className="truncate font-medium transition-opacity hover:opacity-80 hover:text-foreground"
+                                            >
+                                                {mobileBreadcrumb.label}
+                                            </Link>
+                                        </BreadcrumbLink>
+                                    ) : (
+                                        <BreadcrumbPage className="truncate font-medium">{mobileBreadcrumb.label}</BreadcrumbPage>
+                                    )}
+                                </BreadcrumbListItem>
+                            </>
+                        )}
+                    </BreadcrumbList>
+                </Breadcrumb>
 
                 <nav className="ml-auto flex shrink-0 items-center gap-1">
                     {search && (
@@ -330,31 +351,47 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
             </div>
 
             <div className="hidden h-14 items-center justify-between gap-5 px-5 lg:flex">
-                <div className="flex items-center gap-2 shrink-0">
-                    <Link href="/" className="text-base font-semibold tracking-tight hover:opacity-80 shrink-0">
-                        GITARENA
-                    </Link>
-                    {breadcrumb &&
-                        breadcrumb.map((item, i) => (
-                            <span key={i} className="contents">
-                                <span className="text-muted-foreground/40 text-lg select-none">/</span>
-                                {item.href ? (
-                                    <Link
-                                        href={item.href}
-                                        className={
-                                            i === breadcrumb.length - 1
-                                                ? "text-base font-medium hover:opacity-80 transition-opacity"
-                                                : "text-base text-muted-foreground hover:text-foreground transition-colors"
-                                        }
-                                    >
-                                        {item.label}
-                                    </Link>
-                                ) : (
-                                    <span className="text-base font-medium">{item.label}</span>
-                                )}
-                            </span>
-                        ))}
-                </div>
+                <Breadcrumb className="shrink-0">
+                    <BreadcrumbList className="flex-nowrap gap-2 sm:gap-2 text-base text-foreground">
+                        <BreadcrumbListItem>
+                            <BreadcrumbLink asChild>
+                                <Link href="/" className="font-semibold tracking-tight hover:opacity-80 hover:text-foreground">
+                                    GITARENA
+                                </Link>
+                            </BreadcrumbLink>
+                        </BreadcrumbListItem>
+                        {breadcrumb &&
+                            breadcrumb.map((item, i) => {
+                                const isLast = i === breadcrumb.length - 1;
+                                return (
+                                    <Fragment key={i}>
+                                        <BreadcrumbSeparator className="text-muted-foreground/40 text-lg select-none">
+                                            /
+                                        </BreadcrumbSeparator>
+                                        <BreadcrumbListItem>
+                                            {item.href ? (
+                                                <BreadcrumbLink asChild>
+                                                    <Link
+                                                        href={item.href}
+                                                        aria-current={isLast ? "page" : undefined}
+                                                        className={
+                                                            isLast
+                                                                ? "font-medium hover:opacity-80 transition-opacity hover:text-foreground"
+                                                                : "text-muted-foreground"
+                                                        }
+                                                    >
+                                                        {item.label}
+                                                    </Link>
+                                                </BreadcrumbLink>
+                                            ) : (
+                                                <BreadcrumbPage className="font-medium">{item.label}</BreadcrumbPage>
+                                            )}
+                                        </BreadcrumbListItem>
+                                    </Fragment>
+                                );
+                            })}
+                    </BreadcrumbList>
+                </Breadcrumb>
 
                 {search && <SearchBar search={search} />}
 
