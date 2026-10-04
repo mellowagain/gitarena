@@ -47,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -151,15 +152,6 @@ function SectionHeader({ title, description, wip }: { title: string; description
             </div>
             {description && <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
         </div>
-    );
-}
-
-function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
-    return (
-        <label className="block text-sm font-medium mb-1.5">
-            {children}
-            {optional && <span className="ml-1.5 text-xs text-muted-foreground font-normal">optional</span>}
-        </label>
     );
 }
 
@@ -425,10 +417,13 @@ function GeneralTab({ namespace, repo }: { namespace: string; repo: string }) {
             <SectionHeader title="General" description="Core repository settings and metadata." wip />
 
             {/* Description */}
-            <div className="mb-6">
-                <FieldLabel optional>Description</FieldLabel>
-                <Textarea value={description} readOnly rows={3} className="opacity-60 cursor-not-allowed" />
-            </div>
+            <Field className="mb-6 gap-1.5">
+                <FieldLabel htmlFor="repo-description">
+                    Description
+                    <span className="text-xs text-muted-foreground font-normal">optional</span>
+                </FieldLabel>
+                <Textarea id="repo-description" value={description} readOnly rows={3} className="opacity-60 cursor-not-allowed" />
+            </Field>
 
             <SaveButton />
 

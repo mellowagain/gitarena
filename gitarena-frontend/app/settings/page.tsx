@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
+import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -150,15 +151,6 @@ function SectionHeader({ title, description }: { title: string; description?: st
     );
 }
 
-function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
-    return (
-        <label className="block text-sm font-medium mb-1.5">
-            {children}
-            {optional && <span className="ml-1.5 text-xs text-muted-foreground font-normal">optional</span>}
-        </label>
-    );
-}
-
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
     return (
         <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
@@ -208,7 +200,7 @@ function ProfileTab() {
             <div className="space-y-0">
                 <SectionHeader title="Profile" description="This information will be visible to other users on GitArena." />
                 <div className="mb-6">
-                    <FieldLabel>Avatar</FieldLabel>
+                    <FieldTitle className="mb-1.5">Avatar</FieldTitle>
                     <div className="flex items-center gap-4">
                         <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
                         <div className="flex flex-col gap-2">
@@ -233,43 +225,46 @@ function ProfileTab() {
 
             {/* Avatar */}
             <div className="mb-6">
-                <FieldLabel>Avatar</FieldLabel>
+                <FieldTitle className="mb-1.5">Avatar</FieldTitle>
                 {me && <AvatarManagement userId={me.id} username={me.username} />}
             </div>
 
             <Divider />
 
             {/* Username (read-only) */}
-            <div className="mb-4">
-                <FieldLabel>Username</FieldLabel>
-                <Input value={username} readOnly className="opacity-60 cursor-not-allowed" />
-                <p className="text-xs text-muted-foreground mt-1.5">Username changes are not yet supported.</p>
-            </div>
+            <Field className="mb-4 gap-1.5">
+                <FieldLabel htmlFor="settings-username">Username</FieldLabel>
+                <Input id="settings-username" value={username} readOnly className="opacity-60 cursor-not-allowed" />
+                <FieldDescription className="text-xs">Username changes are not yet supported.</FieldDescription>
+            </Field>
 
             {/* Bio / website / location — WIP */}
-            <div className="mb-4">
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel optional>Bio</FieldLabel>
+            <Field className="mb-4 gap-1.5">
+                <FieldLabel htmlFor="settings-bio">
+                    Bio
+                    <span className="text-xs text-muted-foreground font-normal">optional</span>
                     <WipTag />
-                </div>
-                <Textarea rows={3} disabled placeholder="Bio editing coming soon" />
-            </div>
+                </FieldLabel>
+                <Textarea id="settings-bio" rows={3} disabled placeholder="Bio editing coming soon" />
+            </Field>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <FieldLabel optional>Website</FieldLabel>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-website">
+                        Website
+                        <span className="text-xs text-muted-foreground font-normal">optional</span>
                         <WipTag />
-                    </div>
-                    <Input disabled placeholder="Coming soon" type="url" />
-                </div>
-                <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <FieldLabel optional>Location</FieldLabel>
+                    </FieldLabel>
+                    <Input id="settings-website" disabled placeholder="Coming soon" type="url" />
+                </Field>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-location">
+                        Location
+                        <span className="text-xs text-muted-foreground font-normal">optional</span>
                         <WipTag />
-                    </div>
-                    <Input disabled placeholder="Coming soon" />
-                </div>
+                    </FieldLabel>
+                    <Input id="settings-location" disabled placeholder="Coming soon" />
+                </Field>
             </div>
 
             <Divider />
@@ -428,10 +423,11 @@ function EmailsTab() {
             </div>
 
             {/* Add email */}
-            <div>
-                <FieldLabel>Add email address</FieldLabel>
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="settings-new-email">Add email address</FieldLabel>
                 <div className="flex gap-2">
                     <Input
+                        id="settings-new-email"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         type="email"
@@ -456,8 +452,8 @@ function EmailsTab() {
                         Add
                     </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">A verification email will be sent to this address.</p>
-            </div>
+                <FieldDescription className="text-xs">A verification email will be sent to this address.</FieldDescription>
+            </Field>
 
             <div className="border-t border-border mt-8 pt-8">
                 <SectionHeader
@@ -550,40 +546,48 @@ function AuthenticationTab() {
                 <WipTag />
             </div>
             <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
-                <div>
-                    <FieldLabel>Current password</FieldLabel>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-current-password">Current password</FieldLabel>
                     <InputGroup>
-                        <InputGroupInput type={showCurrent ? "text" : "password"} placeholder="Current password" />
+                        <InputGroupInput
+                            id="settings-current-password"
+                            type={showCurrent ? "text" : "password"}
+                            placeholder="Current password"
+                        />
                         <InputGroupAddon align="inline-end">
                             <InputGroupButton size="icon-xs" onClick={() => setShowCurrent((v) => !v)}>
                                 {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </InputGroupButton>
                         </InputGroupAddon>
                     </InputGroup>
-                </div>
+                </Field>
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <FieldLabel>New password</FieldLabel>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="settings-new-password">New password</FieldLabel>
                         <InputGroup>
-                            <InputGroupInput type={showNew ? "text" : "password"} placeholder="New password" />
+                            <InputGroupInput id="settings-new-password" type={showNew ? "text" : "password"} placeholder="New password" />
                             <InputGroupAddon align="inline-end">
                                 <InputGroupButton size="icon-xs" onClick={() => setShowNew((v) => !v)}>
                                     {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </InputGroupButton>
                             </InputGroupAddon>
                         </InputGroup>
-                    </div>
-                    <div>
-                        <FieldLabel>Confirm new password</FieldLabel>
+                    </Field>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="settings-confirm-new-password">Confirm new password</FieldLabel>
                         <InputGroup>
-                            <InputGroupInput type={showConfirm ? "text" : "password"} placeholder="Confirm password" />
+                            <InputGroupInput
+                                id="settings-confirm-new-password"
+                                type={showConfirm ? "text" : "password"}
+                                placeholder="Confirm password"
+                            />
                             <InputGroupAddon align="inline-end">
                                 <InputGroupButton size="icon-xs" onClick={() => setShowConfirm((v) => !v)}>
                                     {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </InputGroupButton>
                             </InputGroupAddon>
                         </InputGroup>
-                    </div>
+                    </Field>
                 </div>
             </div>
             <SaveButton>Update password</SaveButton>
@@ -832,12 +836,17 @@ function KeysTab() {
 
             {/* Add SSH key */}
             <div className="space-y-4 mb-0">
-                <div>
-                    <FieldLabel>Title</FieldLabel>
-                    <Input value={newSSHTitle} onChange={(e) => setNewSSHTitle(e.target.value)} placeholder="e.g. Personal MacBook" />
-                </div>
-                <div>
-                    <FieldLabel>Key</FieldLabel>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-ssh-title">Title</FieldLabel>
+                    <Input
+                        id="settings-ssh-title"
+                        value={newSSHTitle}
+                        onChange={(e) => setNewSSHTitle(e.target.value)}
+                        placeholder="e.g. Personal MacBook"
+                    />
+                </Field>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-ssh-key">Key</FieldLabel>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <p className="text-xs text-muted-foreground underline decoration-dashed underline-offset-2 cursor-default mb-2 w-fit">
@@ -879,13 +888,14 @@ function KeysTab() {
                         </TooltipContent>
                     </Tooltip>
                     <Textarea
+                        id="settings-ssh-key"
                         rows={4}
                         value={newSSHKey}
                         onChange={(e) => setNewSSHKey(e.target.value)}
                         placeholder="Paste your public key here — begins with ssh-rsa, ssh-ed25519, etc."
                         className="font-mono text-xs"
                     />
-                </div>
+                </Field>
                 <button
                     onClick={() => {
                         if (newSSHTitle && newSSHKey) {

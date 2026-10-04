@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -71,14 +72,6 @@ const navItems: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <label className="block text-sm font-medium mb-1.5">{children}</label>;
-}
-
-function FieldHint({ children }: { children: React.ReactNode }) {
-    return <p className="mt-1.5 text-xs text-muted-foreground">{children}</p>;
-}
 
 function Divider() {
     return <Separator className="my-6" />;
@@ -132,10 +125,10 @@ function GeneralTab({ org }: { org: OrgInfo }) {
 
             {/* Avatar — WIP */}
             <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel>Organization avatar</FieldLabel>
+                <FieldTitle className="mb-1.5">
+                    Organization avatar
                     <WipTag />
-                </div>
+                </FieldTitle>
                 <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-xl bg-secondary border border-border flex items-center justify-center text-2xl font-semibold">
                         {org.name[0].toUpperCase()}
@@ -155,30 +148,36 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <Divider />
 
             {/* Display name — WIP */}
-            <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel>Display name</FieldLabel>
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="org-display-name">
+                    Display name
                     <WipTag />
-                </div>
-                <Input disabled defaultValue={org.name} />
-                <FieldHint>Display name editing is not yet available.</FieldHint>
-            </div>
+                </FieldLabel>
+                <Input id="org-display-name" disabled defaultValue={org.name} />
+                <FieldDescription className="text-xs">Display name editing is not yet available.</FieldDescription>
+            </Field>
 
             {/* Description */}
-            <div>
-                <FieldLabel>Description</FieldLabel>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} maxLength={256} />
-                <FieldHint>Max 256 characters.</FieldHint>
-            </div>
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="org-description">Description</FieldLabel>
+                <Textarea
+                    id="org-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    maxLength={256}
+                />
+                <FieldDescription className="text-xs">Max 256 characters.</FieldDescription>
+            </Field>
 
             <Divider />
 
             {/* Visibility — WIP */}
-            <div>
-                <div className="flex items-center gap-2 mb-2">
-                    <FieldLabel>Organization visibility</FieldLabel>
+            <FieldSet className="gap-0">
+                <FieldLegend variant="label" className="mb-2 flex items-center gap-2">
+                    Organization visibility
                     <WipTag />
-                </div>
+                </FieldLegend>
                 <RadioGroup value="public" disabled className="gap-2 opacity-50 pointer-events-none">
                     {(["public", "private"] as const).map((v) => (
                         <label
@@ -200,7 +199,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                         </label>
                     ))}
                 </RadioGroup>
-            </div>
+            </FieldSet>
 
             <Divider />
 
@@ -211,15 +210,17 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                     <WipTag />
                 </div>
                 <div className="space-y-4 opacity-50 pointer-events-none">
-                    <div>
-                        <FieldLabel>Default branch name</FieldLabel>
-                        <Input disabled defaultValue="main" className="font-mono" />
-                        <FieldHint>Applied to all newly created repositories in this organization.</FieldHint>
-                    </div>
-                    <div>
-                        <FieldLabel>Default repository visibility</FieldLabel>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="org-default-branch">Default branch name</FieldLabel>
+                        <Input id="org-default-branch" disabled defaultValue="main" className="font-mono" />
+                        <FieldDescription className="text-xs">
+                            Applied to all newly created repositories in this organization.
+                        </FieldDescription>
+                    </Field>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="org-default-visibility">Default repository visibility</FieldLabel>
                         <Select disabled defaultValue="public">
-                            <SelectTrigger className="w-full bg-card">
+                            <SelectTrigger id="org-default-visibility" className="w-full bg-card">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -227,7 +228,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                                 <SelectItem value="private">Private</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
+                    </Field>
                 </div>
             </div>
 
