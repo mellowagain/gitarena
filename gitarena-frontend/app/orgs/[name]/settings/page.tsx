@@ -36,6 +36,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -477,9 +478,7 @@ function SecurityTab() {
                             All members must have 2FA enabled to join or remain in this organization.
                         </p>
                     </div>
-                    <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-border shrink-0">
-                        <span className="inline-block h-3.5 w-3.5 rounded-full bg-background shadow translate-x-1" />
-                    </div>
+                    <Switch disabled />
                 </div>
             </div>
 

@@ -45,6 +45,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -181,21 +182,6 @@ function DangerButton({ children, onClick, disabled }: { children: React.ReactNo
     );
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-    return (
-        <button
-            role="switch"
-            aria-checked={checked}
-            onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${checked ? "bg-foreground" : "bg-secondary"}`}
-        >
-            <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${checked ? "translate-x-4" : "translate-x-0"}`}
-            />
-        </button>
-    );
-}
-
 function ToggleRow({
     label,
     description,
@@ -213,7 +199,7 @@ function ToggleRow({
                 <p className="text-sm font-medium">{label}</p>
                 {description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
             </div>
-            <Toggle checked={checked} onChange={onChange} />
+            <Switch checked={checked} onCheckedChange={onChange} />
         </div>
     );
 }
@@ -602,9 +588,9 @@ function BranchesTab() {
                             ].map(({ key, label }) => (
                                 <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                                     <span className="text-sm">{label}</span>
-                                    <Toggle
+                                    <Switch
                                         checked={rule[key as keyof typeof rule] as boolean}
-                                        onChange={() => toggleRule(rule.id, key as keyof typeof rule)}
+                                        onCheckedChange={() => toggleRule(rule.id, key as keyof typeof rule)}
                                     />
                                 </div>
                             ))}
@@ -689,9 +675,9 @@ function BranchesTab() {
                             <p className="text-sm font-medium">{label}</p>
                             <p className="text-xs text-muted-foreground">{description}</p>
                         </div>
-                        <Toggle
+                        <Switch
                             checked={mergeStrategies[key as keyof typeof mergeStrategies]}
-                            onChange={(v) => setMergeStrategies((m) => ({ ...m, [key]: v }))}
+                            onCheckedChange={(v) => setMergeStrategies((m) => ({ ...m, [key]: v }))}
                         />
                     </div>
                 ))}
