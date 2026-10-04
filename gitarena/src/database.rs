@@ -4,7 +4,6 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow, bail};
-use once_cell::sync::OnceCell;
 use sqlx::{Executor, Postgres};
 use tokio::fs;
 use tracing::{info, instrument};

@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
-import { RepoFileSidebar, RepoFileSidebarSkeleton } from "@/components/repo-file-sidebar";
+import { RepoFileSidebar, RepoFileSidebarSkeleton, type FileCommitInfo } from "@/components/repo-file-sidebar";
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -30,7 +30,7 @@ import { ErrorDisplay } from "@/components/error-display";
 import { isMarkdown } from "@/components/markdown-renderer";
 import { FileContent, type FileCommit } from "@/components/file-content";
 import prettyBytes from "pretty-bytes";
-import { formatDistanceToNowStrict } from "date-fns";
+import { differenceInMinutes, formatDistanceToNowStrict } from "date-fns";
 import { shortLocale, uuidToDate } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { ArchivedBanner } from "@/components/archived-banner";
@@ -230,6 +230,17 @@ export function RepoPageContent({
     const [fileSize, setFileSize] = useState<number | null>(null);
     const [fileCommit, setFileCommit] = useState<FileCommit | null>(null);
     const [isBinary, setIsBinary] = useState(false);
+
+    // license and languages are detected in the background after a push, so poll while the latest commit is fresh
+    const { data: latestCommitData } = useSWR<{ commits: FileCommitInfo[] }>(
+        `/api/repos/${user}/${repo}/branch/${meta.defaultBranch}/commits?limit=1`
+    );
+    useSWR<RepoMetadata>(`/api/repos/${user}/${repo}`, {
+        refreshInterval: () => {
+            const latestCommit = latestCommitData?.commits[0];
+            return latestCommit && differenceInMinutes(new Date(), new Date(latestCommit.time * 1000)) < 2 ? 5000 : 0;
+        },
+    });
 
     const {
         data: latestReleaseData,

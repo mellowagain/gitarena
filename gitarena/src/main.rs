@@ -10,6 +10,7 @@ use std::env;
 
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
+use crate::meili::MEILI_CLIENT;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
@@ -103,16 +104,19 @@ async fn main() -> Result<()> {
 
     mail::create_transport(&db_pool).await?;
 
-    let queue = queue::init().await?;
-
     let meili_client = meili::init(&db_pool).await?;
+    MEILI_CLIENT
+        .set(meili_client.clone())
+        .map_err(|_| anyhow!("meilisearch client should not be set more than once"))?;
+
+    let queue = queue::init().await?;
 
     zoekt::init(&db_pool).await?;
     contributions::init(&db_pool).await?;
 
     let storage = storage::init(&db_pool).await?;
 
-    let ssh_handle = ssh::init(db_pool.clone(), meili_client.clone(), &bind_address).await?;
+    let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
         let identity_service = IdentityService::new(

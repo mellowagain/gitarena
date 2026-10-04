@@ -7,6 +7,7 @@ use gitarena_macros::from_config;
 use meilisearch_sdk::client::Client;
 use sqlx::Transaction;
 use std::time::Duration;
+use tokio::sync::OnceCell;
 use tracing::{error, info};
 
 pub(crate) static REPOS_MEILI_INDEX: &str = "repositories";
@@ -14,6 +15,8 @@ pub(crate) static USERS_MEILI_INDEX: &str = "users";
 pub(crate) static ISSUES_MEILI_INDEX: &str = "issues";
 
 pub(crate) type MeiliClient = Option<Client>;
+
+pub(crate) static MEILI_CLIENT: OnceCell<MeiliClient> = OnceCell::const_new();
 
 pub(crate) async fn init(db_pool: &Pool) -> Result<Option<Client>> {
     let (enabled, url, key) = from_config!(

@@ -11,7 +11,6 @@ use crate::routes::repository::git::info_refs::resolve_namespace;
 
 use std::time::Instant;
 
-use crate::meili::MeiliClient;
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -25,7 +24,6 @@ pub(crate) async fn git_receive_pack(
     uri: web::Path<GitRequest>,
     mut body: web::Payload,
     request: HttpRequest,
-    meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
     let start = Instant::now();
@@ -40,7 +38,7 @@ pub(crate) async fn git_receive_pack(
 
     let owner_id = resolve_namespace(&uri.namespace, &mut transaction).await?;
 
-    let Some(mut repo) = Repository::open(owner_id, &uri.repository, &mut transaction).await else {
+    let Some(repo) = Repository::open(owner_id, &uri.repository, &mut transaction).await else {
         die!(NOT_FOUND)
     };
 
@@ -72,7 +70,7 @@ pub(crate) async fn git_receive_pack(
     }
 
     let data = bytes.freeze();
-    let output_writer = execute_receive_pack(&db_pool, &meili_client, &mut repo, &data, user.id, Some(&request)).await?;
+    let output_writer = execute_receive_pack(&db_pool, &repo, &data, user.id, Some(&request)).await?;
     let output = output_writer.serialize().await?;
 
     if output.is_empty() {

@@ -1,30 +1,29 @@
-use crate::contributions::{record_commit_contributions, walk_new_commits};
+use crate::contributions::{WalkCommit, record_commit_contributions, walk_new_commits};
 use crate::events::Event;
-use crate::git::hooks::post_update;
+use crate::git::hooks::index_zoekt::schedule_repo_indexing;
+use crate::git::hooks::post_update::PostUpdateTask;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
+use crate::git::ref_update;
 use crate::git::ref_update::{RefUpdate, RefUpdateType};
-use crate::git::{GIT_CLI_AVAILABLE, ref_update};
 use crate::prelude::*;
+use crate::queue::GLOBAL_QUEUE;
 use crate::repository::Repository;
 use crate::utils::oid;
 use crate::{die, err};
 
 use std::convert::TryInto;
 use std::io::Write;
-use std::ops::Deref;
-use std::path::Path;
-use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::database::Database;
 use crate::database::Pool;
-use crate::meili::MeiliClient;
 use actix_web::HttpRequest;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use bstr::BString;
+use fang::{AsyncQueueable, AsyncRunnable};
+use git2::Repository as Git2Repository;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
 use gix::lock::acquire::Fail;
@@ -37,17 +36,15 @@ use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use memmem::{Searcher, TwoWaySearcher};
 use serde_json::{Value, json};
-use sqlx::Transaction;
-use tokio::process::Command;
-use tokio::time::timeout;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
-#[instrument(err, skip(writer, store))]
-pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Repository, store: Arc<Store>, db_pool: &Pool, writer: &mut GitWriter) -> Result<()> {
+const REF_LOCK_FAIL_MODE: Fail = Fail::AfterDurationWithBackoff(Duration::from_secs(5));
+
+#[instrument(err, skip(gitoxide_repo, writer, store))]
+pub(crate) async fn process_create_update(ref_update: &RefUpdate, gitoxide_repo: &gix::Repository, store: Arc<Store>, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.new.is_some());
 
-    let mut transaction = db_pool.begin().await?;
     let new_oid = oid::from_hex_str(ref_update.new.as_deref())?;
 
     // # Gitoxide zone
@@ -99,12 +96,10 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
             deref: true,
         }];
 
-        let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
-
         gitoxide_repo
             .refs
             .transaction()
-            .prepare(edits, Fail::Immediately, Fail::Immediately)
+            .prepare(edits, REF_LOCK_FAIL_MODE, REF_LOCK_FAIL_MODE)
             .map_err(|err| anyhow!("Failed to commit transaction: {err}"))?
             .commit(committer.to_ref(&mut TimeBuf::default()))?;
     }
@@ -116,12 +111,10 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, repo: &Reposit
     Ok(())
 }
 
-#[instrument(err, skip(tx, writer))]
-pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx: &mut Transaction<'_, Database>, writer: &mut GitWriter) -> Result<()> {
+#[instrument(err, skip(gitoxide_repo, writer))]
+pub(crate) async fn process_delete(ref_update: &RefUpdate, gitoxide_repo: &gix::Repository, writer: &mut GitWriter) -> Result<()> {
     assert!(ref_update.old.is_some());
     assert!(ref_update.new.is_none());
-
-    let gitoxide_repo = repo.gitoxide(tx).await?;
 
     let object_id = oid::from_hex_str(ref_update.old.as_deref()).map_err(|_| err!(NOT_FOUND, "Ref does not exist"))?;
 
@@ -137,7 +130,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
     gitoxide_repo
         .refs
         .transaction()
-        .prepare(edits, Fail::Immediately, Fail::Immediately)
+        .prepare(edits, REF_LOCK_FAIL_MODE, REF_LOCK_FAIL_MODE)
         .map_err(|err| err!(INTERNAL_SERVER_ERROR, "Failed to commit transaction: {}", err))?
         .commit(Signature::gitarena_default().to_ref(&mut TimeBuf::default()))?;
 
@@ -149,16 +142,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, repo: &Repository, tx
 }
 
 #[instrument(err, skip(db_pool, data, request))]
-pub(crate) async fn execute_receive_pack(
-    db_pool: &Pool,
-    meili_client: &MeiliClient,
-    repo: &mut Repository,
-    data: &[u8],
-    actor_id: Uuid,
-    request: Option<&HttpRequest>,
-) -> Result<GitWriter> {
-    let mut tx = db_pool.begin().await?;
-
+pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data: &[u8], actor_id: Uuid, request: Option<&HttpRequest>) -> Result<GitWriter> {
     let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
     readable_iter.fail_on_err_lines(true);
 
@@ -182,7 +166,16 @@ pub(crate) async fn execute_receive_pack(
         }
     }
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let repo_dir = {
+        let mut tx = db_pool.begin().await?;
+
+        let repo_dir = repo.get_fs_path(&mut tx).await?;
+        tx.commit().await?;
+
+        repo_dir
+    };
+
+    let gitoxide_repo = gix::open(&repo_dir)?;
     let store = gitoxide_repo.objects.store().clone();
 
     let mut output_writer = GitWriter::new();
@@ -190,7 +183,7 @@ pub(crate) async fn execute_receive_pack(
 
     if let Some(pos) = searcher.search_in(data) {
         {
-            let git2_repo = repo.libgit2(&mut tx).await?;
+            let git2_repo = Git2Repository::open(&repo_dir)?;
             let odb = git2_repo.odb()?;
             let mut pack_writer = odb.packwriter()?;
             pack_writer.write_all(&data[pos..])?;
@@ -201,8 +194,8 @@ pub(crate) async fn execute_receive_pack(
 
         for update in &updates {
             match RefUpdateType::determinate(&update.old, &update.new)? {
-                RefUpdateType::Create | RefUpdateType::Update => process_create_update(update, repo, store.clone(), db_pool, &mut output_writer).await?,
-                RefUpdateType::Delete => process_delete(update, repo, &mut tx, &mut output_writer).await?,
+                RefUpdateType::Create | RefUpdateType::Update => process_create_update(update, &gitoxide_repo, store.clone(), &mut output_writer).await?,
+                RefUpdateType::Delete => process_delete(update, &gitoxide_repo, &mut output_writer).await?,
             }
         }
     } else {
@@ -213,21 +206,33 @@ pub(crate) async fn execute_receive_pack(
         output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
 
         for update in &updates {
-            process_delete(update, repo, &mut tx, &mut output_writer).await?;
+            process_delete(update, &gitoxide_repo, &mut output_writer).await?;
         }
     }
+
+    output_writer.flush_sideband(Band::Data).await?;
+    output_writer.flush().await?;
+
+    let head_name = gitoxide_repo.head_name()?;
+    let head_updated = head_name.is_some_and(|name| updates.iter().any(|update| name.as_bstr() == update.target_ref.as_str()));
+
+    let mut tx = db_pool.begin().await?;
+    let mut pushed_commits = Vec::<WalkCommit>::new();
 
     for update in &updates {
         let events: Vec<(&'static str, Value)> = match RefUpdateType::determinate(&update.old, &update.new)? {
             RefUpdateType::Create if update.target_ref.starts_with("refs/heads/") => {
                 let after = update.new.as_deref().unwrap_or_default();
                 let (_, commits) = classify_push(&store, None, after)?;
+                let count = commits.len();
+
+                pushed_commits.extend(commits);
 
                 vec![
                     ("git.branch_created", json!({ "ref": update.target_ref })),
                     (
                         "git.push",
-                        json!({ "ref": update.target_ref, "before": null, "after": after, "commits": commits }),
+                        json!({ "ref": update.target_ref, "before": null, "after": after, "commits": count }),
                     ),
                 ]
             }
@@ -245,13 +250,16 @@ pub(crate) async fn execute_receive_pack(
                 let after = update.new.as_deref().unwrap_or_default();
 
                 let (force, commits) = classify_push(&store, Some(before), after)?;
+                let count = commits.len();
+
+                pushed_commits.extend(commits);
 
                 if force {
                     vec![("git.force_push", json!({ "ref": update.target_ref, "before": before, "after": after }))]
                 } else {
                     vec![(
                         "git.push",
-                        json!({ "ref": update.target_ref, "before": before, "after": after, "commits": commits }),
+                        json!({ "ref": update.target_ref, "before": before, "after": after, "commits": count }),
                     )]
                 }
             }
@@ -262,11 +270,11 @@ pub(crate) async fn execute_receive_pack(
             let event = match request {
                 Some(req) => {
                     payload["transport"] = Value::String("http".to_string());
-                    Event::new(event_type, actor_id, req, repo.deref().into(), Some(payload))
+                    Event::new(event_type, actor_id, req, repo.into(), Some(payload))
                 }
                 None => {
                     payload["transport"] = Value::String("ssh".to_string());
-                    Event::new_without_request(event_type, actor_id, repo.deref().into(), Some(payload))
+                    Event::new_without_request(event_type, actor_id, repo.into(), Some(payload))
                 }
             };
 
@@ -274,60 +282,37 @@ pub(crate) async fn execute_receive_pack(
         }
     }
 
-    record_commit_contributions(&updates, &store, repo.id, &mut tx).await?;
+    record_commit_contributions(pushed_commits, repo.id, &mut tx).await?;
 
-    let repo_dir_str = repo.get_fs_path(&mut tx).await?;
-    let repo_dir = Path::new(&repo_dir_str).to_owned();
-
-    if *GIT_CLI_AVAILABLE {
-        let command = Command::new("git")
-            .args(["gc", "--auto", "--quiet"])
-            .current_dir(&repo_dir)
-            .kill_on_drop(true)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-
-        match timeout(Duration::from_secs(10), command).await {
-            Ok(Ok(status)) => {
-                if !status.success() {
-                    let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
-                    warn!(exit_code, "Git garbage collector exited with non-zero status");
-                }
-            }
-            Ok(Err(err)) => warn!(?err, "Failed to execute Git garbage collector"),
-            Err(_) => warn!("Git garbage collector failed to finish within 10 seconds"),
-        }
+    if let Err(err) = schedule_repo_indexing(repo.clone(), &mut tx).await {
+        warn!(repo.id = %repo.id, ?err, "Failed to schedule zoekt repo indexing");
     }
-
-    output_writer.flush_sideband(Band::Data).await?;
-    output_writer.flush().await?;
-
-    post_update::run(store, repo, &mut tx)
-        .await
-        .with_context(|| format!("Failed to run post update hook for repo {}", repo.name))?;
-
-    sqlx::query("update repositories set license = $1, languages = $2 where id = $3")
-        .bind(&repo.license)
-        .bind(&repo.languages)
-        .bind(repo.id)
-        .execute(&mut *tx)
-        .await?;
 
     tx.commit().await?;
 
-    repo.index_meili(&meili_client).await;
+    let task = PostUpdateTask {
+        repo_id: repo.id,
+        head_updated,
+    };
+
+    let queue = GLOBAL_QUEUE
+        .get()
+        .ok_or_else(|| anyhow!("post update task should only be scheduled after queue has been initialized"))?;
+
+    if let Err(err) = queue.insert_task(&task as &dyn AsyncRunnable).await {
+        warn!(repo.id = %repo.id, ?err, "Failed to schedule post update task");
+    }
 
     Ok(output_writer)
 }
 
-/// returns whether the commit was a force push and the amount of commits
+/// returns whether the commit was a force push and the new commits
 #[instrument(err, skip(store))]
-fn classify_push(store: &Arc<Store>, old_hex: Option<&str>, new_hex: &str) -> Result<(bool, usize)> {
+fn classify_push(store: &Arc<Store>, old_hex: Option<&str>, new_hex: &str) -> Result<(bool, Vec<WalkCommit>)> {
     let old_oid = old_hex.map(|h| oid::from_hex_str(Some(h))).transpose()?;
     let new_oid = oid::from_hex_str(Some(new_hex))?;
 
     let (found_base, commits) = walk_new_commits(store, old_oid, new_oid);
 
-    Ok((!found_base && old_oid.is_some(), commits.len()))
+    Ok((!found_base && old_oid.is_some(), commits))
 }

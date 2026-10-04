@@ -1,4 +1,5 @@
 use crate::contributions::task::CONTRIBUTIONS_TASK_TYPE;
+use crate::git::hooks::post_update::POST_UPDATE_TASK_TYPE;
 use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
 use crate::session::ExpiredSessionsRemovalTask;
@@ -87,6 +88,23 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
         .build();
 
     contributions_pool.start().await;
+
+    // post update pool runs git gc and repo metadata detection after pushes
+    let mut post_update_pool = AsyncWorkerPool::<AsyncQueue>::builder()
+        .number_of_workers(1_u32)
+        .sleep_params(
+            SleepParams::builder()
+                .sleep_period(Duration::from_secs(5))
+                .min_sleep_period(Duration::from_secs(5))
+                .max_sleep_period(Duration::from_secs(30))
+                .sleep_step(Duration::from_secs(5))
+                .build(),
+        )
+        .task_type(POST_UPDATE_TASK_TYPE.to_string())
+        .queue(queue.clone())
+        .build();
+
+    post_update_pool.start().await;
 
     schedule_cron_jobs(&queue).await?;
 

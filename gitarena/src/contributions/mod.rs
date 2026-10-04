@@ -1,10 +1,9 @@
 use crate::config::{get_setting, set_setting};
 use crate::contributions::task::BackfillRepoContributionsTask;
 use crate::database::{Database, Pool};
-use crate::git::ref_update::RefUpdate;
 use crate::queue::GLOBAL_QUEUE;
 use crate::repository::Repository;
-use crate::utils::{decode_forge_mail, oid};
+use crate::utils::decode_forge_mail;
 use anyhow::{Result, anyhow};
 use chrono::{NaiveDate, TimeZone, Utc};
 use fang::{AsyncQueueable, AsyncRunnable};
@@ -23,7 +22,7 @@ pub(crate) mod task;
 const CONTRIBUTIONS_GITARENA_VERSION: i32 = 1;
 
 /// (sha_hex, email, unix_seconds)
-type WalkCommit = (String, String, i64);
+pub(crate) type WalkCommit = (String, String, i64);
 
 pub(crate) async fn init(db_pool: &Pool) -> Result<()> {
     let mut tx = db_pool.begin().await?;
@@ -107,34 +106,19 @@ pub(crate) fn walk_new_commits(store: &Arc<Store>, old_oid: Option<ObjectId>, ne
     (false, commits)
 }
 
-#[instrument(err, skip(updates, store, tx))]
-pub(crate) async fn record_commit_contributions(updates: &[RefUpdate], store: &Arc<Store>, repo_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<()> {
+#[instrument(err, skip(commits, tx))]
+pub(crate) async fn record_commit_contributions(commits: Vec<WalkCommit>, repo_id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<()> {
     let mut all_commits: Vec<(String, String, NaiveDate)> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
-    for update in updates {
-        if !update.target_ref.starts_with("refs/heads/") {
+    for (sha, email, timestamp) in commits {
+        if !seen.insert(sha.clone()) {
             continue;
         }
 
-        let Some(new_hex) = &update.new else {
-            continue;
-        };
+        let Some(dt) = Utc.timestamp_opt(timestamp, 0).single() else { continue };
 
-        let new_oid = oid::from_hex_str(Some(new_hex))?;
-        let old_oid = update.old.as_deref().map(|hash| oid::from_hex_str(Some(hash))).transpose()?;
-
-        let (_, commits) = walk_new_commits(store, old_oid, new_oid);
-
-        for (sha, email, timestamp) in commits {
-            if !seen.insert(sha.clone()) {
-                continue;
-            }
-
-            let Some(dt) = Utc.timestamp_opt(timestamp, 0).single() else { continue };
-
-            all_commits.push((sha, email, dt.date_naive()));
-        }
+        all_commits.push((sha, email, dt.date_naive()));
     }
 
     insert_contributions(repo_id, &all_commits, tx).await
