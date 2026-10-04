@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -105,9 +105,11 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
 
     return (
         <div ref={containerRef} className="flex-1 max-w-lg relative">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
+            <InputGroup>
+                <InputGroupAddon>
+                    <Search />
+                </InputGroupAddon>
+                <InputGroupInput
                     ref={inputRef}
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
@@ -118,12 +120,11 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
                         }
                     }}
                     placeholder={search.placeholder}
-                    className="pl-9 pr-10"
                 />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground bg-secondary rounded border border-border">
-                    /
-                </kbd>
-            </div>
+                <InputGroupAddon align="inline-end">
+                    <kbd className="px-1.5 py-0.5 text-[11px] bg-secondary rounded border border-border">/</kbd>
+                </InputGroupAddon>
+            </InputGroup>
 
             {showDropdown && search.scope && (
                 <div className="absolute top-full mt-1 w-full bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">

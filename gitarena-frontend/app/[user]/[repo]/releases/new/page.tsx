@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Loader2, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -426,16 +427,18 @@ export default function NewReleasePage() {
                         <label className="text-sm font-medium block mb-1.5">
                             Tag <span className="text-red-500">*</span>
                         </label>
-                        <div className="relative">
-                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                            <Input
+                        <InputGroup className="h-10">
+                            <InputGroupAddon>
+                                <Tag />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 value={tag}
                                 onChange={(e) => setTag(e.target.value)}
                                 placeholder="v1.0.0"
                                 disabled={isPublishing}
-                                className="h-10 pl-9 font-mono"
+                                className="font-mono"
                             />
-                        </div>
+                        </InputGroup>
                         <p className="mt-1.5 text-xs text-muted-foreground">
                             If this tag does not exist in the repository, an annotated git tag will be created referencing the latest commit
                             on the default branch.

@@ -32,6 +32,7 @@ import { isValidUrl, extractRepoNameFromUrl } from "@/lib/repo-validation";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -291,19 +292,19 @@ export default function ImportRepositoryPage() {
                                     <label className="text-sm font-medium">
                                         Repository URL <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <Input
+                                    <InputGroup className="h-11">
+                                        <InputGroupInput
                                             type="url"
                                             value={repoUrl}
                                             onChange={(e) => handleUrlChange(e.target.value)}
                                             placeholder="https://github.com/user/repo.git"
-                                            className="h-11 px-4 pr-10 md:text-base"
+                                            className="md:text-base"
                                         />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <InputGroupAddon align="inline-end">
                                             {urlValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {urlInvalid && <AlertCircle className="h-4 w-4 text-red-500" />}
-                                        </div>
-                                    </div>
+                                        </InputGroupAddon>
+                                    </InputGroup>
                                     {urlValid && <p className="text-sm text-green-500">Valid URL</p>}
                                     {urlInvalid && <p className="text-sm text-red-500">Please enter a valid URL</p>}
 
@@ -395,19 +396,19 @@ export default function ImportRepositoryPage() {
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
-                                    <div className="relative flex-1">
-                                        <Input
+                                    <InputGroup className="flex-1 h-11">
+                                        <InputGroupInput
                                             value={repoName}
                                             onChange={(e) => setRepoName(e.target.value)}
                                             placeholder="repository-name"
-                                            className="h-11 px-4 pr-10 md:text-base"
+                                            className="md:text-base"
                                         />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <InputGroupAddon align="inline-end">
                                             {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
                                             {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
-                                        </div>
-                                    </div>
+                                        </InputGroupAddon>
+                                    </InputGroup>
                                 </div>
                                 {nameError && <p className="text-sm text-red-500">{nameError}</p>}
                                 {nameValid && user && (

@@ -55,7 +55,7 @@ import { uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 interface InstanceStats {
     users: number;
@@ -637,10 +637,12 @@ export default function AdminDashboardPage() {
                                     <p className="text-muted-foreground">Manage all users on this instance</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input placeholder="Search users..." className="pl-9 pr-4" />
-                                    </div>
+                                    <InputGroup>
+                                        <InputGroupAddon>
+                                            <Search />
+                                        </InputGroupAddon>
+                                        <InputGroupInput placeholder="Search users..." />
+                                    </InputGroup>
                                     <Button className="gap-2">
                                         <Plus className="h-4 w-4" />
                                         Add User
@@ -768,10 +770,12 @@ export default function AdminDashboardPage() {
                                 <p className="text-sm text-muted-foreground mt-1">Security-relevant actions performed on this instance.</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="relative flex-1 max-w-xs">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                    <Input placeholder="Search events…" className="pl-9" />
-                                </div>
+                                <InputGroup className="flex-1 max-w-xs">
+                                    <InputGroupAddon>
+                                        <Search />
+                                    </InputGroupAddon>
+                                    <InputGroupInput placeholder="Search events…" />
+                                </InputGroup>
                                 <Select defaultValue="all">
                                     <SelectTrigger className="bg-card">
                                         <SelectValue />

@@ -51,6 +51,7 @@ import { AvatarManagement } from "@/components/avatar-management";
 import { TokenManager } from "@/components/token-manager";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -550,40 +551,37 @@ function AuthenticationTab() {
             <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
                 <div>
                     <FieldLabel>Current password</FieldLabel>
-                    <div className="relative">
-                        <Input type={showCurrent ? "text" : "password"} placeholder="Current password" className="pr-10" />
-                        <button
-                            onClick={() => setShowCurrent((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                    </div>
+                    <InputGroup>
+                        <InputGroupInput type={showCurrent ? "text" : "password"} placeholder="Current password" />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupButton size="icon-xs" onClick={() => setShowCurrent((v) => !v)}>
+                                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </InputGroupButton>
+                        </InputGroupAddon>
+                    </InputGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <FieldLabel>New password</FieldLabel>
-                        <div className="relative">
-                            <Input type={showNew ? "text" : "password"} placeholder="New password" className="pr-10" />
-                            <button
-                                onClick={() => setShowNew((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
+                        <InputGroup>
+                            <InputGroupInput type={showNew ? "text" : "password"} placeholder="New password" />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton size="icon-xs" onClick={() => setShowNew((v) => !v)}>
+                                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
                     </div>
                     <div>
                         <FieldLabel>Confirm new password</FieldLabel>
-                        <div className="relative">
-                            <Input type={showConfirm ? "text" : "password"} placeholder="Confirm password" className="pr-10" />
-                            <button
-                                onClick={() => setShowConfirm((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
+                        <InputGroup>
+                            <InputGroupInput type={showConfirm ? "text" : "password"} placeholder="Confirm password" />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton size="icon-xs" onClick={() => setShowConfirm((v) => !v)}>
+                                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
                     </div>
                 </div>
             </div>

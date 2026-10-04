@@ -34,6 +34,7 @@ import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers"
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -282,19 +283,19 @@ function NewRepositoryForm() {
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
-                                    <div className="relative flex-1">
-                                        <Input
+                                    <InputGroup className="flex-1 h-11">
+                                        <InputGroupInput
                                             value={repoName}
                                             onChange={(e) => setRepoName(e.target.value)}
                                             placeholder="repository-name"
-                                            className="h-11 px-4 pr-10 md:text-base"
+                                            className="md:text-base"
                                         />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <InputGroupAddon align="inline-end">
                                             {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
                                             {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
-                                        </div>
-                                    </div>
+                                        </InputGroupAddon>
+                                    </InputGroup>
                                 </div>
                                 {nameError && <p className="text-sm text-red-500">{nameError}</p>}
                                 {nameValid && selectedNamespace && (

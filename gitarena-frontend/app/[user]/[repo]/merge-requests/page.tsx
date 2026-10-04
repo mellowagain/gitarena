@@ -20,7 +20,7 @@ import {
     XCircle,
     GitBranch,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 const repoData = {
     org: "mellowagain",
@@ -368,15 +368,16 @@ export default function MergeRequestsPage() {
                     style={{ width: sidebarWidth }}
                 >
                     <div className="p-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
+                        <InputGroup>
+                            <InputGroupAddon>
+                                <Search />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 placeholder="Search merge requests..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
                             />
-                        </div>
+                        </InputGroup>
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-3 pb-4">

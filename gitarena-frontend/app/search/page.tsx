@@ -30,7 +30,7 @@ import {
     MessageSquare,
     ChevronDown,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1072,16 +1072,17 @@ function SearchPageContent() {
             {/* Search bar strip */}
             <div className="border-b border-border shrink-0">
                 <div className="max-w-6xl mx-auto px-6 py-3">
-                    <div className="relative max-w-2xl">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <Input
+                    <InputGroup className="max-w-2xl h-10">
+                        <InputGroupAddon>
+                            <Search />
+                        </InputGroupAddon>
+                        <InputGroupInput
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                             placeholder="Search GitArena..."
-                            className="h-10 pl-10 pr-4"
                         />
-                    </div>
+                    </InputGroup>
                 </div>
             </div>
 

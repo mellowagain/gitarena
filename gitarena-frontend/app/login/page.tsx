@@ -17,6 +17,7 @@ import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/brow
 import { postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -270,8 +271,8 @@ function LoginContent() {
                                             Forgot password?
                                         </Link>
                                     </div>
-                                    <div className="relative">
-                                        <Input
+                                    <InputGroup className="h-11">
+                                        <InputGroupInput
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             value={form.password}
@@ -280,16 +281,14 @@ function LoginContent() {
                                             autoComplete="current-password"
                                             required
                                             disabled={isLoggingIn}
-                                            className="h-11 px-4 pr-11 md:text-base"
+                                            className="md:text-base"
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                        >
-                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
-                                    </div>
+                                        <InputGroupAddon align="inline-end">
+                                            <InputGroupButton size="icon-xs" onClick={() => setShowPassword(!showPassword)}>
+                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </InputGroupButton>
+                                        </InputGroupAddon>
+                                    </InputGroup>
                                 </div>
 
                                 <Button type="submit" className="w-full h-11 gap-2" disabled={isLoggingIn}>

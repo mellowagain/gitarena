@@ -22,7 +22,7 @@ import { jsonFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 interface IssueListItem {
     index: number;
@@ -307,10 +307,17 @@ export default function BoardPage() {
             />
 
             <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
-                <div className="relative min-w-0 flex-1 sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter issues…" className="h-8 pl-9" />
-                </div>
+                <InputGroup className="min-w-0 flex-1 sm:max-w-xs h-8">
+                    <InputGroupAddon>
+                        <Search />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Filter issues…"
+                        className="h-full"
+                    />
+                </InputGroup>
                 <Link
                     href={`/${user}/${repo}/issues`}
                     className="ml-auto flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"

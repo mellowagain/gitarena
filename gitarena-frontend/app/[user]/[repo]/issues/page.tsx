@@ -39,7 +39,7 @@ import { PriorityIndicator, type Priority } from "@/components/priority-indicato
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 interface IssueLabel {
     name: string;
@@ -409,15 +409,16 @@ export default function IssuesPage() {
                     style={{ "--issues-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
                 >
                     <div className="p-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
+                        <InputGroup>
+                            <InputGroupAddon>
+                                <Search />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 placeholder="Search issues..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
                             />
-                        </div>
+                        </InputGroup>
                     </div>
 
                     <div className="px-3 pb-4 lg:flex-1 lg:overflow-y-auto">
