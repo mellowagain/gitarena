@@ -144,32 +144,14 @@ function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo:
 }
 
 function FileTooltip({ commit, date, children }: { commit: string; date: string; children: React.ReactNode }) {
-    const [show, setShow] = useState(false);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const ref = useRef<HTMLDivElement>(null);
-
     return (
-        <div
-            ref={ref}
-            className="relative"
-            onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setPosition({ x: rect.right + 8, y: rect.top });
-                setShow(true);
-            }}
-            onMouseLeave={() => setShow(false)}
-        >
-            {children}
-            {show && (
-                <div
-                    className="fixed z-50 px-3 py-2 text-sm bg-popover border border-border rounded-md shadow-lg whitespace-nowrap"
-                    style={{ left: position.x, top: position.y }}
-                >
-                    <span className="text-foreground">{commit}</span>
-                    <span className="text-muted-foreground ml-2">{date}</span>
-                </div>
-            )}
-        </div>
+        <Tooltip>
+            <TooltipTrigger asChild>{children}</TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8} className="text-sm whitespace-nowrap">
+                {commit}
+                <span className="opacity-60 ml-2">{date}</span>
+            </TooltipContent>
+        </Tooltip>
     );
 }
 

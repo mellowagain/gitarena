@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, CSSProperties } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
@@ -10,10 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { jsonFetcher, postJsonFetcher, putJsonFetcher, deleteFetcher } from "@/lib/fetchers";
 import { AlertCircle, GitMerge, Code, Tag, Plus, Pencil, Trash2, Check, X, RefreshCw, Search } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
-import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type Label = {
     id: string;
@@ -125,43 +125,7 @@ function LabelChip({ label }: { label: Label }) {
 }
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    const [open, setOpen] = useState(false);
     const [inputVal, setInputVal] = useState(value);
-    const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const popoverRef = useRef<HTMLDivElement>(null);
-
-    // Approximate height of the popover to decide open direction
-    const POPOVER_HEIGHT = 370;
-
-    const openPicker = () => {
-        if (triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            if (spaceBelow >= POPOVER_HEIGHT) {
-                setPopoverStyle({ position: "fixed", top: rect.bottom + 8, left: rect.left });
-            } else {
-                setPopoverStyle({ position: "fixed", bottom: window.innerHeight - rect.top + 8, left: rect.left });
-            }
-        }
-        setOpen((v) => !v);
-    };
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-        function handler(e: MouseEvent) {
-            const target = e.target as Node;
-            const inTrigger = triggerRef.current?.contains(target);
-            const inPopover = popoverRef.current?.contains(target);
-            if (!inTrigger && !inPopover) {
-                setOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
-    }, [open]);
 
     const handleInput = (v: string) => {
         setInputVal(v);
@@ -183,83 +147,79 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
 
     const displayColor = isValidHex(inputVal) ? inputVal : "#6b7280";
 
-    const popover = open
-        ? createPortal(
-              <div
-                  ref={popoverRef}
-                  style={popoverStyle}
-                  className="z-[9999] w-72 bg-card border border-border rounded-lg shadow-xl p-4 space-y-3 [&_.react-colorful]:w-full [&_.react-colorful]:rounded-md [&_.react-colorful\_\_saturation]:rounded-t-md [&_.react-colorful\_\_last-control]:rounded-b-md [&_.react-colorful\_\_pointer]:w-5 [&_.react-colorful\_\_pointer]:h-5 [&_.react-colorful\_\_pointer]:border-2 [&_.react-colorful\_\_pointer]:border-white [&_.react-colorful\_\_pointer]:shadow-md [&_.react-colorful\_\_hue]:h-4 [&_.react-colorful\_\_hue]:rounded-none"
-              >
-                  {/* Gradient + hue picker */}
-                  <HexColorPicker
-                      color={displayColor}
-                      onChange={(c) => {
-                          onChange(c);
-                          setInputVal(c);
-                      }}
-                  />
-
-                  {/* Divider */}
-                  <Separator />
-
-                  {/* Presets */}
-                  <div>
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Presets</p>
-                      <div className="grid grid-cols-9 gap-1.5">
-                          {PRESET_COLORS.map((c) => (
-                              <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => pickPreset(c)}
-                                  style={{ backgroundColor: c }}
-                                  className={`h-6 w-6 rounded border-2 transition-all hover:scale-110 focus:outline-none ${
-                                      value === c ? "border-foreground scale-110" : "border-transparent"
-                                  }`}
-                                  aria-label={c}
-                              />
-                          ))}
-                          <button
-                              type="button"
-                              onClick={pickRandom}
-                              className="h-6 w-6 rounded border-2 border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:scale-110 transition-all focus:outline-none"
-                              title="Random"
-                          >
-                              <RefreshCw className="h-3 w-3" />
-                          </button>
-                      </div>
-                  </div>
-
-                  {/* Divider */}
-                  <Separator />
-
-                  {/* Hex input inside popover */}
-                  <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded border border-border shrink-0" style={{ backgroundColor: displayColor }} />
-                      <Input
-                          value={inputVal}
-                          onChange={(e) => handleInput(e.target.value)}
-                          placeholder="#000000"
-                          maxLength={7}
-                          className="h-8 flex-1 px-2 font-mono"
-                      />
-                  </div>
-                  {inputVal.length > 1 && !isValidHex(inputVal) && <p className="text-xs text-destructive -mt-1">Invalid hex color</p>}
-              </div>,
-              document.body
-          )
-        : null;
-
     return (
-        <div className="relative flex items-center gap-2">
+        <div className="flex items-center gap-2">
             {/* Swatch trigger */}
-            <button
-                ref={triggerRef}
-                type="button"
-                onClick={openPicker}
-                style={{ backgroundColor: displayColor }}
-                className="h-11 w-11 rounded-md border border-border shrink-0 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-                aria-label="Open color picker"
-            />
+            <Popover>
+                <PopoverTrigger asChild>
+                    <button
+                        type="button"
+                        style={{ backgroundColor: displayColor }}
+                        className="h-11 w-11 rounded-md border border-border shrink-0 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                        aria-label="Open color picker"
+                    />
+                </PopoverTrigger>
+                <PopoverContent
+                    align="start"
+                    sideOffset={8}
+                    className="space-y-3 [&_.react-colorful]:w-full [&_.react-colorful]:rounded-md [&_.react-colorful\_\_saturation]:rounded-t-md [&_.react-colorful\_\_last-control]:rounded-b-md [&_.react-colorful\_\_pointer]:w-5 [&_.react-colorful\_\_pointer]:h-5 [&_.react-colorful\_\_pointer]:border-2 [&_.react-colorful\_\_pointer]:border-white [&_.react-colorful\_\_pointer]:shadow-md [&_.react-colorful\_\_hue]:h-4 [&_.react-colorful\_\_hue]:rounded-none"
+                >
+                    {/* Gradient + hue picker */}
+                    <HexColorPicker
+                        color={displayColor}
+                        onChange={(c) => {
+                            onChange(c);
+                            setInputVal(c);
+                        }}
+                    />
+
+                    {/* Divider */}
+                    <Separator />
+
+                    {/* Presets */}
+                    <div>
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Presets</p>
+                        <div className="grid grid-cols-9 gap-1.5">
+                            {PRESET_COLORS.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => pickPreset(c)}
+                                    style={{ backgroundColor: c }}
+                                    className={`h-6 w-6 rounded border-2 transition-all hover:scale-110 focus:outline-none ${
+                                        value === c ? "border-foreground scale-110" : "border-transparent"
+                                    }`}
+                                    aria-label={c}
+                                />
+                            ))}
+                            <button
+                                type="button"
+                                onClick={pickRandom}
+                                className="h-6 w-6 rounded border-2 border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:scale-110 transition-all focus:outline-none"
+                                title="Random"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Divider */}
+                    <Separator />
+
+                    {/* Hex input inside popover */}
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded border border-border shrink-0" style={{ backgroundColor: displayColor }} />
+                        <Input
+                            value={inputVal}
+                            onChange={(e) => handleInput(e.target.value)}
+                            placeholder="#000000"
+                            maxLength={7}
+                            className="h-8 flex-1 px-2 font-mono"
+                        />
+                    </div>
+                    {inputVal.length > 1 && !isValidHex(inputVal) && <p className="text-xs text-destructive -mt-1">Invalid hex color</p>}
+                </PopoverContent>
+            </Popover>
 
             {/* Hex input */}
             <Input
@@ -269,8 +229,6 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
                 maxLength={7}
                 className="h-11 w-36 font-mono"
             />
-
-            {popover}
         </div>
     );
 }

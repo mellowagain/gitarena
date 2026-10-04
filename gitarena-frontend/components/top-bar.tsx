@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -85,17 +85,6 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
         }
     }
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setShowDropdown(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     // Focus input on "/" keypress (when not already in an input)
     useEffect(() => {
         function handleSlash(e: KeyboardEvent) {
@@ -114,50 +103,59 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
     }, []);
 
     return (
-        <div ref={containerRef} className="flex-1 max-w-lg relative">
-            <InputGroup>
-                <InputGroupAddon>
-                    <Search />
-                </InputGroupAddon>
-                <InputGroupInput
-                    ref={inputRef}
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => {
-                        if (search.scope) {
-                            setShowDropdown(true);
-                        }
-                    }}
-                    placeholder={search.placeholder}
-                />
-                <InputGroupAddon align="inline-end">
-                    <Kbd>/</Kbd>
-                </InputGroupAddon>
-            </InputGroup>
-
-            {showDropdown && search.scope && (
-                <div className="absolute top-full mt-1 w-full bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">
-                    <button
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left"
-                        onClick={() => navigate(true)}
-                    >
-                        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>
-                            Search in <span className="font-mono font-medium">{search.scope.label}</span>
-                        </span>
-                    </button>
-                    <Separator />
-                    <button
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
-                        onClick={() => navigate(false)}
-                    >
-                        <Search className="h-3.5 w-3.5 shrink-0" />
-                        <span>Search all of GitArena</span>
-                    </button>
-                </div>
-            )}
-        </div>
+        <Popover open={showDropdown && !!search.scope} onOpenChange={setShowDropdown}>
+            <PopoverAnchor ref={containerRef} className="flex-1 max-w-lg">
+                <InputGroup>
+                    <InputGroupAddon>
+                        <Search />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                        ref={inputRef}
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onFocus={() => {
+                            if (search.scope) {
+                                setShowDropdown(true);
+                            }
+                        }}
+                        placeholder={search.placeholder}
+                    />
+                    <InputGroupAddon align="inline-end">
+                        <Kbd>/</Kbd>
+                    </InputGroupAddon>
+                </InputGroup>
+            </PopoverAnchor>
+            <PopoverContent
+                align="start"
+                className="w-(--radix-popover-trigger-width) p-0 overflow-hidden"
+                updatePositionStrategy="always"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onInteractOutside={(e) => {
+                    if (containerRef.current?.contains(e.target as Node)) {
+                        e.preventDefault();
+                    }
+                }}
+            >
+                <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left"
+                    onClick={() => navigate(true)}
+                >
+                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span>
+                        Search in <span className="font-mono font-medium">{search.scope?.label}</span>
+                    </span>
+                </button>
+                <Separator />
+                <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
+                    onClick={() => navigate(false)}
+                >
+                    <Search className="h-3.5 w-3.5 shrink-0" />
+                    <span>Search all of GitArena</span>
+                </button>
+            </PopoverContent>
+        </Popover>
     );
 }
 
