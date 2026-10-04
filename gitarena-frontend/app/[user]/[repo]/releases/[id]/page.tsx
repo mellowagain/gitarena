@@ -7,6 +7,7 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/error-display";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -549,15 +550,14 @@ export default function EditReleasePage() {
                             </div>
 
                             <div className="flex items-start gap-3 p-4 border border-border rounded-md bg-card">
-                                <input
+                                <Checkbox
                                     id="pre-release"
-                                    type="checkbox"
                                     checked={preRelease}
-                                    onChange={(e) => setPreRelease(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                                    onCheckedChange={(checked) => setPreRelease(checked === true)}
+                                    className="mt-0.5"
                                 />
                                 <div>
-                                    <label htmlFor="pre-release" className="text-sm font-medium cursor-pointer select-none">
+                                    <label htmlFor="pre-release" className="block text-sm font-medium cursor-pointer select-none">
                                         Set as a pre-release
                                     </label>
                                     <p className="text-xs text-muted-foreground mt-0.5">

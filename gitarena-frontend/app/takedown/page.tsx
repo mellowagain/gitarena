@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GitBranch, ChevronRight, Scale, CheckCircle2, TriangleAlert, FileSearch, Send } from "lucide-react";
 
 type Step = { title: string; body: string };
@@ -46,10 +47,7 @@ export default function TakedownPage() {
     const [formState, setFormState] = useState<FormState>("idle");
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-        const target = e.target;
-        const value =
-            target instanceof HTMLInputElement && target.type === "checkbox" ? (target as HTMLInputElement).checked : target.value;
-        setForm((prev) => ({ ...prev, [target.name]: value }));
+        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -353,12 +351,10 @@ export default function TakedownPage() {
                                         Required declarations
                                     </legend>
                                     <label className="flex items-start gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            name="goodFaith"
+                                        <Checkbox
                                             checked={form.goodFaith}
-                                            onChange={handleChange}
-                                            className="mt-0.5 shrink-0"
+                                            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, goodFaith: checked === true }))}
+                                            className="mt-1"
                                         />
                                         <span className="text-sm leading-relaxed text-foreground/80">
                                             I have a good-faith belief that the use of the material described above is not authorised by the
@@ -366,12 +362,10 @@ export default function TakedownPage() {
                                         </span>
                                     </label>
                                     <label className="flex items-start gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            name="accuracy"
+                                        <Checkbox
                                             checked={form.accuracy}
-                                            onChange={handleChange}
-                                            className="mt-0.5 shrink-0"
+                                            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, accuracy: checked === true }))}
+                                            className="mt-1"
                                         />
                                         <span className="text-sm leading-relaxed text-foreground/80">
                                             I declare that the information in this notice is accurate and that I am the copyright owner or

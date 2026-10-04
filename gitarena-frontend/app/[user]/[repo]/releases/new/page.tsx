@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -518,16 +519,15 @@ export default function NewReleasePage() {
 
                     {/* Pre-release toggle */}
                     <div className="flex items-start gap-3 p-4 border border-border rounded-md bg-card">
-                        <input
+                        <Checkbox
                             id="pre-release"
-                            type="checkbox"
                             checked={preRelease}
-                            onChange={(e) => setPreRelease(e.target.checked)}
+                            onCheckedChange={(checked) => setPreRelease(checked === true)}
                             disabled={isPublishing}
-                            className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:opacity-50"
+                            className="mt-0.5"
                         />
                         <div>
-                            <label htmlFor="pre-release" className="text-sm font-medium cursor-pointer select-none">
+                            <label htmlFor="pre-release" className="block text-sm font-medium cursor-pointer select-none">
                                 Set as a pre-release
                             </label>
                             <p className="text-xs text-muted-foreground mt-0.5">

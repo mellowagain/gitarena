@@ -32,6 +32,7 @@ import type { EventResponse } from "@/components/activity-event";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -272,7 +273,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                         },
                     ].map((item) => (
                         <div key={item.key} className="flex items-start gap-3 p-3 border border-border rounded-md">
-                            <input type="checkbox" disabled className="mt-0.5 rounded border-border" />
+                            <Checkbox disabled className="mt-0.5" />
                             <div>
                                 <p className="text-sm font-medium">{item.label}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">{item.hint}</p>
