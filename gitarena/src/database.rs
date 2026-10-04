@@ -19,19 +19,15 @@ pub type PoolOptions = sqlx::pool::PoolOptions<Database>;
 
 #[instrument(err)]
 pub async fn create_postgres_pool(max_conns: Option<u32>) -> Result<Pool> {
-    static ONCE: OnceCell<String> = OnceCell::new();
-
     let pool = PoolOptions::new()
+        .min_connections(num_cpus::get() as u32 + 1)
         .max_connections(max_conns.ok_or(()).or_else(|()| get_max_connections())?)
         .acquire_timeout(Duration::from_secs(10))
         .after_connect(move |connection, _meta| {
             Box::pin(async move {
                 // If setting the app name fails it's not a big deal if the connection is still fine so let's ignore the error
-                let _ = connection
-                    .execute(ONCE.get_or_init(|| "set application_name = 'gitarena';".to_string()).as_str())
-                    .await;
+                let _ = connection.execute("set application_name = 'gitarena';").await;
 
-                info!("Successfully connected to database");
                 Ok(())
             })
         })
@@ -39,6 +35,8 @@ pub async fn create_postgres_pool(max_conns: Option<u32>) -> Result<Pool> {
         .await?;
 
     sqlx::migrate!("../migrations").run(&pool).await?;
+
+    info!("Successfully connected to database");
     Ok(pool)
 }
 

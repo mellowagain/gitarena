@@ -17,13 +17,13 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
     // todo: this makes `DATABASE_URL` mandatory
     let mut queue = AsyncQueue::builder()
         .uri(env::var("DATABASE_URL").context("unable to find mandatory `DATABASE_URL` env variable")?)
-        .max_pool_size(u32::try_from(num_cpus::get()).context("cpu cores too big for u32")?)
+        .max_pool_size(num_cpus::get() as u32 + 1)
         .build();
 
     queue.connect().await.context("task queue failed to connect to postgres database")?;
 
     let mut general_worker_pool = AsyncWorkerPool::<AsyncQueue>::builder()
-        .number_of_workers(u32::try_from(num_cpus::get()).context("cpu cores too big for u32")?)
+        .number_of_workers(2_u32)
         .sleep_params(
             SleepParams::builder()
                 .sleep_period(Duration::from_secs(5))
