@@ -3,9 +3,10 @@
 import { useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { addDays, format, isValid } from "date-fns";
+import { addDays, isValid } from "date-fns";
 import { BookMarked, Building2, Globe, Loader2, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -381,11 +382,10 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
                             </SelectContent>
                         </Select>
                         {expiryPreset === "custom" && (
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={customExpiry}
-                                min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
-                                onChange={(e) => setCustomExpiry(e.target.value)}
+                                onChange={setCustomExpiry}
+                                disabled={{ before: addDays(new Date(), 1) }}
                                 className="w-44 bg-card"
                             />
                         )}

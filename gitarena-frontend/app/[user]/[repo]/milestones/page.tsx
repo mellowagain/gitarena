@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import { DatePicker } from "@/components/date-picker";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -113,12 +114,7 @@ function MilestoneForm({
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</label>
-                    <input
-                        type="date"
-                        value={state.dueDate}
-                        onChange={(e) => onChange({ ...state, dueDate: e.target.value })}
-                        className="h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
+                    <DatePicker value={state.dueDate} onChange={(dueDate) => onChange({ ...state, dueDate })} className="flex w-44" />
                 </div>
             </div>
             <div className="flex items-center gap-2">
