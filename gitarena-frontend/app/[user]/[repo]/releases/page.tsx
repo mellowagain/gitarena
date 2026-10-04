@@ -26,8 +26,6 @@ import {
     Plus,
     Calendar,
     FileArchive,
-    ChevronDown,
-    ChevronUp,
     Monitor,
     Apple,
     Smartphone,
@@ -37,6 +35,7 @@ import {
     Check,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -251,8 +250,7 @@ function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string
 }
 
 function ReleaseCard({ release, user, repo, canPush }: { release: Release; user: string; repo: string; canPush: boolean }) {
-    const [assetsOpen, setAssetsOpen] = useState(release.latest);
-    const [bodyOpen, setBodyOpen] = useState(release.latest);
+    const [openSections, setOpenSections] = useState<string[]>(release.latest ? ["notes", "assets"] : []);
 
     const { data: authorData } = useSWR<{ id: string; username: string }>(`/api/users/by-id/${release.author}`, jsonFetcher);
 
@@ -351,43 +349,33 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                 )}
             </div>
 
-            {/* Release notes */}
-            {release.description && (
-                <div className="border-t border-border/60">
-                    <button
-                        onClick={() => setBodyOpen((v) => !v)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
-                    >
-                        <span>Release notes</span>
-                        {bodyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                    {bodyOpen && (
-                        <div className="px-5 pb-4">
+            <Accordion type="multiple" value={openSections} onValueChange={setOpenSections}>
+                {/* Release notes */}
+                {release.description && (
+                    <AccordionItem value="notes" className="border-b-0 border-t border-border/60">
+                        <AccordionTrigger className="px-5 py-3 items-center rounded-none text-muted-foreground hover:text-foreground hover:bg-accent/30">
+                            <span>Release notes</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-5 pb-4">
                             <MarkdownRenderer content={release.description} user={user} repo={repo} className="text-sm leading-relaxed" />
-                        </div>
-                    )}
-                </div>
-            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                )}
 
-            {/* Assets */}
-            {release.assets.length > 0 && (
-                <div className="border-t border-border/60">
-                    <button
-                        onClick={() => setAssetsOpen((v) => !v)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
-                    >
-                        <span className="flex items-center gap-1.5">
-                            <FileArchive className="h-4 w-4" />
-                            Assets
-                            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-xs">
-                                {release.assets.length}
+                {/* Assets */}
+                {release.assets.length > 0 && (
+                    <AccordionItem value="assets" className="border-b-0 border-t border-border/60">
+                        <AccordionTrigger className="px-5 py-3 items-center rounded-none text-muted-foreground hover:text-foreground hover:bg-accent/30">
+                            <span className="flex items-center gap-1.5">
+                                <FileArchive className="h-4 w-4" />
+                                Assets
+                                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-xs">
+                                    {release.assets.length}
+                                </span>
                             </span>
-                        </span>
-                        {assetsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
+                        </AccordionTrigger>
 
-                    {assetsOpen && (
-                        <div className="px-5 pb-4 space-y-4">
+                        <AccordionContent className="px-5 pb-4 space-y-4">
                             {/* OS sections — flat list, user's OS first */}
                             {sortedOsOrder
                                 .filter((os) => osAssets.some((a) => a.os === os))
@@ -429,10 +417,10 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
-                </div>
-            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                )}
+            </Accordion>
         </div>
     );
 }
