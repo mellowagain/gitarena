@@ -43,6 +43,7 @@ import {
     Copy,
     XCircle,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const currentUser = { name: "Mari" };
 const repoData = { org: "mellowagain", name: "test" };
@@ -751,54 +752,52 @@ type DiffLine = { type: "context" | "add" | "remove"; lineOld: number | null; li
 type Hunk = { header: string; lines: DiffLine[] };
 
 function FileDiff({ filename, additions, deletions, hunks }: { filename: string; additions: number; deletions: number; hunks: Hunk[] }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [open, setOpen] = useState(true);
 
     return (
-        <div className="border border-border rounded-md overflow-hidden">
+        <Collapsible open={open} onOpenChange={setOpen} className="border border-border rounded-md overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/40 border-b border-border">
-                <button onClick={() => setCollapsed(!collapsed)} className="shrink-0">
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${collapsed ? "-rotate-90" : ""}`} />
-                </button>
+                <CollapsibleTrigger className="shrink-0">
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
+                </CollapsibleTrigger>
                 <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm font-mono flex-1">{filename}</span>
                 <span className="text-xs text-green-500 font-medium">+{additions}</span>
                 <span className="text-xs text-red-500 font-medium">-{deletions}</span>
             </div>
-            {!collapsed && (
-                <div className="overflow-x-auto">
-                    {hunks.map((hunk, hi) => (
-                        <div key={hi}>
-                            <div className="px-4 py-1 bg-blue-500/5 text-xs font-mono text-blue-400/70 border-b border-border/50">
-                                {hunk.header}
-                            </div>
-                            {hunk.lines.map((line, li) => (
-                                <div
-                                    key={li}
-                                    className={`flex font-mono text-xs leading-5 ${
-                                        line.type === "add"
-                                            ? "bg-green-500/8 text-green-300"
-                                            : line.type === "remove"
-                                              ? "bg-red-500/8 text-red-400"
-                                              : "text-muted-foreground"
-                                    }`}
-                                >
-                                    <span className="select-none w-12 px-2 py-0.5 text-right shrink-0 text-muted-foreground/40 border-r border-border/50">
-                                        {line.lineOld ?? ""}
-                                    </span>
-                                    <span className="select-none w-12 px-2 py-0.5 text-right shrink-0 text-muted-foreground/40 border-r border-border/50">
-                                        {line.lineNew ?? ""}
-                                    </span>
-                                    <span className="select-none w-5 px-1 py-0.5 shrink-0 text-center">
-                                        {line.type === "add" ? "+" : line.type === "remove" ? "−" : " "}
-                                    </span>
-                                    <span className="px-2 py-0.5 whitespace-pre flex-1">{line.content}</span>
-                                </div>
-                            ))}
+            <CollapsibleContent className="overflow-x-auto">
+                {hunks.map((hunk, hi) => (
+                    <div key={hi}>
+                        <div className="px-4 py-1 bg-blue-500/5 text-xs font-mono text-blue-400/70 border-b border-border/50">
+                            {hunk.header}
                         </div>
-                    ))}
-                </div>
-            )}
-        </div>
+                        {hunk.lines.map((line, li) => (
+                            <div
+                                key={li}
+                                className={`flex font-mono text-xs leading-5 ${
+                                    line.type === "add"
+                                        ? "bg-green-500/8 text-green-300"
+                                        : line.type === "remove"
+                                          ? "bg-red-500/8 text-red-400"
+                                          : "text-muted-foreground"
+                                }`}
+                            >
+                                <span className="select-none w-12 px-2 py-0.5 text-right shrink-0 text-muted-foreground/40 border-r border-border/50">
+                                    {line.lineOld ?? ""}
+                                </span>
+                                <span className="select-none w-12 px-2 py-0.5 text-right shrink-0 text-muted-foreground/40 border-r border-border/50">
+                                    {line.lineNew ?? ""}
+                                </span>
+                                <span className="select-none w-5 px-1 py-0.5 shrink-0 text-center">
+                                    {line.type === "add" ? "+" : line.type === "remove" ? "−" : " "}
+                                </span>
+                                <span className="px-2 py-0.5 whitespace-pre flex-1">{line.content}</span>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </CollapsibleContent>
+        </Collapsible>
     );
 }
 

@@ -16,6 +16,7 @@ import type { FileCommitInfo } from "@/components/repo-file-sidebar";
 import type { BranchesResponse } from "@/components/branch-bar";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface BranchCommitsResponse {
     commits: FileCommitInfo[];
@@ -35,7 +36,11 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
     const relativeDate = formatDistanceToNow(new Date(commit.time * 1000), { addSuffix: true, includeSeconds: true });
 
     return (
-        <div className="group/commit pl-5 border-l-4 border-border transition-all hover:border-l-[5px]">
+        <Collapsible
+            open={expanded}
+            onOpenChange={setExpanded}
+            className="group/commit pl-5 border-l-4 border-border transition-all hover:border-l-[5px]"
+        >
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -43,21 +48,22 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
                             {subject}
                         </Link>
                         {hasBody && (
-                            <button
-                                onClick={() => setExpanded((v) => !v)}
-                                title={expanded ? "Collapse" : "Expand commit body"}
-                                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-muted-foreground border border-border rounded hover:bg-accent/50 hover:text-foreground transition-colors shrink-0"
-                            >
-                                {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                            </button>
+                            <CollapsibleTrigger asChild>
+                                <button
+                                    title={expanded ? "Collapse" : "Expand commit body"}
+                                    className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-muted-foreground border border-border rounded hover:bg-accent/50 hover:text-foreground transition-colors shrink-0"
+                                >
+                                    {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                </button>
+                            </CollapsibleTrigger>
                         )}
                     </div>
 
-                    {expanded && (
+                    <CollapsibleContent asChild>
                         <pre className="mt-1.5 mb-2 text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
                             {body}
                         </pre>
-                    )}
+                    </CollapsibleContent>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
                         <UserAvatar userId={commit.authorUid} username={commit.authorName} size="xs" />
@@ -79,7 +85,7 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
                     <HashCopy shortHash={shortHash} fullHash={commit.sha1} />
                 </div>
             </div>
-        </div>
+        </Collapsible>
     );
 }
 
