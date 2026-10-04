@@ -328,7 +328,7 @@ function EmailsTab() {
 
     const { trigger: deleteEmail } = useSWRMutation(
         EMAILS_KEY,
-        (_url: string, { arg }: { arg: number }) => deleteFetcher(`/api/emails/${arg}`),
+        (_url: string, { arg }: { arg: string }) => deleteFetcher(`/api/emails/${arg}`),
         {
             onSuccess: () => mutate(EMAILS_KEY),
             onError: (err: Error) => toast.error(err.message),
@@ -347,7 +347,7 @@ function EmailsTab() {
 
     const { trigger: resendVerify } = useSWRMutation(
         EMAILS_KEY,
-        (_url: string, { arg }: { arg: number }) => postJsonVoidFetcher<Record<string, never>>(`/api/emails/${arg}/verify`, { arg: {} }),
+        (_url: string, { arg }: { arg: string }) => postJsonVoidFetcher<Record<string, never>>(`/api/emails/${arg}/verify`, { arg: {} }),
         {
             onSuccess: () => toast.success("Verification email sent"),
             onError: (err: Error) => toast.error(err.message),
@@ -789,7 +789,7 @@ function KeysTab() {
 
     const { trigger: deleteSSHKey } = useSWRMutation(
         SSH_KEYS_KEY,
-        (_url: string, { arg }: { arg: number }) => deleteFetcher(`/api/ssh-keys/${arg}`),
+        (_url: string, { arg }: { arg: string }) => deleteFetcher(`/api/ssh-keys/${arg}`),
         {
             onSuccess: () => mutate(SSH_KEYS_KEY),
             onError: (err: Error) => toast.error(err.message),

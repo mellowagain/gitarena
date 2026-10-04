@@ -16,3 +16,4 @@ public/
 
 *.mdx
 .claude
+.playwright-mcp

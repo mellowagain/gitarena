@@ -583,7 +583,7 @@ function BranchesTab() {
     const [requireSigned, setRequireSigned] = useState(repoData.requireSignedCommits);
 
     const toggleRule = (id: string, key: keyof (typeof rules)[0]) => {
-        setRules((prev) => prev.map((r) => (r.id === id ? { ...r, [key]: !r[key as string] } : r)));
+        setRules((prev) => prev.map((r) => (r.id === id ? { ...r, [key]: !r[key] } : r)));
     };
 
     return (

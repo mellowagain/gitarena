@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
     AlertCircle,
     GitMerge,
@@ -102,7 +103,7 @@ Closes #42`,
 type ActivityItem =
     | {
           type: "comment";
-          id: string;
+          id: number;
           author: string;
           isBot?: boolean;
           content: string;
@@ -112,7 +113,7 @@ type ActivityItem =
       }
     | {
           type: "diff_comment";
-          id: string;
+          id: number;
           author: string;
           content: string;
           createdAt: string;
@@ -120,7 +121,7 @@ type ActivityItem =
           lines: { lineNo: number; type: "context" | "add" | "remove"; content: string }[];
           reactions: { emoji: string; count: number; reacted: boolean }[];
       }
-    | { type: "event"; id: string; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
+    | { type: "event"; id: number; author: string; isBot?: boolean; action: string; detail?: string; createdAt: string };
 
 const activity: ActivityItem[] = [
     {
@@ -1048,7 +1049,12 @@ export default function MergeRequestPage() {
                                             key={commit.hash}
                                             className="group flex items-center gap-3 px-4 py-3 border border-border rounded-md hover:bg-accent/40 transition-colors"
                                         >
-                                            <CICommitIcon className={`h-4 w-4 shrink-0 ${ciConf.color}`} title={ciConf.label} />
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <CICommitIcon className={`h-4 w-4 shrink-0 ${ciConf.color}`} />
+                                                </TooltipTrigger>
+                                                <TooltipContent>{ciConf.label}</TooltipContent>
+                                            </Tooltip>
                                             <GitCommit className="h-4 w-4 text-muted-foreground shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="truncate text-sm">{commit.message}</p>
