@@ -40,6 +40,7 @@ import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
 
 interface IssueLabel {
     name: string;
@@ -462,7 +463,7 @@ export default function IssuesPage() {
 
                     <div className="hidden px-4 pb-4 border-t border-border pt-4 lg:block">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <kbd className="px-2 py-1 bg-secondary rounded text-xs">C</kbd>
+                            <Kbd>C</Kbd>
                             <span>New issue</span>
                         </div>
                     </div>

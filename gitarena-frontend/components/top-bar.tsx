@@ -25,6 +25,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Kbd } from "@/components/ui/kbd";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -130,7 +131,7 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
                     placeholder={search.placeholder}
                 />
                 <InputGroupAddon align="inline-end">
-                    <kbd className="px-1.5 py-0.5 text-[11px] bg-secondary rounded border border-border">/</kbd>
+                    <Kbd>/</Kbd>
                 </InputGroupAddon>
             </InputGroup>
 

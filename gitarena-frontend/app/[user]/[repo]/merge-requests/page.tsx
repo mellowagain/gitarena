@@ -21,6 +21,7 @@ import {
     GitBranch,
 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
 
 const repoData = {
     org: "mellowagain",
@@ -406,7 +407,7 @@ export default function MergeRequestsPage() {
 
                     <div className="p-4 border-t border-border">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <kbd className="px-2 py-1 bg-secondary rounded text-xs">N</kbd>
+                            <Kbd>N</Kbd>
                             <span>New merge request</span>
                         </div>
                     </div>
