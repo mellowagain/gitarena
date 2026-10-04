@@ -68,18 +68,6 @@ impl GitWriter {
         Ok(self)
     }
 
-    #[instrument(err, skip_all)]
-    pub(crate) async fn write_binary(&mut self, binary: &[u8]) -> Result<&mut GitWriter> {
-        self.inner.enable_binary_mode();
-        self.inner
-            .write(binary)
-            .await
-            .with_context(|| format!("Unable to write binary to Git writer: {binary:?}"))?;
-
-        self.inner.enable_text_mode();
-        Ok(self)
-    }
-
     #[instrument(err, skip(self, binary))]
     pub(crate) async fn write_binary_sideband(&mut self, band: Band, binary: &[u8]) -> Result<&mut GitWriter> {
         let with_band = [band.serialize(), binary].concat();

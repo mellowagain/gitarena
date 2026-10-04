@@ -105,7 +105,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, gitoxide_repo:
     }
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
+        write_report_line(ref_update.side_band_64k, writer, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(())
@@ -135,7 +135,7 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, gitoxide_repo: &gix::
         .commit(Signature::gitarena_default().to_ref(&mut TimeBuf::default()))?;
 
     if ref_update.report_status || ref_update.report_status_v2 {
-        writer.write_text_sideband_pktline(Band::Data, format!("ok {}", ref_update.target_ref)).await?;
+        write_report_line(ref_update.side_band_64k, writer, format!("ok {}", ref_update.target_ref)).await?;
     }
 
     Ok(())
@@ -159,6 +159,9 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
     }
 
     ref_update::propagate_capabilities(&mut updates);
+
+    let report_status = updates[0].report_status || updates[0].report_status_v2;
+    let side_band = updates[0].side_band_64k;
 
     for update in &updates {
         if update.target_ref.starts_with("refs/bugs/") {
@@ -190,7 +193,9 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
             pack_writer.commit()?;
         }
 
-        output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
+        if report_status {
+            write_report_line(side_band, &mut output_writer, "unpack ok").await?;
+        }
 
         for update in &updates {
             match RefUpdateType::determinate(&update.old, &update.new)? {
@@ -203,15 +208,26 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
             die!(BAD_REQUEST, "No PACK payload was sent");
         }
 
-        output_writer.write_text_sideband_pktline(Band::Data, "unpack ok").await?;
+        if report_status {
+            write_report_line(side_band, &mut output_writer, "unpack ok").await?;
+        }
 
         for update in &updates {
             process_delete(update, &gitoxide_repo, &mut output_writer).await?;
         }
     }
 
-    output_writer.flush_sideband(Band::Data).await?;
-    output_writer.flush().await?;
+    if report_status {
+        if side_band {
+            output_writer.flush_sideband(Band::Data).await?;
+        } else {
+            output_writer.flush().await?;
+        }
+    }
+
+    if side_band {
+        output_writer.flush().await?;
+    }
 
     let head_name = gitoxide_repo.head_name()?;
     let head_updated = head_name.is_some_and(|name| updates.iter().any(|update| name.as_bstr() == update.target_ref.as_str()));
@@ -304,6 +320,16 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
     }
 
     Ok(output_writer)
+}
+
+async fn write_report_line<S: AsRef<str>>(side_band: bool, writer: &mut GitWriter, text: S) -> Result<()> {
+    if side_band {
+        writer.write_text_sideband_pktline(Band::Data, text).await?;
+    } else {
+        writer.write_text(text).await?;
+    }
+
+    Ok(())
 }
 
 /// returns whether the commit was a force push and the new commits

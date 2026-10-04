@@ -41,13 +41,12 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: 
         }
 
         if let Some(stripped) = line.strip_prefix("want ") {
-            let mut parts = stripped.splitn(2, '\x00');
-            let oid = parts.next().unwrap_or(stripped).trim();
+            let mut parts = stripped.split(' ');
+
+            let oid = parts.next().unwrap_or(stripped);
             options.want.push(oid.to_owned());
 
-            if let Some(caps) = parts.next()
-                && caps.split(' ').any(|c| c == "side-band-64k")
-            {
+            if parts.any(|c| c == "side-band-64k") {
                 options.sideband = true;
             }
         }
@@ -103,7 +102,10 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: 
         writer = writer.append(&mut shallows);
     }*/
 
-    writer.flush().await?;
+    if options.sideband {
+        writer.flush().await?;
+    }
+
     writer.serialize().await
 }
 
@@ -150,9 +152,11 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
-    writer
-        .write_text_sideband(Band::Progress, format!("Enumerating objects: {}, done.", options.want.len()))
-        .await?;
+    if options.sideband {
+        writer
+            .write_text_sideband(Band::Progress, format!("Enumerating objects: {}, done.", options.want.len()))
+            .await?;
+    }
 
     let mut progress_writer = ProgressWriter::new();
 
@@ -192,13 +196,13 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
         (buf, pack_builder.object_count(), pack_builder.written())
     };
 
-    writer.append(progress_writer.to_writer().await?).await?;
-
-    if options.sideband {
-        writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref()).await?;
-    } else {
-        writer.write_binary(buffer.as_ref()).await?;
+    if !options.sideband {
+        writer.write_raw(buffer.as_ref()).await?;
+        return Ok(Some(writer));
     }
+
+    writer.append(progress_writer.to_writer().await?).await?;
+    writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref()).await?;
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
