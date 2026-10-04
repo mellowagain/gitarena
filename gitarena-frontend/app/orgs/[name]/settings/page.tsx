@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 
@@ -231,10 +232,15 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                     </div>
                     <div>
                         <FieldLabel>Default repository visibility</FieldLabel>
-                        <select disabled className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm">
-                            <option value="public">Public</option>
-                            <option value="private">Private</option>
-                        </select>
+                        <Select disabled defaultValue="public">
+                            <SelectTrigger className="w-full bg-card">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="public">Public</SelectItem>
+                                <SelectItem value="private">Private</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </div>
@@ -316,16 +322,16 @@ function MemberRow({
             >
                 {member.role}
             </span>
-            <select
-                value={member.role}
-                onChange={(e) => onRoleChange(username, e.target.value)}
-                disabled={member.role === "owner" || !user}
-                className="h-7 px-2 bg-card border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="owner">Owner</option>
-            </select>
+            <Select value={member.role} onValueChange={(role) => onRoleChange(username, role)} disabled={member.role === "owner" || !user}>
+                <SelectTrigger size="sm" className="bg-card text-xs">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                </SelectContent>
+            </Select>
             <button
                 onClick={() => onRemove(username)}
                 disabled={member.role === "owner" || !user}
@@ -411,15 +417,16 @@ function MembersTab({ orgName }: { orgName: string }) {
                         placeholder="Username"
                         className="flex-1 h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
-                        className="h-9 px-2 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                        <option value="owner">Owner</option>
-                    </select>
+                    <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as typeof inviteRole)}>
+                        <SelectTrigger className="bg-card">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="owner">Owner</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <button
                         className="inline-flex items-center gap-2 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity whitespace-nowrap disabled:opacity-50"
                         onClick={handleInvite}

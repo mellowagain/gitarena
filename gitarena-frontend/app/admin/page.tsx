@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TopBar } from "@/components/top-bar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInstanceConfig } from "@/components/instance-config-provider";
@@ -777,11 +778,16 @@ export default function AdminDashboardPage() {
                                         className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                     />
                                 </div>
-                                <select className="h-9 px-3 bg-card border border-border rounded-md text-sm focus:outline-none">
-                                    <option>All classes</option>
-                                    <option value="security">Security</option>
-                                    <option value="activity">Activity</option>
-                                </select>
+                                <Select defaultValue="all">
+                                    <SelectTrigger className="bg-card">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All classes</SelectItem>
+                                        <SelectItem value="security">Security</SelectItem>
+                                        <SelectItem value="activity">Activity</SelectItem>
+                                    </SelectContent>
+                                </Select>
                                 <Button variant="outline" size="sm" className="gap-2 ml-auto">
                                     <Download className="h-4 w-4" />
                                     Export CSV
