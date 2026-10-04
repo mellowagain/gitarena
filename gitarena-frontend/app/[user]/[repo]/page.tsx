@@ -35,6 +35,7 @@ import { shortLocale, uuidToDate } from "@/lib/utils";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import type { BranchesResponse } from "@/components/branch-bar";
 
 export interface RepoMetadata {
     id: string;
@@ -113,6 +114,8 @@ export default function RepoPage({ params }: { params: Promise<{ user: string; r
 function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; meta: RepoMetadata }) {
     const instanceConfig = useInstanceConfig();
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
+    const { data: branchesData } = useSWR<BranchesResponse>(`/api/repos/${user}/${repo}/branches`);
+    const otherBranches = (branchesData?.branches ?? []).map((b) => b.name).sort((a, b) => a.localeCompare(b));
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     const host = apiUrl.replace(/^https?:\/\//, "");
@@ -141,6 +144,31 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
                                 <p className="text-sm text-muted-foreground mt-0.5">Get started by pushing your code.</p>
                             </div>
                         </div>
+
+                        {otherBranches.length > 0 && (
+                            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-4 py-3">
+                                <p className="text-sm text-muted-foreground">
+                                    The default branch <span className="font-mono text-foreground">{branch}</span> has no commits, but{" "}
+                                    {otherBranches.length === 1 ? "another branch does" : `${otherBranches.length} other branches do`}.
+                                </p>
+                                <DropdownMenu modal={false}>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="secondary" size="sm" className="h-8 gap-1.5 shrink-0">
+                                            <GitBranch className="h-3.5 w-3.5" />
+                                            Browse branch
+                                            <ChevronDown className="h-3 w-3 opacity-50" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+                                        {otherBranches.map((name) => (
+                                            <DropdownMenuItem key={name} asChild>
+                                                <Link href={`/${user}/${repo}/tree/${encodeURIComponent(name)}`}>{name}</Link>
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        )}
 
                         {!meta.archivedAt && (
                             <Tabs defaultValue="create">

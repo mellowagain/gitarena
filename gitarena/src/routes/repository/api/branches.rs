@@ -50,10 +50,8 @@ pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Resu
 
     let default_ref = format!("refs/heads/{}", repo.default_branch);
     let default_oid = match libgit2_repo.find_reference(&default_ref) {
-        Ok(r) => r.peel_to_commit()?.id(),
-        Err(err) if err.code() == ErrorCode::NotFound => {
-            return Ok(HttpResponse::Ok().json(BranchesResponse { branches: vec![] }));
-        }
+        Ok(r) => Some(r.peel_to_commit()?.id()),
+        Err(err) if err.code() == ErrorCode::NotFound => None,
         Err(err) => return Err(err.into()),
     };
 
@@ -67,7 +65,11 @@ pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Resu
 
         let branch_oid = reference.peel_to_commit()?.id();
         let commit_count = all_commits(&libgit2_repo, full_name, 0).await?.len();
-        let (ahead, behind) = libgit2_repo.graph_ahead_behind(branch_oid, default_oid)?;
+
+        let (ahead, behind) = match default_oid {
+            Some(default_oid) => libgit2_repo.graph_ahead_behind(branch_oid, default_oid)?,
+            None => (0, 0),
+        };
 
         branches.push(BranchInfo {
             name: short_name.to_owned(),
