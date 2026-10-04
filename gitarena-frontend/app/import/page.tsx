@@ -30,6 +30,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 import { isValidUrl, extractRepoNameFromUrl } from "@/lib/repo-validation";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -290,12 +292,12 @@ export default function ImportRepositoryPage() {
                                         Repository URL <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
-                                        <input
+                                        <Input
                                             type="url"
                                             value={repoUrl}
                                             onChange={(e) => handleUrlChange(e.target.value)}
                                             placeholder="https://github.com/user/repo.git"
-                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="h-11 px-4 pr-10 md:text-base"
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                             {urlValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
@@ -308,19 +310,18 @@ export default function ImportRepositoryPage() {
                                     <div className="pt-4 border-t border-border space-y-3">
                                         <p className="text-sm text-muted-foreground">For private repositories, provide authentication:</p>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <input
-                                                type="text"
+                                            <Input
                                                 value={importUsername}
                                                 onChange={(e) => setImportUsername(e.target.value)}
                                                 placeholder="Username (optional)"
-                                                className="h-10 px-3 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                                className="h-10"
                                             />
-                                            <input
+                                            <Input
                                                 type="password"
                                                 value={importPassword}
                                                 onChange={(e) => setImportPassword(e.target.value)}
                                                 placeholder="Token or password"
-                                                className="h-10 px-3 bg-card border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                                className="h-10"
                                             />
                                         </div>
                                     </div>
@@ -395,12 +396,11 @@ export default function ImportRepositoryPage() {
                                     <span className="text-2xl text-muted-foreground">/</span>
 
                                     <div className="relative flex-1">
-                                        <input
-                                            type="text"
+                                        <Input
                                             value={repoName}
                                             onChange={(e) => setRepoName(e.target.value)}
                                             placeholder="repository-name"
-                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="h-11 px-4 pr-10 md:text-base"
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                             {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
@@ -425,12 +425,12 @@ export default function ImportRepositoryPage() {
                                     Description <span className="text-muted-foreground font-normal">(optional)</span>
                                     {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
                                 </label>
-                                <textarea
+                                <Textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="A short description of your repository"
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    className="px-4 py-3 md:text-base"
                                 />
                                 {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             </div>

@@ -55,6 +55,7 @@ import { uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { Input } from "@/components/ui/input";
 
 interface InstanceStats {
     users: number;
@@ -638,11 +639,7 @@ export default function AdminDashboardPage() {
                                 <div className="flex items-center gap-3">
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search users..."
-                                            className="h-9 pl-9 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                        />
+                                        <Input placeholder="Search users..." className="pl-9 pr-4" />
                                     </div>
                                     <Button className="gap-2">
                                         <Plus className="h-4 w-4" />
@@ -773,10 +770,7 @@ export default function AdminDashboardPage() {
                             <div className="flex items-center gap-3">
                                 <div className="relative flex-1 max-w-xs">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                    <input
-                                        placeholder="Search events…"
-                                        className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                                    />
+                                    <Input placeholder="Search events…" className="pl-9" />
                                 </div>
                                 <Select defaultValue="all">
                                     <SelectTrigger className="bg-card">

@@ -30,6 +30,7 @@ import {
     MessageSquare,
     ChevronDown,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1073,13 +1074,12 @@ function SearchPageContent() {
                 <div className="max-w-6xl mx-auto px-6 py-3">
                     <div className="relative max-w-2xl">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <input
-                            type="text"
+                        <Input
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                             placeholder="Search GitArena..."
-                            className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="h-10 pl-10 pr-4"
                         />
                     </div>
                 </div>

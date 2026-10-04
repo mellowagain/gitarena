@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { jsonFetcher, postJsonFetcher, patchJsonFetcher, deleteFetcher } from "@/lib/fetchers";
 import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, RefreshCw, Calendar, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { Input } from "@/components/ui/input";
 
 interface MilestoneEntry {
     id: string;
@@ -93,23 +94,19 @@ function MilestoneForm({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto]">
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.title}
                         onChange={(e) => onChange({ ...state, title: e.target.value })}
                         placeholder="e.g. v1.0 release"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                         autoFocus
                     />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.description}
                         onChange={(e) => onChange({ ...state, description: e.target.value })}
                         placeholder="Optional description"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                 </div>
                 <div className="space-y-1.5">

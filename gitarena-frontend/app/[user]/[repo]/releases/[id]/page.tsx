@@ -30,6 +30,7 @@ import {
     X,
     CheckCircle2,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -485,12 +486,7 @@ export default function EditReleasePage() {
                                 <label className="text-sm font-medium block mb-1.5">
                                     Title <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                />
+                                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10" />
                             </div>
 
                             <div>
@@ -657,15 +653,14 @@ export default function EditReleasePage() {
 
                                             <div>
                                                 <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
-                                                <input
-                                                    type="text"
+                                                <Input
                                                     value={uploadState.name}
                                                     onChange={(e) =>
                                                         setUploadState((s) =>
                                                             s.status === "selected" ? { ...s, name: e.target.value } : s
                                                         )
                                                     }
-                                                    className="w-full h-8 px-2 text-sm font-mono bg-card border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                                                    className="h-8 px-2 font-mono"
                                                 />
                                             </div>
 

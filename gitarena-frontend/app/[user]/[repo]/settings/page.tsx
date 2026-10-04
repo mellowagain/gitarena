@@ -43,6 +43,8 @@ import { useParams } from "next/navigation";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -156,15 +158,6 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
             {children}
             {optional && <span className="ml-1.5 text-xs text-muted-foreground font-normal">optional</span>}
         </label>
-    );
-}
-
-function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-    return (
-        <input
-            {...props}
-            className={`w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-shadow ${className}`}
-        />
     );
 }
 
@@ -447,12 +440,7 @@ function GeneralTab({ namespace, repo }: { namespace: string; repo: string }) {
             {/* Description */}
             <div className="mb-6">
                 <FieldLabel optional>Description</FieldLabel>
-                <textarea
-                    value={description}
-                    readOnly
-                    rows={3}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none resize-none opacity-60 cursor-not-allowed"
-                />
+                <Textarea value={description} readOnly rows={3} className="opacity-60 cursor-not-allowed" />
             </div>
 
             <SaveButton />
@@ -969,7 +957,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                                     value={deleteInput}
                                     onChange={(e) => setDeleteInput(e.target.value)}
                                     placeholder={fullName}
-                                    className="border-destructive/40 focus:ring-destructive/40"
+                                    className="border-destructive/40 focus-visible:ring-destructive/40"
                                 />
                                 <div className="flex gap-2">
                                     <button

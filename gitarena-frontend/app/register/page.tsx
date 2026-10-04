@@ -10,6 +10,7 @@ import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Check, Compass, GitMerge, Us
 import { GitHubIcon } from "@/components/github-icon";
 import { useAuth } from "@/hooks/use-auth";
 import useSWR from "swr";
+import { Input } from "@/components/ui/input";
 
 interface SSOProviders {
     github: boolean;
@@ -226,16 +227,15 @@ export default function RegisterPage() {
                                 </label>
                                 <div className="relative">
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                    <Input
                                         id="username"
-                                        type="text"
                                         value={form.username}
                                         onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                                         placeholder="johndoe"
                                         autoComplete="username"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="h-11 pl-10 pr-4 md:text-base"
                                     />
                                 </div>
                                 {form.username && (
@@ -251,7 +251,7 @@ export default function RegisterPage() {
                                 </label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                    <Input
                                         id="email"
                                         type="email"
                                         value={form.email}
@@ -260,7 +260,7 @@ export default function RegisterPage() {
                                         autoComplete="email"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="h-11 pl-10 pr-4 md:text-base"
                                     />
                                 </div>
                             </div>
@@ -271,7 +271,7 @@ export default function RegisterPage() {
                                 </label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                    <Input
                                         id="password"
                                         type={showPassword ? "text" : "password"}
                                         value={form.password}
@@ -280,7 +280,7 @@ export default function RegisterPage() {
                                         autoComplete="new-password"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="h-11 pl-10 pr-11 md:text-base"
                                     />
                                     <button
                                         type="button"

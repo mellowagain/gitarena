@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tag, GitCommit, Code, AlertCircle, GitMerge, Settings, Search, Calendar, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface TagInfo {
     name: string;
@@ -137,13 +138,7 @@ export default function TagsPage() {
                     {/* Search */}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <input
-                            type="text"
-                            placeholder="Search tags…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
+                        <Input placeholder="Search tags…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
                     </div>
 
                     {/* Tag list */}

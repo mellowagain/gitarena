@@ -32,6 +32,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -281,12 +283,11 @@ function NewRepositoryForm() {
                                     <span className="text-2xl text-muted-foreground">/</span>
 
                                     <div className="relative flex-1">
-                                        <input
-                                            type="text"
+                                        <Input
                                             value={repoName}
                                             onChange={(e) => setRepoName(e.target.value)}
                                             placeholder="repository-name"
-                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="h-11 px-4 pr-10 md:text-base"
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                             {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
@@ -322,12 +323,12 @@ function NewRepositoryForm() {
                                     Description <span className="text-muted-foreground font-normal">(optional)</span>
                                     {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
                                 </label>
-                                <textarea
+                                <Textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="A short description of your repository"
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    className="px-4 py-3 md:text-base"
                                 />
                                 {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             </div>
@@ -410,12 +411,7 @@ function NewRepositoryForm() {
                                             <GitBranch className="h-4 w-4 text-muted-foreground" />
                                             <span className="font-medium">Default branch</span>
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={defaultBranch}
-                                            onChange={(e) => setDefaultBranch(e.target.value)}
-                                            className="w-full h-9 px-3 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                        />
+                                        <Input value={defaultBranch} onChange={(e) => setDefaultBranch(e.target.value)} />
                                     </div>
 
                                     <div className="p-4 rounded-lg border border-border space-y-2">

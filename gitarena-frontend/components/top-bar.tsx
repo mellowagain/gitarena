@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -106,9 +107,8 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
         <div ref={containerRef} className="flex-1 max-w-lg relative">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
+                <Input
                     ref={inputRef}
-                    type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -118,7 +118,7 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
                         }
                     }}
                     placeholder={search.placeholder}
-                    className="w-full h-9 pl-9 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-sm"
+                    className="pl-9 pr-10"
                 />
                 <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground bg-secondary rounded border border-border">
                     /

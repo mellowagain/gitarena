@@ -22,6 +22,7 @@ import { jsonFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
 
 interface IssueListItem {
     index: number;
@@ -308,13 +309,7 @@ export default function BoardPage() {
             <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
                 <div className="relative min-w-0 flex-1 sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Filter issues…"
-                        className="h-8 w-full rounded-md border-0 bg-secondary pr-3 pl-9 text-sm placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                    />
+                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter issues…" className="h-8 pl-9" />
                 </div>
                 <Link
                     href={`/${user}/${repo}/issues`}

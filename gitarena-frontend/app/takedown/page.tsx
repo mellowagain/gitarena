@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GitBranch, ChevronRight, Scale, CheckCircle2, TriangleAlert, FileSearch, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Step = { title: string; body: string };
 
@@ -235,29 +237,25 @@ export default function TakedownPage() {
                                             <label htmlFor="yourName" className="text-sm font-medium">
                                                 Full name <span className="text-red-500">*</span>
                                             </label>
-                                            <input
+                                            <Input
                                                 id="yourName"
                                                 name="yourName"
-                                                type="text"
                                                 required
                                                 value={form.yourName}
                                                 onChange={handleChange}
                                                 placeholder="Jane Smith"
-                                                className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label htmlFor="companyName" className="text-sm font-medium">
                                                 Company / organisation <span className="text-muted-foreground font-normal">(optional)</span>
                                             </label>
-                                            <input
+                                            <Input
                                                 id="companyName"
                                                 name="companyName"
-                                                type="text"
                                                 value={form.companyName}
                                                 onChange={handleChange}
                                                 placeholder="Acme Corp"
-                                                className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                             />
                                         </div>
                                     </div>
@@ -265,7 +263,7 @@ export default function TakedownPage() {
                                         <label htmlFor="email" className="text-sm font-medium">
                                             Email address <span className="text-red-500">*</span>
                                         </label>
-                                        <input
+                                        <Input
                                             id="email"
                                             name="email"
                                             type="email"
@@ -273,7 +271,6 @@ export default function TakedownPage() {
                                             value={form.email}
                                             onChange={handleChange}
                                             placeholder="jane@example.com"
-                                            className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             We will send acknowledgement and status updates to this address.
@@ -292,7 +289,7 @@ export default function TakedownPage() {
                                         <label htmlFor="workDescription" className="text-sm font-medium">
                                             Description of the copyrighted work <span className="text-red-500">*</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="workDescription"
                                             name="workDescription"
                                             required
@@ -300,14 +297,14 @@ export default function TakedownPage() {
                                             value={form.workDescription}
                                             onChange={handleChange}
                                             placeholder="Describe the original work that has been infringed — e.g. 'The proprietary source code for Acme's authentication library, version 2.1, registered copyright 2024.'"
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="leading-relaxed"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label htmlFor="infringingUrls" className="text-sm font-medium">
                                             URLs of the infringing content <span className="text-red-500">*</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="infringingUrls"
                                             name="infringingUrls"
                                             required
@@ -317,7 +314,7 @@ export default function TakedownPage() {
                                             placeholder={
                                                 "https://git.mari.zip/user/repo/blob/main/src/auth.rs\nhttps://git.mari.zip/user/repo/blob/main/src/lib.rs"
                                             }
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="font-mono leading-relaxed"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             One URL per line. Use the full URL to the specific file(s) or commit(s).
@@ -328,14 +325,14 @@ export default function TakedownPage() {
                                             Location of the original work{" "}
                                             <span className="text-muted-foreground font-normal">(optional)</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="originalUrls"
                                             name="originalUrls"
                                             rows={2}
                                             value={form.originalUrls}
                                             onChange={handleChange}
                                             placeholder="https://example.com/original-work"
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="font-mono leading-relaxed"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             Link to where the original, authorised work can be found, if publicly accessible.
@@ -380,15 +377,14 @@ export default function TakedownPage() {
                                     <label htmlFor="signature" className="text-sm font-medium">
                                         Electronic signature <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <Input
                                         id="signature"
                                         name="signature"
-                                        type="text"
                                         required
                                         value={form.signature}
                                         onChange={handleChange}
                                         placeholder="Type your full legal name"
-                                        className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                        className="font-mono"
                                     />
                                     <p className="text-xs text-muted-foreground">Typing your name constitutes an electronic signature.</p>
                                 </div>

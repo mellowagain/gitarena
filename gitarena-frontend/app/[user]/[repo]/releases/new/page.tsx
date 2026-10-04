@@ -10,6 +10,7 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Loader2, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -427,13 +428,12 @@ export default function NewReleasePage() {
                         </label>
                         <div className="relative">
                             <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                            <input
-                                type="text"
+                            <Input
                                 value={tag}
                                 onChange={(e) => setTag(e.target.value)}
                                 placeholder="v1.0.0"
                                 disabled={isPublishing}
-                                className="w-full h-10 pl-9 pr-3 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                className="h-10 pl-9 font-mono"
                             />
                         </div>
                         <p className="mt-1.5 text-xs text-muted-foreground">
@@ -447,13 +447,12 @@ export default function NewReleasePage() {
                         <label className="text-sm font-medium block mb-1.5">
                             Title <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
+                        <Input
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Release title…"
                             disabled={isPublishing}
-                            className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                            className="h-10"
                         />
                     </div>
 
@@ -571,12 +570,11 @@ export default function NewReleasePage() {
                                         <div className="flex items-center gap-3">
                                             <FileArchive className="h-4 w-4 text-muted-foreground shrink-0" />
                                             <div className="flex-1 min-w-0">
-                                                <input
-                                                    type="text"
+                                                <Input
                                                     value={asset.name}
                                                     onChange={(e) => updateAsset(asset.localId, { name: e.target.value })}
                                                     disabled={isPublishing}
-                                                    className="w-full h-7 px-2 bg-card border border-border rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                                    className="h-7 px-2 font-mono"
                                                 />
                                             </div>
                                             <span className="text-xs text-muted-foreground shrink-0">{formatBytes(asset.file.size)}</span>

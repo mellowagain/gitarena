@@ -49,6 +49,8 @@ import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
 import { AvatarManagement } from "@/components/avatar-management";
 import { TokenManager } from "@/components/token-manager";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -155,24 +157,6 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
     );
 }
 
-function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-    return (
-        <input
-            {...props}
-            className={`w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-shadow ${className}`}
-        />
-    );
-}
-
-function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-    return (
-        <textarea
-            {...props}
-            className={`w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none transition-shadow ${className}`}
-        />
-    );
-}
-
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
     return (
         <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
@@ -266,7 +250,7 @@ function ProfileTab() {
                     <FieldLabel optional>Bio</FieldLabel>
                     <WipTag />
                 </div>
-                <Textarea rows={3} disabled placeholder="Bio editing coming soon" className="opacity-50 cursor-not-allowed" />
+                <Textarea rows={3} disabled placeholder="Bio editing coming soon" />
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -275,14 +259,14 @@ function ProfileTab() {
                         <FieldLabel optional>Website</FieldLabel>
                         <WipTag />
                     </div>
-                    <Input disabled placeholder="Coming soon" type="url" className="opacity-50 cursor-not-allowed" />
+                    <Input disabled placeholder="Coming soon" type="url" />
                 </div>
                 <div>
                     <div className="flex items-center gap-2 mb-1.5">
                         <FieldLabel optional>Location</FieldLabel>
                         <WipTag />
                     </div>
-                    <Input disabled placeholder="Coming soon" className="opacity-50 cursor-not-allowed" />
+                    <Input disabled placeholder="Coming soon" />
                 </div>
             </div>
 

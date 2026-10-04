@@ -33,6 +33,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -155,25 +157,14 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                     <FieldLabel>Display name</FieldLabel>
                     <WipTag />
                 </div>
-                <input
-                    type="text"
-                    disabled
-                    defaultValue={org.name}
-                    className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm opacity-50 cursor-not-allowed"
-                />
+                <Input disabled defaultValue={org.name} />
                 <FieldHint>Display name editing is not yet available.</FieldHint>
             </div>
 
             {/* Description */}
             <div>
                 <FieldLabel>Description</FieldLabel>
-                <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    maxLength={256}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} maxLength={256} />
                 <FieldHint>Max 256 characters.</FieldHint>
             </div>
 
@@ -223,12 +214,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                 <div className="space-y-4 opacity-50 pointer-events-none">
                     <div>
                         <FieldLabel>Default branch name</FieldLabel>
-                        <input
-                            type="text"
-                            disabled
-                            defaultValue="main"
-                            className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm font-mono"
-                        />
+                        <Input disabled defaultValue="main" className="font-mono" />
                         <FieldHint>Applied to all newly created repositories in this organization.</FieldHint>
                     </div>
                     <div>
@@ -411,13 +397,7 @@ function MembersTab({ orgName }: { orgName: string }) {
             <div className="p-4 border border-border rounded-md space-y-3">
                 <p className="text-sm font-medium">Add a member</p>
                 <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={inviteInput}
-                        onChange={(e) => setInviteInput(e.target.value)}
-                        placeholder="Username"
-                        className="flex-1 h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
+                    <Input value={inviteInput} onChange={(e) => setInviteInput(e.target.value)} placeholder="Username" className="flex-1" />
                     <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as typeof inviteRole)}>
                         <SelectTrigger className="bg-card">
                             <SelectValue />
@@ -510,12 +490,7 @@ function SecurityTab() {
             <div className="opacity-50 pointer-events-none">
                 <p className="text-sm font-medium mb-1.5">IP allowlist</p>
                 <p className="text-xs text-muted-foreground mb-3">Restrict access to specific IP addresses or CIDR ranges.</p>
-                <textarea
-                    rows={4}
-                    disabled
-                    placeholder={"192.168.1.0/24\n10.0.0.1"}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground resize-none"
-                />
+                <Textarea rows={4} disabled placeholder={"192.168.1.0/24\n10.0.0.1"} className="font-mono" />
             </div>
         </div>
     );
@@ -615,12 +590,7 @@ function DangerTab({ orgName }: { orgName: string }) {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <input
-                        type="text"
-                        disabled
-                        placeholder={`New name for ${orgName}`}
-                        className="flex-1 h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground"
-                    />
+                    <Input disabled placeholder={`New name for ${orgName}`} className="flex-1" />
                     <button
                         disabled
                         className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md opacity-40"
@@ -668,12 +638,11 @@ function DangerTab({ orgName }: { orgName: string }) {
                         <p className="text-xs font-medium">
                             Type <code className="font-mono">{orgName}</code> to confirm deletion:
                         </p>
-                        <input
-                            type="text"
+                        <Input
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
                             placeholder={orgName}
-                            className="w-full h-9 px-3 bg-card border border-destructive/50 rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-destructive"
+                            className="border-destructive/50 focus-visible:ring-destructive/40 font-mono"
                         />
                         <div className="flex gap-2">
                             <button

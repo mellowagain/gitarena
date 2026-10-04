@@ -8,6 +8,8 @@ import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Building2, Loader2 } from "lucide-react";
 import { postJsonFetcher } from "@/lib/fetchers";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CreateOrgRequest {
     name: string;
@@ -79,13 +81,12 @@ export default function NewOrganizationPage() {
                             <label className="text-sm font-medium">
                                 Organization name <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <Input
                                 value={name}
                                 onChange={(e) => setName(e.target.value.toLowerCase())}
                                 placeholder="my-organization"
                                 maxLength={32}
-                                className="w-full h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                className="h-11 px-4 md:text-base"
                             />
                             {nameError && <p className="text-sm text-red-500">{nameError}</p>}
                             <p className="text-xs text-muted-foreground">
@@ -97,13 +98,13 @@ export default function NewOrganizationPage() {
                             <label className="text-sm font-medium flex items-center gap-2">
                                 Description <span className="text-muted-foreground font-normal">(optional)</span>
                             </label>
-                            <textarea
+                            <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="A short description of your organization"
                                 rows={3}
                                 maxLength={256}
-                                className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                className="px-4 py-3 md:text-base"
                             />
                             {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             <p className="text-xs text-muted-foreground text-right">{description.length}/256</p>

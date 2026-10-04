@@ -16,6 +16,7 @@ import { startAuthentication } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
 import { postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -245,16 +246,15 @@ function LoginContent() {
                                     <label htmlFor="identifier" className="text-sm font-medium">
                                         Username or email
                                     </label>
-                                    <input
+                                    <Input
                                         id="identifier"
-                                        type="text"
                                         value={form.identifier}
                                         onChange={(e) => setForm((f) => ({ ...f, identifier: e.target.value }))}
                                         placeholder="you@example.com"
                                         autoComplete="username"
                                         required
                                         disabled={isLoggingIn}
-                                        className="w-full h-11 px-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="h-11 px-4 md:text-base"
                                     />
                                 </div>
 
@@ -271,7 +271,7 @@ function LoginContent() {
                                         </Link>
                                     </div>
                                     <div className="relative">
-                                        <input
+                                        <Input
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             value={form.password}
@@ -280,7 +280,7 @@ function LoginContent() {
                                             autoComplete="current-password"
                                             required
                                             disabled={isLoggingIn}
-                                            className="w-full h-11 px-4 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                            className="h-11 px-4 pr-11 md:text-base"
                                         />
                                         <button
                                             type="button"

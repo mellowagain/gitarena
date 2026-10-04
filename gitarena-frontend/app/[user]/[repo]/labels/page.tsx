@@ -11,6 +11,7 @@ import { jsonFetcher, postJsonFetcher, putJsonFetcher, deleteFetcher } from "@/l
 import { AlertCircle, GitMerge, Code, Tag, Plus, Pencil, Trash2, Check, X, RefreshCw } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 import { createPortal } from "react-dom";
+import { Input } from "@/components/ui/input";
 
 type Label = {
     id: string;
@@ -232,13 +233,12 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
                   {/* Hex input inside popover */}
                   <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded border border-border shrink-0" style={{ backgroundColor: displayColor }} />
-                      <input
-                          type="text"
+                      <Input
                           value={inputVal}
                           onChange={(e) => handleInput(e.target.value)}
                           placeholder="#000000"
                           maxLength={7}
-                          className="h-8 flex-1 px-2 font-mono text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                          className="h-8 flex-1 px-2 font-mono"
                       />
                   </div>
                   {inputVal.length > 1 && !isValidHex(inputVal) && <p className="text-xs text-destructive -mt-1">Invalid hex color</p>}
@@ -260,13 +260,12 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
             />
 
             {/* Hex input */}
-            <input
-                type="text"
+            <Input
                 value={inputVal}
                 onChange={(e) => handleInput(e.target.value)}
                 placeholder="#000000"
                 maxLength={7}
-                className="h-11 w-36 px-3 font-mono text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-36 font-mono"
             />
 
             {popover}
@@ -446,13 +445,7 @@ export default function LabelsPage() {
 
                     {/* Search */}
                     <div className="relative max-w-sm">
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Filter labels…"
-                            className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                        />
+                        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter labels…" className="pl-9" />
                         <svg
                             className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
                             fill="none"
@@ -607,12 +600,10 @@ function LabelForm({
                 {/* Name */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.name}
                         onChange={(e) => onChange({ ...state, name: e.target.value })}
                         placeholder="e.g. bug or priority::high"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     {scope && (
                         <p className="text-[11px] text-muted-foreground">
@@ -625,12 +616,10 @@ function LabelForm({
                 {/* Description */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.description}
                         onChange={(e) => onChange({ ...state, description: e.target.value })}
                         placeholder="Optional description"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                 </div>
 

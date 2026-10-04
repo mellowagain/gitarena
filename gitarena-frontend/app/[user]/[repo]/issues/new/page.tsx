@@ -15,6 +15,7 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { useAuth } from "@/hooks/use-auth";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
 
 interface LabelsResponse {
     labels: { name: string; color: string }[];
@@ -157,12 +158,11 @@ export default function NewIssuePage() {
                             <label className="text-sm font-medium block mb-1.5">
                                 Title <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <Input
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Short, descriptive title…"
-                                className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="h-10"
                             />
                         </div>
 
