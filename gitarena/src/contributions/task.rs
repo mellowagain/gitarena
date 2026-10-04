@@ -68,7 +68,7 @@ impl AsyncRunnable for BackfillRepoContributionsTask {
                     continue;
                 };
 
-                commit_data.push((oid.to_string(), email.to_lowercase(), dt.date_naive()));
+                commit_data.push((oid.to_string(), email.to_owned(), dt.date_naive()));
             }
 
             Ok(commit_data)

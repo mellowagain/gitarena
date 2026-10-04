@@ -101,7 +101,7 @@ pub(crate) async fn create_fork(
         .await
         .context("Failed to copy repository")?;
 
-    let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
+    let domain: String = get_optional_setting("domain.app", &mut tx).await?.unwrap_or_default();
 
     Event::new(
         "repo.forked",

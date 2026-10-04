@@ -20,6 +20,7 @@ import {
     Info,
     Palette,
     Activity,
+    Copy,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import useSWR, { mutate } from "swr";
@@ -40,7 +41,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
 import { formatDistanceToNow } from "date-fns";
-import { uuidToDate } from "@/lib/utils";
+import { forgeEmail, uuidToDate } from "@/lib/utils";
+import type { InstanceConfig } from "@/lib/instance-config";
 import { toast } from "sonner";
 import DeviceDetector from "device-detector-js";
 import { AuditLogEvent } from "@/components/audit-log-event";
@@ -310,6 +312,9 @@ function ProfileTab() {
 
 function EmailsTab() {
     const { data: emails, isLoading } = useSWR<EmailResponse[]>(EMAILS_KEY);
+    const { user: me, isLoading: meLoading } = useAuth();
+    const { data: instanceConfig, isLoading: configLoading } = useSWR<InstanceConfig>("/api");
+    const forgeAddress = me && instanceConfig ? forgeEmail(me.id, instanceConfig.userEmailDomain) : null;
     const [newEmail, setNewEmail] = useState("");
 
     const { trigger: addEmail, isMutating: adding } = useSWRMutation(EMAILS_KEY, postJsonFetcher<{ email: string }, EmailResponse>, {
@@ -466,6 +471,32 @@ function EmailsTab() {
                     </button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1.5">A verification email will be sent to this address.</p>
+            </div>
+
+            <div className="border-t border-border mt-8 pt-8">
+                <SectionHeader
+                    title="Commit email"
+                    description="Use this address in Git to link commits to your account without revealing your real email."
+                />
+                {(meLoading || configLoading) && <div className="h-10 bg-muted animate-pulse rounded-md" />}
+                {forgeAddress && (
+                    <div className="flex items-center rounded-md bg-card border border-border">
+                        <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-foreground">{forgeAddress}</code>
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(forgeAddress);
+                                toast.success("Commit email copied");
+                            }}
+                            aria-label="Copy commit email"
+                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <Copy className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1.5">
+                    Set it for all repositories with <code className="font-mono">git config --global user.email</code>
+                </p>
             </div>
         </div>
     );

@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
-    let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain" => String);
+    let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain.app" => String);
     let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.as_deref().is_some_and(|d| d.starts_with("https"));
 

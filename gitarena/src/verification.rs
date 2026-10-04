@@ -17,7 +17,7 @@ use uuid::Uuid;
 pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
     let (smtp_enabled, domain) = from_config!(
         "smtp.enabled" => bool,
-        "domain" => String,
+        "domain.app" => String,
     );
 
     if !smtp_enabled {

@@ -113,7 +113,7 @@ pub(crate) async fn create(
         // todo: include https://github.com/github/gitignore
     }
 
-    let domain = get_optional_setting::<String>("domain", &mut tx).await?.unwrap_or_default();
+    let domain = get_optional_setting::<String>("domain.app", &mut tx).await?.unwrap_or_default();
     let path = format!("/{}/{}", &owner_name, &repo.name);
 
     Event::new(

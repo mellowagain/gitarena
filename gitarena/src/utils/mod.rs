@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use std::future::Future;
 use std::time::Instant;
 use trust_dns_resolver::TokioAsyncResolver;
+use uuid::Uuid;
 
 pub(crate) mod admin_panel_layer;
 pub(crate) mod filesystem;
@@ -40,4 +41,17 @@ pub(crate) async fn time_function<T: Future, F: FnOnce() -> T>(func: F) -> (u64,
 
     #[allow(clippy::cast_possible_truncation)]
     (start.elapsed().as_millis() as u64, result)
+}
+
+/// Checks if the email is a forge private email and if it is, decodes the base 58 to return the UUID.
+/// The function does not check if the UUID is actually a valid user
+pub(crate) fn decode_forge_mail(email: &str, forge_domain: &str) -> Option<Uuid> {
+    let (local_part, domain) = email.rsplit_once('@')?;
+
+    if !domain.eq_ignore_ascii_case(forge_domain) {
+        return None;
+    }
+
+    let bytes = bs58::decode(local_part).into_vec().ok()?;
+    Uuid::from_slice(&bytes).ok()
 }

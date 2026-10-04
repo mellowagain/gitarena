@@ -4,7 +4,7 @@ use crate::database::{Database, Pool};
 use crate::git::ref_update::RefUpdate;
 use crate::queue::GLOBAL_QUEUE;
 use crate::repository::Repository;
-use crate::utils::oid;
+use crate::utils::{decode_forge_mail, oid};
 use anyhow::{Result, anyhow};
 use chrono::{NaiveDate, TimeZone, Utc};
 use fang::{AsyncQueueable, AsyncRunnable};
@@ -22,7 +22,7 @@ pub(crate) mod task;
 
 const CONTRIBUTIONS_GITARENA_VERSION: i32 = 1;
 
-/// (sha_hex, email_lower, unix_seconds)
+/// (sha_hex, email, unix_seconds)
 type WalkCommit = (String, String, i64);
 
 pub(crate) async fn init(db_pool: &Pool) -> Result<()> {
@@ -83,7 +83,7 @@ pub(crate) fn walk_new_commits(store: &Arc<Store>, old_oid: Option<ObjectId>, ne
             break;
         }
 
-        let (email_lower, timestamp, parents) = {
+        let (email, timestamp, parents) = {
             let Ok((data, _)) = cache.find(oid.as_ref(), &mut buffer) else { continue };
 
             if data.kind != Kind::Commit {
@@ -94,10 +94,10 @@ pub(crate) fn walk_new_commits(store: &Arc<Store>, old_oid: Option<ObjectId>, ne
             let Ok(email) = std::str::from_utf8(commit.author.email) else { continue };
             let parents: Vec<ObjectId> = commit.parents.iter().filter_map(|p| ObjectId::from_hex(p).ok()).collect();
 
-            (email.to_lowercase(), commit.author.seconds(), parents)
+            (email.to_owned(), commit.author.seconds(), parents)
         };
 
-        commits.push((format!("{oid}"), email_lower, timestamp));
+        commits.push((format!("{oid}"), email, timestamp));
 
         for parent in parents {
             queue.push_back(parent);
@@ -146,7 +146,14 @@ pub(crate) async fn insert_contributions(repo_id: Uuid, commit_data: &[(String, 
         return Ok(());
     }
 
-    let emails: Vec<String> = commit_data.iter().map(|(_, e, _)| e.clone()).collect::<HashSet<_>>().into_iter().collect();
+    let forge_domain: String = get_setting("domain.user_email", tx).await?;
+
+    let emails: Vec<String> = commit_data
+        .iter()
+        .map(|(_, email, _)| email.to_lowercase())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
 
     let email_rows: Vec<(String, Uuid)> = sqlx::query_as("select lower(email), owner from emails where lower(email) = any($1)")
         .bind(&emails)
@@ -160,7 +167,9 @@ pub(crate) async fn insert_contributions(repo_id: Uuid, commit_data: &[(String, 
     let mut dates: Vec<NaiveDate> = Vec::new();
 
     for (sha, email, date) in commit_data {
-        if let Some(&user_id) = email_to_user.get(email) {
+        let user_id = decode_forge_mail(email, &forge_domain).or_else(|| email_to_user.get(&email.to_lowercase()).copied());
+
+        if let Some(user_id) = user_id {
             user_ids.push(user_id);
             shas.push(sha.clone());
             dates.push(*date);
@@ -173,7 +182,9 @@ pub(crate) async fn insert_contributions(repo_id: Uuid, commit_data: &[(String, 
 
     sqlx::query(
         "insert into commit_contributions (user_id, repo_id, commit_sha, author_date) \
-         select unnest($1::uuid[]), $2, unnest($3::text[]), unnest($4::date[]) \
+         select t.user_id, $2, t.commit_sha, t.author_date \
+         from unnest($1::uuid[], $3::text[], $4::date[]) as t(user_id, commit_sha, author_date) \
+         join users on users.id = t.user_id \
          on conflict do nothing",
     )
     .bind(&user_ids)

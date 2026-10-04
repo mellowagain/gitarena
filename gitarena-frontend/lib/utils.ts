@@ -1,3 +1,4 @@
+import bs58 from "bs58";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { enUS } from "date-fns/locale";
@@ -42,4 +43,12 @@ export function uuidToDate(uuid: string): Date {
     const hex = uuid.replace(/-/g, "").slice(0, 12);
     const ms = parseInt(hex, 16);
     return new Date(ms);
+}
+
+/**
+ * Builds the private forge email of a user, mirroring `User::forge_mail` in the backend.
+ */
+export function forgeEmail(userId: string, domain: string): string {
+    const bytes = Uint8Array.from(userId.replace(/-/g, "").match(/../g)!, (byte) => parseInt(byte, 16));
+    return `${bs58.encode(bytes)}@${domain}`;
 }

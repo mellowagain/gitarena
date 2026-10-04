@@ -48,6 +48,7 @@
         "@types/react-syntax-highlighter": "^15.5.13",
         "@vercel/analytics": "2.0.1",
         "autoprefixer": "^10.6.1",
+        "bs58": "^6.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "1.1.1",

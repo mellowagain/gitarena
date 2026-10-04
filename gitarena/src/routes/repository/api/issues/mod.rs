@@ -110,7 +110,7 @@ pub(crate) async fn create_issue(
     let mut tx = db_pool.begin().await?;
 
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
-    let author = user.as_git_bug_author();
+    let author = user.as_git_bug_author(&mut tx).await?;
 
     let next_index: i32 = sqlx::query_scalar("update repositories set next_issue_index = next_issue_index + 1 where id = $1 returning next_issue_index")
         .bind(repo.id)
@@ -289,7 +289,7 @@ pub(crate) async fn update_issue(
     }
 
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
-    let author = user.as_git_bug_author();
+    let author = user.as_git_bug_author(&mut tx).await?;
 
     if let Some(new_title) = &body.title {
         if new_title.trim().is_empty() {

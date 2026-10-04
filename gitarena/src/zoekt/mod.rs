@@ -45,7 +45,7 @@ pub(crate) async fn init_zoekt_config(repo: &Repository, tx: &mut Transaction<'_
         unreachable!("database enforces one non-null on repo owner");
     };
 
-    let domain: String = get_setting("domain", tx).await?;
+    let domain: String = get_setting("domain.app", tx).await?;
 
     let mut path = PathBuf::from(repo.get_fs_path(tx).await?);
     path.push("config");

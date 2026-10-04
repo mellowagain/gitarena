@@ -16,6 +16,8 @@ pub(crate) struct ApiInfoResponse {
     version: &'static str,
     /// Base url of this instance
     base_url: String,
+    /// Domain of the private forge email addresses
+    user_email_domain: String,
     /// Link to the API documentation
     documentation: &'static str,
     /// Source repository URL
@@ -38,8 +40,9 @@ pub(crate) struct ApiInfoResponse {
 )]
 #[route("/api", method = "GET", err = "json")]
 pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -> Result<impl Responder> {
-    let (domain, ssh_enabled, ssh_port) = from_config!(
-        "domain" => String,
+    let (domain, user_email_domain, ssh_enabled, ssh_port) = from_config!(
+        "domain.app" => String,
+        "domain.user_email" => String,
         "ssh.enabled" => bool,
         "ssh.port" => i32
     );
@@ -48,6 +51,7 @@ pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -
         app: "GitArena",
         version: env!("CARGO_PKG_VERSION"),
         base_url: domain,
+        user_email_domain,
         documentation: "https://git.mari.zip/rapidoc",
         repository: env!("CARGO_PKG_REPOSITORY"),
         commit: env!("VERGEN_GIT_SHA"),

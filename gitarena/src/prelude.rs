@@ -1,7 +1,9 @@
 use crate::user::User;
+use crate::utils::decode_forge_mail;
 use std::fmt;
 use uuid::Uuid;
 
+use crate::config::get_setting;
 use crate::database::Database;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow, bail};
@@ -16,7 +18,7 @@ use gix::actor::Signature;
 use gix::date::Time;
 use qstring::QString;
 use sqlx::Transaction;
-use tracing::warn;
+use tracing::{instrument, warn};
 
 pub(crate) trait HttpRequestExtensions {
     /// Gets a specific header from the current request.
@@ -158,10 +160,21 @@ impl LibGit2SignatureExtensions for LibGit2Signature<'_> {
     async fn try_disassemble(&self, tx: &mut Transaction<'_, Database>) -> (String, Option<Uuid>, String) {
         let email = self.email().unwrap_or("Invalid email address");
 
-        User::find_using_email(email, tx).await.map_or_else(
+        find_user_by_email_with_forge(email, tx).await.map_or_else(
             || (self.name().unwrap_or("Ghost").to_owned(), None, email.to_owned()),
             |user| (user.username, Some(user.id), email.to_owned()),
         )
+    }
+}
+
+#[instrument(skip(tx))]
+async fn find_user_by_email_with_forge(email: &str, tx: &mut Transaction<'_, Database>) -> Option<User> {
+    let forge_domain = get_setting::<String>("domain.user_email", tx).await.ok();
+
+    // this is not inlined into User::find_using_email as else login and stuff would also be allowed with the forge mail
+    match forge_domain.and_then(|domain| decode_forge_mail(email, &domain)) {
+        Some(user_id) => User::find_using_id(user_id, tx).await,
+        None => User::find_using_email(email, tx).await,
     }
 }
 

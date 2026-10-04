@@ -143,7 +143,7 @@ pub(crate) async fn import(
         .await
         .context("failed to enqueue importing task")?;
 
-    let domain: String = get_optional_setting("domain", &mut tx).await?.unwrap_or_default();
+    let domain: String = get_optional_setting("domain.app", &mut tx).await?.unwrap_or_default();
 
     Event::new(
         if body.mirror.unwrap_or_default() { "repo.mirrored" } else { "repo.imported" },

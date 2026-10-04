@@ -7,6 +7,7 @@ use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::config::get_setting;
 use crate::database::Database;
 use crate::database::Pool;
 use crate::meili::{MeiliClient, USERS_MEILI_INDEX};
@@ -40,9 +41,18 @@ pub(crate) struct User {
 }
 
 impl User {
-    pub(crate) fn as_git_bug_author(&self) -> Author {
-        let (seconds, _) = self.id.get_timestamp().expect("user id to be uuid v7").to_unix();
-        Author::from_user(self.id, &self.username, &format!("{}@gitarena.local", self.id), seconds as i64)
+    pub(crate) async fn as_git_bug_author(&self, tx: &mut Transaction<'_, Database>) -> Result<Author> {
+        let (seconds, _) = self.id.get_timestamp().ok_or_else(|| anyhow!("user id is not uuidv7"))?.to_unix();
+
+        Ok(Author::from_user(self.id, &self.username, &self.forge_mail(tx).await?, seconds as i64))
+    }
+
+    #[instrument(skip(tx))]
+    pub(crate) async fn forge_mail(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
+        let domain: String = get_setting("domain.user_email", tx).await?;
+        let encoded_id = bs58::encode(self.id.as_bytes()).into_string();
+
+        Ok(format!("{encoded_id}@{domain}"))
     }
 
     #[instrument(skip(client))]

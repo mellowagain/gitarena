@@ -170,7 +170,7 @@ pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRe
     let (log_user_agent, log_ip, domain, smtp_enabled, smtp_address) = from_config!(
         "sessions.log_user_agent" => bool,
         "sessions.log_ip" => bool,
-        "domain" => String,
+        "domain.app" => String,
         "smtp.enabled" => bool,
         "smtp.address" => String,
     );
