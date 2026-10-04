@@ -35,6 +35,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -338,7 +339,11 @@ function NewRepositoryForm() {
                                 <label className="text-sm font-medium">
                                     Visibility <span className="text-red-500">*</span>
                                 </label>
-                                <div className="grid grid-cols-3 gap-3">
+                                <RadioGroup
+                                    value={visibility}
+                                    onValueChange={(value) => setVisibility(value as Visibility)}
+                                    className="grid-cols-3"
+                                >
                                     {[
                                         { value: "public" as Visibility, label: "Public", icon: Globe, desc: "Anyone can see" },
                                         { value: "internal" as Visibility, label: "Internal", icon: Users, desc: "Logged-in users" },
@@ -346,16 +351,20 @@ function NewRepositoryForm() {
                                     ].map((option) => {
                                         const Icon = option.icon;
                                         return (
-                                            <button
+                                            <label
                                                 key={option.value}
-                                                type="button"
-                                                onClick={() => setVisibility(option.value)}
-                                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors ${
+                                                onPointerDown={(e) => e.button === 0 && setVisibility(option.value)}
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer select-none transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 ${
                                                     visibility === option.value
                                                         ? "border-foreground bg-accent/30"
                                                         : "border-border hover:bg-accent/20"
                                                 }`}
                                             >
+                                                <RadioGroupItem
+                                                    value={option.value}
+                                                    onFocus={() => setVisibility(option.value)}
+                                                    className="sr-only"
+                                                />
                                                 <Icon
                                                     className={`h-5 w-5 ${visibility === option.value ? "text-foreground" : "text-muted-foreground"}`}
                                                 />
@@ -365,10 +374,10 @@ function NewRepositoryForm() {
                                                     {option.label}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">{option.desc}</span>
-                                            </button>
+                                            </label>
                                         );
                                     })}
-                                </div>
+                                </RadioGroup>
                             </div>
 
                             <div className="space-y-3">

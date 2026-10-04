@@ -35,6 +35,7 @@ import { TokenManager } from "@/components/token-manager";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -176,17 +177,13 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                     <FieldLabel>Organization visibility</FieldLabel>
                     <WipTag />
                 </div>
-                <div className="space-y-2 opacity-50 pointer-events-none">
+                <RadioGroup value="public" disabled className="gap-2 opacity-50 pointer-events-none">
                     {(["public", "private"] as const).map((v) => (
                         <label
                             key={v}
                             className={`flex items-start gap-3 p-3 border rounded-md ${v === "public" ? "border-foreground bg-accent/30" : "border-border"}`}
                         >
-                            <div
-                                className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${v === "public" ? "border-foreground" : "border-muted-foreground"}`}
-                            >
-                                {v === "public" && <div className="h-2 w-2 rounded-full bg-foreground" />}
-                            </div>
+                            <RadioGroupItem value={v} className="mt-0.5" />
                             <div>
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                     {v === "public" ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
@@ -200,7 +197,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                             </div>
                         </label>
                     ))}
-                </div>
+                </RadioGroup>
             </div>
 
             <Divider />
