@@ -56,6 +56,7 @@ import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface InstanceStats {
     users: number;
@@ -209,54 +210,57 @@ function AuditTableRow({ event }: { event: EventResponse }) {
     const hasExpandable = hasPayload || !!event.userAgent;
 
     return (
-        <>
-            <tr className="border-t border-border first:border-t-0 hover:bg-accent/30 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs">{event.type}</td>
-                <td className="px-4 py-3 text-muted-foreground">{event.actorUsername ?? "system"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.subjectName ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.ipAddress ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                    {event.traceId ? (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="cursor-default">{event.traceId.slice(0, 8)}</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="font-mono">{event.traceId}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    ) : (
-                        "—"
-                    )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}</td>
-                <td className="px-4 py-3 text-right">
-                    {hasExpandable && (
-                        <button
-                            onClick={() => setExpanded((v) => !v)}
-                            className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
-                            title={expanded ? "Hide details" : "Show details"}
-                        >
-                            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        </button>
-                    )}
-                </td>
-            </tr>
-            {expanded && (
-                <tr className="border-t border-border bg-secondary/20">
-                    <td colSpan={7} className="px-4 pt-2 pb-3 space-y-1.5">
-                        {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
-                        {hasPayload && (
-                            <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                                {JSON.stringify(event.payload, null, 2)}
-                            </pre>
+        <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
+            <tbody className="border-t border-border first-of-type:border-t-0">
+                <tr className="hover:bg-accent/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs">{event.type}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{event.actorUsername ?? "system"}</td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.subjectName ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.ipAddress ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                        {event.traceId ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="cursor-default">{event.traceId.slice(0, 8)}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="font-mono">{event.traceId}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            "—"
+                        )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}</td>
+                    <td className="px-4 py-3 text-right">
+                        {hasExpandable && (
+                            <CollapsibleTrigger asChild>
+                                <button
+                                    className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
+                                    title={expanded ? "Hide details" : "Show details"}
+                                >
+                                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                </button>
+                            </CollapsibleTrigger>
                         )}
                     </td>
                 </tr>
-            )}
-        </>
+                <CollapsibleContent asChild>
+                    <tr className="border-t border-border bg-secondary/20">
+                        <td colSpan={7} className="px-4 pt-2 pb-3 space-y-1.5">
+                            {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
+                            {hasPayload && (
+                                <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                                    {JSON.stringify(event.payload, null, 2)}
+                                </pre>
+                            )}
+                        </td>
+                    </tr>
+                </CollapsibleContent>
+            </tbody>
+        </Collapsible>
     );
 }
 
@@ -802,25 +806,27 @@ export default function AdminDashboardPage() {
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {isAuditLoading ? (
-                                            Array.from({ length: 8 }).map((_, index) => (
+                                    {isAuditLoading ? (
+                                        <tbody>
+                                            {Array.from({ length: 8 }).map((_, index) => (
                                                 <tr key={index}>
                                                     <td colSpan={7} className="px-4 py-3">
                                                         <div className="h-4 bg-secondary/50 rounded animate-pulse" />
                                                     </td>
                                                 </tr>
-                                            ))
-                                        ) : !auditEvents || auditEvents.length === 0 ? (
+                                            ))}
+                                        </tbody>
+                                    ) : !auditEvents || auditEvents.length === 0 ? (
+                                        <tbody>
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                                                     No audit events yet.
                                                 </td>
                                             </tr>
-                                        ) : (
-                                            auditEvents.map((event) => <AuditTableRow key={event.id} event={event} />)
-                                        )}
-                                    </tbody>
+                                        </tbody>
+                                    ) : (
+                                        auditEvents.map((event) => <AuditTableRow key={event.id} event={event} />)
+                                    )}
                                 </table>
                             </div>
                         </div>
