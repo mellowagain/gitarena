@@ -1226,13 +1226,13 @@ export default function MergeRequestPage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Status</h3>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                     <div className="flex items-center gap-2">
                                         <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
                                         {statusInfo.label}
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56">
                                 <DropdownMenuItem>
@@ -1277,10 +1277,13 @@ export default function MergeRequestPage() {
                                     </div>
                                 );
                             })}
-                            <button className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors">
+                            <Button
+                                variant="outline"
+                                className="px-3 w-full border-dashed text-muted-foreground hover:text-foreground hover:border-solid font-normal"
+                            >
                                 <User className="h-3.5 w-3.5" />
                                 Add reviewer
-                            </button>
+                            </Button>
                         </div>
                     </div>
 

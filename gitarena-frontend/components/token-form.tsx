@@ -30,6 +30,7 @@ import {
     tokenTypesFor,
 } from "@/lib/tokens";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 interface OrgEntry {
     id: string;
@@ -432,20 +433,13 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
             </div>
 
             <div className="flex items-center gap-3">
-                <button
-                    onClick={handleSubmit}
-                    disabled={!canSubmit || isMutating}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
+                <Button onClick={handleSubmit} disabled={!canSubmit || isMutating}>
                     {isMutating && <Spinner />}
                     {token ? "Save changes" : "Generate token"}
-                </button>
-                <button
-                    onClick={onCancel}
-                    className="inline-flex items-center px-4 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                >
+                </Button>
+                <Button variant="outline" onClick={onCancel}>
                     Cancel
-                </button>
+                </Button>
             </div>
         </div>
     );

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -663,14 +664,15 @@ function RepoResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>
@@ -841,14 +843,15 @@ function IssueResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>
@@ -982,14 +985,15 @@ function UserResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>

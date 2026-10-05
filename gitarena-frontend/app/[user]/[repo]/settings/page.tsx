@@ -25,7 +25,7 @@ import {
     Archive,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonVoidFetcher } from "@/lib/fetchers";
 import { TopBar } from "@/components/top-bar";
@@ -157,22 +157,20 @@ function SectionHeader({ title, description, wip }: { title: string; description
 }
 
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
-    return (
-        <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
-            {children}
-        </button>
-    );
+    return <Button>{children}</Button>;
 }
 
 function DangerButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
     return (
-        <button
+        <Button
+            variant="outline"
+            size="sm"
             onClick={onClick}
             disabled={disabled}
-            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
@@ -354,10 +352,10 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                     />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <button className="flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0">
+                            <Button variant="outline" className="px-3">
                                 <span className="capitalize">{addRole}</span>
                                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            </button>
+                            </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             {roleOptions.map((r) => (
@@ -375,14 +373,10 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <button
-                        onClick={handleInvite}
-                        disabled={isUpserting || !addUsername.trim()}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                    >
+                    <Button onClick={handleInvite} disabled={isUpserting || !addUsername.trim()} className="px-3">
                         <Plus className="h-4 w-4" />
                         Add
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -496,13 +490,10 @@ function GeneralTab({ namespace, repo }: { namespace: string; repo: string }) {
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTopic())}
                     className="max-w-64"
                 />
-                <button
-                    onClick={addTopic}
-                    className="inline-flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                >
+                <Button variant="outline" onClick={addTopic} className="px-3">
                     <Plus className="h-3.5 w-3.5" />
                     Add
-                </button>
+                </Button>
             </div>
             <SaveButton>Save topics</SaveButton>
 
@@ -628,10 +619,10 @@ function BranchesTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add branch protection rule
-            </button>
+            </Button>
 
             <Divider />
 
@@ -649,10 +640,10 @@ function BranchesTab() {
                     </div>
                 ))}
             </div>
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors">
+            <Button variant="outline" className="px-3">
                 <Plus className="h-4 w-4" />
                 Add tag protection rule
-            </button>
+            </Button>
 
             <Divider />
 
@@ -745,10 +736,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add webhook
-            </button>
+            </Button>
 
             <Divider />
 
@@ -776,10 +767,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add deploy key
-            </button>
+            </Button>
 
             <Divider />
 
@@ -820,10 +811,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
+            <Button className="px-3">
                 <Plus className="h-4 w-4" />
                 Generate access token
-            </button>
+            </Button>
         </div>
     );
 }
@@ -906,12 +897,9 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         </p>
                     </div>
                     <div className="shrink-0">
-                        <button
-                            onClick={() => setArchiveDialogOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setArchiveDialogOpen(true)}>
                             {isArchived ? "Unarchive repository" : "Archive repository"}
-                        </button>
+                        </Button>
                     </div>
                 </div>
                 {/* Delete */}

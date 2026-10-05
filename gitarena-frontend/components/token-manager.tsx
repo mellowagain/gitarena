@@ -34,6 +34,7 @@ import {
     tokenTypesFor,
 } from "@/lib/tokens";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 /** The secret is returned only once, right after creation, so it stays on screen until dismissed. */
 function SecretPanel({ result, onDismiss }: { result: CreateTokenResponse; onDismiss: () => void }) {
@@ -64,13 +65,10 @@ function SecretPanel({ result, onDismiss }: { result: CreateTokenResponse; onDis
                     <code className="flex-1 font-mono text-xs bg-card border border-border rounded-md px-3 py-2 break-all">
                         {result.secret}
                     </code>
-                    <button
-                        onClick={copy}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0"
-                    >
+                    <Button variant="outline" onClick={copy} className="px-3">
                         {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied ? "Copied" : "Copy"}
-                    </button>
+                    </Button>
                 </div>
                 <button
                     onClick={onDismiss}
@@ -223,13 +221,10 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                     <h2 className="text-lg font-semibold">{title}</h2>
                     <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
                 </div>
-                <button
-                    onClick={() => setCreating(true)}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0"
-                >
+                <Button onClick={() => setCreating(true)}>
                     <Plus className="h-4 w-4" />
                     New token
-                </button>
+                </Button>
             </div>
 
             {created && <SecretPanel result={created} onDismiss={() => setCreated(null)} />}

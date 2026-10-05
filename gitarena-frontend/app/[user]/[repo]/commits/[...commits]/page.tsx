@@ -17,6 +17,7 @@ import type { BranchesResponse } from "@/components/branch-bar";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
 interface BranchCommitsResponse {
     commits: FileCommitInfo[];
@@ -274,14 +275,15 @@ export default function CommitsPage() {
 
                     {hasMore && (
                         <div className="flex justify-center mt-8">
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={() => setSize(size + 1)}
                                 disabled={isValidating}
-                                className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-5 text-muted-foreground hover:text-foreground"
                             >
                                 {isValidating ? <Spinner className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 Load more commits
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>

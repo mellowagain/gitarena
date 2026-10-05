@@ -56,6 +56,7 @@ import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -154,21 +155,19 @@ function SectionHeader({ title, description }: { title: string; description?: st
 }
 
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
-    return (
-        <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
-            {children}
-        </button>
-    );
+    return <Button>{children}</Button>;
 }
 
 function DangerButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
     return (
-        <button
+        <Button
+            variant="outline"
+            size="sm"
             onClick={onClick}
-            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors shrink-0 whitespace-nowrap"
+            className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
@@ -441,18 +440,17 @@ function EmailsTab() {
                             }
                         }}
                     />
-                    <button
+                    <Button
                         onClick={() => {
                             if (newEmail) {
                                 addEmail({ email: newEmail });
                             }
                         }}
                         disabled={adding || !newEmail}
-                        className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0 disabled:opacity-50"
                     >
                         {adding ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add
-                    </button>
+                    </Button>
                 </div>
                 <FieldDescription className="text-xs">A verification email will be sent to this address.</FieldDescription>
             </Field>
@@ -602,14 +600,10 @@ function AuthenticationTab() {
                     <h3 className="text-sm font-semibold">Passkeys</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Sign in without a password using biometrics or a hardware key.</p>
                 </div>
-                <button
-                    onClick={handleAddPasskey}
-                    disabled={registering}
-                    className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0 disabled:opacity-50"
-                >
+                <Button variant="outline" size="sm" onClick={handleAddPasskey} disabled={registering}>
                     {registering ? <Spinner className="size-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                     Add passkey
-                </button>
+                </Button>
             </div>
 
             <div className="border border-border rounded-md overflow-hidden mb-0">
@@ -729,14 +723,15 @@ function SessionsTab() {
             </div>
 
             {hasOtherSessions && (
-                <button
+                <Button
+                    variant="outline"
                     onClick={() => revokeAll()}
                     disabled={revokingAll}
-                    className="inline-flex items-center gap-2 px-4 h-9 border border-destructive/50 text-destructive text-sm font-medium rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                     {revokingAll ? <Spinner /> : <LogOut className="h-4 w-4" />}
                     Revoke all other sessions
-                </button>
+                </Button>
             )}
 
             <Alert variant="info" className="mt-4">
@@ -898,18 +893,17 @@ function KeysTab() {
                         className="font-mono text-xs"
                     />
                 </Field>
-                <button
+                <Button
                     onClick={() => {
                         if (newSSHTitle && newSSHKey) {
                             addSSHKey({ title: newSSHTitle, key: newSSHKey });
                         }
                     }}
                     disabled={addingKey || !newSSHTitle || !newSSHKey}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                     {addingKey ? <Spinner /> : <Plus className="h-4 w-4" />}
                     Add SSH key
-                </button>
+                </Button>
             </div>
 
             <Divider />

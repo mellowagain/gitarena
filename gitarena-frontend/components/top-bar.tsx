@@ -215,12 +215,14 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                     {search && (
                         <Popover>
                             <PopoverTrigger asChild>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     aria-label="Search"
-                                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                                    className="text-muted-foreground hover:text-foreground"
                                 >
                                     <Search className="h-[18px] w-[18px]" />
-                                </button>
+                                </Button>
                             </PopoverTrigger>
                             <PopoverContent align="end" sideOffset={8} className="w-[calc(100vw-1.5rem)] p-3">
                                 <SearchBar search={search} />
@@ -330,12 +332,14 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                     ) : (
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     aria-label="Account menu"
-                                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                                    className="text-muted-foreground hover:text-foreground"
                                 >
                                     <UserRound className="h-[18px] w-[18px]" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
                                 <DropdownMenuItem asChild>
@@ -429,23 +433,27 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
 
                     {isAuthenticated && user ? (
                         <>
-                            <button
-                                className="relative flex items-center justify-center h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="relative text-muted-foreground hover:text-foreground"
                                 onClick={() => router.push("/notifications")}
                                 title="Notifications"
                             >
                                 <Bell className="h-[18px] w-[18px]" />
                                 {hasNotifications && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
-                            </button>
+                            </Button>
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button
-                                        className="flex items-center justify-center h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-muted-foreground hover:text-foreground"
                                         title="Create new"
                                     >
                                         <Plus className="h-[18px] w-[18px]" />
-                                    </button>
+                                    </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-52">
                                     <DropdownMenuItem asChild>

@@ -1023,7 +1023,7 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isTogglingStatus ? false : statusOpen} onOpenChange={setStatusOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
                                                     {statusInfo.label}
@@ -1033,7 +1033,7 @@ export default function IssuePage() {
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-48">
                                             <DropdownMenuRadioGroup
@@ -1101,13 +1101,14 @@ export default function IssuePage() {
                                     {canManage && (
                                         <DropdownMenu open={isAddingAssignee ? false : undefined}>
                                             <DropdownMenuTrigger asChild>
-                                                <button
+                                                <Button
+                                                    variant="outline"
                                                     disabled={isAddingAssignee}
-                                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors"
+                                                    className="px-3 w-full border-dashed text-muted-foreground hover:text-foreground hover:border-solid font-normal"
                                                 >
                                                     {isAddingAssignee ? <Spinner className="size-3.5" /> : <User className="h-3.5 w-3.5" />}
                                                     Add assignee
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {(() => {
@@ -1199,7 +1200,7 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isUpdatingPriority ? false : priorityOpen} onOpenChange={setPriorityOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <PriorityIndicator priority={issue.priority as Priority} />
                                                     <span>{priorityConfig[issue.priority as Priority].label}</span>
@@ -1209,7 +1210,7 @@ export default function IssuePage() {
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-40">
                                             <DropdownMenuRadioGroup
@@ -1243,7 +1244,7 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isUpdatingMilestone ? false : milestoneOpen} onOpenChange={setMilestoneOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
                                                     {issue.milestone ? (
@@ -1257,7 +1258,7 @@ export default function IssuePage() {
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-52">
                                             {issue.milestone && (

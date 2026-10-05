@@ -432,12 +432,12 @@ function NewRepositoryForm() {
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center justify-between w-full h-9 px-3 bg-background border border-border rounded-md text-sm hover:bg-accent/50 transition-colors">
+                                                <Button variant="outline" className="px-3 justify-between w-full font-normal">
                                                     <span className={selectedLicense === "none" ? "text-muted-foreground" : ""}>
                                                         {licenses.find((l) => l.id === selectedLicense)?.name}
                                                     </span>
                                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {licenses.map((license) => (
@@ -456,12 +456,12 @@ function NewRepositoryForm() {
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center justify-between w-full h-9 px-3 bg-background border border-border rounded-md text-sm hover:bg-accent/50 transition-colors">
+                                                <Button variant="outline" className="px-3 justify-between w-full font-normal">
                                                     <span className={selectedGitignore === "none" ? "text-muted-foreground" : ""}>
                                                         {gitignoreTemplates.find((t) => t.id === selectedGitignore)?.name}
                                                     </span>
                                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {gitignoreTemplates.map((template) => (

@@ -38,7 +38,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
     AlertDialog,
@@ -96,14 +96,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SaveButton({ onClick, disabled }: { onClick?: () => void; disabled?: boolean }) {
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
-        >
+        <Button onClick={onClick} disabled={disabled}>
             <Check className="h-4 w-4" />
             Save changes
-        </button>
+        </Button>
     );
 }
 
@@ -147,12 +143,9 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                         {org.name[0].toUpperCase()}
                     </div>
                     <div className="space-y-1.5">
-                        <button
-                            disabled
-                            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md opacity-50 cursor-not-allowed"
-                        >
+                        <Button variant="outline" size="sm" disabled className="opacity-50 cursor-not-allowed">
                             Upload image
-                        </button>
+                        </Button>
                         <p className="text-xs text-muted-foreground">PNG, JPG or GIF, max 1 MB</p>
                     </div>
                 </div>
@@ -421,14 +414,10 @@ function MembersTab({ orgName }: { orgName: string }) {
                             <SelectItem value="owner">Owner</SelectItem>
                         </SelectContent>
                     </Select>
-                    <button
-                        className="inline-flex items-center gap-2 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity whitespace-nowrap disabled:opacity-50"
-                        onClick={handleInvite}
-                        disabled={isInviting || !inviteInput.trim()}
-                    >
+                    <Button className="px-3" onClick={handleInvite} disabled={isInviting || !inviteInput.trim()}>
                         {isInviting ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add member
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -602,12 +591,9 @@ function DangerTab({ orgName }: { orgName: string }) {
                 </div>
                 <div className="flex gap-2">
                     <Input disabled placeholder={`New name for ${orgName}`} className="flex-1" />
-                    <button
-                        disabled
-                        className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md opacity-40"
-                    >
+                    <Button variant="outline" disabled className="text-destructive border-destructive/50 hover:text-destructive">
                         Rename
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -620,12 +606,9 @@ function DangerTab({ orgName }: { orgName: string }) {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Transfer this organization to another user.</p>
                 </div>
-                <button
-                    disabled
-                    className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md opacity-40"
-                >
+                <Button variant="outline" disabled className="text-destructive border-destructive/50 hover:text-destructive">
                     Transfer ownership
-                </button>
+                </Button>
             </div>
 
             {/* Delete */}
@@ -637,12 +620,13 @@ function DangerTab({ orgName }: { orgName: string }) {
                         member data. This action cannot be undone.
                     </p>
                 </div>
-                <button
+                <Button
+                    variant="outline"
                     onClick={() => setShowDelete(true)}
-                    className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md hover:bg-destructive/10 transition-colors"
+                    className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                 >
                     Delete organization
-                </button>
+                </Button>
             </div>
             <AlertDialog
                 open={showDelete}

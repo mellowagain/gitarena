@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 type Step = { title: string; body: string };
 
@@ -208,7 +209,8 @@ export default function TakedownPage() {
                                     </a>{" "}
                                     directly.
                                 </p>
-                                <button
+                                <Button
+                                    variant="outline"
                                     onClick={() => {
                                         setFormState("idle");
                                         setForm({
@@ -223,10 +225,10 @@ export default function TakedownPage() {
                                             signature: "",
                                         });
                                     }}
-                                    className="mt-2 px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
+                                    className="mt-2"
                                 >
                                     Submit another notice
-                                </button>
+                                </Button>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-8">
@@ -394,11 +396,7 @@ export default function TakedownPage() {
 
                                 {/* Submit */}
                                 <div className="flex items-center gap-4 pt-2">
-                                    <button
-                                        type="submit"
-                                        disabled={!allRequired || formState === "submitting"}
-                                        className="flex items-center gap-2 px-5 py-2 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
+                                    <Button type="submit" disabled={!allRequired || formState === "submitting"} className="px-5">
                                         {formState === "submitting" ? (
                                             <>
                                                 <Spinner />
@@ -410,7 +408,7 @@ export default function TakedownPage() {
                                                 Submit notice
                                             </>
                                         )}
-                                    </button>
+                                    </Button>
                                     <p className="text-xs text-muted-foreground">
                                         All fields marked <span className="text-red-500">*</span> are required.
                                     </p>

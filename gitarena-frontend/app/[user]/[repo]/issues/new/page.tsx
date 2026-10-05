@@ -258,10 +258,13 @@ export default function NewIssuePage() {
                             })}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors">
+                                    <Button
+                                        variant="outline"
+                                        className="px-3 w-full border-dashed text-muted-foreground hover:text-foreground hover:border-solid font-normal"
+                                    >
                                         <User className="h-3.5 w-3.5" />
                                         Add assignee
-                                    </button>
+                                    </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start" className="w-48">
                                     {assigneeDropdownList.length === 0 ? (
@@ -345,13 +348,13 @@ export default function NewIssuePage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Priority</h3>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                     <div className="flex items-center gap-2">
                                         <PriorityIndicator priority={priority as Priority} />
                                         <span>{priorityConfig[priority as Priority].label}</span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-40">
                                 <DropdownMenuRadioGroup value={priority} onValueChange={setPriority}>
@@ -370,7 +373,7 @@ export default function NewIssuePage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Milestone</h3>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                     <div className="flex items-center gap-2">
                                         <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
                                         <span>
@@ -380,7 +383,7 @@ export default function NewIssuePage() {
                                         </span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52">
                                 <DropdownMenuRadioGroup value={milestoneId ?? ""} onValueChange={(v) => setMilestoneId(v || null)}>

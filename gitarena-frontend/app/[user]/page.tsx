@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import * as allLangs from "linguist-languages";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface UserProfileRepo {
     id: string;
@@ -326,10 +327,10 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                     Organization settings
                                 </Link>
                             ) : (
-                                <button className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                <Button variant="outline" size="sm" className="w-full text-xs">
                                     <Users className="h-3 w-3" />
                                     Follow organization
-                                </button>
+                                </Button>
                             )}
                         </div>
                     </div>
