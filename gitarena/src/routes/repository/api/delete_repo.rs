@@ -2,7 +2,8 @@ use crate::database::Pool;
 use crate::die;
 use crate::events::{Event, Subject};
 use crate::meili::MeiliClient;
-use crate::organization::{OrgMember, OrgRole, Organization};
+use crate::organization::Organization;
+use crate::privileges::privilege;
 use crate::repository::Repository;
 use crate::repository::cleanup::RepoCleanup;
 use crate::user::WebUser;
@@ -39,25 +40,19 @@ pub(crate) async fn delete_repo(
 
     let mut tx = db_pool.begin().await?;
 
-    let (subject, namespace, allowed) = if let Some(org_id) = repo.owner_org {
+    if !privilege::check_delete(&repo, &user, &mut tx).await? {
+        die!(FORBIDDEN, "Insufficient permissions");
+    }
+
+    let (subject, namespace) = if let Some(org_id) = repo.owner_org {
         let org = Organization::find_by_id(org_id, &mut tx)
             .await
             .ok_or_else(|| anyhow!("owning org of repo {} not found", repo.id))?;
 
-        let role = OrgMember::get_role(org_id, user.id, &mut tx).await?;
-
-        (
-            Subject::Org(org_id),
-            org.name,
-            role.is_some_and(|r| OrgMember::has_permission(r, OrgRole::Admin)),
-        )
+        (Subject::Org(org_id), org.name)
     } else {
-        (Subject::User(user.id), user.username.clone(), repo.owner_user == Some(user.id))
+        (Subject::User(user.id), user.username.clone())
     };
-
-    if !allowed {
-        die!(FORBIDDEN, "Insufficient permissions");
-    }
 
     let path = repo.get_fs_path(&mut tx).await?;
 

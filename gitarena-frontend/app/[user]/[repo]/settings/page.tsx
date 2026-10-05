@@ -842,7 +842,14 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
         isMutating: isDeleting,
         error: deleteError,
     } = useSWRMutation<void, Error, string>(metaUrl, deleteFetcher, {
-        onSuccess: () => router.push(`/${org}`),
+        onSuccess: async () => {
+            await Promise.all([
+                mutate(metaUrl, undefined, { revalidate: false }),
+                mutate(`/api/users/${org}`),
+                mutate(`/api/orgs/${org}/repos`),
+            ]);
+            router.push(`/${org}`);
+        },
     });
 
     const fullName = `${org}/${repo}`;

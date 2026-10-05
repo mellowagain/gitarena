@@ -4,6 +4,7 @@ use crate::repository::Repository;
 use crate::user::User;
 
 use crate::database::Database;
+use crate::organization::{OrgMember, OrgRole};
 use anyhow::{Context, Result};
 use sqlx::{FromRow, Transaction};
 use tracing::{Level, instrument};
@@ -69,6 +70,16 @@ fn is_repo_owner(repo: &Repository, user: &User) -> bool {
 generate_check!(check_manage_issues, can_manage_issues);
 generate_check!(check_push, can_push);
 generate_check!(check_admin, can_admin);
+
+#[instrument(ret(level = Level::DEBUG), err, skip(tx))]
+pub(crate) async fn check_delete(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<bool> {
+    Ok(match repo.owner_org {
+        Some(org_id) => OrgMember::get_role(org_id, user.id, tx)
+            .await?
+            .is_some_and(|role| OrgMember::has_permission(role, OrgRole::Admin)),
+        None => is_repo_owner(repo, user),
+    })
+}
 
 #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
 pub(crate) async fn get_repo_privilege(repo: &Repository, user: &User, tx: &mut Transaction<'_, Database>) -> Result<Option<Privilege>> {
