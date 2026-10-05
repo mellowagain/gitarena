@@ -5,10 +5,13 @@ import useSWRInfinite from "swr/infinite";
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { Star, Lock, Globe, Clock, ChevronDown, Compass, GitMerge, Sparkles, Search } from "lucide-react";
+import { Star, Lock, Globe, ChevronDown, Compass, GitMerge, Sparkles, Search } from "lucide-react";
 import { jsonFetcher } from "@/lib/fetchers";
 import { Badge } from "@/components/ui/badge";
 import * as allLangs from "linguist-languages";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -92,9 +95,9 @@ function RepoRow({ repo, rank }: { repo: ExploreRepo; rank: number }) {
                         </Badge>
                     )}
                     {repo.archivedAt && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                        <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                             archived
-                        </span>
+                        </Badge>
                     )}
                 </div>
                 {repo.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>}
@@ -122,11 +125,11 @@ function RepoRowSkeleton({ rank }: { rank: number }) {
         <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
             <div className="shrink-0 w-8 text-lg font-medium text-muted-foreground/50 text-center">{rank}</div>
             <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-                <div className="h-3 w-72 bg-muted animate-pulse rounded" />
+                <Skeleton className="h-4 w-48 rounded" />
+                <Skeleton className="h-3 w-72 rounded" />
             </div>
-            <div className="hidden sm:block h-3 w-20 bg-muted animate-pulse rounded" />
-            <div className="h-3 w-10 bg-muted animate-pulse rounded" />
+            <Skeleton className="hidden sm:block h-3 w-20 rounded" />
+            <Skeleton className="h-3 w-10 rounded" />
         </div>
     );
 }
@@ -199,20 +202,28 @@ export default function ExplorePage() {
 
                         <div className="border border-border rounded-lg overflow-hidden bg-card/30">
                             {error ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                    <Search className="h-12 w-12 mb-4 opacity-30" />
-                                    <p className="text-lg font-medium">Failed to load repositories</p>
-                                    <p className="mt-1 text-sm">{error.message}</p>
-                                </div>
+                                <Empty>
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <Search />
+                                        </EmptyMedia>
+                                        <EmptyTitle>Failed to load repositories</EmptyTitle>
+                                        <EmptyDescription>{error.message}</EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
                             ) : isLoading ? (
                                 Array.from({ length: 10 }, (_, i) => <RepoRowSkeleton key={i} rank={i + 1} />)
                             ) : allRepos.length > 0 ? (
                                 allRepos.map((repo, index) => <RepoRow key={repo.id} repo={repo} rank={index + 1} />)
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                    <Search className="h-12 w-12 mb-4 opacity-30" />
-                                    <p className="text-lg font-medium">No repositories found</p>
-                                </div>
+                                <Empty>
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <Search />
+                                        </EmptyMedia>
+                                        <EmptyTitle>No repositories found</EmptyTitle>
+                                    </EmptyHeader>
+                                </Empty>
                             )}
                         </div>
 
@@ -221,7 +232,7 @@ export default function ExplorePage() {
                                 <Button variant="secondary" className="gap-2" onClick={() => setSize(size + 1)} disabled={isValidating}>
                                     {isValidating ? (
                                         <>
-                                            <Clock className="h-4 w-4 animate-spin" />
+                                            <Spinner />
                                             Loading...
                                         </>
                                     ) : (

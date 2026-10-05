@@ -16,7 +16,6 @@ import {
     EyeOff,
     Smartphone,
     LogOut,
-    Loader2,
     Info,
     Palette,
     Activity,
@@ -49,6 +48,17 @@ import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
 import { AvatarManagement } from "@/components/avatar-management";
 import { TokenManager } from "@/components/token-manager";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
+import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -146,70 +156,33 @@ function SectionHeader({ title, description }: { title: string; description?: st
     );
 }
 
-function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
-    return (
-        <label className="block text-sm font-medium mb-1.5">
-            {children}
-            {optional && <span className="ml-1.5 text-xs text-muted-foreground font-normal">optional</span>}
-        </label>
-    );
-}
-
-function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-    return (
-        <input
-            {...props}
-            className={`w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-shadow ${className}`}
-        />
-    );
-}
-
-function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-    return (
-        <textarea
-            {...props}
-            className={`w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none transition-shadow ${className}`}
-        />
-    );
-}
-
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
-    return (
-        <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
-            {children}
-        </button>
-    );
+    return <Button>{children}</Button>;
 }
 
 function DangerButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
     return (
-        <button
+        <Button
+            variant="outline"
+            size="sm"
             onClick={onClick}
-            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors shrink-0 whitespace-nowrap"
+            className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
 function Tag({ children }: { children: React.ReactNode }) {
     return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded bg-secondary text-muted-foreground">
+        <Badge variant="outline" className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary">
             {children}
-        </span>
-    );
-}
-
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
+        </Badge>
     );
 }
 
 function Divider() {
-    return <div className="border-t border-border my-8" />;
+    return <Separator className="my-8" />;
 }
 
 // ── Tab panels ─────────────────────────────────────────────────────────────────
@@ -222,18 +195,18 @@ function ProfileTab() {
             <div className="space-y-0">
                 <SectionHeader title="Profile" description="This information will be visible to other users on GitArena." />
                 <div className="mb-6">
-                    <FieldLabel>Avatar</FieldLabel>
+                    <FieldTitle className="mb-1.5">Avatar</FieldTitle>
                     <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
+                        <Skeleton className="h-16 w-16 rounded-full" />
                         <div className="flex flex-col gap-2">
-                            <div className="h-8 w-28 bg-muted animate-pulse rounded-md" />
+                            <Skeleton className="h-8 w-28 rounded-md" />
                         </div>
                     </div>
                 </div>
                 {[180, 120, 160, 140].map((w, i) => (
                     <div key={i} className="mb-6">
-                        <div className="h-3 w-16 bg-muted animate-pulse rounded mb-2" />
-                        <div className={`h-9 bg-muted animate-pulse rounded-md`} style={{ width: `${w}px` }} />
+                        <Skeleton className="h-3 w-16 rounded mb-2" />
+                        <Skeleton className="h-9 rounded-md" style={{ width: `${w}px` }} />
                     </div>
                 ))}
             </div>
@@ -247,43 +220,46 @@ function ProfileTab() {
 
             {/* Avatar */}
             <div className="mb-6">
-                <FieldLabel>Avatar</FieldLabel>
+                <FieldTitle className="mb-1.5">Avatar</FieldTitle>
                 {me && <AvatarManagement userId={me.id} username={me.username} />}
             </div>
 
             <Divider />
 
             {/* Username (read-only) */}
-            <div className="mb-4">
-                <FieldLabel>Username</FieldLabel>
-                <Input value={username} readOnly className="opacity-60 cursor-not-allowed" />
-                <p className="text-xs text-muted-foreground mt-1.5">Username changes are not yet supported.</p>
-            </div>
+            <Field className="mb-4 gap-1.5">
+                <FieldLabel htmlFor="settings-username">Username</FieldLabel>
+                <Input id="settings-username" value={username} readOnly className="opacity-60 cursor-not-allowed" />
+                <FieldDescription className="text-xs">Username changes are not yet supported.</FieldDescription>
+            </Field>
 
             {/* Bio / website / location — WIP */}
-            <div className="mb-4">
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel optional>Bio</FieldLabel>
-                    <WipTag />
-                </div>
-                <Textarea rows={3} disabled placeholder="Bio editing coming soon" className="opacity-50 cursor-not-allowed" />
-            </div>
+            <Field className="mb-4 gap-1.5">
+                <FieldLabel htmlFor="settings-bio">
+                    Bio
+                    <span className="text-xs text-muted-foreground font-normal">optional</span>
+                    <WipBadge />
+                </FieldLabel>
+                <Textarea id="settings-bio" rows={3} disabled placeholder="Bio editing coming soon" />
+            </Field>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <FieldLabel optional>Website</FieldLabel>
-                        <WipTag />
-                    </div>
-                    <Input disabled placeholder="Coming soon" type="url" className="opacity-50 cursor-not-allowed" />
-                </div>
-                <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <FieldLabel optional>Location</FieldLabel>
-                        <WipTag />
-                    </div>
-                    <Input disabled placeholder="Coming soon" className="opacity-50 cursor-not-allowed" />
-                </div>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-website">
+                        Website
+                        <span className="text-xs text-muted-foreground font-normal">optional</span>
+                        <WipBadge />
+                    </FieldLabel>
+                    <Input id="settings-website" disabled placeholder="Coming soon" type="url" />
+                </Field>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-location">
+                        Location
+                        <span className="text-xs text-muted-foreground font-normal">optional</span>
+                        <WipBadge />
+                    </FieldLabel>
+                    <Input id="settings-location" disabled placeholder="Coming soon" />
+                </Field>
             </div>
 
             <Divider />
@@ -362,15 +338,15 @@ function EmailsTab() {
                 {isLoading &&
                     [0, 1, 2].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="mt-1 h-2 w-2 rounded-full bg-muted animate-pulse shrink-0" />
+                            <Skeleton className="mt-1 h-2 w-2 rounded-full shrink-0" />
                             <div className="flex-1 min-w-0 space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-                                    <div className="h-4 w-14 bg-muted animate-pulse rounded" />
+                                    <Skeleton className="h-4 w-48 rounded" />
+                                    <Skeleton className="h-4 w-14 rounded" />
                                 </div>
-                                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-3 w-32 rounded" />
                             </div>
-                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-7 w-16 rounded shrink-0" />
                         </div>
                     ))}
                 {!isLoading && emails && emails.length === 0 && (
@@ -442,10 +418,11 @@ function EmailsTab() {
             </div>
 
             {/* Add email */}
-            <div>
-                <FieldLabel>Add email address</FieldLabel>
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="settings-new-email">Add email address</FieldLabel>
                 <div className="flex gap-2">
                     <Input
+                        id="settings-new-email"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         type="email"
@@ -457,28 +434,27 @@ function EmailsTab() {
                             }
                         }}
                     />
-                    <button
+                    <Button
                         onClick={() => {
                             if (newEmail) {
                                 addEmail({ email: newEmail });
                             }
                         }}
                         disabled={adding || !newEmail}
-                        className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0 disabled:opacity-50"
                     >
-                        {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        {adding ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add
-                    </button>
+                    </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">A verification email will be sent to this address.</p>
-            </div>
+                <FieldDescription className="text-xs">A verification email will be sent to this address.</FieldDescription>
+            </Field>
 
             <div className="border-t border-border mt-8 pt-8">
                 <SectionHeader
                     title="Commit email"
                     description="Use this address in Git to link commits to your account without revealing your real email."
                 />
-                {(meLoading || configLoading) && <div className="h-10 bg-muted animate-pulse rounded-md" />}
+                {(meLoading || configLoading) && <div className="h-10 bg-muted rounded-md" />}
                 {forgeAddress && (
                     <div className="flex items-center rounded-md bg-card border border-border">
                         <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-foreground">{forgeAddress}</code>
@@ -519,7 +495,7 @@ function PasskeyRow({ item: pk, index }: { item: PasskeyItem; index: number }) {
                 disabled={deleting}
                 className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
             >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleting ? <Spinner /> : <Trash2 className="h-4 w-4" />}
             </button>
         </div>
     );
@@ -561,46 +537,51 @@ function AuthenticationTab() {
             {/* Change password — WIP */}
             <div className="flex items-center gap-2 mb-4">
                 <h3 className="text-sm font-semibold">Password</h3>
-                <WipTag />
+                <WipBadge />
             </div>
             <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
-                <div>
-                    <FieldLabel>Current password</FieldLabel>
-                    <div className="relative">
-                        <Input type={showCurrent ? "text" : "password"} placeholder="Current password" className="pr-10" />
-                        <button
-                            onClick={() => setShowCurrent((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                    </div>
-                </div>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-current-password">Current password</FieldLabel>
+                    <InputGroup>
+                        <InputGroupInput
+                            id="settings-current-password"
+                            type={showCurrent ? "text" : "password"}
+                            placeholder="Current password"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupButton size="icon-xs" onClick={() => setShowCurrent((v) => !v)}>
+                                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </InputGroupButton>
+                        </InputGroupAddon>
+                    </InputGroup>
+                </Field>
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <FieldLabel>New password</FieldLabel>
-                        <div className="relative">
-                            <Input type={showNew ? "text" : "password"} placeholder="New password" className="pr-10" />
-                            <button
-                                onClick={() => setShowNew((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <FieldLabel>Confirm new password</FieldLabel>
-                        <div className="relative">
-                            <Input type={showConfirm ? "text" : "password"} placeholder="Confirm password" className="pr-10" />
-                            <button
-                                onClick={() => setShowConfirm((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
-                    </div>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="settings-new-password">New password</FieldLabel>
+                        <InputGroup>
+                            <InputGroupInput id="settings-new-password" type={showNew ? "text" : "password"} placeholder="New password" />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton size="icon-xs" onClick={() => setShowNew((v) => !v)}>
+                                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
+                    </Field>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="settings-confirm-new-password">Confirm new password</FieldLabel>
+                        <InputGroup>
+                            <InputGroupInput
+                                id="settings-confirm-new-password"
+                                type={showConfirm ? "text" : "password"}
+                                placeholder="Confirm password"
+                            />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton size="icon-xs" onClick={() => setShowConfirm((v) => !v)}>
+                                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
+                    </Field>
                 </div>
             </div>
             <SaveButton>Update password</SaveButton>
@@ -613,26 +594,22 @@ function AuthenticationTab() {
                     <h3 className="text-sm font-semibold">Passkeys</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Sign in without a password using biometrics or a hardware key.</p>
                 </div>
-                <button
-                    onClick={handleAddPasskey}
-                    disabled={registering}
-                    className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0 disabled:opacity-50"
-                >
-                    {registering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                <Button variant="outline" size="sm" onClick={handleAddPasskey} disabled={registering}>
+                    {registering ? <Spinner className="size-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                     Add passkey
-                </button>
+                </Button>
             </div>
 
             <div className="border border-border rounded-md overflow-hidden mb-0">
                 {passkeysLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-40 rounded" />
+                                <Skeleton className="h-3 w-24 rounded" />
                             </div>
-                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-7 w-16 rounded shrink-0" />
                         </div>
                     ))}
                 {!passkeysLoading &&
@@ -651,18 +628,14 @@ function AuthenticationTab() {
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                         <h3 className="text-sm font-semibold">Two-factor authentication</h3>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                         Add an extra layer of security to your account. When enabled you will be prompted for a one-time code in addition to
                         your password.
                     </p>
                 </div>
-                <div className="shrink-0 mt-0.5 opacity-40 pointer-events-none">
-                    <button className="relative inline-flex h-5 w-9 items-center rounded-full bg-secondary border border-border">
-                        <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-background border border-border/50 translate-x-1" />
-                    </button>
-                </div>
+                <Switch disabled className="mt-0.5" />
             </div>
         </div>
     );
@@ -695,10 +668,10 @@ function SessionsTab() {
                 {isLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-36 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-56 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-36 rounded" />
+                                <Skeleton className="h-3 w-56 rounded" />
                             </div>
                         </div>
                     ))}
@@ -744,26 +717,27 @@ function SessionsTab() {
             </div>
 
             {hasOtherSessions && (
-                <button
+                <Button
+                    variant="outline"
                     onClick={() => revokeAll()}
                     disabled={revokingAll}
-                    className="inline-flex items-center gap-2 px-4 h-9 border border-destructive/50 text-destructive text-sm font-medium rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                    {revokingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                    {revokingAll ? <Spinner /> : <LogOut className="h-4 w-4" />}
                     Revoke all other sessions
-                </button>
+                </Button>
             )}
 
-            <div className="flex items-start gap-3 p-4 border border-blue-500/30 bg-blue-500/5 rounded-md mt-4">
-                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
+            <Alert variant="info" className="mt-4">
+                <Info />
+                <AlertDescription className="block text-xs leading-relaxed">
                     Geolocation data provided by{" "}
                     <a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
                         MaxMind
                     </a>
                     .
-                </p>
-            </div>
+                </AlertDescription>
+            </Alert>
         </div>
     );
 }
@@ -805,13 +779,13 @@ function KeysTab() {
                 {sshLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-64 bg-muted animate-pulse rounded font-mono" />
-                                <div className="h-3 w-28 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-32 rounded" />
+                                <Skeleton className="h-3 w-64 rounded font-mono" />
+                                <Skeleton className="h-3 w-28 rounded" />
                             </div>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                         </div>
                     ))}
                 {!sshLoading && sshKeys && sshKeys.length === 0 && (
@@ -853,12 +827,17 @@ function KeysTab() {
 
             {/* Add SSH key */}
             <div className="space-y-4 mb-0">
-                <div>
-                    <FieldLabel>Title</FieldLabel>
-                    <Input value={newSSHTitle} onChange={(e) => setNewSSHTitle(e.target.value)} placeholder="e.g. Personal MacBook" />
-                </div>
-                <div>
-                    <FieldLabel>Key</FieldLabel>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-ssh-title">Title</FieldLabel>
+                    <Input
+                        id="settings-ssh-title"
+                        value={newSSHTitle}
+                        onChange={(e) => setNewSSHTitle(e.target.value)}
+                        placeholder="e.g. Personal MacBook"
+                    />
+                </Field>
+                <Field className="gap-1.5">
+                    <FieldLabel htmlFor="settings-ssh-key">Key</FieldLabel>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <p className="text-xs text-muted-foreground underline decoration-dashed underline-offset-2 cursor-default mb-2 w-fit">
@@ -900,25 +879,25 @@ function KeysTab() {
                         </TooltipContent>
                     </Tooltip>
                     <Textarea
+                        id="settings-ssh-key"
                         rows={4}
                         value={newSSHKey}
                         onChange={(e) => setNewSSHKey(e.target.value)}
                         placeholder="Paste your public key here — begins with ssh-rsa, ssh-ed25519, etc."
                         className="font-mono text-xs"
                     />
-                </div>
-                <button
+                </Field>
+                <Button
                     onClick={() => {
                         if (newSSHTitle && newSSHKey) {
                             addSSHKey({ title: newSSHTitle, key: newSSHKey });
                         }
                     }}
                     disabled={addingKey || !newSSHTitle || !newSSHKey}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {addingKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {addingKey ? <Spinner /> : <Plus className="h-4 w-4" />}
                     Add SSH key
-                </button>
+                </Button>
             </div>
 
             <Divider />
@@ -926,7 +905,7 @@ function KeysTab() {
             {/* GPG Keys — WIP */}
             <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-semibold">GPG Keys</h2>
-                <WipTag />
+                <WipBadge />
             </div>
             <p className="text-sm text-muted-foreground mb-4">GPG key support is coming soon.</p>
         </div>
@@ -938,7 +917,7 @@ function RepositoriesTab() {
         <div>
             <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-semibold">Repository Settings</h2>
-                <WipTag />
+                <WipBadge />
             </div>
             <p className="text-sm text-muted-foreground">Repository default settings are coming soon.</p>
         </div>
@@ -951,9 +930,9 @@ function APIKeysTab() {
     if (isLoading || !me) {
         return (
             <div>
-                <div className="h-5 w-28 bg-muted animate-pulse rounded mb-2" />
-                <div className="h-4 w-80 bg-muted animate-pulse rounded mb-6" />
-                <div className="h-48 bg-muted animate-pulse rounded-md" />
+                <Skeleton className="h-5 w-28 rounded mb-2" />
+                <Skeleton className="h-4 w-80 rounded mb-6" />
+                <Skeleton className="h-48 rounded-md" />
             </div>
         );
     }
@@ -980,7 +959,7 @@ function SecurityLogTab() {
             {isLoading && (
                 <div className="space-y-3">
                     {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             )}

@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GitBranch, ChevronRight, Scale, CheckCircle2, TriangleAlert, FileSearch, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 type Step = { title: string; body: string };
 
@@ -46,10 +53,7 @@ export default function TakedownPage() {
     const [formState, setFormState] = useState<FormState>("idle");
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-        const target = e.target;
-        const value =
-            target instanceof HTMLInputElement && target.type === "checkbox" ? (target as HTMLInputElement).checked : target.value;
-        setForm((prev) => ({ ...prev, [target.name]: value }));
+        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -178,13 +182,13 @@ export default function TakedownPage() {
                         </div>
 
                         {/* Warning */}
-                        <div className="mt-4 flex items-start gap-3 px-4 py-3 border border-amber-500/30 rounded-md bg-amber-500/5">
-                            <TriangleAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-muted-foreground leading-relaxed">
+                        <Alert variant="warning" className="mt-4">
+                            <TriangleAlert />
+                            <AlertDescription className="leading-relaxed">
                                 Submitting a false or bad-faith notice may expose you to liability for damages under Swiss and EU law. If
                                 you are unsure whether the content infringes your copyright, consult a lawyer before proceeding.
-                            </p>
-                        </div>
+                            </AlertDescription>
+                        </Alert>
                     </div>
                 </section>
 
@@ -205,7 +209,8 @@ export default function TakedownPage() {
                                     </a>{" "}
                                     directly.
                                 </p>
-                                <button
+                                <Button
+                                    variant="outline"
                                     onClick={() => {
                                         setFormState("idle");
                                         setForm({
@@ -220,10 +225,10 @@ export default function TakedownPage() {
                                             signature: "",
                                         });
                                     }}
-                                    className="mt-2 px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
+                                    className="mt-2"
                                 >
                                     Submit another notice
-                                </button>
+                                </Button>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-8">
@@ -237,29 +242,25 @@ export default function TakedownPage() {
                                             <label htmlFor="yourName" className="text-sm font-medium">
                                                 Full name <span className="text-red-500">*</span>
                                             </label>
-                                            <input
+                                            <Input
                                                 id="yourName"
                                                 name="yourName"
-                                                type="text"
                                                 required
                                                 value={form.yourName}
                                                 onChange={handleChange}
                                                 placeholder="Jane Smith"
-                                                className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label htmlFor="companyName" className="text-sm font-medium">
                                                 Company / organisation <span className="text-muted-foreground font-normal">(optional)</span>
                                             </label>
-                                            <input
+                                            <Input
                                                 id="companyName"
                                                 name="companyName"
-                                                type="text"
                                                 value={form.companyName}
                                                 onChange={handleChange}
                                                 placeholder="Acme Corp"
-                                                className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                             />
                                         </div>
                                     </div>
@@ -267,7 +268,7 @@ export default function TakedownPage() {
                                         <label htmlFor="email" className="text-sm font-medium">
                                             Email address <span className="text-red-500">*</span>
                                         </label>
-                                        <input
+                                        <Input
                                             id="email"
                                             name="email"
                                             type="email"
@@ -275,7 +276,6 @@ export default function TakedownPage() {
                                             value={form.email}
                                             onChange={handleChange}
                                             placeholder="jane@example.com"
-                                            className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             We will send acknowledgement and status updates to this address.
@@ -283,7 +283,7 @@ export default function TakedownPage() {
                                     </div>
                                 </fieldset>
 
-                                <div className="h-px bg-border" />
+                                <Separator />
 
                                 {/* Content identification */}
                                 <fieldset className="space-y-4">
@@ -294,7 +294,7 @@ export default function TakedownPage() {
                                         <label htmlFor="workDescription" className="text-sm font-medium">
                                             Description of the copyrighted work <span className="text-red-500">*</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="workDescription"
                                             name="workDescription"
                                             required
@@ -302,14 +302,14 @@ export default function TakedownPage() {
                                             value={form.workDescription}
                                             onChange={handleChange}
                                             placeholder="Describe the original work that has been infringed — e.g. 'The proprietary source code for Acme's authentication library, version 2.1, registered copyright 2024.'"
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="leading-relaxed"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label htmlFor="infringingUrls" className="text-sm font-medium">
                                             URLs of the infringing content <span className="text-red-500">*</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="infringingUrls"
                                             name="infringingUrls"
                                             required
@@ -319,7 +319,7 @@ export default function TakedownPage() {
                                             placeholder={
                                                 "https://git.mari.zip/user/repo/blob/main/src/auth.rs\nhttps://git.mari.zip/user/repo/blob/main/src/lib.rs"
                                             }
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="font-mono leading-relaxed"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             One URL per line. Use the full URL to the specific file(s) or commit(s).
@@ -330,14 +330,14 @@ export default function TakedownPage() {
                                             Location of the original work{" "}
                                             <span className="text-muted-foreground font-normal">(optional)</span>
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="originalUrls"
                                             name="originalUrls"
                                             rows={2}
                                             value={form.originalUrls}
                                             onChange={handleChange}
                                             placeholder="https://example.com/original-work"
-                                            className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+                                            className="font-mono leading-relaxed"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             Link to where the original, authorised work can be found, if publicly accessible.
@@ -345,7 +345,7 @@ export default function TakedownPage() {
                                     </div>
                                 </fieldset>
 
-                                <div className="h-px bg-border" />
+                                <Separator />
 
                                 {/* Declarations */}
                                 <fieldset className="space-y-4">
@@ -353,12 +353,10 @@ export default function TakedownPage() {
                                         Required declarations
                                     </legend>
                                     <label className="flex items-start gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            name="goodFaith"
+                                        <Checkbox
                                             checked={form.goodFaith}
-                                            onChange={handleChange}
-                                            className="mt-0.5 shrink-0"
+                                            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, goodFaith: checked === true }))}
+                                            className="mt-1"
                                         />
                                         <span className="text-sm leading-relaxed text-foreground/80">
                                             I have a good-faith belief that the use of the material described above is not authorised by the
@@ -366,12 +364,10 @@ export default function TakedownPage() {
                                         </span>
                                     </label>
                                     <label className="flex items-start gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            name="accuracy"
+                                        <Checkbox
                                             checked={form.accuracy}
-                                            onChange={handleChange}
-                                            className="mt-0.5 shrink-0"
+                                            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, accuracy: checked === true }))}
+                                            className="mt-1"
                                         />
                                         <span className="text-sm leading-relaxed text-foreground/80">
                                             I declare that the information in this notice is accurate and that I am the copyright owner or
@@ -386,37 +382,24 @@ export default function TakedownPage() {
                                     <label htmlFor="signature" className="text-sm font-medium">
                                         Electronic signature <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <Input
                                         id="signature"
                                         name="signature"
-                                        type="text"
                                         required
                                         value={form.signature}
                                         onChange={handleChange}
                                         placeholder="Type your full legal name"
-                                        className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                        className="font-mono"
                                     />
                                     <p className="text-xs text-muted-foreground">Typing your name constitutes an electronic signature.</p>
                                 </div>
 
                                 {/* Submit */}
                                 <div className="flex items-center gap-4 pt-2">
-                                    <button
-                                        type="submit"
-                                        disabled={!allRequired || formState === "submitting"}
-                                        className="flex items-center gap-2 px-5 py-2 text-sm bg-foreground text-background rounded-md hover:opacity-90 transition-opacity font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
+                                    <Button type="submit" disabled={!allRequired || formState === "submitting"} className="px-5">
                                         {formState === "submitting" ? (
                                             <>
-                                                <svg
-                                                    className="h-4 w-4 animate-spin"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                >
-                                                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                                </svg>
+                                                <Spinner />
                                                 Opening mail client…
                                             </>
                                         ) : (
@@ -425,7 +408,7 @@ export default function TakedownPage() {
                                                 Submit notice
                                             </>
                                         )}
-                                    </button>
+                                    </Button>
                                     <p className="text-xs text-muted-foreground">
                                         All fields marked <span className="text-red-500">*</span> are required.
                                     </p>

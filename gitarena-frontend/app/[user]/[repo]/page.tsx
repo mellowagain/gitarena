@@ -23,6 +23,7 @@ import { TopBar } from "@/components/top-bar";
 import { RepoFileSidebar, RepoFileSidebarSkeleton, type FileCommitInfo } from "@/components/repo-file-sidebar";
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useSWR from "swr";
 import { jsonFetcher } from "@/lib/fetchers";
@@ -36,6 +37,7 @@ import { useInstanceConfig } from "@/components/instance-config-provider";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { BranchesResponse } from "@/components/branch-bar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface RepoMetadata {
     id: string;
@@ -316,7 +318,7 @@ export function RepoPageContent({
     }
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen lg:h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
             {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
 
@@ -497,30 +499,28 @@ export function RepoPageContent({
                                         </div>
                                     )}
                                     {isMarkdown(selectedFile) && (
-                                        <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
-                                            <button
-                                                onClick={() => setShowSource(false)}
-                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
-                                                    !showSource
-                                                        ? "bg-background text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                        <ToggleGroup
+                                            type="single"
+                                            spacing={1}
+                                            value={showSource ? "code" : "preview"}
+                                            onValueChange={(v) => v && setShowSource(v === "code")}
+                                            className="p-0.5 bg-secondary"
+                                        >
+                                            <ToggleGroupItem
+                                                value="preview"
+                                                className="h-auto gap-1.5 rounded px-2 py-1.5 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground sm:gap-2 sm:px-3"
                                             >
                                                 <BookOpen className="hidden h-3.5 w-3.5 sm:block" />
                                                 Preview
-                                            </button>
-                                            <button
-                                                onClick={() => setShowSource(true)}
-                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
-                                                    showSource
-                                                        ? "bg-background text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                            </ToggleGroupItem>
+                                            <ToggleGroupItem
+                                                value="code"
+                                                className="h-auto gap-1.5 rounded px-2 py-1.5 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground sm:gap-2 sm:px-3"
                                             >
                                                 <Code className="hidden h-3.5 w-3.5 sm:block" />
                                                 Code
-                                            </button>
-                                        </div>
+                                            </ToggleGroupItem>
+                                        </ToggleGroup>
                                     )}
                                 </div>
                             </div>
@@ -564,36 +564,36 @@ export function RepoPageContent({
 
 export function RepoPageSkeleton({ user, repo }: { user: string; repo: string }) {
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen lg:h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
 
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 <RepoFileSidebarSkeleton />
 
                 {/* Main content */}
-                <main className="flex-1 flex flex-col min-w-0 overflow-hidden animate-pulse">
+                <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                         <div className="flex items-center gap-2.5">
-                            <div className="h-4 w-4 rounded bg-accent shrink-0" />
-                            <div className="h-3.5 w-28 rounded bg-accent shrink-0" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
+                            <Skeleton className="h-3.5 w-28 rounded shrink-0" />
                             <div className="flex flex-col border-l border-border pl-3 ml-1 gap-1.5">
-                                <div className="h-3.5 w-48 rounded bg-accent" />
+                                <Skeleton className="h-3.5 w-48 rounded" />
                                 <div className="flex items-center gap-1.5">
-                                    <div className="h-4 w-4 rounded-full bg-accent shrink-0" />
-                                    <div className="h-3 w-16 rounded bg-accent" />
-                                    <div className="h-3 w-12 rounded bg-accent" />
+                                    <Skeleton className="h-4 w-4 rounded-full shrink-0" />
+                                    <Skeleton className="h-3 w-16 rounded" />
+                                    <Skeleton className="h-3 w-12 rounded" />
                                 </div>
                             </div>
                         </div>
-                        <div className="h-7 w-32 rounded bg-accent" />
+                        <Skeleton className="h-7 w-32 rounded" />
                     </div>
                     <div className="flex-1 overflow-hidden p-0">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((i) => (
                             <div key={i} className="flex items-center py-0.5">
                                 <div className="w-14 shrink-0 flex justify-end pr-4">
-                                    <div className="h-3 w-5 rounded bg-accent" />
+                                    <Skeleton className="h-3 w-5 rounded" />
                                 </div>
-                                <div className="h-3 rounded bg-accent" style={{ width: `${20 + ((i * 23 + 7) % 60)}%` }} />
+                                <Skeleton className="h-3 rounded" style={{ width: `${20 + ((i * 23 + 7) % 60)}%` }} />
                             </div>
                         ))}
                     </div>

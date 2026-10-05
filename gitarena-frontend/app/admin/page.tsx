@@ -46,14 +46,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TopBar } from "@/components/top-bar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { jsonFetcher, authFetcher } from "@/lib/fetchers";
-import { uuidToDate } from "@/lib/utils";
+import { cn, uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface InstanceStats {
     users: number;
@@ -132,30 +139,22 @@ const adminSections = [
 
 function StatusBadge({ status }: { status: string }) {
     const config = {
-        healthy: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle2 },
-        degraded: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: AlertTriangle },
-        warning: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: AlertTriangle },
-        error: { bg: "bg-red-500/10", text: "text-red-500", icon: XCircle },
-        unhealthy: { bg: "bg-red-500/10", text: "text-red-500", icon: XCircle },
-        disabled: { bg: "bg-muted", text: "text-muted-foreground", icon: Clock },
-        active: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle2 },
-        pending: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: Clock },
-        banned: { bg: "bg-red-500/10", text: "text-red-500", icon: Ban },
-    };
-    const { bg, text, icon: Icon } = config[status as keyof typeof config] || config.healthy;
+        healthy: { variant: "success", icon: CheckCircle2 },
+        degraded: { variant: "warning", icon: AlertTriangle },
+        warning: { variant: "warning", icon: AlertTriangle },
+        error: { variant: "destructive", icon: XCircle },
+        unhealthy: { variant: "destructive", icon: XCircle },
+        disabled: { variant: "secondary", icon: Clock },
+        active: { variant: "success", icon: CheckCircle2 },
+        pending: { variant: "warning", icon: Clock },
+        banned: { variant: "destructive", icon: Ban },
+    } as const;
+    const { variant, icon: Icon } = config[status as keyof typeof config] || config.healthy;
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${bg} ${text}`}>
-            <Icon className="h-3 w-3" />
+        <Badge variant={variant} className={cn("rounded-full font-normal", variant === "secondary" && "text-muted-foreground")}>
+            <Icon />
             {status}
-        </span>
-    );
-}
-
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
+        </Badge>
     );
 }
 
@@ -207,54 +206,59 @@ function AuditTableRow({ event }: { event: EventResponse }) {
     const hasExpandable = hasPayload || !!event.userAgent;
 
     return (
-        <>
-            <tr className="border-t border-border first:border-t-0 hover:bg-accent/30 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs">{event.type}</td>
-                <td className="px-4 py-3 text-muted-foreground">{event.actorUsername ?? "system"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.subjectName ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.ipAddress ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                    {event.traceId ? (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="cursor-default">{event.traceId.slice(0, 8)}</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="font-mono">{event.traceId}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    ) : (
-                        "—"
-                    )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}</td>
-                <td className="px-4 py-3 text-right">
-                    {hasExpandable && (
-                        <button
-                            onClick={() => setExpanded((v) => !v)}
-                            className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
-                            title={expanded ? "Hide details" : "Show details"}
-                        >
-                            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        </button>
-                    )}
-                </td>
-            </tr>
-            {expanded && (
-                <tr className="border-t border-border bg-secondary/20">
-                    <td colSpan={7} className="px-4 pt-2 pb-3 space-y-1.5">
-                        {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
-                        {hasPayload && (
-                            <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                                {JSON.stringify(event.payload, null, 2)}
-                            </pre>
+        <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
+            <TableBody className="border-t border-border first-of-type:border-t-0">
+                <TableRow className="hover:bg-accent/30 transition-colors">
+                    <TableCell className="px-4 py-3 font-mono text-xs">{event.type}</TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground">{event.actorUsername ?? "system"}</TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.subjectName ?? "—"}</TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground font-mono text-xs">{event.ipAddress ?? "—"}</TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                        {event.traceId ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="cursor-default">{event.traceId.slice(0, 8)}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="font-mono">{event.traceId}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            "—"
                         )}
-                    </td>
-                </tr>
-            )}
-        </>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground">
+                        {formatDistanceToNow(uuidToDate(event.id), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-right">
+                        {hasExpandable && (
+                            <CollapsibleTrigger asChild>
+                                <button
+                                    className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
+                                    title={expanded ? "Hide details" : "Show details"}
+                                >
+                                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                </button>
+                            </CollapsibleTrigger>
+                        )}
+                    </TableCell>
+                </TableRow>
+                <CollapsibleContent asChild>
+                    <TableRow className="border-t border-border bg-secondary/20">
+                        <TableCell colSpan={7} className="px-4 pt-2 pb-3 space-y-1.5 whitespace-normal">
+                            {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
+                            {hasPayload && (
+                                <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                                    {JSON.stringify(event.payload, null, 2)}
+                                </pre>
+                            )}
+                        </TableCell>
+                    </TableRow>
+                </CollapsibleContent>
+            </TableBody>
+        </Collapsible>
     );
 }
 
@@ -402,12 +406,10 @@ export default function AdminDashboardPage() {
                                             </>
                                         )}
                                     </div>
-                                    <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-blue-500 rounded-full"
-                                            style={{ width: stats ? `${(stats.usedSpace / stats.totalSpace) * 100}%` : "0%" }}
-                                        />
-                                    </div>
+                                    <Progress
+                                        value={stats ? (stats.usedSpace / stats.totalSpace) * 100 : 0}
+                                        className="mt-2 h-1.5 bg-secondary *:data-[slot=progress-indicator]:bg-info"
+                                    />
                                 </div>
                             </div>
 
@@ -580,7 +582,7 @@ export default function AdminDashboardPage() {
                                 <div className="divide-y divide-border/50">
                                     {isAuditLoading ? (
                                         Array.from({ length: 3 }).map((_, index) => (
-                                            <div key={index} className="h-12 px-4 py-3 animate-pulse bg-secondary/30" />
+                                            <Skeleton key={index} className="h-12 px-4 py-3 rounded-none" />
                                         ))
                                     ) : !auditEvents || auditEvents.length === 0 ? (
                                         <div className="px-4 py-3 text-sm text-muted-foreground">No audit events yet.</div>
@@ -606,7 +608,7 @@ export default function AdminDashboardPage() {
 
                             <div className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border">
                                 <span className="text-sm text-muted-foreground">Quick actions:</span>
-                                <WipTag />
+                                <WipBadge />
                                 <Button variant="secondary" size="sm" className="gap-2">
                                     <Download className="h-4 w-4" />
                                     Create Backup
@@ -635,14 +637,12 @@ export default function AdminDashboardPage() {
                                     <p className="text-muted-foreground">Manage all users on this instance</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search users..."
-                                            className="h-9 pl-9 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                        />
-                                    </div>
+                                    <InputGroup>
+                                        <InputGroupAddon>
+                                            <Search />
+                                        </InputGroupAddon>
+                                        <InputGroupInput placeholder="Search users..." />
+                                    </InputGroup>
                                     <Button className="gap-2">
                                         <Plus className="h-4 w-4" />
                                         Add User
@@ -651,87 +651,89 @@ export default function AdminDashboardPage() {
                             </div>
 
                             <div className="rounded-lg border border-border overflow-hidden">
-                                <table className="w-full">
-                                    <thead className="bg-card border-b border-border">
-                                        <tr>
-                                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                <Table>
+                                    <TableHeader className="bg-card border-b border-border">
+                                        <TableRow>
+                                            <TableHead className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 User
-                                            </th>
-                                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                            </TableHead>
+                                            <TableHead className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 Primary email
-                                            </th>
-                                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                            </TableHead>
+                                            <TableHead className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 Created
-                                            </th>
-                                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                            </TableHead>
+                                            <TableHead className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 Status
-                                            </th>
-                                            <th className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                            </TableHead>
+                                            <TableHead className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 Admin
-                                            </th>
-                                            <th className="text-right px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                            </TableHead>
+                                            <TableHead className="text-right px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                                 Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/50">
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {areUsersLoading ? (
                                             Array.from({ length: 6 }).map((_, index) => (
-                                                <tr key={index}>
-                                                    <td className="px-4 py-3">
+                                                <TableRow key={index}>
+                                                    <TableCell className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <Skeleton className="h-8 w-8 rounded-full" />
                                                             <Skeleton className="h-4 w-24" />
                                                         </div>
-                                                    </td>
-                                                    <td className="px-4 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3">
                                                         <Skeleton className="h-4 w-40" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3">
                                                         <Skeleton className="h-4 w-24" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3">
                                                         <Skeleton className="h-5 w-16 rounded-full" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3">
                                                         <Skeleton className="h-4 w-4 rounded" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3">
                                                         <div className="flex justify-end">
                                                             <Skeleton className="h-7 w-7 rounded-md" />
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))
                                         ) : usersError ? (
-                                            <tr>
-                                                <td colSpan={7} className="px-4 py-3 text-sm text-red-500">
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="px-4 py-3 text-sm text-red-500">
                                                     Unable to load users.
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ) : adminUsers?.length ? (
                                             adminUsers.map((user) => {
                                                 const status = getUserStatus(user);
 
                                                 return (
-                                                    <tr key={user.id} className="hover:bg-accent/30 transition-colors">
-                                                        <td className="px-4 py-3">
+                                                    <TableRow key={user.id} className="hover:bg-accent/30 transition-colors">
+                                                        <TableCell className="px-4 py-3">
                                                             <div className="flex items-center gap-3">
                                                                 <UserAvatar userId={user.id} username={user.username} size="lg" />
                                                                 <span className="font-medium">{user.username}</span>
                                                             </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
-                                                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                                                            {user.email}
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-sm text-muted-foreground">
                                                             {formatUserCreatedAt(user)}
-                                                        </td>
-                                                        <td className="px-4 py-3">
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3">
                                                             <StatusBadge status={status} />
-                                                        </td>
-                                                        <td className="px-4 py-3">
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3">
                                                             <Checkbox checked={user.admin} aria-label={`${user.username} admin status`} />
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-right">
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
                                                                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -746,19 +748,19 @@ export default function AdminDashboardPage() {
                                                                     <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
-                                                        </td>
-                                                    </tr>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 );
                                             })
                                         ) : (
-                                            <tr>
-                                                <td colSpan={7} className="px-4 py-3 text-sm text-muted-foreground">
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="px-4 py-3 text-sm text-muted-foreground">
                                                     No users found.
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         )}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         </div>
                     )}
@@ -770,54 +772,63 @@ export default function AdminDashboardPage() {
                                 <p className="text-sm text-muted-foreground mt-1">Security-relevant actions performed on this instance.</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="relative flex-1 max-w-xs">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                    <input
-                                        placeholder="Search events…"
-                                        className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                                    />
-                                </div>
-                                <select className="h-9 px-3 bg-card border border-border rounded-md text-sm focus:outline-none">
-                                    <option>All classes</option>
-                                    <option value="security">Security</option>
-                                    <option value="activity">Activity</option>
-                                </select>
+                                <InputGroup className="flex-1 max-w-xs">
+                                    <InputGroupAddon>
+                                        <Search />
+                                    </InputGroupAddon>
+                                    <InputGroupInput placeholder="Search events…" />
+                                </InputGroup>
+                                <Select defaultValue="all">
+                                    <SelectTrigger className="bg-card">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All classes</SelectItem>
+                                        <SelectItem value="security">Security</SelectItem>
+                                        <SelectItem value="activity">Activity</SelectItem>
+                                    </SelectContent>
+                                </Select>
                                 <Button variant="outline" size="sm" className="gap-2 ml-auto">
                                     <Download className="h-4 w-4" />
                                     Export CSV
                                 </Button>
                             </div>
                             <div className="border border-border rounded-lg overflow-hidden">
-                                <table className="w-full text-sm">
-                                    <thead className="border-b border-border bg-secondary/30">
-                                        <tr>
+                                <Table>
+                                    <TableHeader className="border-b border-border bg-secondary/30">
+                                        <TableRow>
                                             {["Action", "Actor", "Target", "IP", "Trace", "Time", ""].map((h) => (
-                                                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                                                <TableHead
+                                                    key={h}
+                                                    className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"
+                                                >
                                                     {h}
-                                                </th>
+                                                </TableHead>
                                             ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {isAuditLoading ? (
-                                            Array.from({ length: 8 }).map((_, index) => (
-                                                <tr key={index}>
-                                                    <td colSpan={7} className="px-4 py-3">
-                                                        <div className="h-4 bg-secondary/50 rounded animate-pulse" />
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : !auditEvents || auditEvents.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                        </TableRow>
+                                    </TableHeader>
+                                    {isAuditLoading ? (
+                                        <TableBody>
+                                            {Array.from({ length: 8 }).map((_, index) => (
+                                                <TableRow key={index}>
+                                                    <TableCell colSpan={7} className="px-4 py-3">
+                                                        <Skeleton className="h-4 rounded" />
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    ) : !auditEvents || auditEvents.length === 0 ? (
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                                                     No audit events yet.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            auditEvents.map((event) => <AuditTableRow key={event.id} event={event} />)
-                                        )}
-                                    </tbody>
-                                </table>
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    ) : (
+                                        auditEvents.map((event) => <AuditTableRow key={event.id} event={event} />)
+                                    )}
+                                </Table>
                             </div>
                         </div>
                     )}

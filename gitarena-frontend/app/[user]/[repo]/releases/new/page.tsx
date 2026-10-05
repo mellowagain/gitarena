@@ -5,10 +5,17 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Loader2, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -424,17 +431,18 @@ export default function NewReleasePage() {
                         <label className="text-sm font-medium block mb-1.5">
                             Tag <span className="text-red-500">*</span>
                         </label>
-                        <div className="relative">
-                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                            <input
-                                type="text"
+                        <InputGroup className="h-10">
+                            <InputGroupAddon>
+                                <Tag />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 value={tag}
                                 onChange={(e) => setTag(e.target.value)}
                                 placeholder="v1.0.0"
                                 disabled={isPublishing}
-                                className="w-full h-10 pl-9 pr-3 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                className="font-mono"
                             />
-                        </div>
+                        </InputGroup>
                         <p className="mt-1.5 text-xs text-muted-foreground">
                             If this tag does not exist in the repository, an annotated git tag will be created referencing the latest commit
                             on the default branch.
@@ -446,48 +454,33 @@ export default function NewReleasePage() {
                         <label className="text-sm font-medium block mb-1.5">
                             Title <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
+                        <Input
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Release title…"
                             disabled={isPublishing}
-                            className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                            className="h-10"
                         />
                     </div>
 
                     {/* Description */}
                     <div>
                         <label className="text-sm font-medium block mb-1.5">Release notes</label>
-                        <div className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                            <div className="flex items-center border-b border-border">
-                                <button
-                                    type="button"
-                                    onClick={() => setPreview(false)}
-                                    disabled={isPublishing}
-                                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        !preview
-                                            ? "text-foreground border-b-2 border-foreground -mb-px"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
+                        <Tabs
+                            value={preview ? "preview" : "write"}
+                            onValueChange={(v) => setPreview(v === "preview")}
+                            className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+                        >
+                            <TabsList variant="line" className="gap-0">
+                                <TabsTrigger value="write" className="py-1.5 text-xs" disabled={isPublishing}>
                                     Write
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPreview(true)}
-                                    disabled={isPublishing}
-                                    className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                                        preview
-                                            ? "text-foreground border-b-2 border-foreground -mb-px"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    <Eye className="h-3 w-3" />
+                                </TabsTrigger>
+                                <TabsTrigger value="preview" className="py-1.5 text-xs" disabled={isPublishing}>
+                                    <Eye className="size-3" />
                                     Preview
-                                </button>
-                            </div>
-                            {preview ? (
+                                </TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="preview">
                                 <div className="px-3 py-2 min-h-[200px]">
                                     {description.trim() ? (
                                         <MarkdownRenderer
@@ -500,7 +493,8 @@ export default function NewReleasePage() {
                                         <span className="text-muted-foreground italic">Nothing to preview.</span>
                                     )}
                                 </div>
-                            ) : (
+                            </TabsContent>
+                            <TabsContent value="write">
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
@@ -509,25 +503,24 @@ export default function NewReleasePage() {
                                     rows={8}
                                     className="w-full px-3 py-2 bg-transparent text-sm resize-none focus:outline-none disabled:opacity-50"
                                 />
-                            )}
+                            </TabsContent>
                             <div className="flex items-center px-3 py-2 border-t border-border bg-card/50">
                                 <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                             </div>
-                        </div>
+                        </Tabs>
                     </div>
 
                     {/* Pre-release toggle */}
                     <div className="flex items-start gap-3 p-4 border border-border rounded-md bg-card">
-                        <input
+                        <Checkbox
                             id="pre-release"
-                            type="checkbox"
                             checked={preRelease}
-                            onChange={(e) => setPreRelease(e.target.checked)}
+                            onCheckedChange={(checked) => setPreRelease(checked === true)}
                             disabled={isPublishing}
-                            className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:opacity-50"
+                            className="mt-0.5"
                         />
                         <div>
-                            <label htmlFor="pre-release" className="text-sm font-medium cursor-pointer select-none">
+                            <label htmlFor="pre-release" className="block text-sm font-medium cursor-pointer select-none">
                                 Set as a pre-release
                             </label>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -543,9 +536,12 @@ export default function NewReleasePage() {
                                 <Upload className="h-4 w-4" />
                                 Assets
                                 {assets.length > 0 && (
-                                    <span className="px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-[10px]">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 rounded-full text-muted-foreground text-[10px] bg-secondary font-normal"
+                                    >
                                         {assets.length}
-                                    </span>
+                                    </Badge>
                                 )}
                             </h2>
                             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelected} />
@@ -571,12 +567,11 @@ export default function NewReleasePage() {
                                         <div className="flex items-center gap-3">
                                             <FileArchive className="h-4 w-4 text-muted-foreground shrink-0" />
                                             <div className="flex-1 min-w-0">
-                                                <input
-                                                    type="text"
+                                                <Input
                                                     value={asset.name}
                                                     onChange={(e) => updateAsset(asset.localId, { name: e.target.value })}
                                                     disabled={isPublishing}
-                                                    className="w-full h-7 px-2 bg-card border border-border rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                                    className="h-7 px-2 font-mono"
                                                 />
                                             </div>
                                             <span className="text-xs text-muted-foreground shrink-0">{formatBytes(asset.file.size)}</span>
@@ -625,7 +620,7 @@ export default function NewReleasePage() {
                         <div className="p-4 border border-border rounded-md bg-card space-y-2">
                             {publishStatus.status === "creating" && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Spinner />
                                     Creating release…
                                 </div>
                             )}
@@ -637,17 +632,12 @@ export default function NewReleasePage() {
                                         </span>
                                         <span className="font-medium shrink-0 ml-2">{publishStatus.progress}%</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-primary rounded-full transition-all duration-150"
-                                            style={{ width: `${publishStatus.progress}%` }}
-                                        />
-                                    </div>
+                                    <Progress value={publishStatus.progress} className="h-1.5 bg-secondary" />
                                 </>
                             )}
                             {publishStatus.status === "confirming" && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Spinner />
                                     Verifying {publishStatus.index + 1}/{publishStatus.total}: {publishStatus.name}…
                                 </div>
                             )}
@@ -662,7 +652,7 @@ export default function NewReleasePage() {
                             </Button>
                         </Link>
                         <Button onClick={handlePublish} disabled={!tag.trim() || !title.trim() || isPublishing}>
-                            {isPublishing && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            {isPublishing && <Spinner className="size-3.5 mr-1.5" />}
                             {isPublishing ? "Publishing…" : "Publish release"}
                         </Button>
                     </div>

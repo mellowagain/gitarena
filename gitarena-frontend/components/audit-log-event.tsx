@@ -6,6 +6,7 @@ import { uuidToDate } from "@/lib/utils";
 import { Shield, Key, LogIn, LogOut, Mail, User, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import type { EventResponse } from "@/components/activity-event";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 function getEventStyle(type: string): { bg: string; color: string } {
     if (type === "auth.login") return { bg: "bg-green-500/10", color: "text-green-500" };
@@ -148,7 +149,7 @@ export function AuditLogEvent({ event, showActor = false }: AuditLogEventProps) 
     const { bg, color } = getEventStyle(event.type);
 
     return (
-        <div>
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
             <div className="flex items-start gap-3 px-4 py-3.5">
                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${bg}`}>
                     <AuditIcon type={event.type} className={`h-4 w-4 ${color}`} />
@@ -165,28 +166,23 @@ export function AuditLogEvent({ event, showActor = false }: AuditLogEventProps) 
                         <code className="text-[11px] bg-secondary px-1.5 py-0.5 rounded font-mono text-muted-foreground">{event.type}</code>
                         {event.ipAddress && <span className="text-xs text-muted-foreground font-mono">{event.ipAddress}</span>}
                         {hasExpandable && (
-                            <button
-                                onClick={() => setExpanded((v) => !v)}
-                                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
-                            >
+                            <CollapsibleTrigger className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto">
                                 {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                 {expanded ? "Hide details" : "Details"}
-                            </button>
+                            </CollapsibleTrigger>
                         )}
                     </div>
                 </div>
             </div>
-            {expanded && (
-                <div className="px-4 pb-3.5 pl-[60px] space-y-2">
-                    {event.traceId && <p className="text-xs text-muted-foreground font-mono">trace: {event.traceId}</p>}
-                    {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
-                    {hasPayload && (
-                        <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                            {JSON.stringify(event.payload, null, 2)}
-                        </pre>
-                    )}
-                </div>
-            )}
-        </div>
+            <CollapsibleContent className="px-4 pb-3.5 pl-[60px] space-y-2">
+                {event.traceId && <p className="text-xs text-muted-foreground font-mono">trace: {event.traceId}</p>}
+                {event.userAgent && <p className="text-xs text-muted-foreground font-mono break-all">{event.userAgent}</p>}
+                {hasPayload && (
+                    <pre className="text-xs font-mono bg-secondary/50 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                        {JSON.stringify(event.payload, null, 2)}
+                    </pre>
+                )}
+            </CollapsibleContent>
+        </Collapsible>
     );
 }

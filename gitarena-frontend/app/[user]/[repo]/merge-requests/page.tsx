@@ -20,6 +20,12 @@ import {
     XCircle,
     GitBranch,
 } from "lucide-react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const repoData = {
     org: "mellowagain",
@@ -196,31 +202,6 @@ function CIIndicator({ status }: { status: string }) {
     return <div className={`w-2.5 h-2.5 rounded-full ${config.color}`} title={config.label} />;
 }
 
-function LabelBadge({ label }: { label: { name: string; color: string } }) {
-    const scopedIndex = label.name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? label.name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? label.name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${label.color}35`, color: label.color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-            {label.name}
-        </span>
-    );
-}
-
 function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boolean; onSelect: () => void }) {
     return (
         <Link
@@ -243,7 +224,7 @@ function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boo
             <div className="flex-1 min-w-0 flex items-center gap-2">
                 <span className="truncate">{mr.title}</span>
                 {mr.labels.map((label) => (
-                    <LabelBadge key={label.name} label={label} />
+                    <LabelBadge key={label.name} name={label.name} color={label.color} />
                 ))}
             </div>
 
@@ -266,13 +247,14 @@ function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boo
 
             <div className="shrink-0 flex -space-x-1.5">
                 {mr.reviewers.slice(0, 2).map((reviewer) => (
-                    <div
-                        key={reviewer}
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium border-2 border-background"
-                        title={reviewer}
-                    >
-                        {reviewer[0].toUpperCase()}
-                    </div>
+                    <Tooltip key={reviewer}>
+                        <TooltipTrigger asChild>
+                            <span>
+                                <UserAvatar username={reviewer} className="border-2 border-background" />
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{reviewer}</TooltipContent>
+                    </Tooltip>
                 ))}
             </div>
 
@@ -367,16 +349,16 @@ export default function MergeRequestsPage() {
                     style={{ width: sidebarWidth }}
                 >
                     <div className="p-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="text"
+                        <InputGroup>
+                            <InputGroupAddon>
+                                <Search />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 placeholder="Search merge requests..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-9 pl-9 pr-3 bg-secondary border-0 rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             />
-                        </div>
+                        </InputGroup>
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-3 pb-4">
@@ -405,7 +387,7 @@ export default function MergeRequestsPage() {
 
                     <div className="p-4 border-t border-border">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <kbd className="px-2 py-1 bg-secondary rounded text-xs">N</kbd>
+                            <Kbd>N</Kbd>
                             <span>New merge request</span>
                         </div>
                     </div>
@@ -465,15 +447,21 @@ export default function MergeRequestsPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                <Inbox className="h-16 w-16 mb-4 opacity-30" />
-                                <p className="text-lg font-medium">No merge requests</p>
-                                <p className="mt-1">Create a merge request to start collaborating</p>
-                                <Button size="sm" className="mt-6 gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    New Merge Request
-                                </Button>
-                            </div>
+                            <Empty className="h-full">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Inbox />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No merge requests</EmptyTitle>
+                                    <EmptyDescription>Create a merge request to start collaborating</EmptyDescription>
+                                </EmptyHeader>
+                                <EmptyContent>
+                                    <Button size="sm">
+                                        <Plus />
+                                        New Merge Request
+                                    </Button>
+                                </EmptyContent>
+                            </Empty>
                         )}
                     </div>
                 </main>

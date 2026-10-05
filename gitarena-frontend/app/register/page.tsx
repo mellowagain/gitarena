@@ -10,6 +10,10 @@ import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Check, Compass, GitMerge, Us
 import { GitHubIcon } from "@/components/github-icon";
 import { useAuth } from "@/hooks/use-auth";
 import useSWR from "swr";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FieldSeparator } from "@/components/ui/field";
 
 interface SSOProviders {
     github: boolean;
@@ -131,7 +135,7 @@ export default function RegisterPage() {
                                 <span className="hidden sm:inline">Merge Requests</span>
                             </Button>
                         </Link>
-                        <div className="w-px h-7 bg-border mx-3" />
+                        <Separator orientation="vertical" className="mx-3 data-[orientation=vertical]:h-7" />
                         <Link href="/login">
                             <Button variant="secondary" size="sm" className="h-10 px-4 text-base">
                                 Sign in
@@ -215,29 +219,30 @@ export default function RegisterPage() {
 
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             {registerError && (
-                                <div className="px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-                                    {registerError.message}
-                                </div>
+                                <Alert variant="destructive">
+                                    <AlertDescription>{registerError.message}</AlertDescription>
+                                </Alert>
                             )}
 
                             <div className="space-y-2">
                                 <label htmlFor="username" className="text-sm font-medium">
                                     Username
                                 </label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                <InputGroup className="h-11">
+                                    <InputGroupAddon>
+                                        <User />
+                                    </InputGroupAddon>
+                                    <InputGroupInput
                                         id="username"
-                                        type="text"
                                         value={form.username}
                                         onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                                         placeholder="johndoe"
                                         autoComplete="username"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="md:text-base"
                                     />
-                                </div>
+                                </InputGroup>
                                 {form.username && (
                                     <p className="text-xs text-muted-foreground">
                                         Your profile: <span className="text-foreground font-mono">gitarena.dev/{form.username}</span>
@@ -249,9 +254,11 @@ export default function RegisterPage() {
                                 <label htmlFor="email" className="text-sm font-medium">
                                     Email
                                 </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                <InputGroup className="h-11">
+                                    <InputGroupAddon>
+                                        <Mail />
+                                    </InputGroupAddon>
+                                    <InputGroupInput
                                         id="email"
                                         type="email"
                                         value={form.email}
@@ -260,18 +267,20 @@ export default function RegisterPage() {
                                         autoComplete="email"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-4 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="md:text-base"
                                     />
-                                </div>
+                                </InputGroup>
                             </div>
 
                             <div className="space-y-2">
                                 <label htmlFor="password" className="text-sm font-medium">
                                     Password
                                 </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <input
+                                <InputGroup className="h-11">
+                                    <InputGroupAddon>
+                                        <Lock />
+                                    </InputGroupAddon>
+                                    <InputGroupInput
                                         id="password"
                                         type={showPassword ? "text" : "password"}
                                         value={form.password}
@@ -280,16 +289,14 @@ export default function RegisterPage() {
                                         autoComplete="new-password"
                                         required
                                         disabled={isRegistering}
-                                        className="w-full h-11 pl-10 pr-11 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                                        className="md:text-base"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </button>
-                                </div>
+                                    <InputGroupAddon align="inline-end">
+                                        <InputGroupButton size="icon-xs" onClick={() => setShowPassword(!showPassword)}>
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </InputGroupButton>
+                                    </InputGroupAddon>
+                                </InputGroup>
                                 {form.password && <PasswordStrength password={form.password} />}
                             </div>
 
@@ -312,14 +319,9 @@ export default function RegisterPage() {
 
                         {showSsoSection && (
                             <>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-border" />
-                                    </div>
-                                    <div className="relative flex justify-center text-sm">
-                                        <span className="bg-background px-4 text-muted-foreground">or continue with</span>
-                                    </div>
-                                </div>
+                                <FieldSeparator className="mt-0 mb-6 *:data-[slot=field-separator-content]:px-4">
+                                    or continue with
+                                </FieldSeparator>
 
                                 {isLoading && (
                                     <div className="flex items-center justify-center gap-3">

@@ -29,6 +29,8 @@ import {
     AlertTriangle,
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SignatureInfo {
     name: string;
@@ -243,15 +245,20 @@ function ChangedFilesSidebar({ files }: { files: DiffFile[] }) {
 }
 
 function FileDiff({ file }: { file: DiffFile }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [open, setOpen] = useState(true);
     const language = detectLanguage(file.path);
 
     return (
-        <div id={fileDiffId(file.path)} className="border border-border rounded-md overflow-hidden scroll-mt-4">
+        <Collapsible
+            open={open}
+            onOpenChange={setOpen}
+            id={fileDiffId(file.path)}
+            className="border border-border rounded-md overflow-hidden scroll-mt-4"
+        >
             <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/40 border-b border-border">
-                <button onClick={() => setCollapsed(!collapsed)} className="shrink-0">
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${collapsed ? "-rotate-90" : ""}`} />
-                </button>
+                <CollapsibleTrigger className="shrink-0" aria-label={open ? "Collapse file" : "Expand file"}>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
+                </CollapsibleTrigger>
                 <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />
                 {file.oldPath && <span className="text-sm font-mono text-muted-foreground line-through shrink-0">{file.oldPath}</span>}
                 {file.oldPath && <span className="text-muted-foreground">→</span>}
@@ -259,25 +266,23 @@ function FileDiff({ file }: { file: DiffFile }) {
                 <span className="text-xs text-green-500 font-medium">+{file.stats.insertions}</span>
                 <span className="text-xs text-red-500 font-medium">-{file.stats.deletions}</span>
             </div>
-            {!collapsed && (
-                <div className="overflow-x-auto">
-                    <div className="min-w-max">
-                        {file.binary && <div className="px-4 py-3 text-sm text-muted-foreground italic">Binary file</div>}
-                        {file.tooLarge && <div className="px-4 py-3 text-sm text-muted-foreground italic">Diff too large to display</div>}
-                        {!file.binary &&
-                            !file.tooLarge &&
-                            file.hunks.map((hunk, hi) => (
-                                <div key={hi}>
-                                    <div className="px-4 py-1 bg-blue-500/5 text-xs font-mono text-blue-400/70 border-b border-border/50">
-                                        {hunk.header}
-                                    </div>
-                                    <HighlightedHunk hunk={hunk} language={language} />
+            <CollapsibleContent className="overflow-x-auto">
+                <div className="min-w-max">
+                    {file.binary && <div className="px-4 py-3 text-sm text-muted-foreground italic">Binary file</div>}
+                    {file.tooLarge && <div className="px-4 py-3 text-sm text-muted-foreground italic">Diff too large to display</div>}
+                    {!file.binary &&
+                        !file.tooLarge &&
+                        file.hunks.map((hunk, hi) => (
+                            <div key={hi}>
+                                <div className="px-4 py-1 bg-blue-500/5 text-xs font-mono text-blue-400/70 border-b border-border/50">
+                                    {hunk.header}
                                 </div>
-                            ))}
-                    </div>
+                                <HighlightedHunk hunk={hunk} language={language} />
+                            </div>
+                        ))}
                 </div>
-            )}
-        </div>
+            </CollapsibleContent>
+        </Collapsible>
     );
 }
 
@@ -402,20 +407,18 @@ export default function CommitDetailPage() {
                             </div>
 
                             {!data.branch && (
-                                <div className="flex gap-3 px-4 py-3 mb-4 border border-yellow-500/30 bg-yellow-500/5 rounded-md text-sm">
-                                    <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-foreground font-medium">Dangling commit</p>
-                                        <p className="text-muted-foreground">
-                                            This commit is not reachable from any branch and may be garbage collected. If this is
-                                            unintended, you can rescue it with{" "}
-                                            <code className="px-1 py-0.5 bg-secondary rounded text-xs">
-                                                git branch rescue {data.commit.shortOid}
-                                            </code>
-                                            .
-                                        </p>
-                                    </div>
-                                </div>
+                                <Alert variant="warning" className="mb-4">
+                                    <AlertTriangle />
+                                    <AlertTitle>Dangling commit</AlertTitle>
+                                    <AlertDescription className="block">
+                                        This commit is not reachable from any branch and may be garbage collected. If this is unintended,
+                                        you can rescue it with{" "}
+                                        <code className="px-1 py-0.5 bg-secondary rounded text-xs">
+                                            git branch rescue {data.commit.shortOid}
+                                        </code>
+                                        .
+                                    </AlertDescription>
+                                </Alert>
                             )}
 
                             <div className="space-y-4">

@@ -7,6 +7,8 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/error-display";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -20,7 +22,6 @@ import {
     Eye,
     FileArchive,
     GitMerge,
-    Loader2,
     Package,
     Settings,
     Tag,
@@ -29,6 +30,10 @@ import {
     X,
     CheckCircle2,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -484,43 +489,26 @@ export default function EditReleasePage() {
                                 <label className="text-sm font-medium block mb-1.5">
                                     Title <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                />
+                                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10" />
                             </div>
 
                             <div>
                                 <label className="text-sm font-medium block mb-1.5">Release notes</label>
-                                <div className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                                    <div className="flex items-center border-b border-border">
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreview(false)}
-                                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                                                !preview
-                                                    ? "text-foreground border-b-2 border-foreground -mb-px"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            }`}
-                                        >
+                                <Tabs
+                                    value={preview ? "preview" : "write"}
+                                    onValueChange={(v) => setPreview(v === "preview")}
+                                    className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+                                >
+                                    <TabsList variant="line" className="gap-0">
+                                        <TabsTrigger value="write" className="py-1.5 text-xs">
                                             Write
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreview(true)}
-                                            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                                                preview
-                                                    ? "text-foreground border-b-2 border-foreground -mb-px"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            }`}
-                                        >
-                                            <Eye className="h-3 w-3" />
+                                        </TabsTrigger>
+                                        <TabsTrigger value="preview" className="py-1.5 text-xs">
+                                            <Eye className="size-3" />
                                             Preview
-                                        </button>
-                                    </div>
-                                    {preview ? (
+                                        </TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="preview">
                                         <div className="px-3 py-2 min-h-[160px]">
                                             {description.trim() ? (
                                                 <MarkdownRenderer
@@ -533,7 +521,8 @@ export default function EditReleasePage() {
                                                 <span className="text-muted-foreground italic">Nothing to preview.</span>
                                             )}
                                         </div>
-                                    ) : (
+                                    </TabsContent>
+                                    <TabsContent value="write">
                                         <textarea
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
@@ -541,23 +530,22 @@ export default function EditReleasePage() {
                                             rows={6}
                                             className="w-full px-3 py-2 bg-transparent text-sm resize-none focus:outline-none"
                                         />
-                                    )}
+                                    </TabsContent>
                                     <div className="flex items-center px-3 py-2 border-t border-border bg-card/50">
                                         <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                                     </div>
-                                </div>
+                                </Tabs>
                             </div>
 
                             <div className="flex items-start gap-3 p-4 border border-border rounded-md bg-card">
-                                <input
+                                <Checkbox
                                     id="pre-release"
-                                    type="checkbox"
                                     checked={preRelease}
-                                    onChange={(e) => setPreRelease(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                                    onCheckedChange={(checked) => setPreRelease(checked === true)}
+                                    className="mt-0.5"
                                 />
                                 <div>
-                                    <label htmlFor="pre-release" className="text-sm font-medium cursor-pointer select-none">
+                                    <label htmlFor="pre-release" className="block text-sm font-medium cursor-pointer select-none">
                                         Set as a pre-release
                                     </label>
                                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -571,7 +559,7 @@ export default function EditReleasePage() {
                                     <Button variant="outline">Cancel</Button>
                                 </Link>
                                 <Button onClick={handleSave} disabled={!title.trim() || isSaving}>
-                                    {isSaving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                                    {isSaving && <Spinner className="size-3.5 mr-1.5" />}
                                     Save changes
                                 </Button>
                             </div>
@@ -591,25 +579,21 @@ export default function EditReleasePage() {
                                             <span className="flex-1 min-w-0 font-mono text-sm truncate">{asset.name}</span>
                                             <span className="text-xs text-muted-foreground shrink-0">{formatBytes(asset.size)}</span>
                                             {asset.os && (
-                                                <span className="text-xs px-1.5 py-0.5 border border-border rounded bg-secondary text-muted-foreground shrink-0">
+                                                <Badge variant="outline" className="px-1.5 text-muted-foreground bg-secondary font-normal">
                                                     {asset.os}
-                                                </span>
+                                                </Badge>
                                             )}
                                             {asset.arch && (
-                                                <span className="text-xs px-1.5 py-0.5 border border-border rounded bg-secondary text-muted-foreground shrink-0">
+                                                <Badge variant="outline" className="px-1.5 text-muted-foreground bg-secondary font-normal">
                                                     {asset.arch}
-                                                </span>
+                                                </Badge>
                                             )}
                                             <button
                                                 onClick={() => handleDeleteAsset(asset.id)}
                                                 disabled={deletingAssetId === asset.id}
                                                 className="shrink-0 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                                             >
-                                                {deletingAssetId === asset.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4" />
-                                                )}
+                                                {deletingAssetId === asset.id ? <Spinner /> : <Trash2 className="h-4 w-4" />}
                                             </button>
                                         </div>
                                     ))}
@@ -657,15 +641,14 @@ export default function EditReleasePage() {
 
                                             <div>
                                                 <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
-                                                <input
-                                                    type="text"
+                                                <Input
                                                     value={uploadState.name}
                                                     onChange={(e) =>
                                                         setUploadState((s) =>
                                                             s.status === "selected" ? { ...s, name: e.target.value } : s
                                                         )
                                                     }
-                                                    className="w-full h-8 px-2 text-sm font-mono bg-card border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                                                    className="h-8 px-2 font-mono"
                                                 />
                                             </div>
 
@@ -728,18 +711,13 @@ export default function EditReleasePage() {
                                                 <span className="text-muted-foreground">Uploading…</span>
                                                 <span className="text-foreground font-medium">{uploadState.progress}%</span>
                                             </div>
-                                            <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary rounded-full transition-all duration-150"
-                                                    style={{ width: `${uploadState.progress}%` }}
-                                                />
-                                            </div>
+                                            <Progress value={uploadState.progress} className="h-1.5 bg-secondary" />
                                         </div>
                                     )}
 
                                     {uploadState.status === "confirming" && (
                                         <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <Spinner />
                                             Verifying and computing checksum…
                                         </div>
                                     )}

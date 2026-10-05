@@ -5,6 +5,7 @@ import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as prismLanguages from "react-syntax-highlighter/dist/esm/languages/prism/index.js";
 import * as linguistLanguages from "linguist-languages";
 import type { Language } from "linguist-languages";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Register all bundled Prism languages. Some grammars depend on others and may fail if registered
 // out of order; those are silently skipped (they're uncommon and will fall back to plain text).
@@ -326,13 +327,13 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
 
 export function CodeBlockSkeleton() {
     return (
-        <div className="font-mono text-sm leading-relaxed pr-6 animate-pulse">
+        <div className="font-mono text-sm leading-relaxed pr-6">
             {[52, 38, 65, 44, 71, 30, 58, 42, 67, 35, 60, 48, 73, 40, 55].map((w, i) => (
                 <div key={i} className="flex items-center min-h-[1.625em] py-0.5">
-                    <span className="w-14 shrink-0 flex justify-end pr-4">
-                        <span className="h-[1em] w-5 rounded bg-accent" />
-                    </span>
-                    <span className="h-[1em] rounded bg-accent" style={{ width: `${w}%` }} />
+                    <div className="w-14 shrink-0 flex justify-end pr-4">
+                        <Skeleton className="h-[1em] w-5 rounded" />
+                    </div>
+                    <Skeleton className="h-[1em] rounded" style={{ width: `${w}%` }} />
                 </div>
             ))}
         </div>

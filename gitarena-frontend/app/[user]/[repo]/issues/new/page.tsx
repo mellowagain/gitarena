@@ -7,14 +7,24 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, CheckCircle2, X, Eye, Loader2, Milestone } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, X, Eye, Milestone } from "lucide-react";
 import { jsonFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { useAuth } from "@/hooks/use-auth";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 interface LabelsResponse {
     labels: { name: string; color: string }[];
@@ -157,36 +167,31 @@ export default function NewIssuePage() {
                             <label className="text-sm font-medium block mb-1.5">
                                 Title <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <Input
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Short, descriptive title…"
-                                className="w-full h-10 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="h-10"
                             />
                         </div>
 
                         <div className="mb-8">
                             <label className="text-sm font-medium block mb-1.5">Description</label>
-                            <div className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                                <div className="flex items-center border-b border-border">
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreview(false)}
-                                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${!preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                                    >
+                            <Tabs
+                                value={preview ? "preview" : "write"}
+                                onValueChange={(v) => setPreview(v === "preview")}
+                                className="border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+                            >
+                                <TabsList variant="line" className="gap-0">
+                                    <TabsTrigger value="write" className="py-1.5 text-xs">
                                         Write
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreview(true)}
-                                        className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                                    >
-                                        <Eye className="h-3 w-3" />
+                                    </TabsTrigger>
+                                    <TabsTrigger value="preview" className="py-1.5 text-xs">
+                                        <Eye className="size-3" />
                                         Preview
-                                    </button>
-                                </div>
-                                {preview ? (
+                                    </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="preview">
                                     <div className="px-3 py-2 min-h-[240px]">
                                         {body.trim() ? (
                                             <MarkdownRenderer
@@ -199,7 +204,8 @@ export default function NewIssuePage() {
                                             <span className="text-muted-foreground italic">Nothing to preview.</span>
                                         )}
                                     </div>
-                                ) : (
+                                </TabsContent>
+                                <TabsContent value="write">
                                     <textarea
                                         value={body}
                                         onChange={(e) => setBody(e.target.value)}
@@ -207,11 +213,11 @@ export default function NewIssuePage() {
                                         rows={10}
                                         className="w-full px-3 py-2 bg-transparent text-base resize-none focus:outline-none"
                                     />
-                                )}
+                                </TabsContent>
                                 <div className="flex items-center px-3 py-2 border-t border-border bg-card/50">
                                     <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                                 </div>
-                            </div>
+                            </Tabs>
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -219,7 +225,7 @@ export default function NewIssuePage() {
                                 <Button variant="outline">Cancel</Button>
                             </Link>
                             <Button onClick={handleSubmit} disabled={!title.trim() || isMutating}>
-                                {isMutating && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                                {isMutating && <Spinner className="size-3.5 mr-1.5" />}
                                 Submit Issue
                             </Button>
                         </div>
@@ -252,10 +258,13 @@ export default function NewIssuePage() {
                             })}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors">
+                                    <Button
+                                        variant="outline"
+                                        className="px-3 w-full border-dashed text-muted-foreground hover:text-foreground hover:border-solid font-normal"
+                                    >
                                         <User className="h-3.5 w-3.5" />
                                         Add assignee
-                                    </button>
+                                    </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start" className="w-48">
                                     {assigneeDropdownList.length === 0 ? (
@@ -339,22 +348,23 @@ export default function NewIssuePage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Priority</h3>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                     <div className="flex items-center gap-2">
                                         <PriorityIndicator priority={priority as Priority} />
                                         <span>{priorityConfig[priority as Priority].label}</span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-40">
-                                {(["none", "low", "medium", "high", "urgent"] as Priority[]).map((p) => (
-                                    <DropdownMenuItem key={p} onClick={() => setPriority(p)} className="flex items-center gap-2">
-                                        <PriorityIndicator priority={p} />
-                                        <span className="flex-1">{priorityConfig[p].label}</span>
-                                        {priority === p && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                ))}
+                                <DropdownMenuRadioGroup value={priority} onValueChange={setPriority}>
+                                    {(["none", "low", "medium", "high", "urgent"] as Priority[]).map((p) => (
+                                        <DropdownMenuRadioItem key={p} value={p}>
+                                            <PriorityIndicator priority={p} />
+                                            {priorityConfig[p].label}
+                                        </DropdownMenuRadioItem>
+                                    ))}
+                                </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -363,7 +373,7 @@ export default function NewIssuePage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Milestone</h3>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                     <div className="flex items-center gap-2">
                                         <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
                                         <span>
@@ -373,29 +383,25 @@ export default function NewIssuePage() {
                                         </span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52">
-                                <DropdownMenuItem onClick={() => setMilestoneId(null)} className="flex items-center gap-2">
-                                    <span className="flex-1 text-muted-foreground italic">No milestone</span>
-                                    {milestoneId === null && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                </DropdownMenuItem>
-                                {availableMilestones.length === 0 ? (
-                                    <DropdownMenuItem disabled className="text-muted-foreground italic">
-                                        No milestones yet
-                                    </DropdownMenuItem>
-                                ) : (
-                                    availableMilestones.map((m) => (
-                                        <DropdownMenuItem
-                                            key={m.id}
-                                            onClick={() => setMilestoneId(m.id)}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <span className="flex-1">{m.title}</span>
-                                            {milestoneId === m.id && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                <DropdownMenuRadioGroup value={milestoneId ?? ""} onValueChange={(v) => setMilestoneId(v || null)}>
+                                    <DropdownMenuRadioItem value="" className="text-muted-foreground italic">
+                                        No milestone
+                                    </DropdownMenuRadioItem>
+                                    {availableMilestones.length === 0 ? (
+                                        <DropdownMenuItem disabled className="text-muted-foreground italic">
+                                            No milestones yet
                                         </DropdownMenuItem>
-                                    ))
-                                )}
+                                    ) : (
+                                        availableMilestones.map((m) => (
+                                            <DropdownMenuRadioItem key={m.id} value={m.id}>
+                                                {m.title}
+                                            </DropdownMenuRadioItem>
+                                        ))
+                                    )}
+                                </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

@@ -25,6 +25,7 @@ import {
     Archive,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonVoidFetcher } from "@/lib/fetchers";
 import { TopBar } from "@/components/top-bar";
@@ -43,6 +44,12 @@ import { useParams } from "next/navigation";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { WipBadge } from "@/components/wip-badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -139,67 +146,28 @@ function SectionHeader({ title, description, wip }: { title: string; description
         <div className="mb-6">
             <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{title}</h2>
-                {wip && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                        WIP
-                    </span>
-                )}
+                {wip && <WipBadge />}
             </div>
             {description && <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
         </div>
     );
 }
 
-function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
-    return (
-        <label className="block text-sm font-medium mb-1.5">
-            {children}
-            {optional && <span className="ml-1.5 text-xs text-muted-foreground font-normal">optional</span>}
-        </label>
-    );
-}
-
-function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-    return (
-        <input
-            {...props}
-            className={`w-full h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-shadow ${className}`}
-        />
-    );
-}
-
 function SaveButton({ children = "Save changes" }: { children?: React.ReactNode }) {
-    return (
-        <button className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
-            {children}
-        </button>
-    );
+    return <Button>{children}</Button>;
 }
 
 function DangerButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
     return (
-        <button
+        <Button
+            variant="outline"
+            size="sm"
             onClick={onClick}
             disabled={disabled}
-            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
             {children}
-        </button>
-    );
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-    return (
-        <button
-            role="switch"
-            aria-checked={checked}
-            onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${checked ? "bg-foreground" : "bg-secondary"}`}
-        >
-            <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${checked ? "translate-x-4" : "translate-x-0"}`}
-            />
-        </button>
+        </Button>
     );
 }
 
@@ -220,20 +188,20 @@ function ToggleRow({
                 <p className="text-sm font-medium">{label}</p>
                 {description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
             </div>
-            <Toggle checked={checked} onChange={onChange} />
+            <Switch checked={checked} onCheckedChange={onChange} />
         </div>
     );
 }
 
 function Divider() {
-    return <div className="border-t border-border my-8" />;
+    return <Separator className="my-8" />;
 }
 
 const roleColors: Record<Role, string> = {
-    admin: "text-red-500 border-red-500/30 bg-red-500/5",
-    manager: "text-orange-500 border-orange-500/30 bg-orange-500/5",
-    coder: "text-blue-500 border-blue-500/30 bg-blue-500/5",
-    supporter: "text-green-500 border-green-500/30 bg-green-500/5",
+    admin: "text-destructive border-destructive/30 bg-destructive/5",
+    manager: "text-warning border-warning/30 bg-warning/5",
+    coder: "text-info border-info/30 bg-info/5",
+    supporter: "text-success border-success/30 bg-success/5",
     viewer: "text-muted-foreground border-border bg-secondary",
 };
 
@@ -381,10 +349,10 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                     />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <button className="flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0">
+                            <Button variant="outline" className="px-3">
                                 <span className="capitalize">{addRole}</span>
                                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            </button>
+                            </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             {roleOptions.map((r) => (
@@ -402,14 +370,10 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <button
-                        onClick={handleInvite}
-                        disabled={isUpserting || !addUsername.trim()}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                    >
+                    <Button onClick={handleInvite} disabled={isUpserting || !addUsername.trim()} className="px-3">
                         <Plus className="h-4 w-4" />
                         Add
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -445,15 +409,13 @@ function GeneralTab({ namespace, repo }: { namespace: string; repo: string }) {
             <SectionHeader title="General" description="Core repository settings and metadata." wip />
 
             {/* Description */}
-            <div className="mb-6">
-                <FieldLabel optional>Description</FieldLabel>
-                <textarea
-                    value={description}
-                    readOnly
-                    rows={3}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none resize-none opacity-60 cursor-not-allowed"
-                />
-            </div>
+            <Field className="mb-6 gap-1.5">
+                <FieldLabel htmlFor="repo-description">
+                    Description
+                    <span className="text-xs text-muted-foreground font-normal">optional</span>
+                </FieldLabel>
+                <Textarea id="repo-description" value={description} readOnly rows={3} className="opacity-60 cursor-not-allowed" />
+            </Field>
 
             <SaveButton />
 
@@ -525,13 +487,10 @@ function GeneralTab({ namespace, repo }: { namespace: string; repo: string }) {
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTopic())}
                     className="max-w-64"
                 />
-                <button
-                    onClick={addTopic}
-                    className="inline-flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                >
+                <Button variant="outline" onClick={addTopic} className="px-3">
                     <Plus className="h-3.5 w-3.5" />
                     Add
-                </button>
+                </Button>
             </div>
             <SaveButton>Save topics</SaveButton>
 
@@ -614,9 +573,9 @@ function BranchesTab() {
                             ].map(({ key, label }) => (
                                 <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                                     <span className="text-sm">{label}</span>
-                                    <Toggle
+                                    <Switch
                                         checked={rule[key as keyof typeof rule] as boolean}
-                                        onChange={() => toggleRule(rule.id, key as keyof typeof rule)}
+                                        onCheckedChange={() => toggleRule(rule.id, key as keyof typeof rule)}
                                     />
                                 </div>
                             ))}
@@ -657,10 +616,10 @@ function BranchesTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add branch protection rule
-            </button>
+            </Button>
 
             <Divider />
 
@@ -678,10 +637,10 @@ function BranchesTab() {
                     </div>
                 ))}
             </div>
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors">
+            <Button variant="outline" className="px-3">
                 <Plus className="h-4 w-4" />
                 Add tag protection rule
-            </button>
+            </Button>
 
             <Divider />
 
@@ -701,9 +660,9 @@ function BranchesTab() {
                             <p className="text-sm font-medium">{label}</p>
                             <p className="text-xs text-muted-foreground">{description}</p>
                         </div>
-                        <Toggle
+                        <Switch
                             checked={mergeStrategies[key as keyof typeof mergeStrategies]}
-                            onChange={(v) => setMergeStrategies((m) => ({ ...m, [key]: v }))}
+                            onCheckedChange={(v) => setMergeStrategies((m) => ({ ...m, [key]: v }))}
                         />
                     </div>
                 ))}
@@ -774,10 +733,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add webhook
-            </button>
+            </Button>
 
             <Divider />
 
@@ -805,10 +764,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors mb-6">
+            <Button variant="outline" className="px-3 mb-6">
                 <Plus className="h-4 w-4" />
                 Add deploy key
-            </button>
+            </Button>
 
             <Divider />
 
@@ -849,10 +808,10 @@ function IntegrationsTab() {
                 ))}
             </div>
 
-            <button className="inline-flex items-center gap-2 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
+            <Button className="px-3">
                 <Plus className="h-4 w-4" />
                 Generate access token
-            </button>
+            </Button>
         </div>
     );
 }
@@ -890,9 +849,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Settings className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Rename this repository</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Renaming will break existing clone URLs. A redirect will be set up automatically from the old name.
@@ -908,9 +865,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Transfer ownership</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Transfer this repository to another user or organization. You will lose admin access unless the new owner
@@ -935,12 +890,9 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         </p>
                     </div>
                     <div className="shrink-0">
-                        <button
-                            onClick={() => setArchiveDialogOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setArchiveDialogOpen(true)}>
                             {isArchived ? "Unarchive repository" : "Archive repository"}
-                        </button>
+                        </Button>
                     </div>
                 </div>
                 {/* Delete */}
@@ -949,58 +901,63 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <p className="text-sm font-medium text-destructive">Delete this repository</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                             Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
                             permanently removed.
                         </p>
-
-                        {deleteConfirm && (
-                            <div className="mt-2 space-y-3">
-                                <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-md">
-                                    <p className="text-xs text-muted-foreground">
-                                        Please type <code className="font-mono font-semibold text-foreground">{fullName}</code> to confirm.
-                                    </p>
-                                </div>
-                                <Input
-                                    value={deleteInput}
-                                    onChange={(e) => setDeleteInput(e.target.value)}
-                                    placeholder={fullName}
-                                    className="border-destructive/40 focus:ring-destructive/40"
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setDeleteConfirm(false);
-                                            setDeleteInput("");
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        disabled={deleteInput !== fullName}
-                                        className="inline-flex items-center gap-2 px-3 h-8 text-sm font-medium bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />I understand, delete this repository
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
-                    {!deleteConfirm && (
-                        <div className="shrink-0">
-                            <DangerButton onClick={() => setDeleteConfirm(true)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Delete repository
-                            </DangerButton>
-                        </div>
-                    )}
+                    <div className="shrink-0">
+                        <DangerButton onClick={() => setDeleteConfirm(true)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete repository
+                        </DangerButton>
+                    </div>
                 </div>
             </div>
+
+            <AlertDialog
+                open={deleteConfirm}
+                onOpenChange={(open) => {
+                    setDeleteConfirm(open);
+                    if (!open) {
+                        setDeleteInput("");
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this repository?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
+                            permanently removed.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Field className="gap-1.5">
+                        <FieldDescription id="repo-delete-confirm-label">
+                            Please type <code className="font-mono font-semibold text-foreground">{fullName}</code> to confirm.
+                        </FieldDescription>
+                        <Input
+                            aria-labelledby="repo-delete-confirm-label"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            placeholder={fullName}
+                            className="border-destructive/40 focus-visible:ring-destructive/40"
+                        />
+                    </Field>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => e.preventDefault()}
+                            disabled={deleteInput !== fullName}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            <Trash2 />I understand, delete this repository
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog
                 open={archiveDialogOpen}
@@ -1121,11 +1078,7 @@ export default function RepoSettingsPage() {
                                 >
                                     <item.icon className="h-4 w-4 shrink-0" />
                                     <span className="flex-1">{item.label}</span>
-                                    {item.wip && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                            WIP
-                                        </span>
-                                    )}
+                                    {item.wip && <WipBadge />}
                                 </button>
                             ))}
                         </nav>

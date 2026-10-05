@@ -5,13 +5,19 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import { DatePicker } from "@/components/date-picker";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { jsonFetcher, postJsonFetcher, patchJsonFetcher, deleteFetcher } from "@/lib/fetchers";
-import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, RefreshCw, Calendar, CheckCircle2, Circle } from "lucide-react";
+import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, Calendar, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Spinner } from "@/components/ui/spinner";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 interface MilestoneEntry {
     id: string;
@@ -92,38 +98,29 @@ function MilestoneForm({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto]">
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.title}
                         onChange={(e) => onChange({ ...state, title: e.target.value })}
                         placeholder="e.g. v1.0 release"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                         autoFocus
                     />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
-                    <input
-                        type="text"
+                    <Input
                         value={state.description}
                         onChange={(e) => onChange({ ...state, description: e.target.value })}
                         placeholder="Optional description"
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</label>
-                    <input
-                        type="date"
-                        value={state.dueDate}
-                        onChange={(e) => onChange({ ...state, dueDate: e.target.value })}
-                        className="h-9 px-3 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
+                    <DatePicker value={state.dueDate} onChange={(dueDate) => onChange({ ...state, dueDate })} className="flex w-44" />
                 </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button size="sm" onClick={onSave} disabled={!canSave || isMutating} className="gap-2">
-                    {isMutating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {isMutating ? <Spinner /> : <Check className="h-4 w-4" />}
                     {saveLabel}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onCancel} disabled={isMutating} className="gap-2 text-muted-foreground">
@@ -286,32 +283,24 @@ export default function MilestonesPage() {
                     )}
 
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 border-b border-border">
-                        <button
-                            onClick={() => setActiveTab("open")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                                activeTab === "open"
-                                    ? "border-foreground text-foreground"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            <Circle className="h-4 w-4" />
-                            Open
-                            <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{openCount}</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("closed")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                                activeTab === "closed"
-                                    ? "border-foreground text-foreground"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Closed
-                            <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{closedCount}</span>
-                        </button>
-                    </div>
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
+                        <TabsList variant="line">
+                            <TabsTrigger value="open" className="px-4">
+                                <Circle className="h-4 w-4" />
+                                Open
+                                <Badge variant="secondary" className="ml-1 px-1.5 rounded-full font-normal">
+                                    {openCount}
+                                </Badge>
+                            </TabsTrigger>
+                            <TabsTrigger value="closed" className="px-4">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Closed
+                                <Badge variant="secondary" className="ml-1 px-1.5 rounded-full font-normal">
+                                    {closedCount}
+                                </Badge>
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
 
                     {/* Loading */}
                     {isLoading && (
@@ -331,13 +320,17 @@ export default function MilestonesPage() {
 
                     {/* Empty */}
                     {!isLoading && !error && displayed.length === 0 && (
-                        <div className="border border-border rounded-lg py-16 flex flex-col items-center gap-2 text-center">
-                            <Milestone className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-sm font-medium">No {activeTab} milestones</p>
-                            {activeTab === "open" && canManage && (
-                                <p className="text-xs text-muted-foreground">Create a milestone to track progress toward a goal.</p>
-                            )}
-                        </div>
+                        <Empty className="border border-solid">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Milestone />
+                                </EmptyMedia>
+                                <EmptyTitle>No {activeTab} milestones</EmptyTitle>
+                                {activeTab === "open" && canManage && (
+                                    <EmptyDescription>Create a milestone to track progress toward a goal.</EmptyDescription>
+                                )}
+                            </EmptyHeader>
+                        </Empty>
                     )}
 
                     {/* Milestone cards */}
@@ -375,9 +368,12 @@ export default function MilestonesPage() {
                                                             {m.title}
                                                         </Link>
                                                         {m.closed && (
-                                                            <span className="shrink-0 px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="rounded-full text-muted-foreground font-normal"
+                                                            >
                                                                 closed
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </div>
                                                     {canManage && (

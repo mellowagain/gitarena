@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const PERMISSIONS_KEY = "/api/tokens/permissions";
 
@@ -84,10 +84,6 @@ export function TokenPermissionPicker({ selected, onChange }: TokenPermissionPic
 
     const groups = groupPermissions(permissions);
 
-    function toggleExpanded(key: string) {
-        setExpanded((current) => (current.includes(key) ? current.filter((group) => group !== key) : [...current, key]));
-    }
-
     function togglePermission(permission: string) {
         onChange(selected.includes(permission) ? selected.filter((current) => current !== permission) : [...selected, permission]);
     }
@@ -101,53 +97,44 @@ export function TokenPermissionPicker({ selected, onChange }: TokenPermissionPic
     }
 
     return (
-        <div className="border border-border rounded-md overflow-hidden">
-            {groups.map((group, i) => {
-                const isExpanded = expanded.includes(group.key);
+        <Accordion type="multiple" value={expanded} onValueChange={setExpanded} className="border border-border rounded-md px-4">
+            {groups.map((group) => {
                 const count = group.permissions.filter((permission) => selected.includes(permission)).length;
                 const allSelected = count === group.permissions.length;
 
                 return (
-                    <div key={group.key} className={cn(i > 0 && "border-t border-border")}>
-                        <button
-                            type="button"
-                            onClick={() => toggleExpanded(group.key)}
-                            aria-expanded={isExpanded}
-                            className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-accent/30 transition-colors"
-                        >
-                            <ChevronRight
-                                className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-90")}
-                            />
-                            <span className="text-sm font-medium">{group.label}</span>
-                            <span className="ml-auto text-xs text-muted-foreground">{count > 0 ? `${count} selected` : "none"}</span>
-                        </button>
+                    <AccordionItem key={group.key} value={group.key}>
+                        <AccordionTrigger>
+                            {group.label}
+                            <span className="ml-auto text-xs font-normal text-muted-foreground">
+                                {count > 0 ? `${count} selected` : "none"}
+                            </span>
+                        </AccordionTrigger>
 
-                        {isExpanded && (
-                            <div className="px-4 pb-4 pl-10">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleGroup(group, !allSelected)}
-                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 mb-3"
-                                >
-                                    {allSelected ? "Clear all" : "Select all"}
-                                </button>
+                        <AccordionContent>
+                            <button
+                                type="button"
+                                onClick={() => toggleGroup(group, !allSelected)}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 mb-3"
+                            >
+                                {allSelected ? "Clear all" : "Select all"}
+                            </button>
 
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                                    {group.permissions.map((permission) => (
-                                        <label key={permission} className="flex items-center gap-2 cursor-pointer min-w-0">
-                                            <Checkbox
-                                                checked={selected.includes(permission)}
-                                                onCheckedChange={() => togglePermission(permission)}
-                                            />
-                                            <span className="font-mono text-xs text-muted-foreground truncate">{permission}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                                {group.permissions.map((permission) => (
+                                    <label key={permission} className="flex items-center gap-2 cursor-pointer min-w-0">
+                                        <Checkbox
+                                            checked={selected.includes(permission)}
+                                            onCheckedChange={() => togglePermission(permission)}
+                                        />
+                                        <span className="font-mono text-xs text-muted-foreground truncate">{permission}</span>
+                                    </label>
+                                ))}
                             </div>
-                        )}
-                    </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 );
             })}
-        </div>
+        </Accordion>
     );
 }

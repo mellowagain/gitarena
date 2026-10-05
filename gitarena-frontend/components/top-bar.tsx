@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Plus, BookOpen, Search, Users, ExternalLink, ShieldCheck, ChevronDown, UserRound } from "lucide-react";
 import {
@@ -12,10 +12,22 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+    Breadcrumb,
+    BreadcrumbItem as BreadcrumbListItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Kbd } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -74,17 +86,6 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
         }
     }
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setShowDropdown(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     // Focus input on "/" keypress (when not already in an input)
     useEffect(() => {
         function handleSlash(e: KeyboardEvent) {
@@ -103,50 +104,59 @@ function SearchBar({ search }: { search: NonNullable<TopBarProps["search"]> }) {
     }, []);
 
     return (
-        <div ref={containerRef} className="flex-1 max-w-lg relative">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => {
-                        if (search.scope) {
-                            setShowDropdown(true);
-                        }
-                    }}
-                    placeholder={search.placeholder}
-                    className="w-full h-9 pl-9 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-sm"
-                />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground bg-secondary rounded border border-border">
-                    /
-                </kbd>
-            </div>
-
-            {showDropdown && search.scope && (
-                <div className="absolute top-full mt-1 w-full bg-popover border border-border rounded-md shadow-md z-50 overflow-hidden">
-                    <button
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left"
-                        onClick={() => navigate(true)}
-                    >
-                        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>
-                            Search in <span className="font-mono font-medium">{search.scope.label}</span>
-                        </span>
-                    </button>
-                    <div className="border-t border-border" />
-                    <button
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
-                        onClick={() => navigate(false)}
-                    >
-                        <Search className="h-3.5 w-3.5 shrink-0" />
-                        <span>Search all of GitArena</span>
-                    </button>
-                </div>
-            )}
-        </div>
+        <Popover open={showDropdown && !!search.scope} onOpenChange={setShowDropdown}>
+            <PopoverAnchor ref={containerRef} className="flex-1 max-w-lg">
+                <InputGroup>
+                    <InputGroupAddon>
+                        <Search />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                        ref={inputRef}
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onFocus={() => {
+                            if (search.scope) {
+                                setShowDropdown(true);
+                            }
+                        }}
+                        placeholder={search.placeholder}
+                    />
+                    <InputGroupAddon align="inline-end">
+                        <Kbd>/</Kbd>
+                    </InputGroupAddon>
+                </InputGroup>
+            </PopoverAnchor>
+            <PopoverContent
+                align="start"
+                className="w-(--radix-popover-trigger-width) p-0 overflow-hidden"
+                updatePositionStrategy="always"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onInteractOutside={(e) => {
+                    if (containerRef.current?.contains(e.target as Node)) {
+                        e.preventDefault();
+                    }
+                }}
+            >
+                <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left"
+                    onClick={() => navigate(true)}
+                >
+                    <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span>
+                        Search in <span className="font-mono font-medium">{search.scope?.label}</span>
+                    </span>
+                </button>
+                <Separator />
+                <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground"
+                    onClick={() => navigate(false)}
+                >
+                    <Search className="h-3.5 w-3.5 shrink-0" />
+                    <span>Search all of GitArena</span>
+                </button>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -168,37 +178,52 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
     return (
         <header className="border-b border-border shrink-0 sticky top-0 z-40 bg-background">
             <div className="flex h-14 w-full min-w-0 items-center gap-2 px-3 lg:hidden">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Link href="/" className="shrink-0 text-base font-semibold tracking-tight hover:opacity-80">
-                        GITARENA
-                    </Link>
-                    {mobileBreadcrumb && (
-                        <>
-                            <span className="shrink-0 select-none text-lg text-muted-foreground/40">/</span>
-                            {mobileBreadcrumb.href ? (
-                                <Link
-                                    href={mobileBreadcrumb.href}
-                                    className="min-w-0 truncate text-base font-medium transition-opacity hover:opacity-80"
-                                >
-                                    {mobileBreadcrumb.label}
+                <Breadcrumb className="min-w-0 flex-1">
+                    <BreadcrumbList className="flex-nowrap gap-2 sm:gap-2 text-base text-foreground">
+                        <BreadcrumbListItem className="shrink-0">
+                            <BreadcrumbLink asChild>
+                                <Link href="/" className="font-semibold tracking-tight hover:opacity-80 hover:text-foreground">
+                                    GITARENA
                                 </Link>
-                            ) : (
-                                <span className="min-w-0 truncate text-base font-medium">{mobileBreadcrumb.label}</span>
-                            )}
-                        </>
-                    )}
-                </div>
+                            </BreadcrumbLink>
+                        </BreadcrumbListItem>
+                        {mobileBreadcrumb && (
+                            <>
+                                <BreadcrumbSeparator className="shrink-0 select-none text-lg text-muted-foreground/40">
+                                    /
+                                </BreadcrumbSeparator>
+                                <BreadcrumbListItem className="min-w-0">
+                                    {mobileBreadcrumb.href ? (
+                                        <BreadcrumbLink asChild>
+                                            <Link
+                                                href={mobileBreadcrumb.href}
+                                                aria-current="page"
+                                                className="truncate font-medium transition-opacity hover:opacity-80 hover:text-foreground"
+                                            >
+                                                {mobileBreadcrumb.label}
+                                            </Link>
+                                        </BreadcrumbLink>
+                                    ) : (
+                                        <BreadcrumbPage className="truncate font-medium">{mobileBreadcrumb.label}</BreadcrumbPage>
+                                    )}
+                                </BreadcrumbListItem>
+                            </>
+                        )}
+                    </BreadcrumbList>
+                </Breadcrumb>
 
                 <nav className="ml-auto flex shrink-0 items-center gap-1">
                     {search && (
                         <Popover>
                             <PopoverTrigger asChild>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     aria-label="Search"
-                                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                                    className="text-muted-foreground hover:text-foreground"
                                 >
                                     <Search className="h-[18px] w-[18px]" />
-                                </button>
+                                </Button>
                             </PopoverTrigger>
                             <PopoverContent align="end" sideOffset={8} className="w-[calc(100vw-1.5rem)] p-3">
                                 <SearchBar search={search} />
@@ -254,10 +279,13 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{user.username}</span>
                                         {user.admin && (
-                                            <span className="inline-flex items-center gap-1 rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                            <Badge
+                                                variant="outline"
+                                                className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                            >
                                                 <ShieldCheck className="h-2.5 w-2.5" />
                                                 Admin
-                                            </span>
+                                            </Badge>
                                         )}
                                     </div>
                                 </div>
@@ -308,12 +336,14 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                     ) : (
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     aria-label="Account menu"
-                                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                                    className="text-muted-foreground hover:text-foreground"
                                 >
                                     <UserRound className="h-[18px] w-[18px]" />
-                                </button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
                                 <DropdownMenuItem asChild>
@@ -329,31 +359,47 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
             </div>
 
             <div className="hidden h-14 items-center justify-between gap-5 px-5 lg:flex">
-                <div className="flex items-center gap-2 shrink-0">
-                    <Link href="/" className="text-base font-semibold tracking-tight hover:opacity-80 shrink-0">
-                        GITARENA
-                    </Link>
-                    {breadcrumb &&
-                        breadcrumb.map((item, i) => (
-                            <span key={i} className="contents">
-                                <span className="text-muted-foreground/40 text-lg select-none">/</span>
-                                {item.href ? (
-                                    <Link
-                                        href={item.href}
-                                        className={
-                                            i === breadcrumb.length - 1
-                                                ? "text-base font-medium hover:opacity-80 transition-opacity"
-                                                : "text-base text-muted-foreground hover:text-foreground transition-colors"
-                                        }
-                                    >
-                                        {item.label}
-                                    </Link>
-                                ) : (
-                                    <span className="text-base font-medium">{item.label}</span>
-                                )}
-                            </span>
-                        ))}
-                </div>
+                <Breadcrumb className="shrink-0">
+                    <BreadcrumbList className="flex-nowrap gap-2 sm:gap-2 text-base text-foreground">
+                        <BreadcrumbListItem>
+                            <BreadcrumbLink asChild>
+                                <Link href="/" className="font-semibold tracking-tight hover:opacity-80 hover:text-foreground">
+                                    GITARENA
+                                </Link>
+                            </BreadcrumbLink>
+                        </BreadcrumbListItem>
+                        {breadcrumb &&
+                            breadcrumb.map((item, i) => {
+                                const isLast = i === breadcrumb.length - 1;
+                                return (
+                                    <Fragment key={i}>
+                                        <BreadcrumbSeparator className="text-muted-foreground/40 text-lg select-none">
+                                            /
+                                        </BreadcrumbSeparator>
+                                        <BreadcrumbListItem>
+                                            {item.href ? (
+                                                <BreadcrumbLink asChild>
+                                                    <Link
+                                                        href={item.href}
+                                                        aria-current={isLast ? "page" : undefined}
+                                                        className={
+                                                            isLast
+                                                                ? "font-medium hover:opacity-80 transition-opacity hover:text-foreground"
+                                                                : "text-muted-foreground"
+                                                        }
+                                                    >
+                                                        {item.label}
+                                                    </Link>
+                                                </BreadcrumbLink>
+                                            ) : (
+                                                <BreadcrumbPage className="font-medium">{item.label}</BreadcrumbPage>
+                                            )}
+                                        </BreadcrumbListItem>
+                                    </Fragment>
+                                );
+                            })}
+                    </BreadcrumbList>
+                </Breadcrumb>
 
                 {search && <SearchBar search={search} />}
 
@@ -385,27 +431,33 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                             )
                         )}
 
-                    {navLinks && navLinks.length > 0 && <div className="w-px h-7 bg-border mx-2" />}
+                    {navLinks && navLinks.length > 0 && (
+                        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-7" />
+                    )}
 
                     {isAuthenticated && user ? (
                         <>
-                            <button
-                                className="relative flex items-center justify-center h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="relative text-muted-foreground hover:text-foreground"
                                 onClick={() => router.push("/notifications")}
                                 title="Notifications"
                             >
                                 <Bell className="h-[18px] w-[18px]" />
                                 {hasNotifications && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
-                            </button>
+                            </Button>
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button
-                                        className="flex items-center justify-center h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-colors"
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-muted-foreground hover:text-foreground"
                                         title="Create new"
                                     >
                                         <Plus className="h-[18px] w-[18px]" />
-                                    </button>
+                                    </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-52">
                                     <DropdownMenuItem asChild>
@@ -441,10 +493,13 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                         <div className="flex items-center gap-2">
                                             <span className="font-medium">{user.username}</span>
                                             {user.admin && (
-                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                                >
                                                     <ShieldCheck className="h-2.5 w-2.5" />
                                                     Admin
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
                                         <div className="text-xs text-muted-foreground font-mono mt-0.5">{user.username}</div>

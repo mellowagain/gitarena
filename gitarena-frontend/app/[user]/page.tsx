@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
-import { uuidToDate } from "@/lib/utils";
+import { cn, uuidToDate } from "@/lib/utils";
 import useSWR from "swr";
 import { Star, Lock, Globe, Calendar, Pin, PinOff, ShieldCheck, Settings, Plus, Users, Building2 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -19,6 +19,8 @@ import { ContributionGraph } from "@/components/contribution-graph";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as allLangs from "linguist-languages";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface UserProfileRepo {
     id: string;
@@ -171,9 +173,9 @@ function RepoList({
                                 </Badge>
                             )}
                             {repo.archivedAt && (
-                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                                     archived
-                                </span>
+                                </Badge>
                             )}
                             {canPin && (
                                 <button
@@ -218,10 +220,10 @@ function RepoList({
     );
 }
 
-const roleColors: Record<string, string> = {
-    owner: "text-amber-500 border-amber-500/30 bg-amber-500/10",
-    admin: "text-blue-500 border-blue-500/30 bg-blue-500/10",
-    member: "text-muted-foreground border-border bg-secondary",
+const roleVariants: Record<string, "warning" | "info" | "outline"> = {
+    owner: "warning",
+    admin: "info",
+    member: "outline",
 };
 
 function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; variant?: "row" | "avatar" }) {
@@ -252,11 +254,15 @@ function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; vari
                     ) : (
                         <span className="text-sm font-medium text-muted-foreground">Loading…</span>
                     )}
-                    <span
-                        className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border rounded ${roleColors[member.role] ?? roleColors.member}`}
+                    <Badge
+                        variant={roleVariants[member.role] ?? "outline"}
+                        className={cn(
+                            "px-1.5 text-[10px] uppercase tracking-wider",
+                            (roleVariants[member.role] ?? "outline") === "outline" && "bg-secondary text-muted-foreground"
+                        )}
                     >
                         {member.role}
-                    </span>
+                    </Badge>
                 </div>
                 {user && <p className="text-xs text-muted-foreground font-mono">@{username}</p>}
             </div>
@@ -325,10 +331,10 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                     Organization settings
                                 </Link>
                             ) : (
-                                <button className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                <Button variant="outline" size="sm" className="w-full text-xs">
                                     <Users className="h-3 w-3" />
                                     Follow organization
-                                </button>
+                                </Button>
                             )}
                         </div>
                     </div>
@@ -360,145 +366,146 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
 
                 {/* ── Main content ─────────────────────────────────────────── */}
                 <main className="flex-1 min-w-0 overflow-y-auto">
-                    {/* Tab bar */}
-                    <div className="border-b border-border px-6 flex items-center gap-1">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-3 py-3 text-sm border-b-2 transition-colors ${
-                                    activeTab === tab.id
-                                        ? "border-foreground text-foreground font-medium"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                {tab.label}
-                                {"count" in tab && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-secondary border border-border text-muted-foreground">
-                                        {tab.count}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="p-6 space-y-8">
-                        {/* ── Overview tab ── */}
-                        {activeTab === "overview" && (
-                            <div>
-                                {readmeLoading && <Skeleton className="h-48 w-full rounded-md" />}
-                                {!readmeLoading && readme && (
-                                    <div className="border border-border rounded-md p-5">
-                                        <MarkdownRenderer
-                                            content={readme.content}
-                                            fileName={readme.file_name}
-                                            user={name}
-                                            repo={name}
-                                            branch="HEAD"
-                                        />
-                                    </div>
-                                )}
-                                {!readmeLoading && !readme && <p className="text-sm text-muted-foreground">No overview yet.</p>}
-                            </div>
-                        )}
-
-                        {/* ── Repositories tab ── */}
-                        {activeTab === "repos" && (
-                            <section>
-                                <div className="flex items-center justify-between gap-4 mb-4">
-                                    <p className="text-sm font-semibold">Repositories</p>
-                                    {isAdmin && (
-                                        <Link
-                                            href={`/new?namespace=${org.name}`}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors whitespace-nowrap"
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="gap-0">
+                        <TabsList variant="line" className="px-6">
+                            {tabs.map((tab) => (
+                                <TabsTrigger key={tab.id} value={tab.id} className="gap-2 py-3 font-normal data-[state=active]:font-medium">
+                                    {tab.label}
+                                    {"count" in tab && (
+                                        <Badge
+                                            variant="outline"
+                                            className="px-1.5 text-[10px] font-mono text-muted-foreground bg-secondary"
                                         >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            New repository
-                                        </Link>
+                                            {tab.count}
+                                        </Badge>
                                     )}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+
+                        <div className="p-6 space-y-8">
+                            {/* ── Overview tab ── */}
+                            <TabsContent value="overview">
+                                <div>
+                                    {readmeLoading && <Skeleton className="h-48 w-full rounded-md" />}
+                                    {!readmeLoading && readme && (
+                                        <div className="border border-border rounded-md p-5">
+                                            <MarkdownRenderer
+                                                content={readme.content}
+                                                fileName={readme.file_name}
+                                                user={name}
+                                                repo={name}
+                                                branch="HEAD"
+                                            />
+                                        </div>
+                                    )}
+                                    {!readmeLoading && !readme && <p className="text-sm text-muted-foreground">No overview yet.</p>}
                                 </div>
-                                {reposLoading ? (
-                                    <div className="space-y-2">
-                                        {[0, 1, 2].map((i) => (
-                                            <div key={i} className="h-14 bg-secondary/50 rounded-md animate-pulse" />
-                                        ))}
+                            </TabsContent>
+
+                            {/* ── Repositories tab ── */}
+                            <TabsContent value="repos">
+                                <section>
+                                    <div className="flex items-center justify-between gap-4 mb-4">
+                                        <p className="text-sm font-semibold">Repositories</p>
+                                        {isAdmin && (
+                                            <Link
+                                                href={`/new?namespace=${org.name}`}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors whitespace-nowrap"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                New repository
+                                            </Link>
+                                        )}
                                     </div>
-                                ) : (repos ?? []).length === 0 ? (
-                                    <p className="text-sm text-muted-foreground py-4 text-center">No repositories yet.</p>
-                                ) : (
-                                    <div className="border border-border rounded-md overflow-hidden divide-y divide-border">
-                                        {(repos ?? []).map((repo) => {
-                                            const topLang = getTopLanguage(repo.languages);
-                                            return (
-                                                <div
-                                                    key={repo.id}
-                                                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors"
-                                                >
-                                                    <div className="flex-1 min-w-0">
-                                                        <Link
-                                                            href={`/${org.name}/${repo.name}`}
-                                                            className="text-sm font-medium hover:underline"
-                                                        >
-                                                            {repo.name}
-                                                        </Link>
-                                                        {repo.archivedAt && (
-                                                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
-                                                                archived
-                                                            </span>
-                                                        )}
-                                                        {repo.description && (
-                                                            <p className="text-xs text-muted-foreground line-clamp-1">{repo.description}</p>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                                                        {topLang && (
+                                    {reposLoading ? (
+                                        <div className="space-y-2">
+                                            {[0, 1, 2].map((i) => (
+                                                <Skeleton key={i} className="h-14 rounded-md" />
+                                            ))}
+                                        </div>
+                                    ) : (repos ?? []).length === 0 ? (
+                                        <p className="text-sm text-muted-foreground py-4 text-center">No repositories yet.</p>
+                                    ) : (
+                                        <div className="border border-border rounded-md overflow-hidden divide-y divide-border">
+                                            {(repos ?? []).map((repo) => {
+                                                const topLang = getTopLanguage(repo.languages);
+                                                return (
+                                                    <div
+                                                        key={repo.id}
+                                                        className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors"
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <Link
+                                                                href={`/${org.name}/${repo.name}`}
+                                                                className="text-sm font-medium hover:underline"
+                                                            >
+                                                                {repo.name}
+                                                            </Link>
+                                                            {repo.archivedAt && (
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="px-1.5 text-[10px] text-muted-foreground bg-secondary"
+                                                                >
+                                                                    archived
+                                                                </Badge>
+                                                            )}
+                                                            {repo.description && (
+                                                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                                                    {repo.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                                                            {topLang && (
+                                                                <span className="flex items-center gap-1">
+                                                                    <span
+                                                                        className="h-2 w-2 rounded-full shrink-0"
+                                                                        style={{ backgroundColor: topLang.color }}
+                                                                    />
+                                                                    {topLang.name}
+                                                                </span>
+                                                            )}
                                                             <span className="flex items-center gap-1">
-                                                                <span
-                                                                    className="h-2 w-2 rounded-full shrink-0"
-                                                                    style={{ backgroundColor: topLang.color }}
-                                                                />
-                                                                {topLang.name}
+                                                                <Star className="h-3 w-3" />
+                                                                {repo.stars}
                                                             </span>
-                                                        )}
-                                                        <span className="flex items-center gap-1">
-                                                            <Star className="h-3 w-3" />
-                                                            {repo.stars}
-                                                        </span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </section>
-                        )}
-
-                        {/* ── Members tab ── */}
-                        {activeTab === "members" && (
-                            <section>
-                                {isAdmin && (
-                                    <div className="flex justify-end mb-4">
-                                        <Link
-                                            href={`/orgs/${org.name}/settings?tab=members`}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors"
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            Manage members
-                                        </Link>
-                                    </div>
-                                )}
-
-                                <div className="border border-border rounded-md overflow-hidden">
-                                    {(rawMembers ?? []).map((member) => (
-                                        <OrgMemberCard key={member.userId} member={member} variant="row" />
-                                    ))}
-                                    {(rawMembers ?? []).length === 0 && (
-                                        <div className="px-4 py-8 text-center text-sm text-muted-foreground">No members found.</div>
+                                                );
+                                            })}
+                                        </div>
                                     )}
-                                </div>
-                            </section>
-                        )}
-                    </div>
+                                </section>
+                            </TabsContent>
+
+                            {/* ── Members tab ── */}
+                            <TabsContent value="members">
+                                <section>
+                                    {isAdmin && (
+                                        <div className="flex justify-end mb-4">
+                                            <Link
+                                                href={`/orgs/${org.name}/settings?tab=members`}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-accent/50 transition-colors"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                Manage members
+                                            </Link>
+                                        </div>
+                                    )}
+
+                                    <div className="border border-border rounded-md overflow-hidden">
+                                        {(rawMembers ?? []).map((member) => (
+                                            <OrgMemberCard key={member.userId} member={member} variant="row" />
+                                        ))}
+                                        {(rawMembers ?? []).length === 0 && (
+                                            <div className="px-4 py-8 text-center text-sm text-muted-foreground">No members found.</div>
+                                        )}
+                                    </div>
+                                </section>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
                 </main>
             </div>
         </div>
@@ -597,10 +604,13 @@ export default function NamespacePage() {
                             <div className="flex items-center gap-2">
                                 <p className="text-base font-semibold leading-tight">{profile.username}</p>
                                 {profile.admin && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         <ShieldCheck className="h-2.5 w-2.5" />
                                         Admin
-                                    </span>
+                                    </Badge>
                                 )}
                             </div>
                             <p className="text-sm text-muted-foreground font-mono">{profile.username}</p>

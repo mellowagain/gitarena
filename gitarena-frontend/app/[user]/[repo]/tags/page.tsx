@@ -14,6 +14,9 @@ import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tag, GitCommit, Code, AlertCircle, GitMerge, Settings, Search, Calendar, Trash2 } from "lucide-react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 interface TagInfo {
     name: string;
@@ -135,16 +138,12 @@ export default function TagsPage() {
                     </div>
 
                     {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <input
-                            type="text"
-                            placeholder="Search tags…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                    </div>
+                    <InputGroup>
+                        <InputGroupAddon>
+                            <Search />
+                        </InputGroupAddon>
+                        <InputGroupInput placeholder="Search tags…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    </InputGroup>
 
                     {/* Tag list */}
                     {error ? (
@@ -158,13 +157,17 @@ export default function TagsPage() {
                             ))}
                         </div>
                     ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center border border-border rounded-lg">
-                            <Tag className="h-10 w-10 text-muted-foreground mb-3" />
-                            <p className="font-medium">No tags found</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {search ? "Try a different search term." : "This repository has no tags yet."}
-                            </p>
-                        </div>
+                        <Empty className="border border-solid">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Tag />
+                                </EmptyMedia>
+                                <EmptyTitle>No tags found</EmptyTitle>
+                                <EmptyDescription>
+                                    {search ? "Try a different search term." : "This repository has no tags yet."}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     ) : (
                         <div className="border border-border rounded-lg overflow-hidden">
                             {filtered.map((tag, i) => (
@@ -191,9 +194,12 @@ export default function TagsPage() {
                                                 {tag.name}
                                             </Link>
                                             {tag.message && (
-                                                <span className="px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium border border-border rounded bg-secondary text-muted-foreground">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                                >
                                                     annotated
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
 

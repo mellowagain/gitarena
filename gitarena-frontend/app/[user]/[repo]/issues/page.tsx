@@ -10,6 +10,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -39,6 +41,10 @@ import { PriorityIndicator, type Priority } from "@/components/priority-indicato
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
 
 interface IssueLabel {
     name: string;
@@ -94,31 +100,6 @@ function getStatusDisplay(status: string): { Icon: typeof Circle; color: string 
         default:
             return { Icon: Circle, color: "text-green-500" };
     }
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function IssueRow({
@@ -408,16 +389,16 @@ export default function IssuesPage() {
                     style={{ "--issues-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
                 >
                     <div className="p-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="text"
+                        <InputGroup>
+                            <InputGroupAddon>
+                                <Search />
+                            </InputGroupAddon>
+                            <InputGroupInput
                                 placeholder="Search issues..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-9 pl-9 pr-3 bg-secondary border-0 rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             />
-                        </div>
+                        </InputGroup>
                     </div>
 
                     <div className="px-3 pb-4 lg:flex-1 lg:overflow-y-auto">
@@ -461,7 +442,7 @@ export default function IssuesPage() {
 
                     <div className="hidden px-4 pb-4 border-t border-border pt-4 lg:block">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <kbd className="px-2 py-1 bg-secondary rounded text-xs">C</kbd>
+                            <Kbd>C</Kbd>
                             <span>New issue</span>
                         </div>
                     </div>
@@ -490,22 +471,12 @@ export default function IssuesPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => setSortBy("newest")} className="flex items-center gap-2">
-                                        <span className="flex-1">Newest</span>
-                                        {sortBy === "newest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("oldest")} className="flex items-center gap-2">
-                                        <span className="flex-1">Oldest</span>
-                                        {sortBy === "oldest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("updated")} className="flex items-center gap-2">
-                                        <span className="flex-1">Recently updated</span>
-                                        {sortBy === "updated" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("priority")} className="flex items-center gap-2">
-                                        <span className="flex-1">Priority</span>
-                                        {sortBy === "priority" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
+                                    <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                                        <DropdownMenuRadioItem value="newest">Newest</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="updated">Recently updated</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="priority">Priority</DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
@@ -602,19 +573,25 @@ export default function IssuesPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground lg:h-full lg:py-0">
-                                <Inbox className="h-16 w-16 mb-4 opacity-30" />
-                                <p className="text-lg font-medium">No issues</p>
-                                <p className="mt-1">Create your first issue to get started</p>
-                                {!isArchived && (
-                                    <Link href={`/${user}/${repo}/issues/new`}>
-                                        <Button size="sm" className="mt-6 gap-2">
-                                            <Plus className="h-4 w-4" />
-                                            New Issue
+                            <Empty className="lg:h-full">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Inbox />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No issues</EmptyTitle>
+                                    <EmptyDescription>Create your first issue to get started</EmptyDescription>
+                                </EmptyHeader>
+                                <EmptyContent>
+                                    {!isArchived && (
+                                        <Button size="sm" asChild>
+                                            <Link href={`/${user}/${repo}/issues/new`}>
+                                                <Plus />
+                                                New Issue
+                                            </Link>
                                         </Button>
-                                    </Link>
-                                )}
-                            </div>
+                                    )}
+                                </EmptyContent>
+                            </Empty>
                         )}
                     </div>
                 </main>

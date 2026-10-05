@@ -3,9 +3,10 @@
 import { useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { addDays, format, isValid } from "date-fns";
-import { BookMarked, Building2, Globe, Loader2, Lock, Search } from "lucide-react";
+import { addDays, isValid } from "date-fns";
+import { BookMarked, Building2, Globe, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,8 @@ import {
     tokenTypeLabels,
     tokenTypesFor,
 } from "@/lib/tokens";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 
 interface OrgEntry {
     id: string;
@@ -177,7 +180,7 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
                 />
             </div>
 
-            <div className="max-h-56 overflow-y-auto scrollbar-dark p-1.5">
+            <div className="max-h-56 overflow-y-auto p-1.5">
                 {isLoading && (
                     <div className="space-y-1">
                         {[0, 1, 2, 3].map((i) => (
@@ -381,11 +384,11 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
                             </SelectContent>
                         </Select>
                         {expiryPreset === "custom" && (
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={customExpiry}
-                                min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
-                                onChange={(e) => setCustomExpiry(e.target.value)}
+                                onChange={setCustomExpiry}
+                                disabled={{ before: addDays(new Date(), 1) }}
+                                required
                                 className="w-44 bg-card"
                             />
                         )}
@@ -431,20 +434,13 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
             </div>
 
             <div className="flex items-center gap-3">
-                <button
-                    onClick={handleSubmit}
-                    disabled={!canSubmit || isMutating}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                    {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Button onClick={handleSubmit} disabled={!canSubmit || isMutating}>
+                    {isMutating && <Spinner />}
                     {token ? "Save changes" : "Generate token"}
-                </button>
-                <button
-                    onClick={onCancel}
-                    className="inline-flex items-center px-4 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                >
+                </Button>
+                <Button variant="outline" onClick={onCancel}>
                     Cancel
-                </button>
+                </Button>
             </div>
         </div>
     );

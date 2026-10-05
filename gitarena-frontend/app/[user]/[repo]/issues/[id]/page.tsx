@@ -10,12 +10,15 @@ import { formatDistanceToNow } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { ArchivedBanner } from "@/components/archived-banner";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuTrigger,
     DropdownMenuSeparator,
     DropdownMenuLabel,
@@ -42,14 +45,14 @@ import {
     Eye,
     MessageSquare,
     Milestone,
-    Loader2,
-    Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Spinner } from "@/components/ui/spinner";
+import { LabelBadge } from "@/components/label-badge";
 
 interface IssueDetail {
     id: string;
@@ -135,69 +138,6 @@ interface MilestoneListItem {
 
 interface MilestonesResponse {
     milestones: MilestoneListItem[];
-}
-
-function LabelBadge({
-    name,
-    color,
-    removable,
-    removing,
-    onRemove,
-}: {
-    name: string;
-    color: string;
-    removable?: boolean;
-    removing?: boolean;
-    onRemove?: () => void;
-}) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    const removeButton = (
-        <button
-            className="ml-1.5 mr-1.5 opacity-0 group-hover/label:opacity-100 transition-opacity rounded"
-            title="Remove label"
-            style={{ color }}
-            onClick={onRemove}
-            disabled={removing}
-        >
-            {removing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-2.5 w-2.5" />}
-        </button>
-    );
-
-    if (isScoped) {
-        return (
-            <span className="group/label inline-flex items-center text-xs rounded overflow-hidden">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-                {removable && (
-                    <span
-                        className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150 self-stretch"
-                        style={{ backgroundColor: `${color}20` }}
-                    >
-                        <span className="overflow-hidden flex items-center">{removeButton}</span>
-                    </span>
-                )}
-            </span>
-        );
-    }
-
-    return (
-        <span className="group/label inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-            {removable && (
-                <span className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150">
-                    <span className="overflow-hidden flex items-center">{removeButton}</span>
-                </span>
-            )}
-        </span>
-    );
 }
 
 const EMOJI_CATEGORIES = [
@@ -388,23 +328,21 @@ function CommentComposer({
 
     return (
         <div className="flex items-start gap-3">
-            <div className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50">
-                <div className="flex items-center border-b border-border">
-                    <button
-                        onClick={() => setPreview(false)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${!preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
+            <Tabs
+                value={preview ? "preview" : "write"}
+                onValueChange={(v) => setPreview(v === "preview")}
+                className="flex-1 border border-border rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-ring/50 gap-0"
+            >
+                <TabsList variant="line" className="gap-0">
+                    <TabsTrigger value="write" className="py-1.5 text-xs">
                         Write
-                    </button>
-                    <button
-                        onClick={() => setPreview(true)}
-                        className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${preview ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                        <Eye className="h-3 w-3" />
+                    </TabsTrigger>
+                    <TabsTrigger value="preview" className="py-1.5 text-xs">
+                        <Eye className="size-3" />
                         Preview
-                    </button>
-                </div>
-                {preview ? (
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="preview">
                     <div className="px-3 py-2 min-h-[160px]">
                         {text.trim() ? (
                             <MarkdownRenderer content={text} user={user} repo={repo} className="space-y-4 text-sm leading-relaxed" />
@@ -412,7 +350,8 @@ function CommentComposer({
                             <span className="text-muted-foreground italic">Nothing to preview.</span>
                         )}
                     </div>
-                ) : (
+                </TabsContent>
+                <TabsContent value="write">
                     <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -420,7 +359,7 @@ function CommentComposer({
                         rows={6}
                         className="w-full px-3 py-2 bg-transparent text-base resize-none focus:outline-none"
                     />
-                )}
+                </TabsContent>
                 <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card/50">
                     <span className="text-xs text-muted-foreground font-mono">Markdown</span>
                     <div className="flex items-center gap-2">
@@ -431,12 +370,12 @@ function CommentComposer({
                             </Button>
                         )}
                         <Button size="sm" disabled={!text.trim() || isSubmitting} onClick={handleSubmit}>
-                            {isSubmitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            {isSubmitting && <Spinner className="size-3.5 mr-1.5" />}
                             {label}
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Tabs>
         </div>
     );
 }
@@ -1022,41 +961,45 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isTogglingStatus ? false : statusOpen} onOpenChange={setStatusOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
                                                     {statusInfo.label}
                                                 </div>
                                                 {isTogglingStatus ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-48">
-                                            <DropdownMenuItem onClick={issue.status !== "open" ? () => handleSetStatus("open") : undefined}>
-                                                <Circle className="h-4 w-4 mr-2 text-green-500" />
-                                                Open
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "in_progress" ? () => handleSetStatus("in_progress") : undefined}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.status}
+                                                onValueChange={(v) => {
+                                                    setStatusOpen(false);
+                                                    if (v !== issue.status) {
+                                                        void handleSetStatus(v);
+                                                    }
+                                                }}
                                             >
-                                                <CircleDot className="h-4 w-4 mr-2 text-yellow-500" />
-                                                In Progress
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "completed" ? () => handleSetStatus("completed") : undefined}
-                                            >
-                                                <CheckCircle2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                Completed
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "not_planned" ? () => handleSetStatus("not_planned") : undefined}
-                                            >
-                                                <XCircle className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                Not Planned
-                                            </DropdownMenuItem>
+                                                <DropdownMenuRadioItem value="open">
+                                                    <Circle className="h-4 w-4 text-green-500" />
+                                                    Open
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="in_progress">
+                                                    <CircleDot className="h-4 w-4 text-yellow-500" />
+                                                    In Progress
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="completed">
+                                                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                    Completed
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="not_planned">
+                                                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                                                    Not Planned
+                                                </DropdownMenuRadioItem>
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
@@ -1085,7 +1028,7 @@ export default function IssuePage() {
                                                     title="Remove assignee"
                                                 >
                                                     {removingAssignee === assignee ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                                        <Spinner className="size-3.5 text-muted-foreground" />
                                                     ) : (
                                                         <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                                                     )}
@@ -1096,17 +1039,14 @@ export default function IssuePage() {
                                     {canManage && (
                                         <DropdownMenu open={isAddingAssignee ? false : undefined}>
                                             <DropdownMenuTrigger asChild>
-                                                <button
+                                                <Button
+                                                    variant="outline"
                                                     disabled={isAddingAssignee}
-                                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors"
+                                                    className="px-3 w-full border-dashed text-muted-foreground hover:text-foreground hover:border-solid font-normal"
                                                 >
-                                                    {isAddingAssignee ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                    ) : (
-                                                        <User className="h-3.5 w-3.5" />
-                                                    )}
+                                                    {isAddingAssignee ? <Spinner className="size-3.5" /> : <User className="h-3.5 w-3.5" />}
                                                     Add assignee
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {(() => {
@@ -1154,7 +1094,6 @@ export default function IssuePage() {
                                                 key={name}
                                                 name={name}
                                                 color={color}
-                                                removable={canManage}
                                                 removing={removingLabel === name}
                                                 onRemove={canManage ? () => handleRemoveLabel(name) : undefined}
                                             />
@@ -1167,11 +1106,7 @@ export default function IssuePage() {
                                                     disabled={isAddingLabel}
                                                     className="flex items-center gap-1 px-2 py-0.5 text-xs border border-dashed border-border rounded text-muted-foreground hover:text-foreground hover:border-solid transition-colors"
                                                 >
-                                                    {isAddingLabel ? (
-                                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                                    ) : (
-                                                        <Tag className="h-3 w-3" />
-                                                    )}
+                                                    {isAddingLabel ? <Spinner className="size-3" /> : <Tag className="h-3 w-3" />}
                                                     Add
                                                 </button>
                                             </DropdownMenuTrigger>
@@ -1202,28 +1137,35 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isUpdatingPriority ? false : priorityOpen} onOpenChange={setPriorityOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <PriorityIndicator priority={issue.priority as Priority} />
                                                     <span>{priorityConfig[issue.priority as Priority].label}</span>
                                                 </div>
                                                 {isUpdatingPriority ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-40">
-                                            {PRIORITY_OPTIONS.map((opt) => (
-                                                <DropdownMenuItem
-                                                    key={opt.value}
-                                                    onClick={issue.priority !== opt.value ? () => handleSetPriority(opt.value) : undefined}
-                                                >
-                                                    <PriorityIndicator priority={opt.value} />
-                                                    {opt.label}
-                                                </DropdownMenuItem>
-                                            ))}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.priority}
+                                                onValueChange={(v) => {
+                                                    setPriorityOpen(false);
+                                                    if (v !== issue.priority) {
+                                                        void handleSetPriority(v);
+                                                    }
+                                                }}
+                                            >
+                                                {PRIORITY_OPTIONS.map((opt) => (
+                                                    <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                                                        <PriorityIndicator priority={opt.value} />
+                                                        {opt.label}
+                                                    </DropdownMenuRadioItem>
+                                                ))}
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
@@ -1239,7 +1181,7 @@ export default function IssuePage() {
                                 {canManage ? (
                                     <DropdownMenu open={isUpdatingMilestone ? false : milestoneOpen} onOpenChange={setMilestoneOpen}>
                                         <DropdownMenuTrigger asChild>
-                                            <button className="w-full flex items-center justify-between px-3 py-2 border border-border rounded-md hover:bg-accent/50 transition-colors text-sm">
+                                            <Button variant="outline" className="px-3 w-full justify-between font-normal">
                                                 <div className="flex items-center gap-2">
                                                     <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
                                                     {issue.milestone ? (
@@ -1249,11 +1191,11 @@ export default function IssuePage() {
                                                     )}
                                                 </div>
                                                 {isUpdatingMilestone ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
-                                            </button>
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-52">
                                             {issue.milestone && (
@@ -1264,18 +1206,24 @@ export default function IssuePage() {
                                             )}
                                             {allMilestones.filter((m) => !m.closed || m.id === issue.milestone?.id).length === 0 &&
                                                 !issue.milestone && <DropdownMenuItem disabled>No milestones available</DropdownMenuItem>}
-                                            {allMilestones
-                                                .filter((m) => !m.closed || m.id === issue.milestone?.id)
-                                                .map((m) => (
-                                                    <DropdownMenuItem
-                                                        key={m.id}
-                                                        onClick={m.id !== issue.milestone?.id ? () => handleSetMilestone(m.id) : undefined}
-                                                    >
-                                                        <Milestone className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
-                                                        <span className="flex-1 truncate">{m.title}</span>
-                                                        {m.id === issue.milestone?.id && <Check className="h-4 w-4 ml-2 shrink-0" />}
-                                                    </DropdownMenuItem>
-                                                ))}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.milestone?.id ?? ""}
+                                                onValueChange={(v) => {
+                                                    setMilestoneOpen(false);
+                                                    if (v !== issue.milestone?.id) {
+                                                        void handleSetMilestone(v);
+                                                    }
+                                                }}
+                                            >
+                                                {allMilestones
+                                                    .filter((m) => !m.closed || m.id === issue.milestone?.id)
+                                                    .map((m) => (
+                                                        <DropdownMenuRadioItem key={m.id} value={m.id}>
+                                                            <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                            <span className="flex-1 truncate">{m.title}</span>
+                                                        </DropdownMenuRadioItem>
+                                                    ))}
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (

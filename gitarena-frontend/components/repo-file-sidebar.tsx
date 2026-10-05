@@ -10,6 +10,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { shortLocale } from "@/lib/utils";
 import { ErrorDisplay } from "@/components/error-display";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type FileNode = {
     name: string;
@@ -76,12 +77,12 @@ function buildFileTree(files: BranchFile[]): FileNode[] {
 
 function FileTreeSkeleton() {
     return (
-        <div className="flex-1 py-2 space-y-0.5 animate-pulse">
+        <div className="flex-1 py-2 space-y-0.5">
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                 <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                    <div className="h-[18px] w-[18px] rounded bg-accent shrink-0" />
-                    <div className="h-3 rounded bg-accent" style={{ width: `${40 + ((i * 17) % 45)}%` }} />
-                    <div className="h-2.5 w-10 rounded bg-accent ml-auto" />
+                    <Skeleton className="h-[18px] w-[18px] rounded shrink-0" />
+                    <Skeleton className="h-3 rounded" style={{ width: `${40 + ((i * 17) % 45)}%` }} />
+                    <Skeleton className="h-2.5 w-10 rounded ml-auto" />
                 </div>
             ))}
         </div>
@@ -90,11 +91,11 @@ function FileTreeSkeleton() {
 
 function RepoFileSidebarCommitInfoSkeleton() {
     return (
-        <div className="flex items-start gap-2.5 w-full animate-pulse">
-            <div className="h-6 w-6 rounded-full bg-accent shrink-0" />
+        <div className="flex items-start gap-2.5 w-full">
+            <Skeleton className="h-6 w-6 rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
-                <div className="h-3 w-3/4 rounded bg-accent" />
-                <div className="h-2.5 w-1/2 rounded bg-accent" />
+                <Skeleton className="h-3 w-3/4 rounded" />
+                <Skeleton className="h-2.5 w-1/2 rounded" />
             </div>
         </div>
     );
@@ -144,32 +145,14 @@ function RepoFileSidebarCommitInfo({ user, repo, branch }: { user: string; repo:
 }
 
 function FileTooltip({ commit, date, children }: { commit: string; date: string; children: React.ReactNode }) {
-    const [show, setShow] = useState(false);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const ref = useRef<HTMLDivElement>(null);
-
     return (
-        <div
-            ref={ref}
-            className="relative"
-            onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setPosition({ x: rect.right + 8, y: rect.top });
-                setShow(true);
-            }}
-            onMouseLeave={() => setShow(false)}
-        >
-            {children}
-            {show && (
-                <div
-                    className="fixed z-50 px-3 py-2 text-sm bg-popover border border-border rounded-md shadow-lg whitespace-nowrap"
-                    style={{ left: position.x, top: position.y }}
-                >
-                    <span className="text-foreground">{commit}</span>
-                    <span className="text-muted-foreground ml-2">{date}</span>
-                </div>
-            )}
-        </div>
+        <Tooltip>
+            <TooltipTrigger asChild>{children}</TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8} className="text-sm whitespace-nowrap">
+                {commit}
+                <span className="opacity-60 ml-2">{date}</span>
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -387,19 +370,19 @@ export function RepoFileSidebar({
 
 export function RepoFileSidebarSkeleton() {
     return (
-        <aside className="w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border flex flex-col shrink-0 bg-card/30 animate-pulse">
+        <aside className="w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border flex flex-col shrink-0 bg-card/30">
             <div className="p-4 border-b border-border space-y-3">
                 {/* Branch dropdown + history button */}
                 <div className="flex items-center gap-2">
-                    <div className="h-9 flex-1 rounded bg-accent" />
-                    <div className="h-9 w-14 rounded bg-accent" />
+                    <Skeleton className="h-9 flex-1 rounded" />
+                    <Skeleton className="h-9 w-14 rounded" />
                 </div>
                 {/* Latest commit row */}
                 <div className="flex items-start gap-2.5">
-                    <div className="h-6 w-6 rounded-full bg-accent shrink-0" />
+                    <Skeleton className="h-6 w-6 rounded-full shrink-0" />
                     <div className="flex-1 space-y-2">
-                        <div className="h-3 w-3/4 rounded bg-accent" />
-                        <div className="h-2.5 w-1/2 rounded bg-accent" />
+                        <Skeleton className="h-3 w-3/4 rounded" />
+                        <Skeleton className="h-2.5 w-1/2 rounded" />
                     </div>
                 </div>
             </div>
@@ -407,9 +390,9 @@ export function RepoFileSidebarSkeleton() {
             <div className="flex-1 py-2 space-y-0.5">
                 {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                        <div className="h-[18px] w-[18px] rounded bg-accent shrink-0" />
-                        <div className="h-3 rounded bg-accent" style={{ width: `${40 + ((i * 17) % 45)}%` }} />
-                        <div className="h-2.5 w-10 rounded bg-accent ml-auto" />
+                        <Skeleton className="h-[18px] w-[18px] rounded shrink-0" />
+                        <Skeleton className="h-3 rounded" style={{ width: `${40 + ((i * 17) % 45)}%` }} />
+                        <Skeleton className="h-2.5 w-10 rounded ml-auto" />
                     </div>
                 ))}
             </div>

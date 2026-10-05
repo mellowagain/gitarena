@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { TokenForm } from "@/components/token-form";
 import { deleteFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
@@ -33,6 +33,8 @@ import {
     tokenTypeLabels,
     tokenTypesFor,
 } from "@/lib/tokens";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 /** The secret is returned only once, right after creation, so it stays on screen until dismissed. */
 function SecretPanel({ result, onDismiss }: { result: CreateTokenResponse; onDismiss: () => void }) {
@@ -63,13 +65,10 @@ function SecretPanel({ result, onDismiss }: { result: CreateTokenResponse; onDis
                     <code className="flex-1 font-mono text-xs bg-card border border-border rounded-md px-3 py-2 break-all">
                         {result.secret}
                     </code>
-                    <button
-                        onClick={copy}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0"
-                    >
+                    <Button variant="outline" onClick={copy} className="px-3">
                         {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied ? "Copied" : "Copy"}
-                    </button>
+                    </Button>
                 </div>
                 <button
                     onClick={onDismiss}
@@ -222,13 +221,10 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                     <h2 className="text-lg font-semibold">{title}</h2>
                     <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
                 </div>
-                <button
-                    onClick={() => setCreating(true)}
-                    className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0"
-                >
+                <Button onClick={() => setCreating(true)}>
                     <Plus className="h-4 w-4" />
                     New token
-                </button>
+                </Button>
             </div>
 
             {created && <SecretPanel result={created} onDismiss={() => setCreated(null)} />}
@@ -258,12 +254,15 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                 {!isLoading && error && <div className="px-4 py-8 text-center text-sm text-muted-foreground">Failed to load tokens.</div>}
 
                 {!isLoading && !error && tokens && tokens.length === 0 && (
-                    <EmptyState
-                        icon={KeyRound}
-                        title="No tokens yet"
-                        hint="Tokens authenticate API requests and Git operations over HTTP."
-                        className="py-12"
-                    />
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <KeyRound />
+                            </EmptyMedia>
+                            <EmptyTitle>No tokens yet</EmptyTitle>
+                            <EmptyDescription>Tokens authenticate API requests and Git operations over HTTP.</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 )}
 
                 {!isLoading &&
@@ -279,12 +278,12 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                     ))}
             </div>
 
-            <div className="flex items-start gap-3 p-4 border border-amber-500/30 bg-amber-500/5 rounded-md">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription className="text-xs leading-relaxed">
                     Treat tokens like passwords. Do not share them or include them in version-controlled code.
-                </p>
-            </div>
+                </AlertDescription>
+            </Alert>
 
             <AlertDialog open={revoking !== null} onOpenChange={(open) => !open && setRevoking(null)}>
                 <AlertDialogContent>

@@ -18,7 +18,6 @@ import {
     AlertCircle,
     ShieldCheck,
     Settings,
-    Loader2,
     FileText,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -29,8 +28,34 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { AuditLogEvent } from "@/components/audit-log-event";
 import type { EventResponse } from "@/components/activity-event";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,16 +90,8 @@ const navItems: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <label className="block text-sm font-medium mb-1.5">{children}</label>;
-}
-
-function FieldHint({ children }: { children: React.ReactNode }) {
-    return <p className="mt-1.5 text-xs text-muted-foreground">{children}</p>;
-}
-
 function Divider() {
-    return <div className="border-t border-border my-6" />;
+    return <Separator className="my-6" />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -83,22 +100,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SaveButton({ onClick, disabled }: { onClick?: () => void; disabled?: boolean }) {
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
-        >
+        <Button onClick={onClick} disabled={disabled}>
             <Check className="h-4 w-4" />
             Save changes
-        </button>
-    );
-}
-
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
+        </Button>
     );
 }
 
@@ -125,21 +130,20 @@ function GeneralTab({ org }: { org: OrgInfo }) {
 
             {/* Avatar — WIP */}
             <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel>Organization avatar</FieldLabel>
-                    <WipTag />
-                </div>
+                <FieldTitle className="mb-1.5">
+                    Organization avatar
+                    <WipBadge />
+                </FieldTitle>
                 <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-xl bg-secondary border border-border flex items-center justify-center text-2xl font-semibold">
-                        {org.name[0].toUpperCase()}
-                    </div>
+                    <Avatar className="size-16 rounded-xl border border-border">
+                        <AvatarFallback className="rounded-xl bg-secondary text-2xl font-semibold">
+                            {org.name[0].toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                     <div className="space-y-1.5">
-                        <button
-                            disabled
-                            className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md opacity-50 cursor-not-allowed"
-                        >
+                        <Button variant="outline" size="sm" disabled className="opacity-50 cursor-not-allowed">
                             Upload image
-                        </button>
+                        </Button>
                         <p className="text-xs text-muted-foreground">PNG, JPG or GIF, max 1 MB</p>
                     </div>
                 </div>
@@ -148,52 +152,43 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <Divider />
 
             {/* Display name — WIP */}
-            <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <FieldLabel>Display name</FieldLabel>
-                    <WipTag />
-                </div>
-                <input
-                    type="text"
-                    disabled
-                    defaultValue={org.name}
-                    className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm opacity-50 cursor-not-allowed"
-                />
-                <FieldHint>Display name editing is not yet available.</FieldHint>
-            </div>
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="org-display-name">
+                    Display name
+                    <WipBadge />
+                </FieldLabel>
+                <Input id="org-display-name" disabled defaultValue={org.name} />
+                <FieldDescription className="text-xs">Display name editing is not yet available.</FieldDescription>
+            </Field>
 
             {/* Description */}
-            <div>
-                <FieldLabel>Description</FieldLabel>
-                <textarea
+            <Field className="gap-1.5">
+                <FieldLabel htmlFor="org-description">Description</FieldLabel>
+                <Textarea
+                    id="org-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
                     maxLength={256}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 />
-                <FieldHint>Max 256 characters.</FieldHint>
-            </div>
+                <FieldDescription className="text-xs">Max 256 characters.</FieldDescription>
+            </Field>
 
             <Divider />
 
             {/* Visibility — WIP */}
-            <div>
-                <div className="flex items-center gap-2 mb-2">
-                    <FieldLabel>Organization visibility</FieldLabel>
-                    <WipTag />
-                </div>
-                <div className="space-y-2 opacity-50 pointer-events-none">
+            <FieldSet className="gap-0">
+                <FieldLegend variant="label" className="mb-2 flex items-center gap-2">
+                    Organization visibility
+                    <WipBadge />
+                </FieldLegend>
+                <RadioGroup value="public" disabled className="gap-2 opacity-50 pointer-events-none">
                     {(["public", "private"] as const).map((v) => (
                         <label
                             key={v}
                             className={`flex items-start gap-3 p-3 border rounded-md ${v === "public" ? "border-foreground bg-accent/30" : "border-border"}`}
                         >
-                            <div
-                                className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${v === "public" ? "border-foreground" : "border-muted-foreground"}`}
-                            >
-                                {v === "public" && <div className="h-2 w-2 rounded-full bg-foreground" />}
-                            </div>
+                            <RadioGroupItem value={v} className="mt-0.5" />
                             <div>
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                     {v === "public" ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
@@ -207,8 +202,8 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                             </div>
                         </label>
                     ))}
-                </div>
-            </div>
+                </RadioGroup>
+            </FieldSet>
 
             <Divider />
 
@@ -216,26 +211,28 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <SectionTitle>Repository defaults</SectionTitle>
-                    <WipTag />
+                    <WipBadge />
                 </div>
                 <div className="space-y-4 opacity-50 pointer-events-none">
-                    <div>
-                        <FieldLabel>Default branch name</FieldLabel>
-                        <input
-                            type="text"
-                            disabled
-                            defaultValue="main"
-                            className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm font-mono"
-                        />
-                        <FieldHint>Applied to all newly created repositories in this organization.</FieldHint>
-                    </div>
-                    <div>
-                        <FieldLabel>Default repository visibility</FieldLabel>
-                        <select disabled className="w-full h-9 px-3 bg-card border border-border rounded-md text-sm">
-                            <option value="public">Public</option>
-                            <option value="private">Private</option>
-                        </select>
-                    </div>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="org-default-branch">Default branch name</FieldLabel>
+                        <Input id="org-default-branch" disabled defaultValue="main" className="font-mono" />
+                        <FieldDescription className="text-xs">
+                            Applied to all newly created repositories in this organization.
+                        </FieldDescription>
+                    </Field>
+                    <Field className="gap-1.5">
+                        <FieldLabel htmlFor="org-default-visibility">Default repository visibility</FieldLabel>
+                        <Select disabled defaultValue="public">
+                            <SelectTrigger id="org-default-visibility" className="w-full bg-card">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="public">Public</SelectItem>
+                                <SelectItem value="private">Private</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </Field>
                 </div>
             </div>
 
@@ -245,7 +242,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <SectionTitle>Member permissions</SectionTitle>
-                    <WipTag />
+                    <WipBadge />
                 </div>
                 <div className="space-y-3 opacity-50 pointer-events-none">
                     {[
@@ -266,7 +263,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                         },
                     ].map((item) => (
                         <div key={item.key} className="flex items-start gap-3 p-3 border border-border rounded-md">
-                            <input type="checkbox" disabled className="mt-0.5 rounded border-border" />
+                            <Checkbox disabled className="mt-0.5" />
                             <div>
                                 <p className="text-sm font-medium">{item.label}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">{item.hint}</p>
@@ -293,10 +290,10 @@ function MemberRow({
     const { data: user } = useSWR<UserByIdResponse>(`/api/users/by-id/${member.userId}`, jsonFetcher);
     const username = user?.username ?? `…`;
 
-    const roleBadge: Record<string, string> = {
-        owner: "text-amber-500 bg-amber-500/10 border-amber-500/30",
-        admin: "text-blue-500 bg-blue-500/10 border-blue-500/30",
-        member: "text-muted-foreground bg-secondary border-border",
+    const roleVariants: Record<string, "warning" | "info" | "outline"> = {
+        owner: "warning",
+        admin: "info",
+        member: "outline",
     };
 
     return (
@@ -311,21 +308,22 @@ function MemberRow({
                     <span className="text-sm font-medium text-muted-foreground">Loading…</span>
                 )}
             </div>
-            <span
-                className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded capitalize ${roleBadge[member.role]}`}
+            <Badge
+                variant={roleVariants[member.role]}
+                className={cn("capitalize", roleVariants[member.role] === "outline" && "bg-secondary text-muted-foreground")}
             >
                 {member.role}
-            </span>
-            <select
-                value={member.role}
-                onChange={(e) => onRoleChange(username, e.target.value)}
-                disabled={member.role === "owner" || !user}
-                className="h-7 px-2 bg-card border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="owner">Owner</option>
-            </select>
+            </Badge>
+            <Select value={member.role} onValueChange={(role) => onRoleChange(username, role)} disabled={member.role === "owner" || !user}>
+                <SelectTrigger size="sm" className="bg-card text-xs">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                </SelectContent>
+            </Select>
             <button
                 onClick={() => onRemove(username)}
                 disabled={member.role === "owner" || !user}
@@ -404,30 +402,21 @@ function MembersTab({ orgName }: { orgName: string }) {
             <div className="p-4 border border-border rounded-md space-y-3">
                 <p className="text-sm font-medium">Add a member</p>
                 <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={inviteInput}
-                        onChange={(e) => setInviteInput(e.target.value)}
-                        placeholder="Username"
-                        className="flex-1 h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                    <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
-                        className="h-9 px-2 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                        <option value="owner">Owner</option>
-                    </select>
-                    <button
-                        className="inline-flex items-center gap-2 px-3 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity whitespace-nowrap disabled:opacity-50"
-                        onClick={handleInvite}
-                        disabled={isInviting || !inviteInput.trim()}
-                    >
-                        {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    <Input value={inviteInput} onChange={(e) => setInviteInput(e.target.value)} placeholder="Username" className="flex-1" />
+                    <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as typeof inviteRole)}>
+                        <SelectTrigger className="bg-card">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="owner">Owner</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button className="px-3" onClick={handleInvite} disabled={isInviting || !inviteInput.trim()}>
+                        {isInviting ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add member
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -435,7 +424,7 @@ function MembersTab({ orgName }: { orgName: string }) {
             {isLoading ? (
                 <div className="space-y-2">
                     {[0, 1, 2].map((i) => (
-                        <div key={i} className="h-12 bg-secondary/50 rounded-md animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             ) : (
@@ -465,12 +454,12 @@ function TeamsTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Teams</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
-            <div className="flex items-center gap-2 p-4 border border-amber-500/30 rounded-md bg-amber-500/5">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-muted-foreground">Teams are not yet available. This feature is coming soon.</p>
-            </div>
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription>Teams are not yet available. This feature is coming soon.</AlertDescription>
+            </Alert>
         </div>
     );
 }
@@ -480,7 +469,7 @@ function SecurityTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Security</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
 
             {/* 2FA requirement — WIP */}
@@ -492,9 +481,7 @@ function SecurityTab() {
                             All members must have 2FA enabled to join or remain in this organization.
                         </p>
                     </div>
-                    <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-border shrink-0">
-                        <span className="inline-block h-3.5 w-3.5 rounded-full bg-background shadow translate-x-1" />
-                    </div>
+                    <Switch disabled />
                 </div>
             </div>
 
@@ -502,12 +489,7 @@ function SecurityTab() {
             <div className="opacity-50 pointer-events-none">
                 <p className="text-sm font-medium mb-1.5">IP allowlist</p>
                 <p className="text-xs text-muted-foreground mb-3">Restrict access to specific IP addresses or CIDR ranges.</p>
-                <textarea
-                    rows={4}
-                    disabled
-                    placeholder={"192.168.1.0/24\n10.0.0.1"}
-                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-sm font-mono placeholder:text-muted-foreground resize-none"
-                />
+                <Textarea rows={4} disabled placeholder={"192.168.1.0/24\n10.0.0.1"} className="font-mono" />
             </div>
         </div>
     );
@@ -526,7 +508,7 @@ function AuditLogTab({ orgName }: { orgName: string }) {
             {isLoading && (
                 <div className="space-y-3">
                     {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             )}
@@ -551,12 +533,12 @@ function WebhooksTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Webhooks</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
-            <div className="flex items-center gap-2 p-4 border border-amber-500/30 rounded-md bg-amber-500/5">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-muted-foreground">Organization webhooks are not yet available.</p>
-            </div>
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription>Organization webhooks are not yet available.</AlertDescription>
+            </Alert>
         </div>
     );
 }
@@ -600,25 +582,17 @@ function DangerTab({ orgName }: { orgName: string }) {
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-destructive">Rename organization</p>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                         Renaming breaks existing clone URLs and references to <code className="font-mono">@{orgName}</code>.
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <input
-                        type="text"
-                        disabled
-                        placeholder={`New name for ${orgName}`}
-                        className="flex-1 h-9 px-3 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground"
-                    />
-                    <button
-                        disabled
-                        className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md opacity-40"
-                    >
+                    <Input disabled placeholder={`New name for ${orgName}`} className="flex-1" />
+                    <Button variant="outline" disabled className="text-destructive border-destructive/50 hover:text-destructive">
                         Rename
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -627,16 +601,13 @@ function DangerTab({ orgName }: { orgName: string }) {
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-destructive">Transfer ownership</p>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Transfer this organization to another user.</p>
                 </div>
-                <button
-                    disabled
-                    className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md opacity-40"
-                >
+                <Button variant="outline" disabled className="text-destructive border-destructive/50 hover:text-destructive">
                     Transfer ownership
-                </button>
+                </Button>
             </div>
 
             {/* Delete */}
@@ -648,46 +619,61 @@ function DangerTab({ orgName }: { orgName: string }) {
                         member data. This action cannot be undone.
                     </p>
                 </div>
-                {!showDelete ? (
-                    <button
-                        onClick={() => setShowDelete(true)}
-                        className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md hover:bg-destructive/10 transition-colors"
-                    >
-                        Delete organization
-                    </button>
-                ) : (
-                    <div className="space-y-3">
-                        <p className="text-xs font-medium">
+                <Button
+                    variant="outline"
+                    onClick={() => setShowDelete(true)}
+                    className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                >
+                    Delete organization
+                </Button>
+            </div>
+            <AlertDialog
+                open={showDelete}
+                onOpenChange={(open) => {
+                    if (isDeleting) {
+                        return;
+                    }
+                    setShowDelete(open);
+                    if (!open) {
+                        setDeleteInput("");
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this organization?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete <strong>{orgName}</strong> and all of its repositories, issues, merge requests, and
+                            member data. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Field className="gap-1.5">
+                        <FieldDescription id="org-delete-confirm-label" className="text-xs font-medium text-foreground">
                             Type <code className="font-mono">{orgName}</code> to confirm deletion:
-                        </p>
-                        <input
-                            type="text"
+                        </FieldDescription>
+                        <Input
+                            aria-labelledby="org-delete-confirm-label"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
                             placeholder={orgName}
-                            className="w-full h-9 px-3 bg-card border border-destructive/50 rounded-md text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-destructive"
+                            className="border-destructive/50 focus-visible:ring-destructive/40 font-mono"
                         />
-                        <div className="flex gap-2">
-                            <button
-                                disabled={deleteInput !== orgName || isDeleting}
-                                onClick={handleDelete}
-                                className="px-4 h-9 text-sm font-medium text-white bg-destructive rounded-md hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none inline-flex items-center gap-2"
-                            >
-                                {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}I understand, delete this organization
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowDelete(false);
-                                    setDeleteInput("");
-                                }}
-                                className="px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+                    </Field>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleDelete();
+                            }}
+                            disabled={deleteInput !== orgName || isDeleting}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            {isDeleting && <Spinner />}I understand, delete this organization
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -714,7 +700,7 @@ export default function OrgSettingsPage() {
     if (isLoading) {
         return (
             <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Spinner className="size-6 text-muted-foreground" />
             </div>
         );
     }
@@ -779,12 +765,10 @@ export default function OrgSettingsPage() {
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-2xl mx-auto px-8 py-8">
                         {!isAdmin && activeTab !== "general" && (
-                            <div className="flex items-center gap-2 p-4 mb-6 border border-amber-500/30 rounded-md bg-amber-500/5">
-                                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                                <p className="text-sm text-muted-foreground">
-                                    You need admin or owner permissions to modify these settings.
-                                </p>
-                            </div>
+                            <Alert variant="warning" className="mb-6">
+                                <AlertCircle />
+                                <AlertDescription>You need admin or owner permissions to modify these settings.</AlertDescription>
+                            </Alert>
                         )}
                         {tabContent[activeTab]}
                     </div>

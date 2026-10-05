@@ -215,38 +215,10 @@ function CIDot({ ci }: { ci: string }) {
     return <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />;
 }
 
-function LabelBadge({ label }: { label: { name: string; color: string } }) {
-    const idx = label.name.indexOf("::");
-    if (idx !== -1) {
-        const key = label.name.slice(0, idx);
-        const val = label.name.slice(idx + 2);
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${label.color}35`, color: label.color }}>
-                    {key}
-                </span>
-                <span className="px-1.5 py-0.5" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-                    {val}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-1.5 py-0.5 text-xs rounded" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-            {label.name}
-        </span>
-    );
-}
-
-function Avatar({ name }: { name: string }) {
-    return (
-        <span className="w-5 h-5 rounded-full bg-accent border border-border flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
-            {name[0].toUpperCase()}
-        </span>
-    );
-}
-
 import { InstanceConfig } from "@/lib/instance-config";
+import { LabelBadge } from "@/components/label-badge";
+import { WipBadge } from "@/components/wip-badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 async function getApiInfo(): Promise<InstanceConfig | null> {
     try {
@@ -383,7 +355,7 @@ export default async function AboutPage() {
                                                 <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                                                     {issue.labels.map((l, li) => (
                                                         <span key={l.name} className={li > 0 ? "hidden lg:contents" : undefined}>
-                                                            <LabelBadge label={l} />
+                                                            <LabelBadge name={l.name} color={l.color} />
                                                         </span>
                                                     ))}
                                                 </div>
@@ -400,9 +372,7 @@ export default async function AboutPage() {
                                 <div>
                                     <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-2">
                                         Merge requests
-                                        <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
-                                            WIP
-                                        </span>
+                                        <WipBadge />
                                     </p>
                                     <h2 className="text-xl font-semibold mb-2">Code review that stays out of your way</h2>
                                     <p className="text-sm text-muted-foreground mb-5 leading-relaxed max-w-lg">
@@ -460,7 +430,7 @@ export default async function AboutPage() {
                                                 <CIDot ci={c.ci} />
                                                 <span className="font-mono text-xs text-muted-foreground w-14 shrink-0">{c.hash}</span>
                                                 <span className="flex-1 min-w-0 truncate">{c.message}</span>
-                                                <Avatar name={c.author} />
+                                                <UserAvatar username={c.author} size="sm" />
                                                 <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">{c.ago}</span>
                                             </div>
                                         ))}
@@ -483,11 +453,7 @@ export default async function AboutPage() {
                                                 <div>
                                                     <p className="text-sm font-medium leading-none mb-1 flex items-center gap-2">
                                                         {f.label}
-                                                        {f.wip && (
-                                                            <span className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-yellow-500/15 text-yellow-500 border border-yellow-500/20">
-                                                                WIP
-                                                            </span>
-                                                        )}
+                                                        {f.wip && <WipBadge />}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
                                                 </div>

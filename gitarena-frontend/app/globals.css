@@ -5,6 +5,7 @@
 
 /* GitArena - Near-black monochromatic theme following Linear/modern design principles */
 :root {
+    color-scheme: dark;
     --background: oklch(0.09 0 0);
     --foreground: oklch(0.93 0 0);
     --card: oklch(0.12 0 0);
@@ -21,6 +22,9 @@
     --accent-foreground: oklch(0.93 0 0);
     --destructive: oklch(0.55 0.18 25);
     --destructive-foreground: oklch(0.93 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --info: oklch(0.623 0.214 259.815);
+    --success: oklch(0.723 0.219 149.579);
     --border: oklch(1 0 0 / 0.08);
     --input: oklch(0.14 0 0);
     --ring: oklch(1 0 0 / 0.2);
@@ -57,6 +61,9 @@
     --accent-foreground: oklch(0.93 0 0);
     --destructive: oklch(0.55 0.18 25);
     --destructive-foreground: oklch(0.93 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --info: oklch(0.623 0.214 259.815);
+    --success: oklch(0.723 0.219 149.579);
     --border: oklch(1 0 0 / 0.08);
     --input: oklch(0.14 0 0);
     --ring: oklch(1 0 0 / 0.2);
@@ -94,6 +101,9 @@
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+    --color-warning: var(--warning);
+    --color-info: var(--info);
+    --color-success: var(--success);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -114,26 +124,6 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
-}
-
-@layer utilities {
-    .scrollbar-dark {
-        scrollbar-width: thin;
-        scrollbar-color: oklch(0.25 0 0) transparent;
-    }
-    .scrollbar-dark::-webkit-scrollbar {
-        width: 6px;
-    }
-    .scrollbar-dark::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .scrollbar-dark::-webkit-scrollbar-thumb {
-        background: oklch(0.25 0 0);
-        border-radius: 3px;
-    }
-    .scrollbar-dark::-webkit-scrollbar-thumb:hover {
-        background: oklch(0.35 0 0);
-    }
 }
 
 @layer base {

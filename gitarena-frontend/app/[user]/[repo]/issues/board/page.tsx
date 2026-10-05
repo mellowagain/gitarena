@@ -22,6 +22,9 @@ import { jsonFetcher, patchJsonFetcher } from "@/lib/fetchers";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { LabelBadge } from "@/components/label-badge";
+import { Badge } from "@/components/ui/badge";
 
 interface IssueListItem {
     index: number;
@@ -61,31 +64,6 @@ const COLUMNS: { status: string; label: string; Icon: typeof Circle; color: stri
     { status: "completed", label: "Completed", Icon: CheckCircle2, color: "text-muted-foreground" },
     { status: "not_planned", label: "Not Planned", Icon: XCircle, color: "text-muted-foreground" },
 ];
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-1.5 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-1.5 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
-}
 
 function IssueCard({ issue, labelMap, isDragOverlay }: { issue: IssueListItem; labelMap: Map<string, string>; isDragOverlay?: boolean }) {
     return (
@@ -166,13 +144,13 @@ function DroppableColumn({
             <div className="flex items-center gap-2 mb-3 px-1 shrink-0">
                 <Icon className={`h-4 w-4 shrink-0 ${color}`} />
                 <span className="font-medium text-sm">{label}</span>
-                <span className="ml-auto text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
+                <Badge variant="secondary" className="ml-auto text-muted-foreground px-1.5 rounded-full font-normal">
                     {isLoading ? "-" : issues.length}
-                </span>
+                </Badge>
             </div>
             <div
                 ref={setNodeRef}
-                className={`scrollbar-dark space-y-2 rounded-lg p-2 transition-colors md:min-h-0 md:flex-1 md:overflow-y-auto ${
+                className={`space-y-2 rounded-lg p-2 transition-colors md:min-h-0 md:flex-1 md:overflow-y-auto ${
                     isOver && canDrag ? "bg-accent/50 ring-2 ring-ring/40" : "bg-secondary/30"
                 }`}
             >
@@ -306,16 +284,17 @@ export default function BoardPage() {
             />
 
             <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
-                <div className="relative min-w-0 flex-1 sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <input
-                        type="text"
+                <InputGroup className="min-w-0 flex-1 sm:max-w-xs h-8">
+                    <InputGroupAddon>
+                        <Search />
+                    </InputGroupAddon>
+                    <InputGroupInput
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Filter issues…"
-                        className="h-8 w-full rounded-md border-0 bg-secondary pr-3 pl-9 text-sm placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                        className="h-full"
                     />
-                </div>
+                </InputGroup>
                 <Link
                     href={`/${user}/${repo}/issues`}
                     className="ml-auto flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"

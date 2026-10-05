@@ -16,6 +16,9 @@ import type { FileCommitInfo } from "@/components/repo-file-sidebar";
 import type { BranchesResponse } from "@/components/branch-bar";
 import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface BranchCommitsResponse {
     commits: FileCommitInfo[];
@@ -35,7 +38,11 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
     const relativeDate = formatDistanceToNow(new Date(commit.time * 1000), { addSuffix: true, includeSeconds: true });
 
     return (
-        <div className="group/commit pl-5 border-l-4 border-border transition-all hover:border-l-[5px]">
+        <Collapsible
+            open={expanded}
+            onOpenChange={setExpanded}
+            className="group/commit pl-5 border-l-4 border-border transition-all hover:border-l-[5px]"
+        >
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -43,21 +50,22 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
                             {subject}
                         </Link>
                         {hasBody && (
-                            <button
-                                onClick={() => setExpanded((v) => !v)}
-                                title={expanded ? "Collapse" : "Expand commit body"}
-                                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-muted-foreground border border-border rounded hover:bg-accent/50 hover:text-foreground transition-colors shrink-0"
-                            >
-                                {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                            </button>
+                            <CollapsibleTrigger asChild>
+                                <button
+                                    title={expanded ? "Collapse" : "Expand commit body"}
+                                    className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-muted-foreground border border-border rounded hover:bg-accent/50 hover:text-foreground transition-colors shrink-0"
+                                >
+                                    {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                </button>
+                            </CollapsibleTrigger>
                         )}
                     </div>
 
-                    {expanded && (
+                    <CollapsibleContent asChild>
                         <pre className="mt-1.5 mb-2 text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
                             {body}
                         </pre>
-                    )}
+                    </CollapsibleContent>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1.5">
                         <UserAvatar userId={commit.authorUid} username={commit.authorName} size="xs" />
@@ -79,7 +87,7 @@ function CommitRow({ commit, user, repo }: { commit: FileCommitInfo; user: strin
                     <HashCopy shortHash={shortHash} fullHash={commit.sha1} />
                 </div>
             </div>
-        </div>
+        </Collapsible>
     );
 }
 
@@ -242,10 +250,14 @@ export default function CommitsPage() {
                     {isLoading && <CommitsSkeleton />}
 
                     {!isLoading && allCommits.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                            <GitCommit className="h-10 w-10 opacity-20" />
-                            <p className="text-sm">No commits on this branch.</p>
-                        </div>
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <GitCommit />
+                                </EmptyMedia>
+                                <EmptyTitle>No commits on this branch.</EmptyTitle>
+                            </EmptyHeader>
+                        </Empty>
                     )}
 
                     {groups.length > 0 && (
@@ -268,14 +280,15 @@ export default function CommitsPage() {
 
                     {hasMore && (
                         <div className="flex justify-center mt-8">
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={() => setSize(size + 1)}
                                 disabled={isValidating}
-                                className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-5 text-muted-foreground hover:text-foreground"
                             >
                                 {isValidating ? <Spinner className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 Load more commits
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>

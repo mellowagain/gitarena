@@ -30,6 +30,13 @@ import {
     MessageSquare,
     ChevronDown,
 } from "lucide-react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -438,20 +445,20 @@ function CodeResultsSkeleton() {
     return (
         <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-                <div key={i} className="border border-border rounded-lg overflow-hidden animate-pulse">
+                <div key={i} className="border border-border rounded-lg overflow-hidden">
                     <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/40 border-b border-border">
-                        <div className="h-4 w-4 rounded bg-muted" />
-                        <div className="h-3 w-32 rounded bg-muted" />
-                        <div className="h-3 w-48 rounded bg-muted" />
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-3 w-32 rounded" />
+                        <Skeleton className="h-3 w-48 rounded" />
                     </div>
                     <div className="divide-y divide-border/40">
                         {[1, 2].map((j) => (
                             <div key={j} className="flex items-start">
                                 <div className="w-12 shrink-0 px-3 py-2.5 border-r border-border/40">
-                                    <div className="h-3 w-4 rounded bg-muted mx-auto" />
+                                    <Skeleton className="h-3 w-4 rounded mx-auto" />
                                 </div>
                                 <div className="flex-1 px-4 py-2.5">
-                                    <div className="h-3 w-3/4 rounded bg-muted" />
+                                    <Skeleton className="h-3 w-3/4 rounded" />
                                 </div>
                             </div>
                         ))}
@@ -474,17 +481,27 @@ function CodeResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">Failed to load results. Please try again.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>Failed to load results. Please try again.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
     if (!query) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">Enter a query to search code.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>Enter a query to search code.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -492,9 +509,14 @@ function CodeResults({ query }: { query: string }) {
 
     if (!files || files.length === 0) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">No code results for &ldquo;{query}&rdquo;.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>No code results for &ldquo;{query}&rdquo;.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -566,10 +588,14 @@ function RepoResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load repositories</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load repositories</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -578,11 +604,11 @@ function RepoResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-start gap-4 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-9 w-9 rounded-md bg-secondary border border-border shrink-0 animate-pulse" />
+                        <Skeleton className="h-9 w-9 rounded-md border border-border shrink-0" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-48" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-72" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-32" />
+                            <Skeleton className="h-4 rounded w-48" />
+                            <Skeleton className="h-3 rounded w-72" />
+                            <Skeleton className="h-3 rounded w-32" />
                         </div>
                     </div>
                 ))}
@@ -592,10 +618,14 @@ function RepoResults({ query }: { query: string }) {
 
     if (allRepos.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No repositories found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No repositories found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -617,26 +647,31 @@ function RepoResults({ query }: { query: string }) {
                             key={repo.id}
                             className={`flex items-start gap-4 px-4 py-4 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
                         >
-                            <div className="h-9 w-9 rounded-md bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
-                                {repo.name[0].toUpperCase()}
-                            </div>
+                            <Avatar className="size-9 rounded-md border border-border">
+                                <AvatarFallback className="rounded-md bg-secondary text-sm font-semibold">
+                                    {repo.name[0].toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <Link href={`/${repo.ownerName}/${repo.name}`} className="text-sm font-medium hover:underline">
                                         {repo.ownerName}/{repo.name}
                                     </Link>
-                                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         {repo.visibility === "private" ? (
                                             <Lock className="h-2.5 w-2.5" />
                                         ) : (
                                             <Globe className="h-2.5 w-2.5" />
                                         )}
                                         {repo.visibility}
-                                    </span>
+                                    </Badge>
                                     {repo.archivedAt && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                        <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                                             archived
-                                        </span>
+                                        </Badge>
                                     )}
                                 </div>
                                 {repo.description && (
@@ -661,14 +696,15 @@ function RepoResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>
@@ -682,31 +718,6 @@ interface IssueLabel {
 
 interface LabelsResponse {
     labels: IssueLabel[];
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function IssueResults({ query }: { query: string }) {
@@ -748,10 +759,14 @@ function IssueResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load issues</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load issues</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -760,10 +775,10 @@ function IssueResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-4 w-4 rounded-full bg-secondary border border-border shrink-0 animate-pulse mt-0.5" />
+                        <Skeleton className="h-4 w-4 rounded-full border border-border shrink-0 mt-0.5" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-64" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-40" />
+                            <Skeleton className="h-4 rounded w-64" />
+                            <Skeleton className="h-3 rounded w-40" />
                         </div>
                     </div>
                 ))}
@@ -773,10 +788,14 @@ function IssueResults({ query }: { query: string }) {
 
     if (allIssues.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No issues found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No issues found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -839,14 +858,15 @@ function IssueResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>
@@ -922,10 +942,14 @@ function UserResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load users</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load users</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -934,10 +958,10 @@ function UserResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-center gap-4 px-4 py-3.5 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-10 w-10 rounded-full bg-secondary border border-border shrink-0 animate-pulse" />
+                        <Skeleton className="h-10 w-10 rounded-full border border-border shrink-0" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-32" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-20" />
+                            <Skeleton className="h-4 rounded w-32" />
+                            <Skeleton className="h-3 rounded w-20" />
                         </div>
                     </div>
                 ))}
@@ -947,10 +971,14 @@ function UserResults({ query }: { query: string }) {
 
     if (allUsers.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No users found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No users found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -969,9 +997,12 @@ function UserResults({ query }: { query: string }) {
                                     {user.username}
                                 </Link>
                                 {user.admin && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         admin
-                                    </span>
+                                    </Badge>
                                 )}
                             </div>
                         </div>
@@ -980,14 +1011,15 @@ function UserResults({ query }: { query: string }) {
             </div>
             {hasMore && (
                 <div className="flex justify-center mt-6">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={() => setSize(size + 1)}
                         disabled={isValidating}
-                        className="flex items-center gap-2 px-5 py-2 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 text-muted-foreground hover:text-foreground"
                     >
                         <ChevronDown className="h-4 w-4" />
                         Load more
-                    </button>
+                    </Button>
                 </div>
             )}
         </>
@@ -1071,17 +1103,17 @@ function SearchPageContent() {
             {/* Search bar strip */}
             <div className="border-b border-border shrink-0">
                 <div className="max-w-6xl mx-auto px-6 py-3">
-                    <div className="relative max-w-2xl">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <input
-                            type="text"
+                    <InputGroup className="max-w-2xl h-10">
+                        <InputGroupAddon>
+                            <Search />
+                        </InputGroupAddon>
+                        <InputGroupInput
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                             placeholder="Search GitArena..."
-                            className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
-                    </div>
+                    </InputGroup>
                 </div>
             </div>
 

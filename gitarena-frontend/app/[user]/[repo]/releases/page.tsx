@@ -26,8 +26,6 @@ import {
     Plus,
     Calendar,
     FileArchive,
-    ChevronDown,
-    ChevronUp,
     Monitor,
     Apple,
     Smartphone,
@@ -36,6 +34,11 @@ import {
     Copy,
     Check,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -227,14 +230,14 @@ function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string
             </div>
             <div className="flex items-center gap-1 shrink-0">
                 {asset.arch && asset.arch !== "unknown" && (
-                    <span className="px-1.5 py-0.5 text-xs font-mono border border-border rounded bg-secondary text-muted-foreground">
+                    <Badge variant="outline" className="px-1.5 font-mono text-muted-foreground bg-secondary">
                         {asset.arch}
-                    </span>
+                    </Badge>
                 )}
                 {asset.libc && asset.libc !== "unknown" && (
-                    <span className="px-1.5 py-0.5 text-xs font-mono border border-border rounded bg-secondary text-muted-foreground">
+                    <Badge variant="outline" className="px-1.5 font-mono text-muted-foreground bg-secondary">
                         {asset.libc}
-                    </span>
+                    </Badge>
                 )}
             </div>
             <span className="text-xs text-muted-foreground shrink-0 w-14 text-right">{formatBytes(asset.size)}</span>
@@ -250,8 +253,7 @@ function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string
 }
 
 function ReleaseCard({ release, user, repo, canPush }: { release: Release; user: string; repo: string; canPush: boolean }) {
-    const [assetsOpen, setAssetsOpen] = useState(release.latest);
-    const [bodyOpen, setBodyOpen] = useState(release.latest);
+    const [openSections, setOpenSections] = useState<string[]>(release.latest ? ["notes", "assets"] : []);
 
     const { data: authorData } = useSWR<{ id: string; username: string }>(`/api/users/by-id/${release.author}`, jsonFetcher);
 
@@ -291,14 +293,17 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                             <span className="font-semibold text-lg">{release.title}</span>
                         )}
                         {release.latest && (
-                            <span className="px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <Badge
+                                variant="outline"
+                                className="px-1.5 font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary border-primary/20"
+                            >
                                 Latest
-                            </span>
+                            </Badge>
                         )}
                         {release.preRelease && (
-                            <span className="px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            <Badge variant="warning" className="px-1.5 font-semibold uppercase tracking-wider rounded-full">
                                 Pre-release
-                            </span>
+                            </Badge>
                         )}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
@@ -350,43 +355,36 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                 )}
             </div>
 
-            {/* Release notes */}
-            {release.description && (
-                <div className="border-t border-border/60">
-                    <button
-                        onClick={() => setBodyOpen((v) => !v)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
-                    >
-                        <span>Release notes</span>
-                        {bodyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                    {bodyOpen && (
-                        <div className="px-5 pb-4">
+            <Accordion type="multiple" value={openSections} onValueChange={setOpenSections}>
+                {/* Release notes */}
+                {release.description && (
+                    <AccordionItem value="notes" className="border-b-0 border-t border-border/60">
+                        <AccordionTrigger className="px-5 py-3 items-center rounded-none text-muted-foreground hover:text-foreground hover:bg-accent/30">
+                            <span>Release notes</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-5 pb-4">
                             <MarkdownRenderer content={release.description} user={user} repo={repo} className="text-sm leading-relaxed" />
-                        </div>
-                    )}
-                </div>
-            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                )}
 
-            {/* Assets */}
-            {release.assets.length > 0 && (
-                <div className="border-t border-border/60">
-                    <button
-                        onClick={() => setAssetsOpen((v) => !v)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
-                    >
-                        <span className="flex items-center gap-1.5">
-                            <FileArchive className="h-4 w-4" />
-                            Assets
-                            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-xs">
-                                {release.assets.length}
+                {/* Assets */}
+                {release.assets.length > 0 && (
+                    <AccordionItem value="assets" className="border-b-0 border-t border-border/60">
+                        <AccordionTrigger className="px-5 py-3 items-center rounded-none text-muted-foreground hover:text-foreground hover:bg-accent/30">
+                            <span className="flex items-center gap-1.5">
+                                <FileArchive className="h-4 w-4" />
+                                Assets
+                                <Badge
+                                    variant="outline"
+                                    className="ml-1 px-1.5 rounded-full text-muted-foreground bg-secondary font-normal"
+                                >
+                                    {release.assets.length}
+                                </Badge>
                             </span>
-                        </span>
-                        {assetsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
+                        </AccordionTrigger>
 
-                    {assetsOpen && (
-                        <div className="px-5 pb-4 space-y-4">
+                        <AccordionContent className="px-5 pb-4 space-y-4">
                             {/* OS sections — flat list, user's OS first */}
                             {sortedOsOrder
                                 .filter((os) => osAssets.some((a) => a.os === os))
@@ -398,7 +396,7 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                                 <OsIcon os={os} className="h-4 w-4 text-muted-foreground" />
                                                 <span className="text-sm font-semibold text-foreground">{OS_LABEL[os]}</span>
                                                 {os === userOs && <span className="text-xs text-muted-foreground">(your platform)</span>}
-                                                <div className="flex-1 h-px bg-border/60" />
+                                                <Separator className="flex-1 bg-border/60" />
                                             </div>
                                             <div className="space-y-0.5 pl-1">
                                                 {byOs.map((asset) => (
@@ -418,7 +416,7 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                         <div className="flex items-center gap-2 mb-2">
                                             <KindIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-sm font-semibold text-foreground">{KIND_LABEL[kind]}</span>
-                                            <div className="flex-1 h-px bg-border/60" />
+                                            <Separator className="flex-1 bg-border/60" />
                                         </div>
                                         <div className="space-y-0.5 pl-1">
                                             {byKind.map((asset) => (
@@ -428,10 +426,10 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
-                </div>
-            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                )}
+            </Accordion>
         </div>
     );
 }
@@ -514,35 +512,24 @@ export default function ReleasesPage() {
                 </div>
 
                 {/* Filter tabs */}
-                <div className="flex items-center gap-0.5 border-b border-border">
-                    {(["all", "stable", "pre-release"] as const).map((f) => {
-                        const count = f === "all" ? totalCount : f === "stable" ? stableCount : preCount;
-                        return (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-4 py-2.5 text-sm capitalize border-b-2 transition-colors -mb-px ${
-                                    filter === f
-                                        ? "border-foreground text-foreground font-medium"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                {f === "pre-release" ? "Pre-release" : f.charAt(0).toUpperCase() + f.slice(1)}
-                                <span
-                                    className={`ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full border ${
-                                        filter === f
-                                            ? "border-border bg-secondary text-foreground"
-                                            : "border-transparent bg-secondary text-muted-foreground"
-                                    }`}
-                                >
-                                    {count}
-                                </span>
-                            </button>
-                        );
-                    })}
-
-                    <div className="flex-1" />
-                </div>
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+                    <TabsList variant="line" className="gap-0.5">
+                        {(["all", "stable", "pre-release"] as const).map((f) => {
+                            const count = f === "all" ? totalCount : f === "stable" ? stableCount : preCount;
+                            return (
+                                <TabsTrigger key={f} value={f} className="px-4 py-2.5 font-normal data-[state=active]:font-medium">
+                                    {f === "pre-release" ? "Pre-release" : f.charAt(0).toUpperCase() + f.slice(1)}
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] rounded-full border-transparent text-muted-foreground in-data-[state=active]:border-border in-data-[state=active]:text-foreground bg-secondary font-normal"
+                                    >
+                                        {count}
+                                    </Badge>
+                                </TabsTrigger>
+                            );
+                        })}
+                    </TabsList>
+                </Tabs>
 
                 {/* Release cards */}
                 <div className="space-y-4">
@@ -555,13 +542,17 @@ export default function ReleasesPage() {
                     ) : error ? (
                         <ErrorDisplay failed="releases" error={error} />
                     ) : !displayed || displayed.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <Package className="h-10 w-10 text-muted-foreground mb-4" />
-                            <p className="font-medium">No releases found</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {filter !== "all" ? "Try a different filter." : "Create the first release to get started."}
-                            </p>
-                        </div>
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Package />
+                                </EmptyMedia>
+                                <EmptyTitle>No releases found</EmptyTitle>
+                                <EmptyDescription>
+                                    {filter !== "all" ? "Try a different filter." : "Create the first release to get started."}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     ) : (
                         displayed.map((release) => (
                             <ReleaseCard key={release.id} release={release} user={user} repo={repo} canPush={canPush} />

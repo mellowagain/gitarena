@@ -24,7 +24,6 @@ import {
     Sparkles,
     CheckCircle2,
     AlertCircle,
-    Loader2,
     Building2,
     BookOpen,
 } from "lucide-react";
@@ -32,6 +31,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/hooks/use-auth";
 import { jsonFetcher, postJsonFetcher, validationFetcher } from "@/lib/fetchers";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -280,20 +285,19 @@ function NewRepositoryForm() {
 
                                     <span className="text-2xl text-muted-foreground">/</span>
 
-                                    <div className="relative flex-1">
-                                        <input
-                                            type="text"
+                                    <InputGroup className="flex-1 h-11">
+                                        <InputGroupInput
                                             value={repoName}
                                             onChange={(e) => setRepoName(e.target.value)}
                                             placeholder="repository-name"
-                                            className="w-full h-11 px-4 pr-10 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="md:text-base"
                                         />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                            {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                        <InputGroupAddon align="inline-end">
+                                            {namePending && <Spinner className="text-muted-foreground" />}
                                             {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
-                                        </div>
-                                    </div>
+                                        </InputGroupAddon>
+                                    </InputGroup>
                                 </div>
                                 {nameError && <p className="text-sm text-red-500">{nameError}</p>}
                                 {nameValid && selectedNamespace && (
@@ -305,29 +309,29 @@ function NewRepositoryForm() {
                                     </p>
                                 )}
                                 {nameValid && selectedNamespace && repoName === selectedNamespace && (
-                                    <div className="flex items-start gap-3 p-3 rounded-md bg-blue-500/10 border border-blue-500/30">
-                                        <BookOpen className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                                    <Alert variant="info">
+                                        <BookOpen />
+                                        <AlertDescription className="block text-info">
                                             <span className="font-medium">
                                                 {selectedNamespace}/{repoName}
                                             </span>{" "}
                                             is a special repository — its README will appear on your profile page.
-                                        </p>
-                                    </div>
+                                        </AlertDescription>
+                                    </Alert>
                                 )}
                             </div>
 
                             <div className="space-y-3">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                     Description <span className="text-muted-foreground font-normal">(optional)</span>
-                                    {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
+                                    {descPending && <Spinner className="size-3.5 text-muted-foreground" />}
                                 </label>
-                                <textarea
+                                <Textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="A short description of your repository"
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-card border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    className="px-4 py-3 md:text-base"
                                 />
                                 {descriptionError && <p className="text-sm text-red-500">{descriptionError}</p>}
                             </div>
@@ -336,7 +340,11 @@ function NewRepositoryForm() {
                                 <label className="text-sm font-medium">
                                     Visibility <span className="text-red-500">*</span>
                                 </label>
-                                <div className="grid grid-cols-3 gap-3">
+                                <RadioGroup
+                                    value={visibility}
+                                    onValueChange={(value) => setVisibility(value as Visibility)}
+                                    className="grid-cols-3"
+                                >
                                     {[
                                         { value: "public" as Visibility, label: "Public", icon: Globe, desc: "Anyone can see" },
                                         { value: "internal" as Visibility, label: "Internal", icon: Users, desc: "Logged-in users" },
@@ -344,16 +352,16 @@ function NewRepositoryForm() {
                                     ].map((option) => {
                                         const Icon = option.icon;
                                         return (
-                                            <button
+                                            <label
                                                 key={option.value}
-                                                type="button"
                                                 onClick={() => setVisibility(option.value)}
-                                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors ${
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer select-none transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 ${
                                                     visibility === option.value
                                                         ? "border-foreground bg-accent/30"
                                                         : "border-border hover:bg-accent/20"
                                                 }`}
                                             >
+                                                <RadioGroupItem value={option.value} className="sr-only" />
                                                 <Icon
                                                     className={`h-5 w-5 ${visibility === option.value ? "text-foreground" : "text-muted-foreground"}`}
                                                 />
@@ -363,10 +371,10 @@ function NewRepositoryForm() {
                                                     {option.label}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">{option.desc}</span>
-                                            </button>
+                                            </label>
                                         );
                                     })}
-                                </div>
+                                </RadioGroup>
                             </div>
 
                             <div className="space-y-3">
@@ -410,12 +418,7 @@ function NewRepositoryForm() {
                                             <GitBranch className="h-4 w-4 text-muted-foreground" />
                                             <span className="font-medium">Default branch</span>
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={defaultBranch}
-                                            onChange={(e) => setDefaultBranch(e.target.value)}
-                                            className="w-full h-9 px-3 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                        />
+                                        <Input value={defaultBranch} onChange={(e) => setDefaultBranch(e.target.value)} />
                                     </div>
 
                                     <div className="p-4 rounded-lg border border-border space-y-2">
@@ -425,12 +428,12 @@ function NewRepositoryForm() {
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center justify-between w-full h-9 px-3 bg-background border border-border rounded-md text-sm hover:bg-accent/50 transition-colors">
+                                                <Button variant="outline" className="px-3 justify-between w-full font-normal">
                                                     <span className={selectedLicense === "none" ? "text-muted-foreground" : ""}>
                                                         {licenses.find((l) => l.id === selectedLicense)?.name}
                                                     </span>
                                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {licenses.map((license) => (
@@ -449,12 +452,12 @@ function NewRepositoryForm() {
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center justify-between w-full h-9 px-3 bg-background border border-border rounded-md text-sm hover:bg-accent/50 transition-colors">
+                                                <Button variant="outline" className="px-3 justify-between w-full font-normal">
                                                     <span className={selectedGitignore === "none" ? "text-muted-foreground" : ""}>
                                                         {gitignoreTemplates.find((t) => t.id === selectedGitignore)?.name}
                                                     </span>
                                                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                                </button>
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="start" className="w-48">
                                                 {gitignoreTemplates.map((template) => (
@@ -472,7 +475,7 @@ function NewRepositoryForm() {
                                 <Button type="submit" className="w-full h-12 text-base" disabled={!canSubmit}>
                                     {isMutating ? (
                                         <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            <Spinner className="mr-2" />
                                             Creating…
                                         </>
                                     ) : (

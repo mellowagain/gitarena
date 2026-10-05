@@ -18,7 +18,6 @@ import {
     ExternalLink,
     BookOpen,
     FileCode2,
-    Construction,
     CheckCircle2,
     X,
     AlertTriangle,
@@ -33,11 +32,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { ActivityEvent, type EventResponse } from "@/components/activity-event";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { authFetcher } from "@/lib/fetchers";
 
 import { formatDistanceToNow, addHours, format } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import * as allLangs from "linguist-languages";
+import { LabelBadge } from "@/components/label-badge";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -122,15 +125,6 @@ function getPrimaryLanguage(languages: Record<string, number>): { name: string; 
     return { name: best, color: languageColor(best) };
 }
 
-function WipBadge() {
-    return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-            <Construction className="h-3 w-3" />
-            WIP
-        </span>
-    );
-}
-
 function IssueStatusIcon({ status }: { status: string }) {
     if (status === "open") {
         return <Circle className="h-3.5 w-3.5 text-green-500 shrink-0" />;
@@ -139,31 +133,6 @@ function IssueStatusIcon({ status }: { status: string }) {
         return <CircleDot className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
     }
     return <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function AssignedIssueRow({ issue }: { issue: AssignedIssue }) {
@@ -311,9 +280,9 @@ export default function DashboardPage() {
                         )}
 
                         {verifyExpired && !showVerifiedNotice && (
-                            <Alert className="mb-6 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400">
-                                <AlertCircle className="h-4 w-4" />
-                                <p className="col-start-2 text-sm text-red-700 dark:text-red-400">
+                            <Alert variant="destructive" className="mb-6">
+                                <AlertCircle />
+                                <AlertDescription className="block">
                                     Your email verification deadline has passed and the link in your email has expired. Please{" "}
                                     <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
                                         resend the verification email
@@ -326,21 +295,21 @@ export default function DashboardPage() {
                                             <span className="font-medium">{format(deletionDate, "PPP")}</span>.
                                         </>
                                     )}
-                                </p>
+                                </AlertDescription>
                             </Alert>
                         )}
 
                         {emailUnverified && !verifyExpired && verifyDeadline && !showVerifiedNotice && (
-                            <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">
-                                <AlertTriangle className="h-4 w-4" />
-                                <p className="col-start-2 text-sm text-yellow-700 dark:text-yellow-400">
+                            <Alert variant="warning" className="mb-6">
+                                <AlertTriangle />
+                                <AlertDescription className="block text-warning">
                                     Please verify your email within{" "}
                                     <span className="font-medium">{formatDistanceToNow(verifyDeadline)}</span> to not lose access to your
                                     account.{" "}
                                     <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
                                         Resend verification email
                                     </Link>
-                                </p>
+                                </AlertDescription>
                             </Alert>
                         )}
 
@@ -359,21 +328,22 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Repositories</h2>
                                 <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-0.5">
+                                    <ToggleGroup
+                                        type="single"
+                                        spacing={0.5}
+                                        value={repoFilter}
+                                        onValueChange={(v) => v && setRepoFilter(v as typeof repoFilter)}
+                                    >
                                         {(["all", "owned", "starred"] as const).map((f) => (
-                                            <button
+                                            <ToggleGroupItem
                                                 key={f}
-                                                onClick={() => setRepoFilter(f)}
-                                                className={`px-2.5 py-1 text-xs rounded-md transition-colors capitalize ${
-                                                    repoFilter === f
-                                                        ? "bg-secondary text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                                value={f}
+                                                className="h-auto min-w-0 px-2.5 py-1 text-xs font-normal capitalize text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-secondary data-[state=on]:text-foreground"
                                             >
                                                 {f}
-                                            </button>
+                                            </ToggleGroupItem>
                                         ))}
-                                    </div>
+                                    </ToggleGroup>
                                     <Link
                                         href="/new"
                                         className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-colors"
@@ -385,11 +355,11 @@ export default function DashboardPage() {
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {profileLoading ? (
                                     [1, 2, 3].map((i) => (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                                            <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                                             <div className="flex-1 space-y-1.5">
-                                                <div className="h-3.5 w-48 rounded bg-accent" />
-                                                <div className="h-3 w-64 rounded bg-accent" />
+                                                <Skeleton className="h-3.5 w-48 rounded" />
+                                                <Skeleton className="h-3 w-64 rounded" />
                                             </div>
                                         </div>
                                     ))
@@ -422,9 +392,12 @@ export default function DashboardPage() {
                                                             <span className="text-muted-foreground font-normal">{user.username}/</span>
                                                             {repo.name}
                                                             {repo.archivedAt && (
-                                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-secondary text-muted-foreground">
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="ml-2 px-1.5 text-[10px] text-muted-foreground font-normal"
+                                                                >
                                                                     archived
-                                                                </span>
+                                                                </Badge>
                                                             )}
                                                         </div>
                                                         {repo.description && (
@@ -467,13 +440,13 @@ export default function DashboardPage() {
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {assignedIssuesLoading ? (
                                     [1, 2, 3].map((i) => (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                                            <div className="h-3.5 w-3.5 rounded-full bg-accent shrink-0" />
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                            <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
                                             <div className="flex-1 space-y-1.5">
-                                                <div className="h-3.5 w-56 rounded bg-accent" />
-                                                <div className="h-3 w-32 rounded bg-accent" />
+                                                <Skeleton className="h-3.5 w-56 rounded" />
+                                                <Skeleton className="h-3 w-32 rounded" />
                                             </div>
-                                            <div className="h-3 w-16 rounded bg-accent shrink-0" />
+                                            <Skeleton className="h-3 w-16 rounded shrink-0" />
                                         </div>
                                     ))
                                 ) : !assignedIssues || assignedIssues.length === 0 ? (
@@ -630,38 +603,38 @@ export function DashboardSkeleton() {
                 ]}
                 hasNotifications
             />
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 animate-pulse">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Main content */}
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
                         {/* Welcome header skeleton */}
                         <div className="mb-6 sm:mb-8 space-y-2">
-                            <div className="h-7 w-72 rounded bg-accent" />
-                            <div className="h-4 w-56 rounded bg-accent" />
+                            <Skeleton className="h-7 w-72 rounded" />
+                            <Skeleton className="h-4 w-56 rounded" />
                         </div>
 
                         {/* Repos section skeleton */}
                         <div className="mb-8">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="h-3 w-24 rounded bg-accent" />
+                                <Skeleton className="h-3 w-24 rounded" />
                                 <div className="flex items-center gap-1">
                                     {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-6 w-12 rounded-md bg-accent" />
+                                        <Skeleton key={i} className="h-6 w-12 rounded-md" />
                                     ))}
                                 </div>
                             </div>
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {[1, 2, 3, 4, 5].map((i) => (
                                     <div key={i} className="flex items-center gap-3 px-4 py-3">
-                                        <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                        <Skeleton className="h-4 w-4 rounded shrink-0" />
                                         <div className="flex-1 space-y-1.5">
-                                            <div className="h-3.5 w-48 rounded bg-accent" />
-                                            <div className="h-3 w-64 rounded bg-accent" />
+                                            <Skeleton className="h-3.5 w-48 rounded" />
+                                            <Skeleton className="h-3 w-64 rounded" />
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <div className="h-3 w-12 rounded bg-accent" />
-                                            <div className="h-3 w-8 rounded bg-accent" />
-                                            <div className="h-3 w-10 rounded bg-accent" />
+                                            <Skeleton className="h-3 w-12 rounded" />
+                                            <Skeleton className="h-3 w-8 rounded" />
+                                            <Skeleton className="h-3 w-10 rounded" />
                                         </div>
                                     </div>
                                 ))}
@@ -670,20 +643,20 @@ export function DashboardSkeleton() {
 
                         {/* Issues skeleton */}
                         <div className="mb-8">
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
 
                         {/* MRs skeleton */}
                         <div className="mb-8">
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
 
                         {/* Activity skeleton */}
                         <div>
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
                     </div>
                 </main>
@@ -693,10 +666,10 @@ export function DashboardSkeleton() {
                     <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-1">
                         {[1, 2, 3].map((section) => (
                             <div key={section}>
-                                <div className="h-3 w-24 rounded bg-accent mb-3" />
+                                <Skeleton className="h-3 w-24 rounded mb-3" />
                                 <div className="space-y-1">
                                     {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-9 rounded-md bg-accent" />
+                                        <Skeleton key={i} className="h-9 rounded-md" />
                                     ))}
                                 </div>
                             </div>
