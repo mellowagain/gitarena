@@ -354,6 +354,7 @@ function NewRepositoryForm() {
                                         return (
                                             <label
                                                 key={option.value}
+                                                onClick={() => setVisibility(option.value)}
                                                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer select-none transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 ${
                                                     visibility === option.value
                                                         ? "border-foreground bg-accent/30"
