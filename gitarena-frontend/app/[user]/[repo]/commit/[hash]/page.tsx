@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SignatureInfo {
     name: string;
@@ -406,20 +407,18 @@ export default function CommitDetailPage() {
                             </div>
 
                             {!data.branch && (
-                                <div className="flex gap-3 px-4 py-3 mb-4 border border-yellow-500/30 bg-yellow-500/5 rounded-md text-sm">
-                                    <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-foreground font-medium">Dangling commit</p>
-                                        <p className="text-muted-foreground">
-                                            This commit is not reachable from any branch and may be garbage collected. If this is
-                                            unintended, you can rescue it with{" "}
-                                            <code className="px-1 py-0.5 bg-secondary rounded text-xs">
-                                                git branch rescue {data.commit.shortOid}
-                                            </code>
-                                            .
-                                        </p>
-                                    </div>
-                                </div>
+                                <Alert variant="warning" className="mb-4">
+                                    <AlertTriangle />
+                                    <AlertTitle>Dangling commit</AlertTitle>
+                                    <AlertDescription className="block">
+                                        This commit is not reachable from any branch and may be garbage collected. If this is unintended,
+                                        you can rescue it with{" "}
+                                        <code className="px-1 py-0.5 bg-secondary rounded text-xs">
+                                            git branch rescue {data.commit.shortOid}
+                                        </code>
+                                        .
+                                    </AlertDescription>
+                                </Alert>
                             )}
 
                             <div className="space-y-4">

@@ -54,6 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -737,16 +738,16 @@ function SessionsTab() {
                 </button>
             )}
 
-            <div className="flex items-start gap-3 p-4 border border-blue-500/30 bg-blue-500/5 rounded-md mt-4">
-                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
+            <Alert variant="info" className="mt-4">
+                <Info />
+                <AlertDescription className="block text-xs leading-relaxed">
                     Geolocation data provided by{" "}
                     <a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
                         MaxMind
                     </a>
                     .
-                </p>
-            </div>
+                </AlertDescription>
+            </Alert>
         </div>
     );
 }

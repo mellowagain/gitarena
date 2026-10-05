@@ -1,6 +1,7 @@
 "use client";
 
 import { Archive } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ArchivedBannerProps {
     archivedAt: string;
@@ -14,9 +15,9 @@ export function ArchivedBanner({ archivedAt }: ArchivedBannerProps) {
     });
 
     return (
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-sm">
-            <Archive className="h-4 w-4 shrink-0" />
-            <span>This repository was archived on {date}. It is now read-only.</span>
-        </div>
+        <Alert variant="warning" className="rounded-none border-x-0 border-t-0 py-2">
+            <Archive />
+            <AlertDescription className="text-warning">This repository was archived on {date}. It is now read-only.</AlertDescription>
+        </Alert>
     );
 }

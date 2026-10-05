@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -239,9 +240,9 @@ function LoginContent() {
                         {authMethod === "password" ? (
                             <form className="space-y-4" onSubmit={handleSubmit}>
                                 {loginError && (
-                                    <div className="px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-                                        {loginError.message}
-                                    </div>
+                                    <Alert variant="destructive">
+                                        <AlertDescription>{loginError.message}</AlertDescription>
+                                    </Alert>
                                 )}
 
                                 <div className="space-y-2">

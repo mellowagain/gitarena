@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const licenses = [
     { id: "none", name: "None" },
@@ -308,15 +309,15 @@ function NewRepositoryForm() {
                                     </p>
                                 )}
                                 {nameValid && selectedNamespace && repoName === selectedNamespace && (
-                                    <div className="flex items-start gap-3 p-3 rounded-md bg-blue-500/10 border border-blue-500/30">
-                                        <BookOpen className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                                    <Alert variant="info">
+                                        <BookOpen />
+                                        <AlertDescription className="block text-info">
                                             <span className="font-medium">
                                                 {selectedNamespace}/{repoName}
                                             </span>{" "}
                                             is a special repository — its README will appear on your profile page.
-                                        </p>
-                                    </div>
+                                        </AlertDescription>
+                                    </Alert>
                                 )}
                             </div>
 

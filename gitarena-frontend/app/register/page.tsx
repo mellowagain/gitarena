@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import useSWR from "swr";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SSOProviders {
     github: boolean;
@@ -217,9 +218,9 @@ export default function RegisterPage() {
 
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             {registerError && (
-                                <div className="px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-                                    {registerError.message}
-                                </div>
+                                <Alert variant="destructive">
+                                    <AlertDescription>{registerError.message}</AlertDescription>
+                                </Alert>
                             )}
 
                             <div className="space-y-2">

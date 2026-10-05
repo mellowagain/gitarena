@@ -33,6 +33,7 @@ import {
     tokenTypeLabels,
     tokenTypesFor,
 } from "@/lib/tokens";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /** The secret is returned only once, right after creation, so it stays on screen until dismissed. */
 function SecretPanel({ result, onDismiss }: { result: CreateTokenResponse; onDismiss: () => void }) {
@@ -279,12 +280,12 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                     ))}
             </div>
 
-            <div className="flex items-start gap-3 p-4 border border-amber-500/30 bg-amber-500/5 rounded-md">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription className="text-xs leading-relaxed">
                     Treat tokens like passwords. Do not share them or include them in version-controlled code.
-                </p>
-            </div>
+                </AlertDescription>
+            </Alert>
 
             <AlertDialog open={revoking !== null} onOpenChange={(open) => !open && setRevoking(null)}>
                 <AlertDialogContent>

@@ -312,9 +312,9 @@ export default function DashboardPage() {
                         )}
 
                         {verifyExpired && !showVerifiedNotice && (
-                            <Alert className="mb-6 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400">
-                                <AlertCircle className="h-4 w-4" />
-                                <p className="col-start-2 text-sm text-red-700 dark:text-red-400">
+                            <Alert variant="destructive" className="mb-6">
+                                <AlertCircle />
+                                <AlertDescription className="block">
                                     Your email verification deadline has passed and the link in your email has expired. Please{" "}
                                     <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
                                         resend the verification email
@@ -327,21 +327,21 @@ export default function DashboardPage() {
                                             <span className="font-medium">{format(deletionDate, "PPP")}</span>.
                                         </>
                                     )}
-                                </p>
+                                </AlertDescription>
                             </Alert>
                         )}
 
                         {emailUnverified && !verifyExpired && verifyDeadline && !showVerifiedNotice && (
-                            <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">
-                                <AlertTriangle className="h-4 w-4" />
-                                <p className="col-start-2 text-sm text-yellow-700 dark:text-yellow-400">
+                            <Alert variant="warning" className="mb-6">
+                                <AlertTriangle />
+                                <AlertDescription className="block text-warning">
                                     Please verify your email within{" "}
                                     <span className="font-medium">{formatDistanceToNow(verifyDeadline)}</span> to not lose access to your
                                     account.{" "}
                                     <Link href="/settings?tab=emails" className="underline underline-offset-2 hover:opacity-80">
                                         Resend verification email
                                     </Link>
-                                </p>
+                                </AlertDescription>
                             </Alert>
                         )}
 

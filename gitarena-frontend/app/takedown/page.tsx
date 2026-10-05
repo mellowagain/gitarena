@@ -7,6 +7,7 @@ import { GitBranch, ChevronRight, Scale, CheckCircle2, TriangleAlert, FileSearch
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Step = { title: string; body: string };
 
@@ -179,13 +180,13 @@ export default function TakedownPage() {
                         </div>
 
                         {/* Warning */}
-                        <div className="mt-4 flex items-start gap-3 px-4 py-3 border border-amber-500/30 rounded-md bg-amber-500/5">
-                            <TriangleAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-muted-foreground leading-relaxed">
+                        <Alert variant="warning" className="mt-4">
+                            <TriangleAlert />
+                            <AlertDescription className="leading-relaxed">
                                 Submitting a false or bad-faith notice may expose you to liability for damages under Swiss and EU law. If
                                 you are unsure whether the content infringes your copyright, consult a lawyer before proceeding.
-                            </p>
-                        </div>
+                            </AlertDescription>
+                        </Alert>
                     </div>
                 </section>
 

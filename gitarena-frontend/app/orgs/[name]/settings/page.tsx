@@ -51,6 +51,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -467,10 +468,10 @@ function TeamsTab() {
                 <SectionTitle>Teams</SectionTitle>
                 <WipTag />
             </div>
-            <div className="flex items-center gap-2 p-4 border border-amber-500/30 rounded-md bg-amber-500/5">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-muted-foreground">Teams are not yet available. This feature is coming soon.</p>
-            </div>
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription>Teams are not yet available. This feature is coming soon.</AlertDescription>
+            </Alert>
         </div>
     );
 }
@@ -546,10 +547,10 @@ function WebhooksTab() {
                 <SectionTitle>Webhooks</SectionTitle>
                 <WipTag />
             </div>
-            <div className="flex items-center gap-2 p-4 border border-amber-500/30 rounded-md bg-amber-500/5">
-                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-muted-foreground">Organization webhooks are not yet available.</p>
-            </div>
+            <Alert variant="warning">
+                <AlertCircle />
+                <AlertDescription>Organization webhooks are not yet available.</AlertDescription>
+            </Alert>
         </div>
     );
 }
@@ -781,12 +782,10 @@ export default function OrgSettingsPage() {
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-2xl mx-auto px-8 py-8">
                         {!isAdmin && activeTab !== "general" && (
-                            <div className="flex items-center gap-2 p-4 mb-6 border border-amber-500/30 rounded-md bg-amber-500/5">
-                                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                                <p className="text-sm text-muted-foreground">
-                                    You need admin or owner permissions to modify these settings.
-                                </p>
-                            </div>
+                            <Alert variant="warning" className="mb-6">
+                                <AlertCircle />
+                                <AlertDescription>You need admin or owner permissions to modify these settings.</AlertDescription>
+                            </Alert>
                         )}
                         {tabContent[activeTab]}
                     </div>
