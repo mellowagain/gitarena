@@ -14,6 +14,7 @@ import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Package, Plus
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
+import { Progress } from "@/components/ui/progress";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -627,12 +628,7 @@ export default function NewReleasePage() {
                                         </span>
                                         <span className="font-medium shrink-0 ml-2">{publishStatus.progress}%</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-primary rounded-full transition-all duration-150"
-                                            style={{ width: `${publishStatus.progress}%` }}
-                                        />
-                                    </div>
+                                    <Progress value={publishStatus.progress} className="h-1.5 bg-secondary" />
                                 </>
                             )}
                             {publishStatus.status === "confirming" && (

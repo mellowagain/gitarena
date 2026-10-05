@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FieldSeparator } from "@/components/ui/field";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -325,14 +326,9 @@ function LoginContent() {
 
                         {showSsoSection && (
                             <>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <Separator />
-                                    </div>
-                                    <div className="relative flex justify-center text-sm">
-                                        <span className="bg-background px-4 text-muted-foreground">or continue with</span>
-                                    </div>
-                                </div>
+                                <FieldSeparator className="mt-0 mb-6 *:data-[slot=field-separator-content]:px-4">
+                                    or continue with
+                                </FieldSeparator>
 
                                 {isLoading && (
                                     <div className="flex items-center justify-center gap-3">

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Progress } from "@/components/ui/progress";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -709,12 +710,7 @@ export default function EditReleasePage() {
                                                 <span className="text-muted-foreground">Uploading…</span>
                                                 <span className="text-foreground font-medium">{uploadState.progress}%</span>
                                             </div>
-                                            <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary rounded-full transition-all duration-150"
-                                                    style={{ width: `${uploadState.progress}%` }}
-                                                />
-                                            </div>
+                                            <Progress value={uploadState.progress} className="h-1.5 bg-secondary" />
                                         </div>
                                     )}
 

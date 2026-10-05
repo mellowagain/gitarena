@@ -57,6 +57,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 
 interface InstanceStats {
     users: number;
@@ -408,12 +409,10 @@ export default function AdminDashboardPage() {
                                             </>
                                         )}
                                     </div>
-                                    <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-blue-500 rounded-full"
-                                            style={{ width: stats ? `${(stats.usedSpace / stats.totalSpace) * 100}%` : "0%" }}
-                                        />
-                                    </div>
+                                    <Progress
+                                        value={stats ? (stats.usedSpace / stats.totalSpace) * 100 : 0}
+                                        className="mt-2 h-1.5 bg-secondary *:data-[slot=progress-indicator]:bg-info"
+                                    />
                                 </div>
                             </div>
 
