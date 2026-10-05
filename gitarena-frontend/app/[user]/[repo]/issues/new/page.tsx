@@ -16,7 +16,7 @@ import {
     DropdownMenuRadioItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, X, Eye, Loader2, Milestone } from "lucide-react";
+import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, X, Eye, Milestone } from "lucide-react";
 import { jsonFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -24,6 +24,7 @@ import { PriorityIndicator, priorityConfig, type Priority } from "@/components/p
 import { useAuth } from "@/hooks/use-auth";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 interface LabelsResponse {
     labels: { name: string; color: string }[];
@@ -224,7 +225,7 @@ export default function NewIssuePage() {
                                 <Button variant="outline">Cancel</Button>
                             </Link>
                             <Button onClick={handleSubmit} disabled={!title.trim() || isMutating}>
-                                {isMutating && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                                {isMutating && <Spinner className="size-3.5 mr-1.5" />}
                                 Submit Issue
                             </Button>
                         </div>

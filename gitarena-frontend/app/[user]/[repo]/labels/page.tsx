@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 
 type Label = {
     id: string;
@@ -588,7 +589,7 @@ function LabelForm({
             {/* Actions */}
             <div className="flex items-center gap-2 pt-1">
                 <Button size="sm" onClick={onSave} disabled={!canSave || isMutating} className="gap-2">
-                    {isMutating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {isMutating ? <Spinner /> : <Check className="h-4 w-4" />}
                     {state.id === null ? "Create label" : "Save changes"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onCancel} disabled={isMutating} className="gap-2 text-muted-foreground">

@@ -10,9 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Loader2, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Code, Eye, FileArchive, GitMerge, Package, Plus, Settings, Tag, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -614,7 +615,7 @@ export default function NewReleasePage() {
                         <div className="p-4 border border-border rounded-md bg-card space-y-2">
                             {publishStatus.status === "creating" && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Spinner />
                                     Creating release…
                                 </div>
                             )}
@@ -636,7 +637,7 @@ export default function NewReleasePage() {
                             )}
                             {publishStatus.status === "confirming" && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Spinner />
                                     Verifying {publishStatus.index + 1}/{publishStatus.total}: {publishStatus.name}…
                                 </div>
                             )}
@@ -651,7 +652,7 @@ export default function NewReleasePage() {
                             </Button>
                         </Link>
                         <Button onClick={handlePublish} disabled={!tag.trim() || !title.trim() || isPublishing}>
-                            {isPublishing && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            {isPublishing && <Spinner className="size-3.5 mr-1.5" />}
                             {isPublishing ? "Publishing…" : "Publish release"}
                         </Button>
                     </div>

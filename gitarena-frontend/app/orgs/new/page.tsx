@@ -6,10 +6,11 @@ import useSWRMutation from "swr/mutation";
 import { toast } from "sonner";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { postJsonFetcher } from "@/lib/fetchers";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 
 interface CreateOrgRequest {
     name: string;
@@ -113,7 +114,7 @@ export default function NewOrganizationPage() {
                         <Button type="submit" className="w-full h-11" disabled={!canSubmit}>
                             {isMutating ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    <Spinner className="mr-2" />
                                     Creating…
                                 </>
                             ) : (

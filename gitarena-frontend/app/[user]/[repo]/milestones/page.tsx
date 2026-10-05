@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { jsonFetcher, postJsonFetcher, patchJsonFetcher, deleteFetcher } from "@/lib/fetchers";
-import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, RefreshCw, Calendar, CheckCircle2, Circle } from "lucide-react";
+import { AlertCircle, Code, Milestone, Plus, Pencil, Trash2, Check, X, Calendar, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Spinner } from "@/components/ui/spinner";
 
 interface MilestoneEntry {
     id: string;
@@ -117,7 +118,7 @@ function MilestoneForm({
             </div>
             <div className="flex items-center gap-2">
                 <Button size="sm" onClick={onSave} disabled={!canSave || isMutating} className="gap-2">
-                    {isMutating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {isMutating ? <Spinner /> : <Check className="h-4 w-4" />}
                     {saveLabel}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onCancel} disabled={isMutating} className="gap-2 text-muted-foreground">

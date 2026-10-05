@@ -45,13 +45,13 @@ import {
     Eye,
     MessageSquare,
     Milestone,
-    Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { Spinner } from "@/components/ui/spinner";
 
 interface IssueDetail {
     id: string;
@@ -165,7 +165,7 @@ function LabelBadge({
             onClick={onRemove}
             disabled={removing}
         >
-            {removing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-2.5 w-2.5" />}
+            {removing ? <Spinner className="size-2.5" /> : <X className="h-2.5 w-2.5" />}
         </button>
     );
 
@@ -432,7 +432,7 @@ function CommentComposer({
                             </Button>
                         )}
                         <Button size="sm" disabled={!text.trim() || isSubmitting} onClick={handleSubmit}>
-                            {isSubmitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            {isSubmitting && <Spinner className="size-3.5 mr-1.5" />}
                             {label}
                         </Button>
                     </div>
@@ -1029,7 +1029,7 @@ export default function IssuePage() {
                                                     {statusInfo.label}
                                                 </div>
                                                 {isTogglingStatus ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
@@ -1090,7 +1090,7 @@ export default function IssuePage() {
                                                     title="Remove assignee"
                                                 >
                                                     {removingAssignee === assignee ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                                        <Spinner className="size-3.5 text-muted-foreground" />
                                                     ) : (
                                                         <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                                                     )}
@@ -1105,11 +1105,7 @@ export default function IssuePage() {
                                                     disabled={isAddingAssignee}
                                                     className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-solid transition-colors"
                                                 >
-                                                    {isAddingAssignee ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                    ) : (
-                                                        <User className="h-3.5 w-3.5" />
-                                                    )}
+                                                    {isAddingAssignee ? <Spinner className="size-3.5" /> : <User className="h-3.5 w-3.5" />}
                                                     Add assignee
                                                 </button>
                                             </DropdownMenuTrigger>
@@ -1172,11 +1168,7 @@ export default function IssuePage() {
                                                     disabled={isAddingLabel}
                                                     className="flex items-center gap-1 px-2 py-0.5 text-xs border border-dashed border-border rounded text-muted-foreground hover:text-foreground hover:border-solid transition-colors"
                                                 >
-                                                    {isAddingLabel ? (
-                                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                                    ) : (
-                                                        <Tag className="h-3 w-3" />
-                                                    )}
+                                                    {isAddingLabel ? <Spinner className="size-3" /> : <Tag className="h-3 w-3" />}
                                                     Add
                                                 </button>
                                             </DropdownMenuTrigger>
@@ -1213,7 +1205,7 @@ export default function IssuePage() {
                                                     <span>{priorityConfig[issue.priority as Priority].label}</span>
                                                 </div>
                                                 {isUpdatingPriority ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}
@@ -1261,7 +1253,7 @@ export default function IssuePage() {
                                                     )}
                                                 </div>
                                                 {isUpdatingMilestone ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <Spinner className="text-muted-foreground" />
                                                 ) : (
                                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                                 )}

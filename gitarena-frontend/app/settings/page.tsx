@@ -16,7 +16,6 @@ import {
     EyeOff,
     Smartphone,
     LogOut,
-    Loader2,
     Info,
     Palette,
     Activity,
@@ -55,6 +54,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -449,7 +449,7 @@ function EmailsTab() {
                         disabled={adding || !newEmail}
                         className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0 disabled:opacity-50"
                     >
-                        {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        {adding ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add
                     </button>
                 </div>
@@ -502,7 +502,7 @@ function PasskeyRow({ item: pk, index }: { item: PasskeyItem; index: number }) {
                 disabled={deleting}
                 className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
             >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleting ? <Spinner /> : <Trash2 className="h-4 w-4" />}
             </button>
         </div>
     );
@@ -606,7 +606,7 @@ function AuthenticationTab() {
                     disabled={registering}
                     className="inline-flex items-center gap-2 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors shrink-0 disabled:opacity-50"
                 >
-                    {registering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                    {registering ? <Spinner className="size-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                     Add passkey
                 </button>
             </div>
@@ -733,7 +733,7 @@ function SessionsTab() {
                     disabled={revokingAll}
                     className="inline-flex items-center gap-2 px-4 h-9 border border-destructive/50 text-destructive text-sm font-medium rounded-md hover:bg-destructive/10 transition-colors disabled:opacity-50"
                 >
-                    {revokingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                    {revokingAll ? <Spinner /> : <LogOut className="h-4 w-4" />}
                     Revoke all other sessions
                 </button>
             )}
@@ -906,7 +906,7 @@ function KeysTab() {
                     disabled={addingKey || !newSSHTitle || !newSSHKey}
                     className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {addingKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {addingKey ? <Spinner /> : <Plus className="h-4 w-4" />}
                     Add SSH key
                 </button>
             </div>

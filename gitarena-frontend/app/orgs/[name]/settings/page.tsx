@@ -18,7 +18,6 @@ import {
     AlertCircle,
     ShieldCheck,
     Settings,
-    Loader2,
     FileText,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -426,7 +425,7 @@ function MembersTab({ orgName }: { orgName: string }) {
                         onClick={handleInvite}
                         disabled={isInviting || !inviteInput.trim()}
                     >
-                        {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        {isInviting ? <Spinner /> : <Plus className="h-4 w-4" />}
                         Add member
                     </button>
                 </div>
@@ -717,7 +716,7 @@ export default function OrgSettingsPage() {
     if (isLoading) {
         return (
             <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Spinner className="size-6 text-muted-foreground" />
             </div>
         );
     }

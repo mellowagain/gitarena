@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { addDays, isValid } from "date-fns";
-import { BookMarked, Building2, Globe, Loader2, Lock, Search } from "lucide-react";
+import { BookMarked, Building2, Globe, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/date-picker";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import {
     tokenTypeLabels,
     tokenTypesFor,
 } from "@/lib/tokens";
+import { Spinner } from "@/components/ui/spinner";
 
 interface OrgEntry {
     id: string;
@@ -436,7 +437,7 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
                     disabled={!canSubmit || isMutating}
                     className="inline-flex items-center gap-2 px-4 h-9 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isMutating && <Spinner />}
                     {token ? "Save changes" : "Generate token"}
                 </button>
                 <button

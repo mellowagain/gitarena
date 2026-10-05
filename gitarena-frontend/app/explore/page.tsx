@@ -5,10 +5,11 @@ import useSWRInfinite from "swr/infinite";
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
-import { Star, Lock, Globe, Clock, ChevronDown, Compass, GitMerge, Sparkles, Search } from "lucide-react";
+import { Star, Lock, Globe, ChevronDown, Compass, GitMerge, Sparkles, Search } from "lucide-react";
 import { jsonFetcher } from "@/lib/fetchers";
 import { Badge } from "@/components/ui/badge";
 import * as allLangs from "linguist-languages";
+import { Spinner } from "@/components/ui/spinner";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -221,7 +222,7 @@ export default function ExplorePage() {
                                 <Button variant="secondary" className="gap-2" onClick={() => setSize(size + 1)} disabled={isValidating}>
                                     {isValidating ? (
                                         <>
-                                            <Clock className="h-4 w-4 animate-spin" />
+                                            <Spinner />
                                             Loading...
                                         </>
                                     ) : (

@@ -20,7 +20,6 @@ import {
     ArrowRight,
     CheckCircle2,
     AlertCircle,
-    Loader2,
     ChevronDown,
     Building2,
 } from "lucide-react";
@@ -34,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Spinner } from "@/components/ui/spinner";
 
 // SSO Provider icons
 function GitLabIcon({ className }: { className?: string }) {
@@ -405,7 +405,7 @@ export default function ImportRepositoryPage() {
                                             className="md:text-base"
                                         />
                                         <InputGroupAddon align="inline-end">
-                                            {namePending && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />}
+                                            {namePending && <Spinner className="text-muted-foreground" />}
                                             {nameValid && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {nameError && <AlertCircle className="h-4 w-4 text-red-500" />}
                                         </InputGroupAddon>
@@ -425,7 +425,7 @@ export default function ImportRepositoryPage() {
                             <div className="space-y-3">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                     Description <span className="text-muted-foreground font-normal">(optional)</span>
-                                    {descPending && <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />}
+                                    {descPending && <Spinner className="size-3.5 text-muted-foreground" />}
                                 </label>
                                 <Textarea
                                     value={description}
@@ -502,7 +502,7 @@ export default function ImportRepositoryPage() {
                                 <Button type="submit" className="w-full h-12 text-base gap-2" disabled={!canSubmit}>
                                     {isMutating ? (
                                         <>
-                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <Spinner className="size-5" />
                                             Importing…
                                         </>
                                     ) : (

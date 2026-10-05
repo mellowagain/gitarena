@@ -22,7 +22,6 @@ import {
     Eye,
     FileArchive,
     GitMerge,
-    Loader2,
     Package,
     Settings,
     Tag,
@@ -32,6 +31,7 @@ import {
     CheckCircle2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -557,7 +557,7 @@ export default function EditReleasePage() {
                                     <Button variant="outline">Cancel</Button>
                                 </Link>
                                 <Button onClick={handleSave} disabled={!title.trim() || isSaving}>
-                                    {isSaving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                                    {isSaving && <Spinner className="size-3.5 mr-1.5" />}
                                     Save changes
                                 </Button>
                             </div>
@@ -591,11 +591,7 @@ export default function EditReleasePage() {
                                                 disabled={deletingAssetId === asset.id}
                                                 className="shrink-0 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                                             >
-                                                {deletingAssetId === asset.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4" />
-                                                )}
+                                                {deletingAssetId === asset.id ? <Spinner /> : <Trash2 className="h-4 w-4" />}
                                             </button>
                                         </div>
                                     ))}
@@ -724,7 +720,7 @@ export default function EditReleasePage() {
 
                                     {uploadState.status === "confirming" && (
                                         <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <Spinner />
                                             Verifying and computing checksum…
                                         </div>
                                     )}
