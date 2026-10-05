@@ -318,7 +318,7 @@ export function RepoPageContent({
     }
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen lg:h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
             {meta.archivedAt && <ArchivedBanner archivedAt={meta.archivedAt} />}
 
@@ -564,7 +564,7 @@ export function RepoPageContent({
 
 export function RepoPageSkeleton({ user, repo }: { user: string; repo: string }) {
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen lg:h-screen bg-background flex flex-col">
             <RepoTopBar user={user} repo={repo} />
 
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">

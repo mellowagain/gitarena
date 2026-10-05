@@ -180,7 +180,7 @@ function ScopeTargetPicker({ owner, scopeOrgs, scopeRepos, onScopeOrgsChange, on
                 />
             </div>
 
-            <div className="max-h-56 overflow-y-auto scrollbar-dark p-1.5">
+            <div className="max-h-56 overflow-y-auto p-1.5">
                 {isLoading && (
                     <div className="space-y-1">
                         {[0, 1, 2, 3].map((i) => (

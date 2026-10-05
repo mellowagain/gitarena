@@ -150,7 +150,7 @@ function DroppableColumn({
             </div>
             <div
                 ref={setNodeRef}
-                className={`scrollbar-dark space-y-2 rounded-lg p-2 transition-colors md:min-h-0 md:flex-1 md:overflow-y-auto ${
+                className={`space-y-2 rounded-lg p-2 transition-colors md:min-h-0 md:flex-1 md:overflow-y-auto ${
                     isOver && canDrag ? "bg-accent/50 ring-2 ring-ring/40" : "bg-secondary/30"
                 }`}
             >
