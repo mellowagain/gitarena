@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { WipBadge } from "@/components/wip-badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -145,11 +146,7 @@ function SectionHeader({ title, description, wip }: { title: string; description
         <div className="mb-6">
             <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{title}</h2>
-                {wip && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                        WIP
-                    </span>
-                )}
+                {wip && <WipBadge />}
             </div>
             {description && <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>}
         </div>
@@ -201,10 +198,10 @@ function Divider() {
 }
 
 const roleColors: Record<Role, string> = {
-    admin: "text-red-500 border-red-500/30 bg-red-500/5",
-    manager: "text-orange-500 border-orange-500/30 bg-orange-500/5",
-    coder: "text-blue-500 border-blue-500/30 bg-blue-500/5",
-    supporter: "text-green-500 border-green-500/30 bg-green-500/5",
+    admin: "text-destructive border-destructive/30 bg-destructive/5",
+    manager: "text-warning border-warning/30 bg-warning/5",
+    coder: "text-info border-info/30 bg-info/5",
+    supporter: "text-success border-success/30 bg-success/5",
     viewer: "text-muted-foreground border-border bg-secondary",
 };
 
@@ -852,9 +849,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Settings className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Rename this repository</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Renaming will break existing clone URLs. A redirect will be set up automatically from the old name.
@@ -870,9 +865,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-medium">Transfer ownership</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             Transfer this repository to another user or organization. You will lose admin access unless the new owner
@@ -908,9 +901,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <p className="text-sm font-medium text-destructive">Delete this repository</p>
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                WIP
-                            </span>
+                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                             Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
@@ -1087,11 +1078,7 @@ export default function RepoSettingsPage() {
                                 >
                                     <item.icon className="h-4 w-4 shrink-0" />
                                     <span className="flex-1">{item.label}</span>
-                                    {item.wip && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none">
-                                            WIP
-                                        </span>
-                                    )}
+                                    {item.wip && <WipBadge />}
                                 </button>
                             ))}
                         </nav>

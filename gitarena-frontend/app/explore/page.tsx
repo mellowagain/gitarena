@@ -95,9 +95,9 @@ function RepoRow({ repo, rank }: { repo: ExploreRepo; rank: number }) {
                         </Badge>
                     )}
                     {repo.archivedAt && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                        <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                             archived
-                        </span>
+                        </Badge>
                     )}
                 </div>
                 {repo.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>}

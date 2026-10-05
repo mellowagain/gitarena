@@ -44,6 +44,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
 
 interface IssueLabel {
     name: string;
@@ -99,31 +100,6 @@ function getStatusDisplay(status: string): { Icon: typeof Circle; color: string 
         default:
             return { Icon: Circle, color: "text-green-500" };
     }
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function IssueRow({

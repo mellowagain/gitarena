@@ -51,13 +51,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useInstanceConfig } from "@/components/instance-config-provider";
 import { jsonFetcher, authFetcher } from "@/lib/fetchers";
-import { uuidToDate } from "@/lib/utils";
+import { cn, uuidToDate } from "@/lib/utils";
 import type { EventResponse } from "@/components/activity-event";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
 
 interface InstanceStats {
     users: number;
@@ -136,30 +138,22 @@ const adminSections = [
 
 function StatusBadge({ status }: { status: string }) {
     const config = {
-        healthy: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle2 },
-        degraded: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: AlertTriangle },
-        warning: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: AlertTriangle },
-        error: { bg: "bg-red-500/10", text: "text-red-500", icon: XCircle },
-        unhealthy: { bg: "bg-red-500/10", text: "text-red-500", icon: XCircle },
-        disabled: { bg: "bg-muted", text: "text-muted-foreground", icon: Clock },
-        active: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle2 },
-        pending: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: Clock },
-        banned: { bg: "bg-red-500/10", text: "text-red-500", icon: Ban },
-    };
-    const { bg, text, icon: Icon } = config[status as keyof typeof config] || config.healthy;
+        healthy: { variant: "success", icon: CheckCircle2 },
+        degraded: { variant: "warning", icon: AlertTriangle },
+        warning: { variant: "warning", icon: AlertTriangle },
+        error: { variant: "destructive", icon: XCircle },
+        unhealthy: { variant: "destructive", icon: XCircle },
+        disabled: { variant: "secondary", icon: Clock },
+        active: { variant: "success", icon: CheckCircle2 },
+        pending: { variant: "warning", icon: Clock },
+        banned: { variant: "destructive", icon: Ban },
+    } as const;
+    const { variant, icon: Icon } = config[status as keyof typeof config] || config.healthy;
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${bg} ${text}`}>
-            <Icon className="h-3 w-3" />
+        <Badge variant={variant} className={cn("rounded-full font-normal", variant === "secondary" && "text-muted-foreground")}>
+            <Icon />
             {status}
-        </span>
-    );
-}
-
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
+        </Badge>
     );
 }
 
@@ -611,7 +605,7 @@ export default function AdminDashboardPage() {
 
                             <div className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border">
                                 <span className="text-sm text-muted-foreground">Quick actions:</span>
-                                <WipTag />
+                                <WipBadge />
                                 <Button variant="secondary" size="sm" className="gap-2">
                                     <Download className="h-4 w-4" />
                                     Create Backup

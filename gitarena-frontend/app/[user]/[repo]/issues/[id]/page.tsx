@@ -52,6 +52,7 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { PriorityIndicator, priorityConfig, type Priority } from "@/components/priority-indicator";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Spinner } from "@/components/ui/spinner";
+import { LabelBadge } from "@/components/label-badge";
 
 interface IssueDetail {
     id: string;
@@ -137,69 +138,6 @@ interface MilestoneListItem {
 
 interface MilestonesResponse {
     milestones: MilestoneListItem[];
-}
-
-function LabelBadge({
-    name,
-    color,
-    removable,
-    removing,
-    onRemove,
-}: {
-    name: string;
-    color: string;
-    removable?: boolean;
-    removing?: boolean;
-    onRemove?: () => void;
-}) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    const removeButton = (
-        <button
-            className="ml-1.5 mr-1.5 opacity-0 group-hover/label:opacity-100 transition-opacity rounded"
-            title="Remove label"
-            style={{ color }}
-            onClick={onRemove}
-            disabled={removing}
-        >
-            {removing ? <Spinner className="size-2.5" /> : <X className="h-2.5 w-2.5" />}
-        </button>
-    );
-
-    if (isScoped) {
-        return (
-            <span className="group/label inline-flex items-center text-xs rounded overflow-hidden">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-                {removable && (
-                    <span
-                        className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150 self-stretch"
-                        style={{ backgroundColor: `${color}20` }}
-                    >
-                        <span className="overflow-hidden flex items-center">{removeButton}</span>
-                    </span>
-                )}
-            </span>
-        );
-    }
-
-    return (
-        <span className="group/label inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-            {removable && (
-                <span className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150">
-                    <span className="overflow-hidden flex items-center">{removeButton}</span>
-                </span>
-            )}
-        </span>
-    );
 }
 
 const EMOJI_CATEGORIES = [
@@ -1156,7 +1094,6 @@ export default function IssuePage() {
                                                 key={name}
                                                 name={name}
                                                 color={color}
-                                                removable={canManage}
                                                 removing={removingLabel === name}
                                                 onRemove={canManage ? () => handleRemoveLabel(name) : undefined}
                                             />

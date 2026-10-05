@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 export type BreadcrumbItem = { label: string; href: string } | { label: string; href?: undefined };
 
@@ -278,10 +279,13 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{user.username}</span>
                                         {user.admin && (
-                                            <span className="inline-flex items-center gap-1 rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                            <Badge
+                                                variant="outline"
+                                                className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                            >
                                                 <ShieldCheck className="h-2.5 w-2.5" />
                                                 Admin
-                                            </span>
+                                            </Badge>
                                         )}
                                     </div>
                                 </div>
@@ -489,10 +493,13 @@ export function TopBar({ breadcrumb, search, navLinks, hasNotifications = false 
                                         <div className="flex items-center gap-2">
                                             <span className="font-medium">{user.username}</span>
                                             {user.admin && (
-                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                                >
                                                     <ShieldCheck className="h-2.5 w-2.5" />
                                                     Admin
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
                                         <div className="text-xs text-muted-foreground font-mono mt-0.5">{user.username}</div>

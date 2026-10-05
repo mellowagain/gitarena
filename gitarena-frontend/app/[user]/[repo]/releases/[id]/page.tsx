@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -578,14 +579,14 @@ export default function EditReleasePage() {
                                             <span className="flex-1 min-w-0 font-mono text-sm truncate">{asset.name}</span>
                                             <span className="text-xs text-muted-foreground shrink-0">{formatBytes(asset.size)}</span>
                                             {asset.os && (
-                                                <span className="text-xs px-1.5 py-0.5 border border-border rounded bg-secondary text-muted-foreground shrink-0">
+                                                <Badge variant="outline" className="px-1.5 text-muted-foreground bg-secondary font-normal">
                                                     {asset.os}
-                                                </span>
+                                                </Badge>
                                             )}
                                             {asset.arch && (
-                                                <span className="text-xs px-1.5 py-0.5 border border-border rounded bg-secondary text-muted-foreground shrink-0">
+                                                <Badge variant="outline" className="px-1.5 text-muted-foreground bg-secondary font-normal">
                                                     {asset.arch}
-                                                </span>
+                                                </Badge>
                                             )}
                                             <button
                                                 onClick={() => handleDeleteAsset(asset.id)}

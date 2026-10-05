@@ -23,6 +23,8 @@ import { PriorityIndicator, type Priority } from "@/components/priority-indicato
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { LabelBadge } from "@/components/label-badge";
+import { Badge } from "@/components/ui/badge";
 
 interface IssueListItem {
     index: number;
@@ -62,31 +64,6 @@ const COLUMNS: { status: string; label: string; Icon: typeof Circle; color: stri
     { status: "completed", label: "Completed", Icon: CheckCircle2, color: "text-muted-foreground" },
     { status: "not_planned", label: "Not Planned", Icon: XCircle, color: "text-muted-foreground" },
 ];
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-1.5 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-1.5 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
-}
 
 function IssueCard({ issue, labelMap, isDragOverlay }: { issue: IssueListItem; labelMap: Map<string, string>; isDragOverlay?: boolean }) {
     return (
@@ -167,9 +144,9 @@ function DroppableColumn({
             <div className="flex items-center gap-2 mb-3 px-1 shrink-0">
                 <Icon className={`h-4 w-4 shrink-0 ${color}`} />
                 <span className="font-medium text-sm">{label}</span>
-                <span className="ml-auto text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
+                <Badge variant="secondary" className="ml-auto text-muted-foreground px-1.5 rounded-full font-normal">
                     {isLoading ? "-" : issues.length}
-                </span>
+                </Badge>
             </div>
             <div
                 ref={setNodeRef}

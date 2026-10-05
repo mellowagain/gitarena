@@ -23,6 +23,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
 
 const repoData = {
     org: "mellowagain",
@@ -199,31 +200,6 @@ function CIIndicator({ status }: { status: string }) {
     return <div className={`w-2.5 h-2.5 rounded-full ${config.color}`} title={config.label} />;
 }
 
-function LabelBadge({ label }: { label: { name: string; color: string } }) {
-    const scopedIndex = label.name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? label.name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? label.name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${label.color}35`, color: label.color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-            {label.name}
-        </span>
-    );
-}
-
 function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boolean; onSelect: () => void }) {
     return (
         <Link
@@ -246,7 +222,7 @@ function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boo
             <div className="flex-1 min-w-0 flex items-center gap-2">
                 <span className="truncate">{mr.title}</span>
                 {mr.labels.map((label) => (
-                    <LabelBadge key={label.name} label={label} />
+                    <LabelBadge key={label.name} name={label.name} color={label.color} />
                 ))}
             </div>
 

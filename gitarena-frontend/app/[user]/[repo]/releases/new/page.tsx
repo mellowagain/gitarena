@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -535,9 +536,12 @@ export default function NewReleasePage() {
                                 <Upload className="h-4 w-4" />
                                 Assets
                                 {assets.length > 0 && (
-                                    <span className="px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-[10px]">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 rounded-full text-muted-foreground text-[10px] bg-secondary font-normal"
+                                    >
                                         {assets.length}
-                                    </span>
+                                    </Badge>
                                 )}
                             </h2>
                             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelected} />

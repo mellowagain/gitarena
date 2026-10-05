@@ -18,7 +18,6 @@ import {
     ExternalLink,
     BookOpen,
     FileCode2,
-    Construction,
     CheckCircle2,
     X,
     AlertTriangle,
@@ -39,6 +38,9 @@ import { authFetcher } from "@/lib/fetchers";
 import { formatDistanceToNow, addHours, format } from "date-fns";
 import { uuidToDate } from "@/lib/utils";
 import * as allLangs from "linguist-languages";
+import { LabelBadge } from "@/components/label-badge";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -123,15 +125,6 @@ function getPrimaryLanguage(languages: Record<string, number>): { name: string; 
     return { name: best, color: languageColor(best) };
 }
 
-function WipBadge() {
-    return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-            <Construction className="h-3 w-3" />
-            WIP
-        </span>
-    );
-}
-
 function IssueStatusIcon({ status }: { status: string }) {
     if (status === "open") {
         return <Circle className="h-3.5 w-3.5 text-green-500 shrink-0" />;
@@ -140,31 +133,6 @@ function IssueStatusIcon({ status }: { status: string }) {
         return <CircleDot className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
     }
     return <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function AssignedIssueRow({ issue }: { issue: AssignedIssue }) {
@@ -424,9 +392,12 @@ export default function DashboardPage() {
                                                             <span className="text-muted-foreground font-normal">{user.username}/</span>
                                                             {repo.name}
                                                             {repo.archivedAt && (
-                                                                <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-secondary text-muted-foreground">
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="ml-2 px-1.5 text-[10px] text-muted-foreground font-normal"
+                                                                >
                                                                     archived
-                                                                </span>
+                                                                </Badge>
                                                             )}
                                                         </div>
                                                         {repo.description && (

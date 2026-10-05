@@ -57,6 +57,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -173,17 +175,9 @@ function DangerButton({ children, onClick }: { children: React.ReactNode; onClic
 
 function Tag({ children }: { children: React.ReactNode }) {
     return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded bg-secondary text-muted-foreground">
+        <Badge variant="outline" className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary">
             {children}
-        </span>
-    );
-}
-
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
+        </Badge>
     );
 }
 
@@ -244,7 +238,7 @@ function ProfileTab() {
                 <FieldLabel htmlFor="settings-bio">
                     Bio
                     <span className="text-xs text-muted-foreground font-normal">optional</span>
-                    <WipTag />
+                    <WipBadge />
                 </FieldLabel>
                 <Textarea id="settings-bio" rows={3} disabled placeholder="Bio editing coming soon" />
             </Field>
@@ -254,7 +248,7 @@ function ProfileTab() {
                     <FieldLabel htmlFor="settings-website">
                         Website
                         <span className="text-xs text-muted-foreground font-normal">optional</span>
-                        <WipTag />
+                        <WipBadge />
                     </FieldLabel>
                     <Input id="settings-website" disabled placeholder="Coming soon" type="url" />
                 </Field>
@@ -262,7 +256,7 @@ function ProfileTab() {
                     <FieldLabel htmlFor="settings-location">
                         Location
                         <span className="text-xs text-muted-foreground font-normal">optional</span>
-                        <WipTag />
+                        <WipBadge />
                     </FieldLabel>
                     <Input id="settings-location" disabled placeholder="Coming soon" />
                 </Field>
@@ -543,7 +537,7 @@ function AuthenticationTab() {
             {/* Change password — WIP */}
             <div className="flex items-center gap-2 mb-4">
                 <h3 className="text-sm font-semibold">Password</h3>
-                <WipTag />
+                <WipBadge />
             </div>
             <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
                 <Field className="gap-1.5">
@@ -634,7 +628,7 @@ function AuthenticationTab() {
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                         <h3 className="text-sm font-semibold">Two-factor authentication</h3>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                         Add an extra layer of security to your account. When enabled you will be prompted for a one-time code in addition to
@@ -911,7 +905,7 @@ function KeysTab() {
             {/* GPG Keys — WIP */}
             <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-semibold">GPG Keys</h2>
-                <WipTag />
+                <WipBadge />
             </div>
             <p className="text-sm text-muted-foreground mb-4">GPG key support is coming soon.</p>
         </div>
@@ -923,7 +917,7 @@ function RepositoriesTab() {
         <div>
             <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-semibold">Repository Settings</h2>
-                <WipTag />
+                <WipBadge />
             </div>
             <p className="text-sm text-muted-foreground">Repository default settings are coming soon.</p>
         </div>

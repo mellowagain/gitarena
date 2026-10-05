@@ -45,6 +45,8 @@ import {
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LabelBadge } from "@/components/label-badge";
+import { Badge } from "@/components/ui/badge";
 
 const currentUser = { name: "Mari" };
 const repoData = { org: "mellowagain", name: "test" };
@@ -449,60 +451,6 @@ function inlineMarkdown(text: string): React.ReactNode {
     });
 }
 
-function LabelBadge({ label, removable }: { label: { name: string; color: string }; removable?: boolean }) {
-    const scopedIndex = label.name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? label.name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? label.name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className={`group/label inline-flex items-center text-xs rounded overflow-hidden ${removable ? "" : ""}`}>
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${label.color}35`, color: label.color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${label.color}20`, color: label.color }}>
-                    {scopeValue}
-                </span>
-                {removable && (
-                    <span
-                        className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150 self-stretch"
-                        style={{ backgroundColor: `${label.color}20` }}
-                    >
-                        <span className="overflow-hidden flex items-center">
-                            <button
-                                className="ml-1.5 mr-1.5 opacity-0 group-hover/label:opacity-100 transition-opacity rounded"
-                                title="Remove label"
-                                style={{ color: label.color }}
-                            >
-                                <X className="h-2.5 w-2.5" />
-                            </button>
-                        </span>
-                    </span>
-                )}
-            </span>
-        );
-    }
-
-    return (
-        <span
-            className="group/label inline-flex items-center px-2 py-0.5 text-xs rounded"
-            style={{ backgroundColor: `${label.color}20`, color: label.color }}
-        >
-            {label.name}
-            {removable && (
-                <span className="grid grid-cols-[0fr] group-hover/label:grid-cols-[1fr] transition-all duration-150">
-                    <span className="overflow-hidden flex items-center">
-                        <button className="ml-1.5 opacity-0 group-hover/label:opacity-100 transition-opacity rounded" title="Remove label">
-                            <X className="h-2.5 w-2.5" />
-                        </button>
-                    </span>
-                </span>
-            )}
-        </span>
-    );
-}
-
 function AuthorAvatar({ author, isBot }: { author: string; isBot?: boolean }) {
     if (isBot) {
         return (
@@ -524,9 +472,9 @@ function ActivityEvent({ item }: { item: Extract<ActivityItem, { type: "event" }
             <AuthorAvatar author={item.author} isBot={item.isBot} />
             <span className="font-medium text-foreground/70">{item.author}</span>
             {item.isBot && (
-                <span className="text-[10px] px-1 py-0.5 rounded bg-secondary border border-border text-muted-foreground font-medium leading-none">
+                <Badge variant="outline" className="text-[10px] px-1 text-muted-foreground bg-secondary">
                     bot
-                </span>
+                </Badge>
             )}
             <span>{item.action}</span>
             {item.detail && (
@@ -618,21 +566,21 @@ function CommentBlock({ item }: { item: Extract<ActivityItem, { type: "comment" 
                 <AuthorAvatar author={item.author} isBot={item.isBot} />
                 <span className="text-sm font-medium">{item.author}</span>
                 {item.isBot && (
-                    <span className="text-[10px] px-1 py-0.5 rounded bg-secondary border border-border text-muted-foreground font-medium leading-none">
+                    <Badge variant="outline" className="text-[10px] px-1 text-muted-foreground bg-secondary">
                         bot
-                    </span>
+                    </Badge>
                 )}
                 {isApproval && (
-                    <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                    <Badge variant="success" className="rounded-full font-normal">
                         <CheckCircle2 className="h-3 w-3" />
                         approved
-                    </span>
+                    </Badge>
                 )}
                 {isChangesRequested && (
-                    <span className="flex items-center gap-1 text-xs text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+                    <Badge variant="destructive" className="rounded-full font-normal">
                         <AlertCircle className="h-3 w-3" />
                         requested changes
-                    </span>
+                    </Badge>
                 )}
                 <span className="text-xs text-muted-foreground">{item.createdAt}</span>
                 <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
@@ -1291,7 +1239,7 @@ export default function MergeRequestPage() {
                         <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Labels</h3>
                         <div className="flex flex-wrap gap-2">
                             {mergeRequest.labels.map((label) => (
-                                <LabelBadge key={label.name} label={label} removable />
+                                <LabelBadge key={label.name} name={label.name} color={label.color} onRemove={() => {}} />
                             ))}
                             <button className="flex items-center gap-1 px-2 py-0.5 text-xs border border-dashed border-border rounded text-muted-foreground hover:text-foreground hover:border-solid transition-colors">
                                 <Tag className="h-3 w-3" />

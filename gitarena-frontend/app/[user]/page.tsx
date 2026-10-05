@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
-import { uuidToDate } from "@/lib/utils";
+import { cn, uuidToDate } from "@/lib/utils";
 import useSWR from "swr";
 import { Star, Lock, Globe, Calendar, Pin, PinOff, ShieldCheck, Settings, Plus, Users, Building2 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -173,9 +173,9 @@ function RepoList({
                                 </Badge>
                             )}
                             {repo.archivedAt && (
-                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                                     archived
-                                </span>
+                                </Badge>
                             )}
                             {canPin && (
                                 <button
@@ -220,10 +220,10 @@ function RepoList({
     );
 }
 
-const roleColors: Record<string, string> = {
-    owner: "text-amber-500 border-amber-500/30 bg-amber-500/10",
-    admin: "text-blue-500 border-blue-500/30 bg-blue-500/10",
-    member: "text-muted-foreground border-border bg-secondary",
+const roleVariants: Record<string, "warning" | "info" | "outline"> = {
+    owner: "warning",
+    admin: "info",
+    member: "outline",
 };
 
 function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; variant?: "row" | "avatar" }) {
@@ -254,11 +254,15 @@ function OrgMemberCard({ member, variant = "row" }: { member: OrgMemberRaw; vari
                     ) : (
                         <span className="text-sm font-medium text-muted-foreground">Loading…</span>
                     )}
-                    <span
-                        className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border rounded ${roleColors[member.role] ?? roleColors.member}`}
+                    <Badge
+                        variant={roleVariants[member.role] ?? "outline"}
+                        className={cn(
+                            "px-1.5 text-[10px] uppercase tracking-wider",
+                            (roleVariants[member.role] ?? "outline") === "outline" && "bg-secondary text-muted-foreground"
+                        )}
                     >
                         {member.role}
-                    </span>
+                    </Badge>
                 </div>
                 {user && <p className="text-xs text-muted-foreground font-mono">@{username}</p>}
             </div>
@@ -368,9 +372,12 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                 <TabsTrigger key={tab.id} value={tab.id} className="gap-2 py-3 font-normal data-[state=active]:font-medium">
                                     {tab.label}
                                     {"count" in tab && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-secondary border border-border text-muted-foreground">
+                                        <Badge
+                                            variant="outline"
+                                            className="px-1.5 text-[10px] font-mono text-muted-foreground bg-secondary"
+                                        >
                                             {tab.count}
-                                        </span>
+                                        </Badge>
                                     )}
                                 </TabsTrigger>
                             ))}
@@ -436,9 +443,12 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                                                 {repo.name}
                                                             </Link>
                                                             {repo.archivedAt && (
-                                                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="px-1.5 text-[10px] text-muted-foreground bg-secondary"
+                                                                >
                                                                     archived
-                                                                </span>
+                                                                </Badge>
                                                             )}
                                                             {repo.description && (
                                                                 <p className="text-xs text-muted-foreground line-clamp-1">
@@ -594,10 +604,13 @@ export default function NamespacePage() {
                             <div className="flex items-center gap-2">
                                 <p className="text-base font-semibold leading-tight">{profile.username}</p>
                                 {profile.admin && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         <ShieldCheck className="h-2.5 w-2.5" />
                                         Admin
-                                    </span>
+                                    </Badge>
                                 )}
                             </div>
                             <p className="text-sm text-muted-foreground font-mono">{profile.username}</p>

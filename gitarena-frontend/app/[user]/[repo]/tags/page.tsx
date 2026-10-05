@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tag, GitCommit, Code, AlertCircle, GitMerge, Settings, Search, Calendar, Trash2 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 interface TagInfo {
     name: string;
@@ -193,9 +194,12 @@ export default function TagsPage() {
                                                 {tag.name}
                                             </Link>
                                             {tag.message && (
-                                                <span className="px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-medium border border-border rounded bg-secondary text-muted-foreground">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                                >
                                                     annotated
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
 

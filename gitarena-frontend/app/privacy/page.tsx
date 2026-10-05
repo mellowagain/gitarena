@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GitBranch, Shield, Eye, Database, Lock, Bell, UserX, Mail, Server, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const tldrPoints = [
     {
@@ -190,9 +191,9 @@ export default function PrivacyPage() {
                 <section className="border-b border-border bg-secondary/30">
                     <div className="max-w-3xl mx-auto px-6 py-10">
                         <div className="flex items-center gap-2 mb-5">
-                            <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium tracking-wider uppercase border border-border rounded bg-background text-muted-foreground">
+                            <Badge variant="outline" className="px-2.5 tracking-wider uppercase text-muted-foreground">
                                 TL;DR
-                            </span>
+                            </Badge>
                             <p className="text-sm text-muted-foreground">The short version — read the full policy below for details.</p>
                         </div>
                         <div className="grid sm:grid-cols-2 gap-3">

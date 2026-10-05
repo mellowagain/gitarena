@@ -52,6 +52,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WipBadge } from "@/components/wip-badge";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -103,14 +106,6 @@ function SaveButton({ onClick, disabled }: { onClick?: () => void; disabled?: bo
     );
 }
 
-function WipTag() {
-    return (
-        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-amber-500/40 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            WIP
-        </span>
-    );
-}
-
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
 function GeneralTab({ org }: { org: OrgInfo }) {
@@ -136,7 +131,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <div>
                 <FieldTitle className="mb-1.5">
                     Organization avatar
-                    <WipTag />
+                    <WipBadge />
                 </FieldTitle>
                 <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-xl bg-secondary border border-border flex items-center justify-center text-2xl font-semibold">
@@ -157,7 +152,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <Field className="gap-1.5">
                 <FieldLabel htmlFor="org-display-name">
                     Display name
-                    <WipTag />
+                    <WipBadge />
                 </FieldLabel>
                 <Input id="org-display-name" disabled defaultValue={org.name} />
                 <FieldDescription className="text-xs">Display name editing is not yet available.</FieldDescription>
@@ -182,7 +177,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <FieldSet className="gap-0">
                 <FieldLegend variant="label" className="mb-2 flex items-center gap-2">
                     Organization visibility
-                    <WipTag />
+                    <WipBadge />
                 </FieldLegend>
                 <RadioGroup value="public" disabled className="gap-2 opacity-50 pointer-events-none">
                     {(["public", "private"] as const).map((v) => (
@@ -213,7 +208,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <SectionTitle>Repository defaults</SectionTitle>
-                    <WipTag />
+                    <WipBadge />
                 </div>
                 <div className="space-y-4 opacity-50 pointer-events-none">
                     <Field className="gap-1.5">
@@ -244,7 +239,7 @@ function GeneralTab({ org }: { org: OrgInfo }) {
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <SectionTitle>Member permissions</SectionTitle>
-                    <WipTag />
+                    <WipBadge />
                 </div>
                 <div className="space-y-3 opacity-50 pointer-events-none">
                     {[
@@ -292,10 +287,10 @@ function MemberRow({
     const { data: user } = useSWR<UserByIdResponse>(`/api/users/by-id/${member.userId}`, jsonFetcher);
     const username = user?.username ?? `…`;
 
-    const roleBadge: Record<string, string> = {
-        owner: "text-amber-500 bg-amber-500/10 border-amber-500/30",
-        admin: "text-blue-500 bg-blue-500/10 border-blue-500/30",
-        member: "text-muted-foreground bg-secondary border-border",
+    const roleVariants: Record<string, "warning" | "info" | "outline"> = {
+        owner: "warning",
+        admin: "info",
+        member: "outline",
     };
 
     return (
@@ -310,11 +305,12 @@ function MemberRow({
                     <span className="text-sm font-medium text-muted-foreground">Loading…</span>
                 )}
             </div>
-            <span
-                className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded capitalize ${roleBadge[member.role]}`}
+            <Badge
+                variant={roleVariants[member.role]}
+                className={cn("capitalize", roleVariants[member.role] === "outline" && "bg-secondary text-muted-foreground")}
             >
                 {member.role}
-            </span>
+            </Badge>
             <Select value={member.role} onValueChange={(role) => onRoleChange(username, role)} disabled={member.role === "owner" || !user}>
                 <SelectTrigger size="sm" className="bg-card text-xs">
                     <SelectValue />
@@ -455,7 +451,7 @@ function TeamsTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Teams</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
             <Alert variant="warning">
                 <AlertCircle />
@@ -470,7 +466,7 @@ function SecurityTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Security</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
 
             {/* 2FA requirement — WIP */}
@@ -534,7 +530,7 @@ function WebhooksTab() {
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
                 <SectionTitle>Webhooks</SectionTitle>
-                <WipTag />
+                <WipBadge />
             </div>
             <Alert variant="warning">
                 <AlertCircle />
@@ -583,7 +579,7 @@ function DangerTab({ orgName }: { orgName: string }) {
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-destructive">Rename organization</p>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                         Renaming breaks existing clone URLs and references to <code className="font-mono">@{orgName}</code>.
@@ -602,7 +598,7 @@ function DangerTab({ orgName }: { orgName: string }) {
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-destructive">Transfer ownership</p>
-                        <WipTag />
+                        <WipBadge />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Transfer this organization to another user.</p>
                 </div>

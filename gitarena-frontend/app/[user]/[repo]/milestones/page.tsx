@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 interface MilestoneEntry {
     id: string;
@@ -287,12 +288,16 @@ export default function MilestonesPage() {
                             <TabsTrigger value="open" className="px-4">
                                 <Circle className="h-4 w-4" />
                                 Open
-                                <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{openCount}</span>
+                                <Badge variant="secondary" className="ml-1 px-1.5 rounded-full font-normal">
+                                    {openCount}
+                                </Badge>
                             </TabsTrigger>
                             <TabsTrigger value="closed" className="px-4">
                                 <CheckCircle2 className="h-4 w-4" />
                                 Closed
-                                <span className="ml-1 bg-secondary px-1.5 py-0.5 rounded-full text-xs">{closedCount}</span>
+                                <Badge variant="secondary" className="ml-1 px-1.5 rounded-full font-normal">
+                                    {closedCount}
+                                </Badge>
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -363,9 +368,12 @@ export default function MilestonesPage() {
                                                             {m.title}
                                                         </Link>
                                                         {m.closed && (
-                                                            <span className="shrink-0 px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="rounded-full text-muted-foreground font-normal"
+                                                            >
                                                                 closed
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </div>
                                                     {canManage && (

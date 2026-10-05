@@ -34,6 +34,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { LabelBadge } from "@/components/label-badge";
+import { Badge } from "@/components/ui/badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -652,18 +654,21 @@ function RepoResults({ query }: { query: string }) {
                                     <Link href={`/${repo.ownerName}/${repo.name}`} className="text-sm font-medium hover:underline">
                                         {repo.ownerName}/{repo.name}
                                     </Link>
-                                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         {repo.visibility === "private" ? (
                                             <Lock className="h-2.5 w-2.5" />
                                         ) : (
                                             <Globe className="h-2.5 w-2.5" />
                                         )}
                                         {repo.visibility}
-                                    </span>
+                                    </Badge>
                                     {repo.archivedAt && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary text-muted-foreground border border-border leading-none shrink-0">
+                                        <Badge variant="outline" className="px-1.5 text-[10px] text-muted-foreground bg-secondary">
                                             archived
-                                        </span>
+                                        </Badge>
                                     )}
                                 </div>
                                 {repo.description && (
@@ -710,31 +715,6 @@ interface IssueLabel {
 
 interface LabelsResponse {
     labels: IssueLabel[];
-}
-
-function LabelBadge({ name, color }: { name: string; color: string }) {
-    const scopedIndex = name.indexOf("::");
-    const isScoped = scopedIndex !== -1;
-    const scopeKey = isScoped ? name.slice(0, scopedIndex) : null;
-    const scopeValue = isScoped ? name.slice(scopedIndex + 2) : null;
-
-    if (isScoped) {
-        return (
-            <span className="inline-flex items-center text-xs rounded overflow-hidden shrink-0">
-                <span className="px-2 py-0.5 font-medium" style={{ backgroundColor: `${color}35`, color }}>
-                    {scopeKey}
-                </span>
-                <span className="px-2 py-0.5" style={{ backgroundColor: `${color}20`, color }}>
-                    {scopeValue}
-                </span>
-            </span>
-        );
-    }
-    return (
-        <span className="shrink-0 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: `${color}20`, color }}>
-            {name}
-        </span>
-    );
 }
 
 function IssueResults({ query }: { query: string }) {
@@ -1014,9 +994,12 @@ function UserResults({ query }: { query: string }) {
                                     {user.username}
                                 </Link>
                                 {user.admin && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-border rounded text-muted-foreground bg-secondary">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-secondary"
+                                    >
                                         admin
-                                    </span>
+                                    </Badge>
                                 )}
                             </div>
                         </div>

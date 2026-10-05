@@ -34,6 +34,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { deleteFetcher, jsonFetcher, postFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 type Release = {
     tag: string;
@@ -499,9 +500,12 @@ export function RepoSidebar({
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium text-foreground">{latestRelease.tag}</span>
-                                    <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-secondary text-muted-foreground rounded">
+                                    <Badge
+                                        variant="secondary"
+                                        className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal"
+                                    >
                                         Latest
-                                    </span>
+                                    </Badge>
                                 </div>
                                 <div className="text-sm text-muted-foreground truncate">
                                     {latestRelease.name} · {latestRelease.date}

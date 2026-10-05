@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GitBranch, FileText, ChevronRight, ShieldCheck, Ban, Gavel, TriangleAlert, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const tldrPoints = [
     { icon: ShieldCheck, text: "You must be 16 or older to use GitArena. By using the Service you agree to these terms." },
@@ -159,9 +160,9 @@ export default function TermsPage() {
                 <section className="border-b border-border bg-secondary/30">
                     <div className="max-w-3xl mx-auto px-6 py-10">
                         <div className="flex items-center gap-2 mb-5">
-                            <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium tracking-wider uppercase border border-border rounded bg-background text-muted-foreground">
+                            <Badge variant="outline" className="px-2.5 tracking-wider uppercase text-muted-foreground">
                                 TL;DR
-                            </span>
+                            </Badge>
                             <p className="text-sm text-muted-foreground">The short version — read the full terms below for details.</p>
                         </div>
                         <div className="grid sm:grid-cols-2 gap-3">

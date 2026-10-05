@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -229,14 +230,14 @@ function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string
             </div>
             <div className="flex items-center gap-1 shrink-0">
                 {asset.arch && asset.arch !== "unknown" && (
-                    <span className="px-1.5 py-0.5 text-xs font-mono border border-border rounded bg-secondary text-muted-foreground">
+                    <Badge variant="outline" className="px-1.5 font-mono text-muted-foreground bg-secondary">
                         {asset.arch}
-                    </span>
+                    </Badge>
                 )}
                 {asset.libc && asset.libc !== "unknown" && (
-                    <span className="px-1.5 py-0.5 text-xs font-mono border border-border rounded bg-secondary text-muted-foreground">
+                    <Badge variant="outline" className="px-1.5 font-mono text-muted-foreground bg-secondary">
                         {asset.libc}
-                    </span>
+                    </Badge>
                 )}
             </div>
             <span className="text-xs text-muted-foreground shrink-0 w-14 text-right">{formatBytes(asset.size)}</span>
@@ -292,14 +293,17 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                             <span className="font-semibold text-lg">{release.title}</span>
                         )}
                         {release.latest && (
-                            <span className="px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <Badge
+                                variant="outline"
+                                className="px-1.5 font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary border-primary/20"
+                            >
                                 Latest
-                            </span>
+                            </Badge>
                         )}
                         {release.preRelease && (
-                            <span className="px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            <Badge variant="warning" className="px-1.5 font-semibold uppercase tracking-wider rounded-full">
                                 Pre-release
-                            </span>
+                            </Badge>
                         )}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
@@ -371,9 +375,12 @@ function ReleaseCard({ release, user, repo, canPush }: { release: Release; user:
                             <span className="flex items-center gap-1.5">
                                 <FileArchive className="h-4 w-4" />
                                 Assets
-                                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border text-xs">
+                                <Badge
+                                    variant="outline"
+                                    className="ml-1 px-1.5 rounded-full text-muted-foreground bg-secondary font-normal"
+                                >
                                     {release.assets.length}
-                                </span>
+                                </Badge>
                             </span>
                         </AccordionTrigger>
 
@@ -512,9 +519,12 @@ export default function ReleasesPage() {
                             return (
                                 <TabsTrigger key={f} value={f} className="px-4 py-2.5 font-normal data-[state=active]:font-medium">
                                     {f === "pre-release" ? "Pre-release" : f.charAt(0).toUpperCase() + f.slice(1)}
-                                    <span className="px-1.5 py-0.5 text-[10px] rounded-full border border-transparent bg-secondary text-muted-foreground in-data-[state=active]:border-border in-data-[state=active]:text-foreground">
+                                    <Badge
+                                        variant="outline"
+                                        className="px-1.5 text-[10px] rounded-full border-transparent text-muted-foreground in-data-[state=active]:border-border in-data-[state=active]:text-foreground bg-secondary font-normal"
+                                    >
                                         {count}
-                                    </span>
+                                    </Badge>
                                 </TabsTrigger>
                             );
                         })}
