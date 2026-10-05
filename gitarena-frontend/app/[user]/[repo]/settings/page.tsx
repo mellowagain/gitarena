@@ -25,6 +25,7 @@ import {
     Archive,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { jsonFetcher, putJsonFetcher, deleteFetcher, patchJsonVoidFetcher } from "@/lib/fetchers";
 import { TopBar } from "@/components/top-bar";
@@ -47,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -927,50 +928,57 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                             Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
                             permanently removed.
                         </p>
-
-                        {deleteConfirm && (
-                            <div className="mt-2 space-y-3">
-                                <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-md">
-                                    <p className="text-xs text-muted-foreground">
-                                        Please type <code className="font-mono font-semibold text-foreground">{fullName}</code> to confirm.
-                                    </p>
-                                </div>
-                                <Input
-                                    value={deleteInput}
-                                    onChange={(e) => setDeleteInput(e.target.value)}
-                                    placeholder={fullName}
-                                    className="border-destructive/40 focus-visible:ring-destructive/40"
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setDeleteConfirm(false);
-                                            setDeleteInput("");
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 h-8 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        disabled={deleteInput !== fullName}
-                                        className="inline-flex items-center gap-2 px-3 h-8 text-sm font-medium bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />I understand, delete this repository
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
-                    {!deleteConfirm && (
-                        <div className="shrink-0">
-                            <DangerButton onClick={() => setDeleteConfirm(true)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Delete repository
-                            </DangerButton>
-                        </div>
-                    )}
+                    <div className="shrink-0">
+                        <DangerButton onClick={() => setDeleteConfirm(true)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete repository
+                        </DangerButton>
+                    </div>
                 </div>
             </div>
+
+            <AlertDialog
+                open={deleteConfirm}
+                onOpenChange={(open) => {
+                    setDeleteConfirm(open);
+                    if (!open) {
+                        setDeleteInput("");
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this repository?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
+                            permanently removed.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Field className="gap-1.5">
+                        <FieldDescription id="repo-delete-confirm-label">
+                            Please type <code className="font-mono font-semibold text-foreground">{fullName}</code> to confirm.
+                        </FieldDescription>
+                        <Input
+                            aria-labelledby="repo-delete-confirm-label"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            placeholder={fullName}
+                            className="border-destructive/40 focus-visible:ring-destructive/40"
+                        />
+                    </Field>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => e.preventDefault()}
+                            disabled={deleteInput !== fullName}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            <Trash2 />I understand, delete this repository
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog
                 open={archiveDialogOpen}

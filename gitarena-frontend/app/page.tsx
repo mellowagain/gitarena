@@ -33,6 +33,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { ActivityEvent, type EventResponse } from "@/components/activity-event";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { authFetcher } from "@/lib/fetchers";
 
 import { formatDistanceToNow, addHours, format } from "date-fns";
@@ -359,21 +360,22 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Repositories</h2>
                                 <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-0.5">
+                                    <ToggleGroup
+                                        type="single"
+                                        spacing={0.5}
+                                        value={repoFilter}
+                                        onValueChange={(v) => v && setRepoFilter(v as typeof repoFilter)}
+                                    >
                                         {(["all", "owned", "starred"] as const).map((f) => (
-                                            <button
+                                            <ToggleGroupItem
                                                 key={f}
-                                                onClick={() => setRepoFilter(f)}
-                                                className={`px-2.5 py-1 text-xs rounded-md transition-colors capitalize ${
-                                                    repoFilter === f
-                                                        ? "bg-secondary text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                                value={f}
+                                                className="h-auto min-w-0 px-2.5 py-1 text-xs font-normal capitalize text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-secondary data-[state=on]:text-foreground"
                                             >
                                                 {f}
-                                            </button>
+                                            </ToggleGroupItem>
                                         ))}
-                                    </div>
+                                    </ToggleGroup>
                                     <Link
                                         href="/new"
                                         className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-colors"

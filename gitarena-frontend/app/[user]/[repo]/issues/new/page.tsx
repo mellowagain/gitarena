@@ -8,8 +8,15 @@ import useSWRMutation from "swr/mutation";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, CheckCircle2, X, Eye, Loader2, Milestone } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertCircle, GitMerge, Code, ArrowLeft, ChevronDown, Tag, User, X, Eye, Loader2, Milestone } from "lucide-react";
 import { jsonFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -346,13 +353,14 @@ export default function NewIssuePage() {
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-40">
-                                {(["none", "low", "medium", "high", "urgent"] as Priority[]).map((p) => (
-                                    <DropdownMenuItem key={p} onClick={() => setPriority(p)} className="flex items-center gap-2">
-                                        <PriorityIndicator priority={p} />
-                                        <span className="flex-1">{priorityConfig[p].label}</span>
-                                        {priority === p && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                ))}
+                                <DropdownMenuRadioGroup value={priority} onValueChange={setPriority}>
+                                    {(["none", "low", "medium", "high", "urgent"] as Priority[]).map((p) => (
+                                        <DropdownMenuRadioItem key={p} value={p}>
+                                            <PriorityIndicator priority={p} />
+                                            {priorityConfig[p].label}
+                                        </DropdownMenuRadioItem>
+                                    ))}
+                                </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -374,26 +382,22 @@ export default function NewIssuePage() {
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-52">
-                                <DropdownMenuItem onClick={() => setMilestoneId(null)} className="flex items-center gap-2">
-                                    <span className="flex-1 text-muted-foreground italic">No milestone</span>
-                                    {milestoneId === null && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                </DropdownMenuItem>
-                                {availableMilestones.length === 0 ? (
-                                    <DropdownMenuItem disabled className="text-muted-foreground italic">
-                                        No milestones yet
-                                    </DropdownMenuItem>
-                                ) : (
-                                    availableMilestones.map((m) => (
-                                        <DropdownMenuItem
-                                            key={m.id}
-                                            onClick={() => setMilestoneId(m.id)}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <span className="flex-1">{m.title}</span>
-                                            {milestoneId === m.id && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                                <DropdownMenuRadioGroup value={milestoneId ?? ""} onValueChange={(v) => setMilestoneId(v || null)}>
+                                    <DropdownMenuRadioItem value="" className="text-muted-foreground italic">
+                                        No milestone
+                                    </DropdownMenuRadioItem>
+                                    {availableMilestones.length === 0 ? (
+                                        <DropdownMenuItem disabled className="text-muted-foreground italic">
+                                            No milestones yet
                                         </DropdownMenuItem>
-                                    ))
-                                )}
+                                    ) : (
+                                        availableMilestones.map((m) => (
+                                            <DropdownMenuRadioItem key={m.id} value={m.id}>
+                                                {m.title}
+                                            </DropdownMenuRadioItem>
+                                        ))
+                                    )}
+                                </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

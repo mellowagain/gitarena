@@ -23,6 +23,7 @@ import { TopBar } from "@/components/top-bar";
 import { RepoFileSidebar, RepoFileSidebarSkeleton, type FileCommitInfo } from "@/components/repo-file-sidebar";
 import { RepoSidebar, RepoSidebarSkeleton } from "@/components/repo-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useSWR from "swr";
 import { jsonFetcher } from "@/lib/fetchers";
@@ -497,30 +498,28 @@ export function RepoPageContent({
                                         </div>
                                     )}
                                     {isMarkdown(selectedFile) && (
-                                        <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-md">
-                                            <button
-                                                onClick={() => setShowSource(false)}
-                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
-                                                    !showSource
-                                                        ? "bg-background text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                        <ToggleGroup
+                                            type="single"
+                                            spacing={1}
+                                            value={showSource ? "code" : "preview"}
+                                            onValueChange={(v) => v && setShowSource(v === "code")}
+                                            className="p-0.5 bg-secondary"
+                                        >
+                                            <ToggleGroupItem
+                                                value="preview"
+                                                className="h-auto gap-1.5 rounded px-2 py-1.5 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground sm:gap-2 sm:px-3"
                                             >
                                                 <BookOpen className="hidden h-3.5 w-3.5 sm:block" />
                                                 Preview
-                                            </button>
-                                            <button
-                                                onClick={() => setShowSource(true)}
-                                                className={`flex items-center gap-1.5 px-2 py-1.5 text-sm rounded transition-colors sm:gap-2 sm:px-3 ${
-                                                    showSource
-                                                        ? "bg-background text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                }`}
+                                            </ToggleGroupItem>
+                                            <ToggleGroupItem
+                                                value="code"
+                                                className="h-auto gap-1.5 rounded px-2 py-1.5 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground sm:gap-2 sm:px-3"
                                             >
                                                 <Code className="hidden h-3.5 w-3.5 sm:block" />
                                                 Code
-                                            </button>
-                                        </div>
+                                            </ToggleGroupItem>
+                                        </ToggleGroup>
                                     )}
                                 </div>
                             </div>

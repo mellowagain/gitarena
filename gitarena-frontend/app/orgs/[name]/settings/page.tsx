@@ -39,6 +39,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
+import { buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -624,45 +636,60 @@ function DangerTab({ orgName }: { orgName: string }) {
                         member data. This action cannot be undone.
                     </p>
                 </div>
-                {!showDelete ? (
-                    <button
-                        onClick={() => setShowDelete(true)}
-                        className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md hover:bg-destructive/10 transition-colors"
-                    >
-                        Delete organization
-                    </button>
-                ) : (
-                    <div className="space-y-3">
-                        <p className="text-xs font-medium">
+                <button
+                    onClick={() => setShowDelete(true)}
+                    className="px-4 h-9 text-sm font-medium text-destructive border border-destructive/50 rounded-md hover:bg-destructive/10 transition-colors"
+                >
+                    Delete organization
+                </button>
+            </div>
+            <AlertDialog
+                open={showDelete}
+                onOpenChange={(open) => {
+                    if (isDeleting) {
+                        return;
+                    }
+                    setShowDelete(open);
+                    if (!open) {
+                        setDeleteInput("");
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this organization?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete <strong>{orgName}</strong> and all of its repositories, issues, merge requests, and
+                            member data. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Field className="gap-1.5">
+                        <FieldDescription id="org-delete-confirm-label" className="text-xs font-medium text-foreground">
                             Type <code className="font-mono">{orgName}</code> to confirm deletion:
-                        </p>
+                        </FieldDescription>
                         <Input
+                            aria-labelledby="org-delete-confirm-label"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
                             placeholder={orgName}
                             className="border-destructive/50 focus-visible:ring-destructive/40 font-mono"
                         />
-                        <div className="flex gap-2">
-                            <button
-                                disabled={deleteInput !== orgName || isDeleting}
-                                onClick={handleDelete}
-                                className="px-4 h-9 text-sm font-medium text-white bg-destructive rounded-md hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none inline-flex items-center gap-2"
-                            >
-                                {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}I understand, delete this organization
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowDelete(false);
-                                    setDeleteInput("");
-                                }}
-                                className="px-3 h-9 text-sm border border-border rounded-md hover:bg-accent/50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+                    </Field>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleDelete();
+                            }}
+                            disabled={deleteInput !== orgName || isDeleting}
+                            className={buttonVariants({ variant: "destructive" })}
+                        >
+                            {isDeleting && <Spinner />}I understand, delete this organization
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

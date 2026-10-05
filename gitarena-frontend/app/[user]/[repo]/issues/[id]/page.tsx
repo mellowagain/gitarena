@@ -17,6 +17,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuTrigger,
     DropdownMenuSeparator,
     DropdownMenuLabel,
@@ -44,7 +46,6 @@ import {
     MessageSquare,
     Milestone,
     Loader2,
-    Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -1035,28 +1036,32 @@ export default function IssuePage() {
                                             </button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-48">
-                                            <DropdownMenuItem onClick={issue.status !== "open" ? () => handleSetStatus("open") : undefined}>
-                                                <Circle className="h-4 w-4 mr-2 text-green-500" />
-                                                Open
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "in_progress" ? () => handleSetStatus("in_progress") : undefined}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.status}
+                                                onValueChange={(v) => {
+                                                    setStatusOpen(false);
+                                                    if (v !== issue.status) {
+                                                        void handleSetStatus(v);
+                                                    }
+                                                }}
                                             >
-                                                <CircleDot className="h-4 w-4 mr-2 text-yellow-500" />
-                                                In Progress
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "completed" ? () => handleSetStatus("completed") : undefined}
-                                            >
-                                                <CheckCircle2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                Completed
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={issue.status !== "not_planned" ? () => handleSetStatus("not_planned") : undefined}
-                                            >
-                                                <XCircle className="h-4 w-4 mr-2 text-muted-foreground" />
-                                                Not Planned
-                                            </DropdownMenuItem>
+                                                <DropdownMenuRadioItem value="open">
+                                                    <Circle className="h-4 w-4 text-green-500" />
+                                                    Open
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="in_progress">
+                                                    <CircleDot className="h-4 w-4 text-yellow-500" />
+                                                    In Progress
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="completed">
+                                                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                    Completed
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="not_planned">
+                                                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                                                    Not Planned
+                                                </DropdownMenuRadioItem>
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
@@ -1215,15 +1220,22 @@ export default function IssuePage() {
                                             </button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-40">
-                                            {PRIORITY_OPTIONS.map((opt) => (
-                                                <DropdownMenuItem
-                                                    key={opt.value}
-                                                    onClick={issue.priority !== opt.value ? () => handleSetPriority(opt.value) : undefined}
-                                                >
-                                                    <PriorityIndicator priority={opt.value} />
-                                                    {opt.label}
-                                                </DropdownMenuItem>
-                                            ))}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.priority}
+                                                onValueChange={(v) => {
+                                                    setPriorityOpen(false);
+                                                    if (v !== issue.priority) {
+                                                        void handleSetPriority(v);
+                                                    }
+                                                }}
+                                            >
+                                                {PRIORITY_OPTIONS.map((opt) => (
+                                                    <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                                                        <PriorityIndicator priority={opt.value} />
+                                                        {opt.label}
+                                                    </DropdownMenuRadioItem>
+                                                ))}
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (
@@ -1264,18 +1276,24 @@ export default function IssuePage() {
                                             )}
                                             {allMilestones.filter((m) => !m.closed || m.id === issue.milestone?.id).length === 0 &&
                                                 !issue.milestone && <DropdownMenuItem disabled>No milestones available</DropdownMenuItem>}
-                                            {allMilestones
-                                                .filter((m) => !m.closed || m.id === issue.milestone?.id)
-                                                .map((m) => (
-                                                    <DropdownMenuItem
-                                                        key={m.id}
-                                                        onClick={m.id !== issue.milestone?.id ? () => handleSetMilestone(m.id) : undefined}
-                                                    >
-                                                        <Milestone className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
-                                                        <span className="flex-1 truncate">{m.title}</span>
-                                                        {m.id === issue.milestone?.id && <Check className="h-4 w-4 ml-2 shrink-0" />}
-                                                    </DropdownMenuItem>
-                                                ))}
+                                            <DropdownMenuRadioGroup
+                                                value={issue.milestone?.id ?? ""}
+                                                onValueChange={(v) => {
+                                                    setMilestoneOpen(false);
+                                                    if (v !== issue.milestone?.id) {
+                                                        void handleSetMilestone(v);
+                                                    }
+                                                }}
+                                            >
+                                                {allMilestones
+                                                    .filter((m) => !m.closed || m.id === issue.milestone?.id)
+                                                    .map((m) => (
+                                                        <DropdownMenuRadioItem key={m.id} value={m.id}>
+                                                            <Milestone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                            <span className="flex-1 truncate">{m.title}</span>
+                                                        </DropdownMenuRadioItem>
+                                                    ))}
+                                            </DropdownMenuRadioGroup>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 ) : (

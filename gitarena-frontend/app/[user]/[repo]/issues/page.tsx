@@ -10,6 +10,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -492,22 +494,12 @@ export default function IssuesPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => setSortBy("newest")} className="flex items-center gap-2">
-                                        <span className="flex-1">Newest</span>
-                                        {sortBy === "newest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("oldest")} className="flex items-center gap-2">
-                                        <span className="flex-1">Oldest</span>
-                                        {sortBy === "oldest" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("updated")} className="flex items-center gap-2">
-                                        <span className="flex-1">Recently updated</span>
-                                        {sortBy === "updated" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setSortBy("priority")} className="flex items-center gap-2">
-                                        <span className="flex-1">Priority</span>
-                                        {sortBy === "priority" && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                                    </DropdownMenuItem>
+                                    <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                                        <DropdownMenuRadioItem value="newest">Newest</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="updated">Recently updated</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="priority">Priority</DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
