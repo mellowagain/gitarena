@@ -35,6 +35,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { deleteFetcher, jsonFetcher, postFetcher, postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type Release = {
     tag: string;
@@ -541,12 +542,14 @@ export function RepoSidebar({
                             <span className="flex items-center gap-2">
                                 <div className="flex -space-x-2">
                                     {contributors.slice(0, 3).map((c) => (
-                                        <div
-                                            key={c.name}
-                                            className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium border-2 border-background"
-                                        >
-                                            {c.name[0].toUpperCase()}
-                                        </div>
+                                        <Avatar key={c.name} className="size-6 border-2 border-background">
+                                            {c.avatarUrl && (
+                                                <AvatarImage src={c.avatarUrl} alt={`${c.name}'s avatar`} className="object-cover" />
+                                            )}
+                                            <AvatarFallback className="bg-secondary text-xs font-medium">
+                                                {c.name[0].toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
                                     ))}
                                 </div>
                                 <span>{contributors.length}</span>

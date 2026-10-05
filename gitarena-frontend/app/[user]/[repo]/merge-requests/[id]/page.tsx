@@ -47,6 +47,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LabelBadge } from "@/components/label-badge";
 import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const currentUser = { name: "Mari" };
 const repoData = { org: "mellowagain", name: "test" };
@@ -454,16 +456,17 @@ function inlineMarkdown(text: string): React.ReactNode {
 function AuthorAvatar({ author, isBot }: { author: string; isBot?: boolean }) {
     if (isBot) {
         return (
-            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-secondary border border-border shrink-0" title="Bot">
-                <span className="text-[9px] font-bold text-muted-foreground">B</span>
-            </div>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Avatar className="size-5 rounded-md border border-border">
+                        <AvatarFallback className="rounded-md bg-secondary text-[9px] font-bold text-muted-foreground">B</AvatarFallback>
+                    </Avatar>
+                </TooltipTrigger>
+                <TooltipContent>Bot</TooltipContent>
+            </Tooltip>
         );
     }
-    return (
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-            {author[0].toUpperCase()}
-        </div>
-    );
+    return <UserAvatar username={author} size="sm" />;
 }
 
 function ActivityEvent({ item }: { item: Extract<ActivityItem, { type: "event" }> }) {
@@ -512,9 +515,7 @@ function DiffCommentBlock({ item }: { item: Extract<ActivityItem, { type: "diff_
             </div>
             <div className="px-4 py-3 border-t border-border bg-card/40">
                 <div className="flex items-center gap-2 mb-2">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium shrink-0">
-                        {item.author[0].toUpperCase()}
-                    </div>
+                    <UserAvatar username={item.author} size="sm" />
                     <span className="text-sm font-medium">{item.author}</span>
                     <span className="text-xs text-muted-foreground">{item.createdAt}</span>
                     <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
@@ -630,9 +631,7 @@ function CommentComposer() {
 
     return (
         <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0 mt-1">
-                {currentUser.name[0].toUpperCase()}
-            </div>
+            <UserAvatar username={currentUser.name} className="mt-1" />
             <Tabs
                 value={preview ? "preview" : "write"}
                 onValueChange={(v) => setPreview(v === "preview")}
@@ -892,9 +891,7 @@ export default function MergeRequestPage() {
                                 <>
                                     <div className="group/desc mb-8 pl-5 border-l-4 border-muted-foreground/20 hover:border-muted-foreground/40 transition-colors">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium shrink-0">
-                                                {mergeRequest.author[0].toUpperCase()}
-                                            </div>
+                                            <UserAvatar username={mergeRequest.author} />
                                             <span className="text-sm font-medium">{mergeRequest.author}</span>
                                             <span className="text-xs text-muted-foreground">opened {mergeRequest.createdAt}</span>
                                             <div className="ml-auto flex items-center gap-1 opacity-0 group-hover/desc:opacity-100 transition-opacity">
@@ -1216,9 +1213,7 @@ export default function MergeRequestPage() {
                                         className="flex items-center justify-between px-3 py-2 border border-border rounded-md text-sm"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-medium">
-                                                {reviewer.name[0].toUpperCase()}
-                                            </div>
+                                            <UserAvatar username={reviewer.name} size="sm" />
                                             {reviewer.name}
                                         </div>
                                         <ReviewIcon className={`h-4 w-4 ${reviewConfig.color}`} />

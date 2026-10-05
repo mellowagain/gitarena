@@ -55,6 +55,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WipBadge } from "@/components/wip-badge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -134,9 +135,11 @@ function GeneralTab({ org }: { org: OrgInfo }) {
                     <WipBadge />
                 </FieldTitle>
                 <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-xl bg-secondary border border-border flex items-center justify-center text-2xl font-semibold">
-                        {org.name[0].toUpperCase()}
-                    </div>
+                    <Avatar className="size-16 rounded-xl border border-border">
+                        <AvatarFallback className="rounded-xl bg-secondary text-2xl font-semibold">
+                            {org.name[0].toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                     <div className="space-y-1.5">
                         <Button variant="outline" size="sm" disabled className="opacity-50 cursor-not-allowed">
                             Upload image

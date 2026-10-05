@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { LabelBadge } from "@/components/label-badge";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -646,9 +647,11 @@ function RepoResults({ query }: { query: string }) {
                             key={repo.id}
                             className={`flex items-start gap-4 px-4 py-4 hover:bg-accent/20 transition-colors ${i > 0 ? "border-t border-border" : ""}`}
                         >
-                            <div className="h-9 w-9 rounded-md bg-secondary border border-border flex items-center justify-center text-sm font-semibold shrink-0">
-                                {repo.name[0].toUpperCase()}
-                            </div>
+                            <Avatar className="size-9 rounded-md border border-border">
+                                <AvatarFallback className="rounded-md bg-secondary text-sm font-semibold">
+                                    {repo.name[0].toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <Link href={`/${repo.ownerName}/${repo.name}`} className="text-sm font-medium hover:underline">

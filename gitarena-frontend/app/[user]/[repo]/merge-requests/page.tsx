@@ -24,6 +24,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Kbd } from "@/components/ui/kbd";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { LabelBadge } from "@/components/label-badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const repoData = {
     org: "mellowagain",
@@ -245,13 +247,14 @@ function MRRow({ mr, isSelected, onSelect }: { mr: MergeRequest; isSelected: boo
 
             <div className="shrink-0 flex -space-x-1.5">
                 {mr.reviewers.slice(0, 2).map((reviewer) => (
-                    <div
-                        key={reviewer}
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium border-2 border-background"
-                        title={reviewer}
-                    >
-                        {reviewer[0].toUpperCase()}
-                    </div>
+                    <Tooltip key={reviewer}>
+                        <TooltipTrigger asChild>
+                            <span>
+                                <UserAvatar username={reviewer} className="border-2 border-background" />
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{reviewer}</TooltipContent>
+                    </Tooltip>
                 ))}
             </div>
 

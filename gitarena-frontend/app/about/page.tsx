@@ -215,17 +215,10 @@ function CIDot({ ci }: { ci: string }) {
     return <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />;
 }
 
-function Avatar({ name }: { name: string }) {
-    return (
-        <span className="w-5 h-5 rounded-full bg-accent border border-border flex items-center justify-center text-[10px] font-medium text-muted-foreground shrink-0">
-            {name[0].toUpperCase()}
-        </span>
-    );
-}
-
 import { InstanceConfig } from "@/lib/instance-config";
 import { LabelBadge } from "@/components/label-badge";
 import { WipBadge } from "@/components/wip-badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 async function getApiInfo(): Promise<InstanceConfig | null> {
     try {
@@ -437,7 +430,7 @@ export default async function AboutPage() {
                                                 <CIDot ci={c.ci} />
                                                 <span className="font-mono text-xs text-muted-foreground w-14 shrink-0">{c.hash}</span>
                                                 <span className="flex-1 min-w-0 truncate">{c.message}</span>
-                                                <Avatar name={c.author} />
+                                                <UserAvatar username={c.author} size="sm" />
                                                 <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">{c.ago}</span>
                                             </div>
                                         ))}
