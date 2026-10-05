@@ -16,6 +16,7 @@ import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface MilestoneEntry {
     id: string;
@@ -314,13 +315,17 @@ export default function MilestonesPage() {
 
                     {/* Empty */}
                     {!isLoading && !error && displayed.length === 0 && (
-                        <div className="border border-border rounded-lg py-16 flex flex-col items-center gap-2 text-center">
-                            <Milestone className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-sm font-medium">No {activeTab} milestones</p>
-                            {activeTab === "open" && canManage && (
-                                <p className="text-xs text-muted-foreground">Create a milestone to track progress toward a goal.</p>
-                            )}
-                        </div>
+                        <Empty className="border border-solid">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Milestone />
+                                </EmptyMedia>
+                                <EmptyTitle>No {activeTab} milestones</EmptyTitle>
+                                {activeTab === "open" && canManage && (
+                                    <EmptyDescription>Create a milestone to track progress toward a goal.</EmptyDescription>
+                                )}
+                            </EmptyHeader>
+                        </Empty>
                     )}
 
                     {/* Milestone cards */}

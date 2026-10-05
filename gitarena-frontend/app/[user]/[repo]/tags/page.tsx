@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Spinner } from "@/components/ui/spinner";
 import { Tag, GitCommit, Code, AlertCircle, GitMerge, Settings, Search, Calendar, Trash2 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface TagInfo {
     name: string;
@@ -155,13 +156,17 @@ export default function TagsPage() {
                             ))}
                         </div>
                     ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center border border-border rounded-lg">
-                            <Tag className="h-10 w-10 text-muted-foreground mb-3" />
-                            <p className="font-medium">No tags found</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {search ? "Try a different search term." : "This repository has no tags yet."}
-                            </p>
-                        </div>
+                        <Empty className="border border-solid">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Tag />
+                                </EmptyMedia>
+                                <EmptyTitle>No tags found</EmptyTitle>
+                                <EmptyDescription>
+                                    {search ? "Try a different search term." : "This repository has no tags yet."}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     ) : (
                         <div className="border border-border rounded-lg overflow-hidden">
                             {filtered.map((tag, i) => (

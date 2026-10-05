@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { TokenForm } from "@/components/token-form";
 import { deleteFetcher } from "@/lib/fetchers";
 import { uuidToDate } from "@/lib/utils";
@@ -254,12 +254,15 @@ export function TokenManager({ owner, title, description }: TokenManagerProps) {
                 {!isLoading && error && <div className="px-4 py-8 text-center text-sm text-muted-foreground">Failed to load tokens.</div>}
 
                 {!isLoading && !error && tokens && tokens.length === 0 && (
-                    <EmptyState
-                        icon={KeyRound}
-                        title="No tokens yet"
-                        hint="Tokens authenticate API requests and Git operations over HTTP."
-                        className="py-12"
-                    />
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <KeyRound />
+                            </EmptyMedia>
+                            <EmptyTitle>No tokens yet</EmptyTitle>
+                            <EmptyDescription>Tokens authenticate API requests and Git operations over HTTP.</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 )}
 
                 {!isLoading &&

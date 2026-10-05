@@ -33,6 +33,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -477,17 +478,27 @@ function CodeResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">Failed to load results. Please try again.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>Failed to load results. Please try again.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
     if (!query) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">Enter a query to search code.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>Enter a query to search code.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -495,9 +506,14 @@ function CodeResults({ query }: { query: string }) {
 
     if (!files || files.length === 0) {
         return (
-            <div className="border border-border rounded-lg px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">No code results for &ldquo;{query}&rdquo;.</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyDescription>No code results for &ldquo;{query}&rdquo;.</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -569,10 +585,14 @@ function RepoResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load repositories</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load repositories</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -595,10 +615,14 @@ function RepoResults({ query }: { query: string }) {
 
     if (allRepos.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No repositories found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No repositories found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -752,10 +776,14 @@ function IssueResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load issues</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load issues</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -777,10 +805,14 @@ function IssueResults({ query }: { query: string }) {
 
     if (allIssues.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No issues found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No issues found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -927,10 +959,14 @@ function UserResults({ query }: { query: string }) {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">Failed to load users</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Failed to load users</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 
@@ -952,10 +988,14 @@ function UserResults({ query }: { query: string }) {
 
     if (allUsers.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-border rounded-lg">
-                <Search className="h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg font-medium">No users found</p>
-            </div>
+            <Empty className="border border-solid">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>No users found</EmptyTitle>
+                </EmptyHeader>
+            </Empty>
         );
     }
 

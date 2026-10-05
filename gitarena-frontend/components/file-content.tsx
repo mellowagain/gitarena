@@ -8,6 +8,7 @@ import { BlameView, type BlameHunk } from "@/components/blame-view";
 import { ErrorDisplay } from "@/components/error-display";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, BinaryIcon, ExternalLink } from "lucide-react";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface FileContentResponse {
     content: string | null;
@@ -85,19 +86,23 @@ export function FileContent({
 
     if (data.isBinary) {
         return (
-            <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-                <BinaryIcon className="h-10 w-10 opacity-40" />
-                <div className="text-center space-y-3 max-w-sm">
-                    <p className="text-sm font-medium">Binary file</p>
-                    <p className="text-xs text-muted-foreground">Binary files cannot be displayed on the frontend</p>
-                    <Button asChild variant="outline" size="sm" className="mt-2">
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <BinaryIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>Binary file</EmptyTitle>
+                    <EmptyDescription>Binary files cannot be displayed on the frontend</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button asChild variant="outline" size="sm">
                         <a href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${filename}`} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-3 w-3" />
+                            <ExternalLink />
                             View Raw
                         </a>
                     </Button>
-                </div>
-            </div>
+                </EmptyContent>
+            </Empty>
         );
     }
 

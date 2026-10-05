@@ -15,6 +15,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 type Label = {
     id: string;
@@ -433,11 +434,15 @@ export default function LabelsPage() {
                     {!isLoading &&
                         !error &&
                         (filtered.length === 0 ? (
-                            <div className="border border-border rounded-lg py-16 flex flex-col items-center gap-2 text-center">
-                                <Tag className="h-8 w-8 text-muted-foreground" />
-                                <p className="text-sm font-medium">No labels found</p>
-                                <p className="text-xs text-muted-foreground">Try a different search term or create a new label.</p>
-                            </div>
+                            <Empty className="border border-solid">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Tag />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No labels found</EmptyTitle>
+                                    <EmptyDescription>Try a different search term or create a new label.</EmptyDescription>
+                                </EmptyHeader>
+                            </Empty>
                         ) : (
                             <div className="space-y-5">
                                 {groups.map(({ scope, items }) => (

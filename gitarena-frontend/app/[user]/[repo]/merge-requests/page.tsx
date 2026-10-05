@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 const repoData = {
     org: "mellowagain",
@@ -467,15 +468,21 @@ export default function MergeRequestsPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                <Inbox className="h-16 w-16 mb-4 opacity-30" />
-                                <p className="text-lg font-medium">No merge requests</p>
-                                <p className="mt-1">Create a merge request to start collaborating</p>
-                                <Button size="sm" className="mt-6 gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    New Merge Request
-                                </Button>
-                            </div>
+                            <Empty className="h-full">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Inbox />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No merge requests</EmptyTitle>
+                                    <EmptyDescription>Create a merge request to start collaborating</EmptyDescription>
+                                </EmptyHeader>
+                                <EmptyContent>
+                                    <Button size="sm">
+                                        <Plus />
+                                        New Merge Request
+                                    </Button>
+                                </EmptyContent>
+                            </Empty>
                         )}
                     </div>
                 </main>

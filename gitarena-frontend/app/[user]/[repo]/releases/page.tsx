@@ -37,6 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -531,13 +532,17 @@ export default function ReleasesPage() {
                     ) : error ? (
                         <ErrorDisplay failed="releases" error={error} />
                     ) : !displayed || displayed.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <Package className="h-10 w-10 text-muted-foreground mb-4" />
-                            <p className="font-medium">No releases found</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {filter !== "all" ? "Try a different filter." : "Create the first release to get started."}
-                            </p>
-                        </div>
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Package />
+                                </EmptyMedia>
+                                <EmptyTitle>No releases found</EmptyTitle>
+                                <EmptyDescription>
+                                    {filter !== "all" ? "Try a different filter." : "Create the first release to get started."}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
                     ) : (
                         displayed.map((release) => (
                             <ReleaseCard key={release.id} release={release} user={user} repo={repo} canPush={canPush} />

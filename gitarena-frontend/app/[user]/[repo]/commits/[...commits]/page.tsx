@@ -18,6 +18,7 @@ import type { RepoMetadata } from "@/app/[user]/[repo]/page";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface BranchCommitsResponse {
     commits: FileCommitInfo[];
@@ -249,10 +250,14 @@ export default function CommitsPage() {
                     {isLoading && <CommitsSkeleton />}
 
                     {!isLoading && allCommits.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                            <GitCommit className="h-10 w-10 opacity-20" />
-                            <p className="text-sm">No commits on this branch.</p>
-                        </div>
+                        <Empty>
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <GitCommit />
+                                </EmptyMedia>
+                                <EmptyTitle>No commits on this branch.</EmptyTitle>
+                            </EmptyHeader>
+                        </Empty>
                     )}
 
                     {groups.length > 0 && (

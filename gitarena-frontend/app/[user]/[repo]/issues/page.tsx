@@ -43,6 +43,7 @@ import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface IssueLabel {
     name: string;
@@ -596,19 +597,25 @@ export default function IssuesPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground lg:h-full lg:py-0">
-                                <Inbox className="h-16 w-16 mb-4 opacity-30" />
-                                <p className="text-lg font-medium">No issues</p>
-                                <p className="mt-1">Create your first issue to get started</p>
-                                {!isArchived && (
-                                    <Link href={`/${user}/${repo}/issues/new`}>
-                                        <Button size="sm" className="mt-6 gap-2">
-                                            <Plus className="h-4 w-4" />
-                                            New Issue
+                            <Empty className="lg:h-full">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Inbox />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No issues</EmptyTitle>
+                                    <EmptyDescription>Create your first issue to get started</EmptyDescription>
+                                </EmptyHeader>
+                                <EmptyContent>
+                                    {!isArchived && (
+                                        <Button size="sm" asChild>
+                                            <Link href={`/${user}/${repo}/issues/new`}>
+                                                <Plus />
+                                                New Issue
+                                            </Link>
                                         </Button>
-                                    </Link>
-                                )}
-                            </div>
+                                    )}
+                                </EmptyContent>
+                            </Empty>
                         )}
                     </div>
                 </main>

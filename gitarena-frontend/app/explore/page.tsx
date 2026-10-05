@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import * as allLangs from "linguist-languages";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -201,20 +202,28 @@ export default function ExplorePage() {
 
                         <div className="border border-border rounded-lg overflow-hidden bg-card/30">
                             {error ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                    <Search className="h-12 w-12 mb-4 opacity-30" />
-                                    <p className="text-lg font-medium">Failed to load repositories</p>
-                                    <p className="mt-1 text-sm">{error.message}</p>
-                                </div>
+                                <Empty>
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <Search />
+                                        </EmptyMedia>
+                                        <EmptyTitle>Failed to load repositories</EmptyTitle>
+                                        <EmptyDescription>{error.message}</EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
                             ) : isLoading ? (
                                 Array.from({ length: 10 }, (_, i) => <RepoRowSkeleton key={i} rank={i + 1} />)
                             ) : allRepos.length > 0 ? (
                                 allRepos.map((repo, index) => <RepoRow key={repo.id} repo={repo} rank={index + 1} />)
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                    <Search className="h-12 w-12 mb-4 opacity-30" />
-                                    <p className="text-lg font-medium">No repositories found</p>
-                                </div>
+                                <Empty>
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <Search />
+                                        </EmptyMedia>
+                                        <EmptyTitle>No repositories found</EmptyTitle>
+                                    </EmptyHeader>
+                                </Empty>
                             )}
                         </div>
 
