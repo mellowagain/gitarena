@@ -704,7 +704,7 @@ function FileDiff({ filename, additions, deletions, hunks }: { filename: string;
     return (
         <Collapsible open={open} onOpenChange={setOpen} className="border border-border rounded-md overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/40 border-b border-border">
-                <CollapsibleTrigger className="shrink-0">
+                <CollapsibleTrigger className="shrink-0" aria-label={open ? "Collapse file" : "Expand file"}>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
                 </CollapsibleTrigger>
                 <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />

@@ -13,10 +13,11 @@ interface DatePickerProps {
     value: string;
     onChange: (value: string) => void;
     disabled?: Matcher | Matcher[];
+    required?: boolean;
     className?: string;
 }
 
-export function DatePicker({ value, onChange, disabled, className }: DatePickerProps) {
+export function DatePicker({ value, onChange, disabled, required, className }: DatePickerProps) {
     const [open, setOpen] = useState(false);
     const selected = value ? parse(value, "yyyy-MM-dd", new Date()) : undefined;
 
@@ -34,7 +35,8 @@ export function DatePicker({ value, onChange, disabled, className }: DatePickerP
                     selected={selected}
                     defaultMonth={selected}
                     disabled={disabled}
-                    onSelect={(date) => {
+                    required={required}
+                    onSelect={(date: Date | undefined) => {
                         onChange(date ? format(date, "yyyy-MM-dd") : "");
                         setOpen(false);
                     }}

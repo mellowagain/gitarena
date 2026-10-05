@@ -354,18 +354,13 @@ function NewRepositoryForm() {
                                         return (
                                             <label
                                                 key={option.value}
-                                                onPointerDown={(e) => e.button === 0 && setVisibility(option.value)}
                                                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer select-none transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 ${
                                                     visibility === option.value
                                                         ? "border-foreground bg-accent/30"
                                                         : "border-border hover:bg-accent/20"
                                                 }`}
                                             >
-                                                <RadioGroupItem
-                                                    value={option.value}
-                                                    onFocus={() => setVisibility(option.value)}
-                                                    className="sr-only"
-                                                />
+                                                <RadioGroupItem value={option.value} className="sr-only" />
                                                 <Icon
                                                     className={`h-5 w-5 ${visibility === option.value ? "text-foreground" : "text-muted-foreground"}`}
                                                 />

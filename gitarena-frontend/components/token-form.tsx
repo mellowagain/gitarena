@@ -388,6 +388,7 @@ export function TokenForm({ owner, token, onCancel, onCreated, onUpdated }: Toke
                                 value={customExpiry}
                                 onChange={setCustomExpiry}
                                 disabled={{ before: addDays(new Date(), 1) }}
+                                required
                                 className="w-44 bg-card"
                             />
                         )}
