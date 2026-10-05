@@ -557,72 +557,72 @@ export function RepoSidebar({
 
 export function RepoSidebarSkeleton() {
     return (
-        <aside className="order-first w-full shrink-0 overflow-y-auto border-b border-border animate-pulse lg:order-none lg:w-[340px] lg:border-l lg:border-b-0">
+        <aside className="order-first w-full shrink-0 overflow-y-auto border-b border-border lg:order-none lg:w-[340px] lg:border-l lg:border-b-0">
             <div className="p-5 space-y-5">
                 {/* Clone section */}
                 <div className="hidden space-y-2 lg:block">
                     <div className="flex items-center justify-between">
-                        <div className="h-3 w-12 rounded bg-accent" />
-                        <div className="h-5 w-16 rounded bg-accent" />
+                        <Skeleton className="h-3 w-12 rounded" />
+                        <Skeleton className="h-5 w-16 rounded" />
                     </div>
-                    <div className="h-9 w-full rounded bg-accent" />
+                    <Skeleton className="h-9 w-full rounded" />
                 </div>
 
                 {/* About section */}
                 <div className="space-y-3 lg:pt-4 lg:border-t lg:border-border">
                     <div className="flex items-center justify-between">
-                        <div className="h-3 w-12 rounded bg-accent" />
+                        <Skeleton className="h-3 w-12 rounded" />
                         <div className="flex gap-1.5">
                             {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-6 w-12 rounded bg-accent" />
+                                <Skeleton key={i} className="h-6 w-12 rounded" />
                             ))}
                         </div>
                     </div>
-                    <div className="h-3 w-full rounded bg-accent" />
-                    <div className="h-3 w-4/5 rounded bg-accent" />
-                    <div className="h-3 w-24 rounded bg-accent" />
+                    <Skeleton className="h-3 w-full rounded" />
+                    <Skeleton className="h-3 w-4/5 rounded" />
+                    <Skeleton className="h-3 w-24 rounded" />
                     <div className="flex gap-2">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-5 w-14 rounded-full bg-accent" />
+                            <Skeleton key={i} className="h-5 w-14 rounded-full" />
                         ))}
                     </div>
                     {[1, 2, 3, 4].map((i) => (
                         <div key={i} className={`${i < 3 ? "hidden lg:flex" : "flex"} items-center justify-between`}>
-                            <div className="h-3 w-16 rounded bg-accent" />
-                            <div className="h-3 w-20 rounded bg-accent" />
+                            <Skeleton className="h-3 w-16 rounded" />
+                            <Skeleton className="h-3 w-20 rounded" />
                         </div>
                     ))}
                 </div>
 
                 {/* Languages section */}
                 <div className="pt-4 border-t border-border space-y-2.5">
-                    <div className="h-3 w-20 rounded bg-accent" />
-                    <div className="h-2.5 w-full rounded-full bg-accent" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                    <Skeleton className="h-2.5 w-full rounded-full" />
                     <div className="flex gap-4">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-3 w-16 rounded bg-accent" />
+                            <Skeleton key={i} className="h-3 w-16 rounded" />
                         ))}
                     </div>
                 </div>
 
                 {/* Releases section */}
                 <div className="pt-4 border-t border-border space-y-2">
-                    <div className="h-3 w-16 rounded bg-accent" />
+                    <Skeleton className="h-3 w-16 rounded" />
                     <div className="flex items-center gap-3 p-3 -mx-3">
-                        <div className="h-5 w-5 rounded bg-accent shrink-0" />
+                        <Skeleton className="h-5 w-5 rounded shrink-0" />
                         <div className="flex-1 space-y-1.5">
-                            <div className="h-3 w-20 rounded bg-accent" />
-                            <div className="h-2.5 w-32 rounded bg-accent" />
+                            <Skeleton className="h-3 w-20 rounded" />
+                            <Skeleton className="h-2.5 w-32 rounded" />
                         </div>
                     </div>
                 </div>
 
                 {/* Contributors section */}
                 <div className="pt-4 border-t border-border flex items-center justify-between">
-                    <div className="h-3 w-24 rounded bg-accent" />
+                    <Skeleton className="h-3 w-24 rounded" />
                     <div className="flex -space-x-2">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-6 w-6 rounded-full bg-accent border-2 border-background" />
+                            <Skeleton key={i} className="h-6 w-6 rounded-full border-2 border-background" />
                         ))}
                     </div>
                 </div>

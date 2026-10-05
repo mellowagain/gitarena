@@ -10,6 +10,7 @@ import { jsonFetcher } from "@/lib/fetchers";
 import { Badge } from "@/components/ui/badge";
 import * as allLangs from "linguist-languages";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function languageColor(name: string): string {
     const color = (allLangs as Record<string, { color?: string }>)[name]?.color;
@@ -123,11 +124,11 @@ function RepoRowSkeleton({ rank }: { rank: number }) {
         <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
             <div className="shrink-0 w-8 text-lg font-medium text-muted-foreground/50 text-center">{rank}</div>
             <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-                <div className="h-3 w-72 bg-muted animate-pulse rounded" />
+                <Skeleton className="h-4 w-48 rounded" />
+                <Skeleton className="h-3 w-72 rounded" />
             </div>
-            <div className="hidden sm:block h-3 w-20 bg-muted animate-pulse rounded" />
-            <div className="h-3 w-10 bg-muted animate-pulse rounded" />
+            <Skeleton className="hidden sm:block h-3 w-20 rounded" />
+            <Skeleton className="h-3 w-10 rounded" />
         </div>
     );
 }

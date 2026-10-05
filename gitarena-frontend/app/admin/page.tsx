@@ -586,7 +586,7 @@ export default function AdminDashboardPage() {
                                 <div className="divide-y divide-border/50">
                                     {isAuditLoading ? (
                                         Array.from({ length: 3 }).map((_, index) => (
-                                            <div key={index} className="h-12 px-4 py-3 animate-pulse bg-secondary/30" />
+                                            <Skeleton key={index} className="h-12 px-4 py-3 rounded-none" />
                                         ))
                                     ) : !auditEvents || auditEvents.length === 0 ? (
                                         <div className="px-4 py-3 text-sm text-muted-foreground">No audit events yet.</div>
@@ -811,7 +811,7 @@ export default function AdminDashboardPage() {
                                             {Array.from({ length: 8 }).map((_, index) => (
                                                 <tr key={index}>
                                                     <td colSpan={7} className="px-4 py-3">
-                                                        <div className="h-4 bg-secondary/50 rounded animate-pulse" />
+                                                        <Skeleton className="h-4 rounded" />
                                                     </td>
                                                 </tr>
                                             ))}

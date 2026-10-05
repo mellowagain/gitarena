@@ -55,6 +55,7 @@ import { Separator } from "@/components/ui/separator";
 import { Field, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -203,16 +204,16 @@ function ProfileTab() {
                 <div className="mb-6">
                     <FieldTitle className="mb-1.5">Avatar</FieldTitle>
                     <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
+                        <Skeleton className="h-16 w-16 rounded-full" />
                         <div className="flex flex-col gap-2">
-                            <div className="h-8 w-28 bg-muted animate-pulse rounded-md" />
+                            <Skeleton className="h-8 w-28 rounded-md" />
                         </div>
                     </div>
                 </div>
                 {[180, 120, 160, 140].map((w, i) => (
                     <div key={i} className="mb-6">
-                        <div className="h-3 w-16 bg-muted animate-pulse rounded mb-2" />
-                        <div className={`h-9 bg-muted animate-pulse rounded-md`} style={{ width: `${w}px` }} />
+                        <Skeleton className="h-3 w-16 rounded mb-2" />
+                        <Skeleton className="h-9 rounded-md" style={{ width: `${w}px` }} />
                     </div>
                 ))}
             </div>
@@ -344,15 +345,15 @@ function EmailsTab() {
                 {isLoading &&
                     [0, 1, 2].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="mt-1 h-2 w-2 rounded-full bg-muted animate-pulse shrink-0" />
+                            <Skeleton className="mt-1 h-2 w-2 rounded-full shrink-0" />
                             <div className="flex-1 min-w-0 space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-                                    <div className="h-4 w-14 bg-muted animate-pulse rounded" />
+                                    <Skeleton className="h-4 w-48 rounded" />
+                                    <Skeleton className="h-4 w-14 rounded" />
                                 </div>
-                                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-3 w-32 rounded" />
                             </div>
-                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-7 w-16 rounded shrink-0" />
                         </div>
                     ))}
                 {!isLoading && emails && emails.length === 0 && (
@@ -461,7 +462,7 @@ function EmailsTab() {
                     title="Commit email"
                     description="Use this address in Git to link commits to your account without revealing your real email."
                 />
-                {(meLoading || configLoading) && <div className="h-10 bg-muted animate-pulse rounded-md" />}
+                {(meLoading || configLoading) && <div className="h-10 bg-muted rounded-md" />}
                 {forgeAddress && (
                     <div className="flex items-center rounded-md bg-card border border-border">
                         <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-foreground">{forgeAddress}</code>
@@ -615,12 +616,12 @@ function AuthenticationTab() {
                 {passkeysLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-40 rounded" />
+                                <Skeleton className="h-3 w-24 rounded" />
                             </div>
-                            <div className="h-7 w-16 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-7 w-16 rounded shrink-0" />
                         </div>
                     ))}
                 {!passkeysLoading &&
@@ -679,10 +680,10 @@ function SessionsTab() {
                 {isLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-36 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-56 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-36 rounded" />
+                                <Skeleton className="h-3 w-56 rounded" />
                             </div>
                         </div>
                     ))}
@@ -789,13 +790,13 @@ function KeysTab() {
                 {sshLoading &&
                     [0, 1].map((i) => (
                         <div key={i} className={`flex items-start gap-3 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0 mt-0.5" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-                                <div className="h-3 w-64 bg-muted animate-pulse rounded font-mono" />
-                                <div className="h-3 w-28 bg-muted animate-pulse rounded" />
+                                <Skeleton className="h-4 w-32 rounded" />
+                                <Skeleton className="h-3 w-64 rounded font-mono" />
+                                <Skeleton className="h-3 w-28 rounded" />
                             </div>
-                            <div className="h-4 w-4 bg-muted animate-pulse rounded shrink-0" />
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                         </div>
                     ))}
                 {!sshLoading && sshKeys && sshKeys.length === 0 && (
@@ -941,9 +942,9 @@ function APIKeysTab() {
     if (isLoading || !me) {
         return (
             <div>
-                <div className="h-5 w-28 bg-muted animate-pulse rounded mb-2" />
-                <div className="h-4 w-80 bg-muted animate-pulse rounded mb-6" />
-                <div className="h-48 bg-muted animate-pulse rounded-md" />
+                <Skeleton className="h-5 w-28 rounded mb-2" />
+                <Skeleton className="h-4 w-80 rounded mb-6" />
+                <Skeleton className="h-48 rounded-md" />
             </div>
         );
     }
@@ -970,7 +971,7 @@ function SecurityLogTab() {
             {isLoading && (
                 <div className="space-y-3">
                     {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             )}

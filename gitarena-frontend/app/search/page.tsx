@@ -31,6 +31,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -439,20 +440,20 @@ function CodeResultsSkeleton() {
     return (
         <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-                <div key={i} className="border border-border rounded-lg overflow-hidden animate-pulse">
+                <div key={i} className="border border-border rounded-lg overflow-hidden">
                     <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/40 border-b border-border">
-                        <div className="h-4 w-4 rounded bg-muted" />
-                        <div className="h-3 w-32 rounded bg-muted" />
-                        <div className="h-3 w-48 rounded bg-muted" />
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-3 w-32 rounded" />
+                        <Skeleton className="h-3 w-48 rounded" />
                     </div>
                     <div className="divide-y divide-border/40">
                         {[1, 2].map((j) => (
                             <div key={j} className="flex items-start">
                                 <div className="w-12 shrink-0 px-3 py-2.5 border-r border-border/40">
-                                    <div className="h-3 w-4 rounded bg-muted mx-auto" />
+                                    <Skeleton className="h-3 w-4 rounded mx-auto" />
                                 </div>
                                 <div className="flex-1 px-4 py-2.5">
-                                    <div className="h-3 w-3/4 rounded bg-muted" />
+                                    <Skeleton className="h-3 w-3/4 rounded" />
                                 </div>
                             </div>
                         ))}
@@ -579,11 +580,11 @@ function RepoResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-start gap-4 px-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-9 w-9 rounded-md bg-secondary border border-border shrink-0 animate-pulse" />
+                        <Skeleton className="h-9 w-9 rounded-md border border-border shrink-0" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-48" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-72" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-32" />
+                            <Skeleton className="h-4 rounded w-48" />
+                            <Skeleton className="h-3 rounded w-72" />
+                            <Skeleton className="h-3 rounded w-32" />
                         </div>
                     </div>
                 ))}
@@ -761,10 +762,10 @@ function IssueResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-start gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-4 w-4 rounded-full bg-secondary border border-border shrink-0 animate-pulse mt-0.5" />
+                        <Skeleton className="h-4 w-4 rounded-full border border-border shrink-0 mt-0.5" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-64" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-40" />
+                            <Skeleton className="h-4 rounded w-64" />
+                            <Skeleton className="h-3 rounded w-40" />
                         </div>
                     </div>
                 ))}
@@ -935,10 +936,10 @@ function UserResults({ query }: { query: string }) {
             <div className="border border-border rounded-lg overflow-hidden">
                 {Array.from({ length: 5 }, (_, i) => (
                     <div key={i} className={`flex items-center gap-4 px-4 py-3.5 ${i > 0 ? "border-t border-border" : ""}`}>
-                        <div className="h-10 w-10 rounded-full bg-secondary border border-border shrink-0 animate-pulse" />
+                        <Skeleton className="h-10 w-10 rounded-full border border-border shrink-0" />
                         <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-secondary rounded animate-pulse w-32" />
-                            <div className="h-3 bg-secondary rounded animate-pulse w-20" />
+                            <Skeleton className="h-4 rounded w-32" />
+                            <Skeleton className="h-3 rounded w-20" />
                         </div>
                     </div>
                 ))}

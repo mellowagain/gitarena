@@ -51,6 +51,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -435,7 +436,7 @@ function MembersTab({ orgName }: { orgName: string }) {
             {isLoading ? (
                 <div className="space-y-2">
                     {[0, 1, 2].map((i) => (
-                        <div key={i} className="h-12 bg-secondary/50 rounded-md animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             ) : (
@@ -519,7 +520,7 @@ function AuditLogTab({ orgName }: { orgName: string }) {
             {isLoading && (
                 <div className="space-y-3">
                     {[0, 1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-12 rounded-md bg-secondary/50 animate-pulse" />
+                        <Skeleton key={i} className="h-12 rounded-md" />
                     ))}
                 </div>
             )}

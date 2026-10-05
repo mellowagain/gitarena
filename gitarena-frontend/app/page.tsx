@@ -387,11 +387,11 @@ export default function DashboardPage() {
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {profileLoading ? (
                                     [1, 2, 3].map((i) => (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                                            <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                                             <div className="flex-1 space-y-1.5">
-                                                <div className="h-3.5 w-48 rounded bg-accent" />
-                                                <div className="h-3 w-64 rounded bg-accent" />
+                                                <Skeleton className="h-3.5 w-48 rounded" />
+                                                <Skeleton className="h-3 w-64 rounded" />
                                             </div>
                                         </div>
                                     ))
@@ -469,13 +469,13 @@ export default function DashboardPage() {
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {assignedIssuesLoading ? (
                                     [1, 2, 3].map((i) => (
-                                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                                            <div className="h-3.5 w-3.5 rounded-full bg-accent shrink-0" />
+                                        <div key={i} className="flex items-center gap-3 px-4 py-3">
+                                            <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
                                             <div className="flex-1 space-y-1.5">
-                                                <div className="h-3.5 w-56 rounded bg-accent" />
-                                                <div className="h-3 w-32 rounded bg-accent" />
+                                                <Skeleton className="h-3.5 w-56 rounded" />
+                                                <Skeleton className="h-3 w-32 rounded" />
                                             </div>
-                                            <div className="h-3 w-16 rounded bg-accent shrink-0" />
+                                            <Skeleton className="h-3 w-16 rounded shrink-0" />
                                         </div>
                                     ))
                                 ) : !assignedIssues || assignedIssues.length === 0 ? (
@@ -632,38 +632,38 @@ export function DashboardSkeleton() {
                 ]}
                 hasNotifications
             />
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 animate-pulse">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Main content */}
                 <main className="flex-1 overflow-y-auto">
                     <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
                         {/* Welcome header skeleton */}
                         <div className="mb-6 sm:mb-8 space-y-2">
-                            <div className="h-7 w-72 rounded bg-accent" />
-                            <div className="h-4 w-56 rounded bg-accent" />
+                            <Skeleton className="h-7 w-72 rounded" />
+                            <Skeleton className="h-4 w-56 rounded" />
                         </div>
 
                         {/* Repos section skeleton */}
                         <div className="mb-8">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="h-3 w-24 rounded bg-accent" />
+                                <Skeleton className="h-3 w-24 rounded" />
                                 <div className="flex items-center gap-1">
                                     {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-6 w-12 rounded-md bg-accent" />
+                                        <Skeleton key={i} className="h-6 w-12 rounded-md" />
                                     ))}
                                 </div>
                             </div>
                             <div className="border border-border rounded-md divide-y divide-border">
                                 {[1, 2, 3, 4, 5].map((i) => (
                                     <div key={i} className="flex items-center gap-3 px-4 py-3">
-                                        <div className="h-4 w-4 rounded bg-accent shrink-0" />
+                                        <Skeleton className="h-4 w-4 rounded shrink-0" />
                                         <div className="flex-1 space-y-1.5">
-                                            <div className="h-3.5 w-48 rounded bg-accent" />
-                                            <div className="h-3 w-64 rounded bg-accent" />
+                                            <Skeleton className="h-3.5 w-48 rounded" />
+                                            <Skeleton className="h-3 w-64 rounded" />
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <div className="h-3 w-12 rounded bg-accent" />
-                                            <div className="h-3 w-8 rounded bg-accent" />
-                                            <div className="h-3 w-10 rounded bg-accent" />
+                                            <Skeleton className="h-3 w-12 rounded" />
+                                            <Skeleton className="h-3 w-8 rounded" />
+                                            <Skeleton className="h-3 w-10 rounded" />
                                         </div>
                                     </div>
                                 ))}
@@ -672,20 +672,20 @@ export function DashboardSkeleton() {
 
                         {/* Issues skeleton */}
                         <div className="mb-8">
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
 
                         {/* MRs skeleton */}
                         <div className="mb-8">
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
 
                         {/* Activity skeleton */}
                         <div>
-                            <div className="h-3 w-28 rounded bg-accent mb-3" />
-                            <div className="h-16 rounded-md bg-accent" />
+                            <Skeleton className="h-3 w-28 rounded mb-3" />
+                            <Skeleton className="h-16 rounded-md" />
                         </div>
                     </div>
                 </main>
@@ -695,10 +695,10 @@ export function DashboardSkeleton() {
                     <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-1">
                         {[1, 2, 3].map((section) => (
                             <div key={section}>
-                                <div className="h-3 w-24 rounded bg-accent mb-3" />
+                                <Skeleton className="h-3 w-24 rounded mb-3" />
                                 <div className="space-y-1">
                                     {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-9 rounded-md bg-accent" />
+                                        <Skeleton key={i} className="h-9 rounded-md" />
                                     ))}
                                 </div>
                             </div>

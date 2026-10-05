@@ -413,7 +413,7 @@ function OrgProfilePage({ name, authUserId }: { name: string; authUserId: string
                                     {reposLoading ? (
                                         <div className="space-y-2">
                                             {[0, 1, 2].map((i) => (
-                                                <div key={i} className="h-14 bg-secondary/50 rounded-md animate-pulse" />
+                                                <Skeleton key={i} className="h-14 rounded-md" />
                                             ))}
                                         </div>
                                     ) : (repos ?? []).length === 0 ? (

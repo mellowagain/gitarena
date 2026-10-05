@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import useSWR from "swr";
 import { ErrorDisplay } from "@/components/error-display";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface BranchInfo {
     name: string;
@@ -95,10 +96,10 @@ export function BranchBar({ user, repo, defaultBranch, selectedBranch, onBranchC
 
 export function BranchBarSkeleton() {
     return (
-        <div className="flex items-center gap-2 animate-pulse">
-            <div className="h-9 flex-1 rounded bg-accent" />
-            <div className="h-9 w-14 rounded bg-accent" />
-            <div className="h-9 w-14 rounded bg-accent" />
+        <div className="flex items-center gap-2">
+            <Skeleton className="h-9 flex-1 rounded" />
+            <Skeleton className="h-9 w-14 rounded" />
+            <Skeleton className="h-9 w-14 rounded" />
         </div>
     );
 }
