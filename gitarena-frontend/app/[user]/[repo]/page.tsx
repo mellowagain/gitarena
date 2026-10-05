@@ -118,6 +118,11 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
     const { data: branchesData } = useSWR<BranchesResponse>(`/api/repos/${user}/${repo}/branches`);
     const otherBranches = (branchesData?.branches ?? []).map((b) => b.name).sort((a, b) => a.localeCompare(b));
+    const { data: permsData } = useSWR<{ permissions: { push: boolean; admin: boolean } }>(
+        `/api/repos/${user}/${repo}/permissions`,
+        jsonFetcher
+    );
+    const canAdmin = permsData?.permissions.admin ?? false;
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     const host = apiUrl.replace(/^https?:\/\//, "");
@@ -230,6 +235,7 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
                     license={meta.license}
                     topics={[]}
                     languages={meta.languages}
+                    canAdmin={canAdmin}
                 />
             </div>
         </div>

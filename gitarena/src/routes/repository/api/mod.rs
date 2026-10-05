@@ -17,6 +17,7 @@ pub(crate) mod branches;
 pub(crate) mod collaborators;
 pub(crate) mod commit_detail;
 pub(crate) mod create_repo;
+pub(crate) mod delete_repo;
 pub(crate) mod download;
 pub(crate) mod file_content;
 pub(crate) mod fork_repo;
@@ -64,6 +65,7 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(fork_repo::create_fork);
 
     config.service(archive::toggle_archive);
+    config.service(delete_repo::delete_repo);
 
     config.service(star::get_stats);
     config.service(star::post_star);

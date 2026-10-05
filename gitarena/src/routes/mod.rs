@@ -92,6 +92,7 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::repo_readme::readme,
         crate::routes::repository::api::fork_repo::create_fork,
         crate::routes::repository::api::archive::toggle_archive,
+        crate::routes::repository::api::delete_repo::delete_repo,
         crate::routes::repository::api::star::get_stats,
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,

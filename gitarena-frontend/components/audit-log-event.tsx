@@ -129,6 +129,11 @@ function describeSecurity(event: EventResponse): ReactNode {
         }
         case "repo.transferred":
             return subject ? <>Transferred {subject}</> : "Transferred repository";
+        case "repo.deleted": {
+            const name = typeof payload.name === "string" ? payload.name : "a repository";
+            const namespace = typeof payload.namespace === "string" ? `${payload.namespace}/` : "";
+            return `Deleted repository ${namespace}${name}`;
+        }
         default:
             return type;
     }

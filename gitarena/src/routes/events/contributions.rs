@@ -87,6 +87,7 @@ pub(crate) async fn get_contributions(
          from events e \
          left join repositories r on r.id = e.subject_id_repo \
          where e.actor_id = $1 and e.id >= $2 and e.id < $3 \
+         and e.class = 'activity' \
          and e.type in ({type_list}) \
          {event_privacy}"
     );
