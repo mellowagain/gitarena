@@ -11,6 +11,7 @@ use std::env;
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
 use crate::meili::MEILI_CLIENT;
+use crate::storage::STORAGE;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::SameSite;
@@ -115,6 +116,11 @@ async fn main() -> Result<()> {
     contributions::init(&db_pool).await?;
 
     let storage = storage::init(&db_pool).await?;
+    STORAGE
+        .set(storage.clone())
+        .map_err(|_| anyhow!("s3 storage should not be set more than once"))?;
+
+    let queue = queue::init().await?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 

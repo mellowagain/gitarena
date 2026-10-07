@@ -40,7 +40,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArchivedBanner } from "@/components/archived-banner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { TokenManager } from "@/components/token-manager";
@@ -820,6 +820,7 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
     const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
     const [deleteInput, setDeleteInput] = useState("");
+    const router = useRouter();
 
     const metaUrl = `/api/repos/${org}/${repo}`;
     const { data: repoMeta, mutate: mutateMeta } = useSWR<RepoMeta>(metaUrl, jsonFetcher);
@@ -835,6 +836,21 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
             },
         }
     );
+
+    const {
+        trigger: deleteRepo,
+        isMutating: isDeleting,
+        error: deleteError,
+    } = useSWRMutation<void, Error, string>(metaUrl, deleteFetcher, {
+        onSuccess: async () => {
+            await Promise.all([
+                mutate(metaUrl, undefined, { revalidate: false }),
+                mutate(`/api/users/${org}`),
+                mutate(`/api/orgs/${org}/repos`),
+            ]);
+            router.push(`/${org}`);
+        },
+    });
 
     const fullName = `${org}/${repo}`;
 
@@ -901,7 +917,6 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                         <div className="flex items-center gap-2 mb-1">
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <p className="text-sm font-medium text-destructive">Delete this repository</p>
-                            <WipBadge />
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                             Once deleted, this repository cannot be recovered. All issues, merge requests, comments, and commits will be
@@ -946,14 +961,18 @@ function DangerTab({ org, repo }: { org: string; repo: string }) {
                             className="border-destructive/40 focus-visible:ring-destructive/40"
                         />
                     </Field>
+                    {deleteError && <p className="text-sm text-destructive">{deleteError.message}</p>}
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={(e) => e.preventDefault()}
-                            disabled={deleteInput !== fullName}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                deleteRepo();
+                            }}
+                            disabled={deleteInput !== fullName || isDeleting}
                             className={buttonVariants({ variant: "destructive" })}
                         >
-                            <Trash2 />I understand, delete this repository
+                            {isDeleting ? <Spinner /> : <Trash2 />}I understand, delete this repository
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -2,14 +2,18 @@ use crate::die;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::user::WebUser;
 
+use crate::config::get_setting;
 use crate::database::Pool;
 use crate::events::Event;
+use crate::meili::MeiliClient;
+use crate::repository::cleanup::RepoCleanup;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     get,
@@ -54,7 +58,13 @@ pub(crate) async fn get_org(name: web::Path<String>, db_pool: web::Data<Pool>) -
     tag = "organization"
 )]
 #[route("/api/orgs/{name}", method = "DELETE", err = "json")]
-pub(crate) async fn delete_org(web_user: WebUser, name: web::Path<String>, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn delete_org(
+    web_user: WebUser,
+    name: web::Path<String>,
+    request: HttpRequest,
+    meili_client: web::Data<MeiliClient>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let user = web_user.into_user()?;
 
     let mut tx = db_pool.begin().await?;
@@ -82,9 +92,19 @@ pub(crate) async fn delete_org(web_user: WebUser, name: web::Path<String>, reque
     .save(&mut tx)
     .await?;
 
+    let repo_ids: Vec<Uuid> = sqlx::query_scalar("select id from repositories where owner_org = $1")
+        .bind(org.id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+    let mut cleanup = RepoCleanup::prepare(repo_ids, &mut tx).await?;
+
     sqlx::query("delete from organizations where id = $1").bind(org.id).execute(&mut *tx).await?;
 
-    tx.commit().await?;
+    let base_dir: String = get_setting("repositories.base_dir", &mut tx).await?;
+
+    cleanup.move_to_trash(format!("{base_dir}/{}", org.name), org.id, &mut tx).await?;
+    cleanup.commit(tx, &meili_client).await?;
 
     Ok(HttpResponse::NoContent().finish())
 }

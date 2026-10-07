@@ -3,9 +3,12 @@ use anyhow::Result;
 use gitarena_macros::{from_config, from_optional_config};
 use object_store::aws::AmazonS3;
 use object_store::aws::AmazonS3Builder;
+use tokio::sync::OnceCell;
 use tracing::info;
 
 pub(crate) type Storage = Option<AmazonS3>;
+
+pub(crate) static STORAGE: OnceCell<Storage> = OnceCell::const_new();
 
 pub(crate) async fn init(db_pool: &Pool) -> Result<Storage> {
     let s3_enabled = from_config!("s3.enabled" => bool);
