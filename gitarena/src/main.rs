@@ -120,6 +120,8 @@ async fn main() -> Result<()> {
         .set(storage.clone())
         .map_err(|_| anyhow!("s3 storage should not be set more than once"))?;
 
+    let queue = queue::init().await?;
+
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
