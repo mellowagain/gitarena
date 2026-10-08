@@ -1,12 +1,9 @@
-use crate::config::get_setting;
 use crate::database::Pool;
-use crate::mail::task::MailTask;
-use crate::mail::templates::VerifyEmailTemplate;
+use crate::mail::templates::{EmailTemplate, VerifyEmailTemplate};
 use crate::prelude::MapToFangError;
 use crate::user::User;
 use crate::{TASK_DB_POOL, crypto};
-use anyhow::{Context, Result};
-use askama::Template;
+use anyhow::Result;
 use async_trait::async_trait;
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use gitarena_macros::from_config;
@@ -25,34 +22,23 @@ pub(crate) async fn send_verification_mail(user: &User, email: String, queue: &A
     }
 
     let hash = crypto::random_hex_string(32)?;
-    let mut transaction = db_pool.begin().await?;
-
-    let smtp_address = get_setting("smtp.address", &mut transaction).await?;
+    let mut tx = db_pool.begin().await?;
 
     sqlx::query("insert into user_verifications (id, user_id, email, hash, expires) values ($1, $2, $3, $4, now() + interval '1 day')")
         .bind(Uuid::now_v7())
         .bind(user.id)
         .bind(&email)
         .bind(&hash)
-        .execute(&mut *transaction)
+        .execute(&mut *tx)
         .await?;
 
-    let template = VerifyEmailTemplate {
+    VerifyEmailTemplate {
         link: &format!("{domain}/api/verify/{hash}"),
-        instance_name: "GitArena",
-        domain: &domain,
-    };
+    }
+    .send((user.username.clone(), email), &mut tx, queue)
+    .await?;
 
-    let task = MailTask {
-        from: ("GitArena".to_string(), smtp_address),
-        to: (user.username.clone(), email),
-        subject: template.subject(),
-        body: template.render().context("failed to render verify email template")?,
-    };
-
-    transaction.commit().await?;
-
-    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
+    tx.commit().await?;
 
     Ok(())
 }

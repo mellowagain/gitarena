@@ -8,13 +8,11 @@ use std::str::FromStr;
 
 use crate::database::{Database, Pool};
 use crate::mail::Email;
-use crate::mail::task::MailTask;
-use crate::mail::templates::NewLoginTemplate;
+use crate::mail::templates::{EmailTemplate, NewLoginTemplate};
 use crate::passkey::name_from_user_agent;
 use crate::{TASK_DB_POOL, geoip};
 use actix_web::HttpRequest;
-use anyhow::{Context, Result, anyhow};
-use askama::Template;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use chrono::{DateTime, Local};
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, typetag};
@@ -167,12 +165,10 @@ fn default_ip_address<E: Error>(err: Option<E>) -> IpNetwork {
 
 #[instrument(skip(queue, db_pool))]
 pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRequest, queue: &AsyncQueue, db_pool: &Pool) -> Result<()> {
-    let (log_user_agent, log_ip, domain, smtp_enabled, smtp_address) = from_config!(
+    let (log_user_agent, log_ip, smtp_enabled) = from_config!(
         "sessions.log_user_agent" => bool,
         "sessions.log_ip" => bool,
-        "domain.app" => String,
-        "smtp.enabled" => bool,
-        "smtp.address" => String,
+        "smtp.enabled" => bool
     );
 
     if !smtp_enabled {
@@ -184,8 +180,6 @@ pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRe
     let Some(email) = Email::find_primary_email(user.id, &mut tx).await? else {
         return Ok(());
     };
-
-    tx.commit().await?;
 
     let (location, user_agent) = {
         let (ip, user_agent) = extract_ip_and_ua(request);
@@ -220,23 +214,17 @@ pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRe
 
     let now = Local::now();
 
-    let template = NewLoginTemplate {
+    NewLoginTemplate {
         time: &now.format("%Y-%m-%d %H:%M:%S").to_string(),
         location: location.as_str(),
         device: &user_agent,
         method,
-        instance_name: "GitArena",
-        domain: domain.as_str(),
-    };
+    }
+    .send((user.username.clone(), email.email), &mut tx, queue)
+    .await?;
 
-    let task = MailTask {
-        from: ("GitArena".to_string(), smtp_address),
-        to: (user.username.clone(), email.email),
-        subject: template.subject(),
-        body: template.render().context("failed to render new sign in template")?,
-    };
+    tx.commit().await?;
 
-    queue.insert_task(&task as &dyn AsyncRunnable).await.context("failed to enqueue mail task")?;
     Ok(())
 }
 

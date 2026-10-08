@@ -6,4 +6,4 @@ Accept the invite by clicking or pasting this link into your browser:
 This invite expires in 7 days.
 
 --
-{{ instance_name }} | {{ domain }}
+{{ ("instance_name"|value::<String>())? }} | {{ ("domain"|value::<String>())? }}
