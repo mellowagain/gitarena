@@ -38,24 +38,21 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
         }
     }
 
-    for prefix in &options.prefixes {
-        if prefix.is_empty() {
+    // HEAD is a special case as `repo.references` does not list it
+    if options.matches("HEAD")
+        && let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await
+    {
+        writer.write_text(output_line).await?;
+    }
+
+    for result in repo.references()? {
+        if let Ok(reference) = &result
+            && !options.matches(reference.name().unwrap_or_default())
+        {
             continue;
         }
 
-        // HEAD is a special case as `repo.references_glob` does not find it but `repo.find_reference` does
-        if prefix == "HEAD"
-            && let Some(output_line) = build_ref_line(repo.find_reference("HEAD"), repo, &options).await
-        {
-            writer.write_text(output_line).await?;
-        }
-
-        for output_line in build_ref_list(prefix.as_str(), repo, &options).await? {
-            if output_line.is_empty() {
-                writer.flush().await?;
-                continue;
-            }
-
+        if let Some(output_line) = build_ref_line(result, repo, &options).await {
             writer.write_text(output_line).await?;
         }
     }
@@ -64,21 +61,9 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
     writer.serialize().await
 }
 
-pub(crate) async fn build_ref_list(prefix: &str, repo: &Git2Repository, options: &LsRefs) -> Result<Vec<String>> {
-    let mut output = Vec::<String>::new();
-
-    for result in repo.references_glob(format!("{prefix}*").as_str())? {
-        if let Some(ref_line) = build_ref_line(result, repo, options).await {
-            output.push(ref_line);
-        }
-    }
-
-    Ok(output)
-}
-
 #[instrument(skip(ref_result, repo))]
 pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Error>, repo: &Git2Repository, options: &LsRefs) -> Option<String> {
-    return match ref_result {
+    match ref_result {
         Ok(reference) => {
             let name = reference.name().unwrap_or_default();
 
@@ -121,7 +106,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
 
             None
         }
-    };
+    }
 }
 
 pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
@@ -201,4 +186,11 @@ pub(crate) struct LsRefs {
     pub(crate) symrefs: bool,
     pub(crate) prefixes: Vec<String>,
     pub(crate) unborn: bool,
+}
+
+impl LsRefs {
+    fn matches(&self, name: &str) -> bool {
+        // if no prefixes are given all refs are returned
+        self.prefixes.is_empty() || self.prefixes.iter().any(|prefix| name.starts_with(prefix.as_str()))
+    }
 }

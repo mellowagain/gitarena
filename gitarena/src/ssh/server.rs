@@ -3,6 +3,7 @@ use crate::git::GitProtocol;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
+use crate::git::ref_update;
 use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::privileges::privilege;
@@ -17,6 +18,7 @@ use russh::keys::{HashAlg, PublicKey};
 use russh::server::{Auth, Handler, Msg, Server, Session};
 use russh::{Channel, ChannelId};
 use std::io;
+use std::mem;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Instant;
@@ -82,6 +84,36 @@ impl SshHandler {
             buffer: Vec::new(),
             cancelled: false,
         }
+    }
+
+    async fn finish_receive_pack(&mut self, repo: Repository, channel: ChannelId, session: &mut Session) -> Result<()> {
+        let vec = mem::take(&mut self.buffer);
+        let db_pool = self.db_pool.clone();
+        let actor_id = self.user.as_ref().map_or(Uuid::nil(), |user| user.id);
+
+        // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
+        let result = spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, repo, vec, actor_id))).await?;
+
+        match result {
+            Ok(output) if output.is_empty() => {
+                session.exit_status_request(channel, 0)?;
+                session.close(channel)?;
+            }
+            Ok(output) => {
+                session.data(channel, output)?;
+                session.exit_status_request(channel, 0)?;
+                session.close(channel)?;
+            }
+            Err(err) => {
+                warn!(?err, "SSH git operation failed");
+
+                session.channel_failure(channel)?;
+                session.exit_status_request(channel, 1)?;
+                session.close(channel)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -159,34 +191,7 @@ impl Handler for SshHandler {
             return Ok(());
         };
 
-        let vec = self.buffer.clone();
-
-        let db_pool = self.db_pool.clone();
-
-        let actor_id = self.user.as_ref().map(|u| u.id).unwrap_or(Uuid::nil());
-
-        // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
-        let result = spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, repo, vec, actor_id))).await?;
-
-        match result {
-            Ok(output) if output.is_empty() => {
-                session.exit_status_request(channel, 0)?;
-                session.close(channel)?;
-            }
-            Ok(output) => {
-                session.data(channel, output)?;
-                session.exit_status_request(channel, 0)?;
-                session.close(channel)?;
-            }
-            Err(err) => {
-                warn!(?err, "SSH git operation failed");
-                session.channel_failure(channel)?;
-                session.exit_status_request(channel, 1)?;
-                session.close(channel)?;
-            }
-        }
-
-        Ok(())
+        self.finish_receive_pack(repo, channel, session).await
     }
 
     async fn channel_open_session(&mut self, _channel: Channel<Msg>, _session: &mut Session) -> Result<bool, Self::Error> {
@@ -200,6 +205,15 @@ impl Handler for SshHandler {
         }
 
         self.buffer.extend_from_slice(data);
+
+        if let Some(SshOperation::ReceivePack(repo)) = &self.operation
+            && is_delete_only_push(&self.buffer).await?
+        {
+            let repo = repo.clone();
+
+            self.operation = None;
+            return self.finish_receive_pack(repo, channel, session).await;
+        }
 
         let Some(SshOperation::UploadPack(repo)) = self.operation.as_ref() else {
             return Ok(());
@@ -428,6 +442,33 @@ fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usi
             (PacketLineRef::Flush, GitProtocol::V2) => return Ok(Some(offset)),
             (PacketLineRef::Data(data), GitProtocol::V1) if data.trim_ascii_end() == b"done" => return Ok(Some(offset)),
             _ => {}
+        }
+    }
+}
+
+// git only sends EOF once `pack-objects` exits so a delete only push (no pack) waits for the report-status after the command list flush-pkt instead
+async fn is_delete_only_push(buffer: &[u8]) -> Result<bool> {
+    let mut updates = Vec::new();
+    let mut offset = 0;
+
+    loop {
+        let (line, consumed) = match streaming(&buffer[offset..])? {
+            Stream::Complete { line, bytes_consumed } => (line, bytes_consumed),
+            Stream::Incomplete { .. } => return Ok(false),
+        };
+
+        offset += consumed;
+
+        match line {
+            PacketLineRef::Flush => return Ok(!updates.is_empty() && ref_update::is_only_deletions(&updates).unwrap_or(true)),
+            PacketLineRef::Data(data) => match ref_update::parse_line(data.to_vec()).await {
+                Ok(update) => updates.push(update),
+                Err(_) => {
+                    // invalid commands should be marked as complete so receive-pack reports the error instead of the session dropping
+                    return Ok(true);
+                }
+            },
+            _ => return Ok(false),
         }
     }
 }
