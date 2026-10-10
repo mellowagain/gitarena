@@ -5,6 +5,7 @@ use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
 use crate::utils::filesystem::copy_dir_all;
+use crate::zoekt::init_zoekt_config;
 
 use std::path::Path;
 
@@ -100,6 +101,8 @@ pub(crate) async fn create_fork(
     copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
         .await
         .context("Failed to copy repository")?;
+
+    init_zoekt_config(&new_repo, &mut tx).await?;
 
     let domain: String = get_optional_setting("domain.app", &mut tx).await?.unwrap_or_default();
 
