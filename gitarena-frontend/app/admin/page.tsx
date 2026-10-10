@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TopBar } from "@/components/top-bar";
+import { DeleteUserDialog } from "@/components/delete-user-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -264,6 +265,7 @@ function AuditTableRow({ event }: { event: EventResponse }) {
 
 export default function AdminDashboardPage() {
     const [activeSection, setActiveSection] = useState("dashboard");
+    const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
     const instanceConfig = useInstanceConfig();
     const { data: stats } = useSWR<InstanceStats>("/api/admin/stats", jsonFetcher);
     const usersKey =
@@ -745,7 +747,12 @@ export default function AdminDashboardPage() {
                                                                     <DropdownMenuItem>View activity</DropdownMenuItem>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem className="text-yellow-500">Suspend</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        className="text-red-500"
+                                                                        onSelect={() => setUserToDelete(user)}
+                                                                    >
+                                                                        Delete
+                                                                    </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         </TableCell>
@@ -856,6 +863,18 @@ export default function AdminDashboardPage() {
                     )}
                 </main>
             </div>
+
+            {userToDelete && (
+                <DeleteUserDialog
+                    open
+                    onOpenChange={(open) => !open && setUserToDelete(null)}
+                    url={`/api/admin/users/${userToDelete.id}`}
+                    username={userToDelete.username}
+                    title={`Delete ${userToDelete.username}?`}
+                    description="Their profile, repositories, SSH keys and access tokens will be permanently removed. Issues and comments they created on other repositories remain but are no longer attributed to them."
+                    onDeleted={() => mutate((key) => typeof key === "string" && key.startsWith("/api/admin/"))}
+                />
+            )}
         </div>
     );
 }

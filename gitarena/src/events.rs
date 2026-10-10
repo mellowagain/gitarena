@@ -166,6 +166,7 @@ impl EventClass {
     fn from_event(event: &'static str) -> Self {
         match event {
             "user.disabled" => EventClass::Security,
+            "user.deleted" => EventClass::Security,
             "repo.visibility_changed" => EventClass::Security,
             "repo.transferred" => EventClass::Security,
             "repo.deleted" => EventClass::Security,
@@ -179,7 +180,6 @@ impl EventClass {
 
             "user.created" => EventClass::Activity,
             "user.updated" => EventClass::Activity,
-            "user.deleted" => EventClass::Activity,
             "repo.created" => EventClass::Activity,
             "repo.updated" => EventClass::Activity,
             "repo.archived" => EventClass::Activity,

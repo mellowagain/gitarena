@@ -46,6 +46,10 @@ impl RepoCleanup {
         })
     }
 
+    pub(crate) fn add_s3_key(&mut self, key: String) {
+        self.s3_keys.push(key);
+    }
+
     #[instrument(skip(tx))]
     pub(crate) async fn move_to_trash(&mut self, path: String, id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<()> {
         let base_dir: String = get_setting("repositories.base_dir", tx).await?;

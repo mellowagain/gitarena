@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     User,
     Mail,
@@ -22,6 +23,7 @@ import {
     Copy,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
+import { DeleteUserDialog } from "@/components/delete-user-dialog";
 import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
 import {
@@ -189,6 +191,8 @@ function Divider() {
 
 function ProfileTab() {
     const { user: me, isLoading } = useAuth();
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const router = useRouter();
 
     if (isLoading) {
         return (
@@ -276,12 +280,25 @@ function ProfileTab() {
                             Permanently delete your account and all associated data. This cannot be undone.
                         </p>
                     </div>
-                    <DangerButton>
+                    <DangerButton onClick={() => setDeleteOpen(true)}>
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete account
                     </DangerButton>
                 </div>
             </div>
+
+            <DeleteUserDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                url="/api/users/me"
+                username={username}
+                title="Delete your account?"
+                description="Your profile, repositories, SSH keys and access tokens will be permanently removed. Issues and comments you created on other repositories remain but are no longer attributed to you."
+                onDeleted={async () => {
+                    await mutate("/api/auth/me", null, { revalidate: false });
+                    router.push("/");
+                }}
+            />
         </div>
     );
 }

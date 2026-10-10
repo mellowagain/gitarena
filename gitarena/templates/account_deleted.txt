@@ -1,0 +1,9 @@
+Your account "{{ username }}" has been deleted{% if by_admin %} by an administrator{% endif %}.
+
+Your profile, all of your repositories, SSH keys and access tokens have been removed.
+Public issues and comments you created remain but are no longer attributed to you.
+
+{% if by_admin %}If you believe this was a mistake{% else %}If you didn't request this{% endif %} please contact us immediately.
+
+--
+{{ ("instance_name"|value::<String>())? }} | {{ ("domain"|value::<String>())? }}

@@ -52,6 +52,19 @@ impl EmailTemplate for NewLoginTemplate<'_> {
     }
 }
 
+#[derive(Template, Debug)]
+#[template(path = "account_deleted.txt", escape = "none")]
+pub(crate) struct AccountDeletedTemplate<'a> {
+    pub(crate) username: &'a str,
+    pub(crate) by_admin: bool,
+}
+
+impl EmailTemplate for AccountDeletedTemplate<'_> {
+    fn subject(&self) -> String {
+        "Your account has been deleted".to_string()
+    }
+}
+
 pub(crate) trait EmailTemplate: Template + Debug {
     fn subject(&self) -> String;
 

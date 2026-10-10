@@ -27,6 +27,8 @@ use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
 
+pub(crate) mod delete;
+
 #[derive(FromRow, Display, Debug, Serialize, Clone)]
 #[display("{username}")]
 pub(crate) struct User {

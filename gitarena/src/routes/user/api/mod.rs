@@ -2,6 +2,7 @@ use actix_web::web::ServiceConfig;
 
 pub(crate) mod add_key;
 pub(crate) mod auth;
+pub(crate) mod delete_user;
 pub(crate) mod emails;
 pub(crate) mod issues;
 pub(crate) mod orgs;
@@ -17,6 +18,8 @@ pub(crate) fn init(config: &mut ServiceConfig) {
     config.service(profile::get_user_by_id);
     config.service(orgs::get_user_orgs);
     auth::init(config);
+
+    config.service(delete_user::delete_self);
 
     config.service(emails::get_emails);
     config.service(emails::post_email);

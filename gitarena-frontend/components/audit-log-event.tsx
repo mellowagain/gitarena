@@ -15,7 +15,8 @@ function getEventStyle(type: string): { bg: string; color: string } {
     if (type.startsWith("session.")) return { bg: "bg-amber-500/10", color: "text-amber-500" };
     if (type.startsWith("ssh_key.") || type.startsWith("passkey.")) return { bg: "bg-blue-500/10", color: "text-blue-500" };
     if (type.startsWith("email.")) return { bg: "bg-purple-500/10", color: "text-purple-500" };
-    if (type.startsWith("privilege.") || type === "user.disabled") return { bg: "bg-red-500/10", color: "text-red-500" };
+    if (type.startsWith("privilege.") || ["user.disabled", "user.deleted"].includes(type))
+        return { bg: "bg-red-500/10", color: "text-red-500" };
     return { bg: "bg-secondary", color: "text-muted-foreground" };
 }
 
@@ -25,7 +26,7 @@ function AuditIcon({ type, className }: { type: string; className?: string }) {
     if (type.startsWith("session.")) return <LogOut className={cls} />;
     if (type.startsWith("ssh_key.") || type.startsWith("passkey.")) return <Key className={cls} />;
     if (type.startsWith("email.")) return <Mail className={cls} />;
-    if (type.startsWith("privilege.") || type === "user.disabled") return <Shield className={cls} />;
+    if (type.startsWith("privilege.") || ["user.disabled", "user.deleted"].includes(type)) return <Shield className={cls} />;
     if (type.startsWith("repo.")) return <Lock className={cls} />;
     return <User className={cls} />;
 }
@@ -94,6 +95,10 @@ function describeSecurity(event: EventResponse): ReactNode {
         }
         case "user.disabled":
             return subject ? <>Account disabled: {subject}</> : "Account disabled";
+        case "user.deleted": {
+            const username = typeof payload.username === "string" ? payload.username : "an account";
+            return `Deleted account ${username}`;
+        }
         case "privilege.granted": {
             const level = typeof payload.new_level === "string" ? payload.new_level : "access";
             return subject ? (

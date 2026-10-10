@@ -110,17 +110,15 @@ async fn main() -> Result<()> {
         .set(meili_client.clone())
         .map_err(|_| anyhow!("meilisearch client should not be set more than once"))?;
 
-    let queue = queue::init().await?;
-
-    zoekt::init(&db_pool).await?;
-    contributions::init(&db_pool).await?;
-
     let storage = storage::init(&db_pool).await?;
     STORAGE
         .set(storage.clone())
         .map_err(|_| anyhow!("s3 storage should not be set more than once"))?;
 
     let queue = queue::init().await?;
+
+    zoekt::init(&db_pool).await?;
+    contributions::init(&db_pool).await?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
