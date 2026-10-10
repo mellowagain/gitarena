@@ -11,7 +11,6 @@ use gix::config::parse::section::ValueName;
 use gix::config::{File, Source};
 use sqlx::Transaction;
 use std::fs;
-use std::path::PathBuf;
 use tokio::task::spawn_blocking;
 use tracing::{info, instrument};
 
@@ -47,8 +46,8 @@ pub(crate) async fn init_zoekt_config(repo: &Repository, tx: &mut Transaction<'_
 
     let domain: String = get_setting("domain.app", tx).await?;
 
-    let mut path = PathBuf::from(repo.get_fs_path(tx).await?);
-    path.push("config");
+    let lease = repo.open_write().await?;
+    let path = lease.path().join("config");
 
     let mut git_config = File::from_path_no_includes(path.clone(), Source::Local).context("failed to open git config")?;
 
@@ -78,7 +77,7 @@ pub(crate) async fn init_zoekt_config(repo: &Repository, tx: &mut Transaction<'_
     })
     .await??;
 
-    Ok(())
+    lease.commit().await
 }
 
 #[instrument(err, skip(tx))]

@@ -31,7 +31,7 @@ use utoipa::ToSchema;
 pub(crate) async fn list_tags(repo: Repository, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut tx = db_pool.begin().await?;
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     let mut raw: Vec<RawTagData> = Vec::new();
 
@@ -133,9 +133,10 @@ pub(crate) async fn delete_tag(
         die!(FORBIDDEN, "Insufficient permissions");
     }
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
-
     tx.commit().await?;
+
+    let lease = repo.open_write().await?;
+    let libgit2_repo = lease.libgit2()?;
 
     let (_, _, tag_name) = path.into_inner();
     let ref_name = format!("refs/tags/{tag_name}");
@@ -143,6 +144,7 @@ pub(crate) async fn delete_tag(
     let mut reference = libgit2_repo.find_reference(&ref_name).map_err(|_| err!(NOT_FOUND, "Tag not found"))?;
 
     reference.delete()?;
+    lease.commit().await?;
 
     Ok(HttpResponse::NoContent().finish())
 }

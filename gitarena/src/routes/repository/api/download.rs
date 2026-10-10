@@ -1,4 +1,3 @@
-use crate::database::Pool;
 use crate::git::history::batch_last_commits;
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::repository::{Branch, Repository};
@@ -10,7 +9,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use actix_web::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpResponse, Responder};
 use anyhow::Result;
 use async_compression::tokio::write::GzipEncoder;
 use async_recursion::async_recursion;
@@ -40,9 +39,8 @@ use zip::write::FileOptions as ZipFileOptions;
     tag = "repository"
 )]
 #[route("/api/{namespace}/{repository}/tree/{tree:.*}/download/targz", method = "GET", err = "text")]
-pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut tx = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch) -> Result<impl Responder> {
+    let libgit2_repo = repo.libgit2().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;
     let mut buffer = Vec::<u8>::new();
@@ -182,10 +180,8 @@ async fn write_directory_tar(
     tag = "repository"
 )]
 #[route("/api/{namespace}/{repository}/tree/{tree:.*}/download/zip", method = "GET", err = "text")]
-pub(crate) async fn zip_file(repo: Repository, branch: Branch, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
-    transaction.commit().await?;
+pub(crate) async fn zip_file(repo: Repository, branch: Branch) -> Result<impl Responder> {
+    let libgit2_repo = repo.libgit2().await?;
 
     let gitoxide_repo = branch.gitoxide_repo;
     let mut buffer = Vec::<u8>::new();

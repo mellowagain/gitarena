@@ -1,16 +1,14 @@
 use crate::TASK_DB_POOL;
-use crate::git::GIT_CLI_AVAILABLE;
 use crate::git::hooks::detect_languages::detect_languages;
 use crate::git::hooks::detect_license::detect_license;
 use crate::meili::MEILI_CLIENT;
 use crate::prelude::MapToFangError;
+use crate::repo_store::{self, LocalRepo};
 use crate::repository::Repository;
 use anyhow::Result;
 use async_trait::async_trait;
 use fang::{AsyncQueueable, AsyncRunnable, FangError, typetag};
 use serde::{Deserialize, Serialize};
-use std::process::Stdio;
-use tokio::process::Command;
 use tokio::runtime::Handle;
 use tokio::task::spawn_blocking;
 use tracing::{debug, instrument, warn};
@@ -47,34 +45,19 @@ impl AsyncRunnable for PostUpdateTask {
             return Ok(());
         };
 
-        let path = repo.get_fs_path(&mut tx).await.fang()?;
-
         tx.commit().await.fang()?;
 
-        if *GIT_CLI_AVAILABLE {
-            let status = Command::new("git")
-                .args(["-c", "gc.autoDetach=false", "gc", "--auto", "--quiet"])
-                .current_dir(&path)
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .await;
+        let store = repo_store::get().fang()?;
 
-            match status {
-                Ok(status) if !status.success() => {
-                    let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
-                    warn!(exit_code, "Git garbage collector exited with non-zero status");
-                }
-                Ok(_) => {}
-                Err(err) => warn!(?err, "Failed to execute Git garbage collector"),
-            }
-        }
+        store.maintenance(repo.id).await.fang()?;
 
         if !self.head_updated {
             return Ok(());
         }
 
-        let repo = spawn_blocking(move || Handle::current().block_on(detect_repo_metadata(repo, path)))
+        let local_repo = store.open_read(repo.id).await.fang()?;
+
+        let repo = spawn_blocking(move || Handle::current().block_on(detect_repo_metadata(repo, &local_repo)))
             .await
             .fang()?
             .fang()?;
@@ -111,8 +94,8 @@ impl AsyncRunnable for PostUpdateTask {
     }
 }
 
-async fn detect_repo_metadata(mut repo: Repository, path: String) -> Result<Repository> {
-    let gitoxide_repo = gix::open(path)?;
+async fn detect_repo_metadata(mut repo: Repository, local_repo: &LocalRepo) -> Result<Repository> {
+    let gitoxide_repo = local_repo.gitoxide()?;
     let store = gitoxide_repo.objects.store().clone();
 
     if let Err(err) = detect_license(store.clone(), &gitoxide_repo, &mut repo).await {

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use crate::database::Database;
 use crate::database::Pool;
 use crate::meili::{MeiliClient, REPOS_MEILI_INDEX};
+use crate::repo_store::{self, WriteLease};
 use crate::zoekt::init_zoekt_config;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
@@ -20,15 +21,14 @@ use actix_web::{FromRequest, HttpMessage, HttpRequest};
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use derive_more::{Deref, Display};
-use fs_extra::dir;
-use git2::{Repository as Git2Repository, RepositoryInitOptions};
+use git2::Repository as Git2Repository;
 use gix::Repository as GitoxideRepository;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use sqlx::{FromRow, Transaction};
-use tracing::{Level, error, instrument};
+use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -101,66 +101,24 @@ impl Repository {
 
     #[instrument(err, skip(tx))]
     pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
-        let mut init_ops = RepositoryInitOptions::new();
-        init_ops.initial_head(self.default_branch.as_str());
-        init_ops.bare(true);
-
-        Git2Repository::init_opts(self.get_fs_path(tx).await?, &init_ops)?;
+        repo_store::get()?.init(self.id, self.default_branch.as_str()).await?;
 
         init_zoekt_config(self, tx).await?;
         Ok(())
     }
 
-    #[instrument(err, skip(tx))]
-    pub(crate) async fn libgit2(&self, tx: &mut Transaction<'_, Database>) -> Result<Git2Repository> {
-        Ok(Git2Repository::open(self.get_fs_path(tx).await?)?)
+    #[instrument(err)]
+    pub(crate) async fn libgit2(&self) -> Result<Git2Repository> {
+        repo_store::get()?.open_read(self.id).await?.libgit2()
     }
 
-    #[instrument(err, skip(tx))]
-    pub(crate) async fn gitoxide(&self, tx: &mut Transaction<'_, Database>) -> Result<GitoxideRepository> {
-        Ok(gix::open(self.get_fs_path(tx).await?)?)
+    #[instrument(err)]
+    pub(crate) async fn gitoxide(&self) -> Result<GitoxideRepository> {
+        repo_store::get()?.open_read(self.id).await?.gitoxide()
     }
 
-    #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
-    pub(crate) async fn get_fs_path(&self, tx: &mut Transaction<'_, Database>) -> Result<String> {
-        let owner_id = self
-            .owner_user
-            .or(self.owner_org)
-            .ok_or_else(|| anyhow!("Repository has neither owner_user nor owner_org set"))?;
-
-        // Instead of using `config::get_optional_setting`, we run our own query to get both namespace and repo base dir in one query
-        // https://stackoverflow.com/a/16364390
-        // The owner UUID may refer to either a user or an organization; try both tables.
-        let user_result: Option<(String, String)> = sqlx::query_as(
-            "select * from \
-            (select value from settings where key = 'repositories.base_dir' limit 1) A \
-            cross join \
-            (select username as namespace from users where id = $1 limit 1) B",
-        )
-        .bind(owner_id)
-        .fetch_optional(&mut **tx)
-        .await?;
-
-        let (base_dir, namespace) = if let Some(row) = user_result {
-            row
-        } else {
-            sqlx::query_as(
-                "select * from \
-                (select value from settings where key = 'repositories.base_dir' limit 1) A \
-                cross join \
-                (select name as namespace from organizations where id = $1 limit 1) B",
-            )
-            .bind(owner_id)
-            .fetch_one(&mut **tx)
-            .await?
-        };
-
-        Ok(format!("{base_dir}/{namespace}/{}", &self.name))
-    }
-
-    #[instrument(ret(level = Level::DEBUG), err, skip(tx))]
-    pub(crate) async fn repo_size(&self, tx: &mut Transaction<'_, Database>) -> Result<u64> {
-        Ok(dir::get_size(self.get_fs_path(tx).await?)?)
+    pub(crate) async fn open_write(&self) -> Result<WriteLease> {
+        repo_store::get()?.open_write(self.id).await
     }
 
     #[instrument(skip(client))]
@@ -279,43 +237,27 @@ impl FromRequest for Branch {
 
         let repo_future = Repository::from_request(req, payload);
 
-        match req.app_data::<Data<Pool>>() {
-            Some(db_pool) => {
-                let db_pool = db_pool.clone();
+        Box::pin(async move {
+            // This call exists early if access rights are insufficient, so we don't need to worry about them down the road
+            let repo = repo_future.await?;
 
-                Box::pin(async move {
-                    // This call exists early if access rights are insufficient, so we don't need to worry about them down the road
-                    let repo = repo_future.await?;
-
-                    extract_branch_from_request(db_pool, repo, tree).await.map_err(|err| GitArenaError {
-                        source: Arc::new(err),
-                        display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
-                    })
-                })
-            }
-            None => Box::pin(async {
-                Err(GitArenaError {
-                    source: Arc::new(anyhow!("No PgPool in application data")),
-                    display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
-                })
-            }),
-        }
+            extract_branch_from_request(repo, tree).await.map_err(|err| GitArenaError {
+                source: Arc::new(err),
+                display_type: ErrorDisplayType::Json, // TODO: Check whenever route is err = "json|git" etc...
+            })
+        })
     }
 }
 
-#[instrument(err, skip(db_pool))]
-async fn extract_branch_from_request(db_pool: Data<Pool>, repo: Repository, tree: String) -> Result<Branch> {
-    let mut transaction = db_pool.begin().await?;
-
-    let gitoxide_repo = repo.gitoxide(&mut transaction).await?;
+#[instrument(err)]
+async fn extract_branch_from_request(repo: Repository, tree: String) -> Result<Branch> {
+    let gitoxide_repo = repo.gitoxide().await?;
 
     let reference = match gitoxide_repo.refs.find_loose(tree.as_str()) {
         Ok(loose_ref) => Ok(loose_ref),
         Err(GitoxideFindError::Find(err)) => Err(err),
         Err(GitoxideFindError::NotFound { name: _ }) => die!(NOT_FOUND, "Tree not found"),
     }?;
-
-    transaction.commit().await?;
 
     Ok(Branch {
         gitoxide_repo,

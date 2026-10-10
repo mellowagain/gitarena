@@ -5,7 +5,6 @@ use trust_dns_resolver::TokioAsyncResolver;
 use uuid::Uuid;
 
 pub(crate) mod admin_panel_layer;
-pub(crate) mod filesystem;
 pub(crate) mod identifiers;
 pub(crate) mod oid;
 pub(crate) mod system;

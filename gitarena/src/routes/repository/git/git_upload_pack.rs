@@ -53,7 +53,7 @@ pub(crate) async fn git_upload_pack(
         die!(NOT_FOUND);
     }
 
-    let git2repo = repo.libgit2(&mut transaction).await?;
+    let git2repo = repo.libgit2().await?;
 
     let mut bytes = web::BytesMut::new();
 

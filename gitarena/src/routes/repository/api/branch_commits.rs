@@ -70,7 +70,7 @@ pub(crate) async fn branch_commits(repo: Repository, branch: Branch, query: web:
     let limit = query.limit.min(MAX_LIMIT);
     let reverse = matches!(query.sort, SortOrder::Asc);
 
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let libgit2_repo = repo.libgit2().await?;
     let full_tree_name = branch.reference.name.as_bstr().to_str()?;
 
     let commit_ids = if let Some(ref path) = query.path {

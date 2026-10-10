@@ -1,4 +1,5 @@
 use crate::prelude::MapToFangError;
+use crate::repo_store;
 use crate::repository::Repository;
 use crate::utils::time_function;
 use crate::{TASK_DB_POOL, config};
@@ -32,15 +33,15 @@ impl AsyncRunnable for ZoektIndexRepo {
         let zoekt_index_dir: String = config::get_setting("zoekt.index_dir", &mut tx).await.fang()?;
         let mut zoekt_index_binary_path: String = config::get_setting("zoekt.index_binary_path", &mut tx).await.fang()?;
 
-        let path = self.repo.get_fs_path(&mut tx).await.fang()?;
-
         tx.commit().await.fang()?;
+
+        let local_repo = repo_store::get().fang()?.open_read(self.repo.id).await.fang()?;
 
         let home = env::var("HOME").unwrap_or_default();
         zoekt_index_binary_path = zoekt_index_binary_path.replacen('~', home.to_str().unwrap_or_default(), 1);
 
         {
-            let git_repo = gix::open(&path).context("failed to open git repository").fang()?;
+            let git_repo = local_repo.gitoxide().context("failed to open git repository").fang()?;
 
             if git_repo.head().fang()?.is_unborn() {
                 debug!("skipping zoekt indexing for empty repository");
@@ -52,7 +53,7 @@ impl AsyncRunnable for ZoektIndexRepo {
             .args(["-branches", &self.repo.default_branch])
             .args(["-index", &zoekt_index_dir])
             .args(["-submodules=false"])
-            .arg(path)
+            .arg(local_repo.path())
             .spawn()
             .context("failed to spawn zoekt-git-index child process")
             .fang()?;

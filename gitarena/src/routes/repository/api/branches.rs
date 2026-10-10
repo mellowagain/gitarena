@@ -1,8 +1,7 @@
 use crate::git::history::all_commits;
 use crate::repository::Repository;
 
-use crate::database::Pool;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpResponse, Responder};
 use anyhow::Result;
 use git2::ErrorCode;
 use gitarena_macros::route;
@@ -43,10 +42,8 @@ pub(crate) struct BranchesResponse {
     tag = "repository"
 )]
 #[route("/api/repos/{namespace}/{repository}/branches", method = "GET", err = "json")]
-pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut transaction = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
-    transaction.commit().await?;
+pub(crate) async fn branches(repo: Repository) -> Result<impl Responder> {
+    let libgit2_repo = repo.libgit2().await?;
 
     let default_ref = format!("refs/heads/{}", repo.default_branch);
     let default_oid = match libgit2_repo.find_reference(&default_ref) {

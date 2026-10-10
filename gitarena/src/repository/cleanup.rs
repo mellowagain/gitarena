@@ -1,14 +1,12 @@
-use crate::config::get_setting;
 use crate::database::Database;
 use crate::meili::{ISSUES_MEILI_INDEX, MeiliClient, REPOS_MEILI_INDEX};
 use crate::queue::GLOBAL_QUEUE;
 use crate::release::assets::ReleaseAssets;
+use crate::repo_store;
 use crate::repository::task::DeletedRepoCleanupTask;
 use anyhow::{Result, anyhow, bail};
 use fang::{AsyncQueueable, AsyncRunnable};
 use sqlx::Transaction;
-use std::io::ErrorKind;
-use tokio::fs;
 use tracing::{error, instrument};
 use uuid::Uuid;
 
@@ -17,7 +15,7 @@ pub(crate) struct RepoCleanup {
     repo_ids: Vec<Uuid>,
     issue_ids: Vec<Uuid>,
     s3_keys: Vec<String>,
-    moved: Option<(String, String)>,
+    trashed: Vec<Uuid>,
 }
 
 impl RepoCleanup {
@@ -42,7 +40,7 @@ impl RepoCleanup {
             repo_ids,
             issue_ids,
             s3_keys: assets.iter().map(|asset| asset.s3_key().to_string()).collect(),
-            moved: None,
+            trashed: Vec::new(),
         })
     }
 
@@ -50,18 +48,13 @@ impl RepoCleanup {
         self.s3_keys.push(key);
     }
 
-    #[instrument(skip(tx))]
-    pub(crate) async fn move_to_trash(&mut self, path: String, id: Uuid, tx: &mut Transaction<'_, Database>) -> Result<()> {
-        let base_dir: String = get_setting("repositories.base_dir", tx).await?;
-        let trash_dir = format!("{base_dir}/.deleted");
-        let trash_path = format!("{trash_dir}/{id}");
+    #[instrument]
+    pub(crate) async fn trash_repos(&mut self) -> Result<()> {
+        let store = repo_store::get()?;
 
-        fs::create_dir_all(&trash_dir).await?;
-
-        match fs::rename(&path, &trash_path).await {
-            Ok(()) => self.moved = Some((path, trash_path)),
-            Err(err) if err.kind() == ErrorKind::NotFound => {}
-            Err(err) => bail!(err),
+        for repo_id in &self.repo_ids {
+            store.trash(*repo_id).await?;
+            self.trashed.push(*repo_id);
         }
 
         Ok(())
@@ -70,17 +63,19 @@ impl RepoCleanup {
     #[instrument(skip(tx, meili_client))]
     pub(crate) async fn commit(self, tx: Transaction<'_, Database>, meili_client: &MeiliClient) -> Result<()> {
         if let Err(err) = tx.commit().await {
-            if let Some((path, trash_path)) = &self.moved
-                && let Err(err) = fs::rename(trash_path, path).await
-            {
-                error!(?err, %trash_path, %path, "failed to restore directory after failed delete");
+            let store = repo_store::get()?;
+
+            for repo_id in &self.trashed {
+                if let Err(err) = store.restore(*repo_id).await {
+                    error!(?err, %repo_id, "failed to restore repository after failed delete");
+                }
             }
 
             bail!(err);
         }
 
         let task = DeletedRepoCleanupTask {
-            trash_path: self.moved.map(|(_, trash_path)| trash_path),
+            repo_ids: self.trashed,
             s3_keys: self.s3_keys,
         };
 

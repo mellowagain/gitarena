@@ -1,12 +1,11 @@
-use crate::config::get_setting;
 use crate::database::Pool;
 use crate::die;
+use crate::repo_store;
 use crate::user::WebUser;
 use actix_web::{HttpResponse, Responder, web};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use fang::Serialize;
 use gitarena_macros::route;
-use std::path::Path;
 use utoipa::ToSchema;
 
 #[utoipa::path(
@@ -39,21 +38,16 @@ pub(crate) async fn get_instance_stats(web_user: WebUser, db_pool: web::Data<Poo
     .fetch_one(&mut *tx)
     .await?;
 
-    let repos_dir: String = get_setting("repositories.base_dir", &mut tx).await?;
-
     tx.commit().await?;
 
-    let path = Path::new(&repos_dir);
-    let stats = fs2::statvfs(path).context("failed to get statvfs for the repos directory")?;
-
-    let total_space = stats.total_space();
+    let disk_usage = repo_store::get()?.disk_usage().await?;
 
     Ok(HttpResponse::Ok().json(InstanceStats {
         users,
         orgs,
         repositories,
-        total_space,
-        used_space: total_space - stats.available_space(),
+        total_space: disk_usage.total,
+        used_space: disk_usage.total - disk_usage.available,
     }))
 }
 

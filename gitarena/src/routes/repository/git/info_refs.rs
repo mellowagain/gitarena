@@ -100,7 +100,7 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
         die!(NOT_FOUND);
     }
 
-    let git2repo = repo.libgit2(&mut tx).await?;
+    let git2repo = repo.libgit2().await?;
     let output = ls_refs_all(&git2repo, Some("git-receive-pack")).await?;
 
     tx.commit().await?;

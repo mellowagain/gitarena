@@ -67,7 +67,7 @@ struct FileContentResponse {
 pub(crate) async fn file_content(repo: Repository, branch: Branch, uri: web::Path<FileContentRequest>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let libgit2_repo = repo.libgit2().await?;
     let gitoxide_repo = branch.gitoxide_repo;
     let full_tree_name = branch.reference.name.as_bstr().to_str()?;
 

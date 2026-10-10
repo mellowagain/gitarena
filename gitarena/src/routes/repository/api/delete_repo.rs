@@ -54,8 +54,6 @@ pub(crate) async fn delete_repo(
         (Subject::User(user.id), user.username.clone())
     };
 
-    let path = repo.get_fs_path(&mut tx).await?;
-
     let mut cleanup = RepoCleanup::prepare(vec![repo.id], &mut tx).await?;
 
     Event::new(
@@ -74,7 +72,7 @@ pub(crate) async fn delete_repo(
 
     sqlx::query("delete from repositories where id = $1").bind(repo.id).execute(&mut *tx).await?;
 
-    cleanup.move_to_trash(path, repo.id, &mut tx).await?;
+    cleanup.trash_repos().await?;
     cleanup.commit(tx, &meili_client).await?;
 
     Ok(HttpResponse::NoContent().finish())

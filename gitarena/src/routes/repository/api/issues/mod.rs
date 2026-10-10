@@ -109,7 +109,8 @@ pub(crate) async fn create_issue(
 
     let mut tx = db_pool.begin().await?;
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let lease = repo.open_write().await?;
+    let gitoxide_repo = lease.gitoxide()?;
     let author = user.as_git_bug_author(&mut tx).await?;
 
     let next_index: i32 = sqlx::query_scalar("update repositories set next_issue_index = next_issue_index + 1 where id = $1 returning next_issue_index")
@@ -167,6 +168,7 @@ pub(crate) async fn create_issue(
     .save(&mut tx)
     .await?;
 
+    lease.commit().await?;
     tx.commit().await?;
 
     info!(%repo.id, %bug.id, index = next_index, "issue created");
@@ -288,7 +290,8 @@ pub(crate) async fn update_issue(
         die!(FORBIDDEN, "Insufficient permissions");
     }
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let lease = repo.open_write().await?;
+    let gitoxide_repo = lease.gitoxide()?;
     let author = user.as_git_bug_author(&mut tx).await?;
 
     if let Some(new_title) = &body.title {
@@ -547,6 +550,7 @@ pub(crate) async fn update_issue(
     let updated_issue = get_issue_by_index(repo.id, index, &mut tx).await?;
     let response = build_issue_response(&updated_issue, Some(user.id), &mut tx).await?;
 
+    lease.commit().await?;
     tx.commit().await?;
 
     updated_issue.index_meili(&meili_client).await;
@@ -595,7 +599,8 @@ pub(crate) async fn delete_issue(
         die!(FORBIDDEN, "Insufficient permissions");
     }
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let lease = repo.open_write().await?;
+    let gitoxide_repo = lease.gitoxide()?;
     delete_bug(&gitoxide_repo, &issue.git_bug_id)?;
 
     sqlx::query("delete from issue_cache where id = $1").bind(issue.id).execute(&mut *tx).await?;
@@ -612,6 +617,7 @@ pub(crate) async fn delete_issue(
     .save(&mut tx)
     .await?;
 
+    lease.commit().await?;
     tx.commit().await?;
 
     info!(%repo.id, index, "issue deleted");

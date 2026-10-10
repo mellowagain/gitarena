@@ -142,14 +142,10 @@ pub(crate) async fn create(
 
 #[instrument(err, skip(db_pool))]
 async fn create_file(repo: &Repository, user: &User, file_name: &str, content: &str, db_pool: &Pool) -> Result<()> {
-    let libgit2_repo = {
-        let mut transaction = db_pool.begin().await?;
-        let libgit2_repo = repo.libgit2(&mut transaction).await?;
-        transaction.commit().await?;
-        libgit2_repo
-    };
+    let lease = repo.open_write().await?;
 
-    write::write_file(&libgit2_repo, user, Some("HEAD"), file_name, content.as_bytes(), db_pool).await
+    write::write_file(&lease.libgit2()?, user, Some("HEAD"), file_name, content.as_bytes(), db_pool).await?;
+    lease.commit().await
 }
 
 #[derive(Deserialize, ToSchema)]

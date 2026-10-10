@@ -59,10 +59,12 @@ pub(crate) async fn add_issue_comment(
         die!(BAD_REQUEST, "Issue is locked");
     }
 
-    let git_repo = repo.gitoxide(&mut tx).await?;
+    let lease = repo.open_write().await?;
+    let git_repo = lease.gitoxide()?;
     let bug = load_bug(&git_repo, &issue.git_bug_id)?;
 
     let (_, op_id) = add_comment(&git_repo, bug, user.as_git_bug_author(&mut tx).await?, body.body.clone())?;
+    lease.commit().await?;
     let comment_id = Uuid::now_v7();
 
     sqlx::query("insert into issue_comment_cache (id, op_id, issue_id, author_id, body) values ($1, $2, $3, $4, $5)")
@@ -150,12 +152,14 @@ pub(crate) async fn edit_issue_comment(
 
     let author_username = resolve_username(comment.author_id, &mut tx).await?;
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let lease = repo.open_write().await?;
+    let gitoxide_repo = lease.gitoxide()?;
 
     let author = user.as_git_bug_author(&mut tx).await?;
     let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
 
     edit_comment(&gitoxide_repo, bug, author, comment.op_id.clone(), body.body.clone())?;
+    lease.commit().await?;
 
     let now = Utc::now();
 

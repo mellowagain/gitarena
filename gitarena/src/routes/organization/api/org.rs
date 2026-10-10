@@ -2,7 +2,6 @@ use crate::die;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::user::WebUser;
 
-use crate::config::get_setting;
 use crate::database::Pool;
 use crate::events::Event;
 use crate::meili::MeiliClient;
@@ -101,9 +100,7 @@ pub(crate) async fn delete_org(
 
     sqlx::query("delete from organizations where id = $1").bind(org.id).execute(&mut *tx).await?;
 
-    let base_dir: String = get_setting("repositories.base_dir", &mut tx).await?;
-
-    cleanup.move_to_trash(format!("{base_dir}/{}", org.name), org.id, &mut tx).await?;
+    cleanup.trash_repos().await?;
     cleanup.commit(tx, &meili_client).await?;
 
     Ok(HttpResponse::NoContent().finish())

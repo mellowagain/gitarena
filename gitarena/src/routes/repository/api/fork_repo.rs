@@ -1,17 +1,15 @@
 use crate::config::get_optional_setting;
 use crate::database::Pool;
 use crate::die;
+use crate::repo_store;
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
-use crate::utils::filesystem::copy_dir_all;
-
-use std::path::Path;
 
 use crate::events::Event;
 use crate::meili::MeiliClient;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
@@ -93,13 +91,8 @@ pub(crate) async fn create_fork(
     .fetch_one(&mut *tx)
     .await?;
 
-    let old_path = repo.get_fs_path(&mut tx).await?;
-    let new_path = new_repo.get_fs_path(&mut tx).await?;
-
     // TODO: turn this into a task
-    copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
-        .await
-        .context("Failed to copy repository")?;
+    repo_store::get()?.fork(repo.id, new_repo.id).await?;
 
     let domain: String = get_optional_setting("domain.app", &mut tx).await?.unwrap_or_default();
 

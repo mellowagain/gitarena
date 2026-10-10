@@ -210,11 +210,10 @@ impl Handler for SshHandler {
         while let Some(length) = next_request_length(&self.buffer, self.version)? {
             let request = self.buffer.drain(..length).collect::<Vec<u8>>();
 
-            let db_pool = self.db_pool.clone();
             let repo = repo.clone();
             let version = self.version;
 
-            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, request, version))).await?;
+            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(repo, request, version))).await?;
 
             match result {
                 Ok(output) => session.data(channel, output)?,
@@ -320,17 +319,12 @@ impl Handler for SshHandler {
 
         match command {
             "git-upload-pack" => {
-                let db_pool = self.db_pool.clone();
                 let version = self.version;
                 let repo_clone = repo.clone();
 
                 let advert = spawn_blocking(move || {
                     Handle::current().block_on(async move {
-                        let mut tx = db_pool.begin().await?;
-
-                        let git2repo = repo_clone.libgit2(&mut tx).await?;
-
-                        tx.commit().await?;
+                        let git2repo = repo_clone.libgit2().await?;
 
                         match version {
                             GitProtocol::V2 => capabilities(None).await,
@@ -359,16 +353,11 @@ impl Handler for SshHandler {
 
                 tx.commit().await?;
 
-                let db_pool = self.db_pool.clone();
                 let repo_clone = repo.clone();
 
                 let advert = spawn_blocking(move || {
                     Handle::current().block_on(async move {
-                        let mut tx = db_pool.begin().await?;
-
-                        let git2repo = repo_clone.libgit2(&mut tx).await?;
-
-                        tx.commit().await?;
+                        let git2repo = repo_clone.libgit2().await?;
 
                         ls_refs_all(&git2repo, None).await
                     })
@@ -432,10 +421,9 @@ fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usi
     }
 }
 
-#[instrument(err, skip(db_pool, vec))]
-async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version: GitProtocol) -> Result<Vec<u8>> {
-    let mut tx = db_pool.begin().await?;
-    let git2repo = repo.libgit2(&mut tx).await?;
+#[instrument(err, skip(vec))]
+async fn run_upload_pack(repo: Repository, vec: Vec<u8>, version: GitProtocol) -> Result<Vec<u8>> {
+    let git2repo = repo.libgit2().await?;
 
     let start = Instant::now();
 

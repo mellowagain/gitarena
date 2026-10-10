@@ -1,4 +1,3 @@
-use crate::config::get_setting;
 use crate::database::{Database, Pool};
 use crate::die;
 use crate::events::{Event, SYSTEM_USER, Subject};
@@ -117,9 +116,7 @@ pub(crate) async fn delete_user(
 
     sqlx::query("delete from users where id = $1").bind(user.id).execute(&mut *tx).await?;
 
-    let base_dir: String = get_setting("repositories.base_dir", &mut tx).await?;
-
-    cleanup.move_to_trash(format!("{base_dir}/{}", user.username), user.id, &mut tx).await?;
+    cleanup.trash_repos().await?;
     cleanup.commit(tx, meili_client).await?;
 
     if let Some(client) = meili_client {

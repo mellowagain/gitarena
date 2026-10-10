@@ -23,7 +23,6 @@ use actix_web::HttpRequest;
 use anyhow::{Result, anyhow};
 use bstr::BString;
 use fang::{AsyncQueueable, AsyncRunnable};
-use git2::Repository as Git2Repository;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
 use gix::lock::acquire::Fail;
@@ -169,16 +168,9 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
         }
     }
 
-    let repo_dir = {
-        let mut tx = db_pool.begin().await?;
+    let lease = repo.open_write().await?;
 
-        let repo_dir = repo.get_fs_path(&mut tx).await?;
-        tx.commit().await?;
-
-        repo_dir
-    };
-
-    let gitoxide_repo = gix::open(&repo_dir)?;
+    let gitoxide_repo = lease.gitoxide()?;
     let store = gitoxide_repo.objects.store().clone();
 
     let mut output_writer = GitWriter::new();
@@ -186,7 +178,7 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
 
     if let Some(pos) = searcher.search_in(data) {
         {
-            let git2_repo = Git2Repository::open(&repo_dir)?;
+            let git2_repo = lease.libgit2()?;
             let odb = git2_repo.odb()?;
             let mut pack_writer = odb.packwriter()?;
             pack_writer.write_all(&data[pos..])?;
@@ -216,6 +208,8 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
             process_delete(update, &gitoxide_repo, &mut output_writer).await?;
         }
     }
+
+    lease.commit().await?;
 
     if report_status {
         if side_band {

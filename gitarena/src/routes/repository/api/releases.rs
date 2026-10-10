@@ -50,7 +50,7 @@ pub(crate) async fn list_releases(repo: Repository, db_pool: web::Data<Pool>) ->
         .fetch_optional(&mut *tx)
         .await?;
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     let mut releases = Vec::with_capacity(rows.len());
 
@@ -110,7 +110,7 @@ pub(crate) async fn latest_release(repo: Repository, db_pool: web::Data<Pool>) -
         die!(NOT_FOUND, "No release found");
     };
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
     let (commit, commit_message) = tag_commit_info(&libgit2_repo, &release.tag);
 
     let raw_assets: Vec<ReleaseAssets> = sqlx::query_as("select * from release_assets where release_id = $1 and available = true")
@@ -164,7 +164,7 @@ pub(crate) async fn get_release(repo: Repository, path: web::Path<(String, Strin
         .fetch_optional(&mut *tx)
         .await?;
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     let assets = release.assets(&mut tx).await?;
 
@@ -217,7 +217,7 @@ pub(crate) async fn create_release(
         die!(FORBIDDEN, "Insufficient permissions");
     }
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     if libgit2_repo.find_reference(&format!("refs/tags/{}", body.tag)).is_err() {
         let head = libgit2_repo
@@ -367,7 +367,7 @@ pub(crate) async fn update_release(
         .fetch_optional(&mut *tx)
         .await?;
 
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     let (commit, commit_message) = tag_commit_info(&libgit2_repo, &release.tag);
 

@@ -1,8 +1,6 @@
 use crate::git::utils::repo_files_at_ref;
 use crate::repository::Repository;
 
-use crate::database::{Database, Pool};
-use actix_web::web::Data;
 use actix_web::{HttpResponse, Responder};
 use anyhow::{Result, bail};
 use bstr::ByteSlice;
@@ -10,7 +8,6 @@ use gitarena_macros::route;
 use gix::objs::Tree;
 use gix::refs::file::find::existing::Error as GitoxideFindError;
 use serde::Serialize;
-use sqlx::Transaction;
 use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
@@ -40,18 +37,14 @@ struct RepoMetaResponse {
     tag = "repository"
 )]
 #[route("/api/repos/{namespace}/{repository}", method = "GET", err = "json")]
-pub(crate) async fn meta(repo: Repository, db: Data<Pool>) -> Result<impl Responder> {
-    let mut tx = db.begin().await?;
-
-    let (empty, readme) = find_readme_file_name(&repo, &mut tx).await?;
-
-    tx.commit().await?;
+pub(crate) async fn meta(repo: Repository) -> Result<impl Responder> {
+    let (empty, readme) = find_readme_file_name(&repo).await?;
 
     Ok(HttpResponse::Ok().json(RepoMetaResponse { repo, empty, readme }))
 }
 
-async fn find_readme_file_name(repo: &Repository, tx: &mut Transaction<'_, Database>) -> Result<(bool, Option<String>)> {
-    let gitoxide_repo = repo.gitoxide(tx).await?;
+async fn find_readme_file_name(repo: &Repository) -> Result<(bool, Option<String>)> {
+    let gitoxide_repo = repo.gitoxide().await?;
 
     let mut buffer = Vec::<u8>::new();
     let store = gitoxide_repo.objects.store().clone();

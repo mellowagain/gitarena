@@ -1,4 +1,5 @@
 use crate::die;
+use crate::repo_store;
 use crate::repository::Repository;
 use crate::user::{User, WebUser};
 
@@ -63,7 +64,7 @@ pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web:
     };
 
     let response = RepoStatsStarsResponse {
-        size: repo.repo_size(&mut transaction).await?,
+        size: repo_store::get()?.size(repo.id).await?,
         stars: RepoStatsDetailResponse {
             count: get_star_count(&repo, &mut transaction).await?,
             self_starred,

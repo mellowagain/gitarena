@@ -169,7 +169,7 @@ pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, Str
     let mut transaction = db_pool.begin().await?;
 
     let (_, _, oid_str) = path.into_inner();
-    let libgit2_repo = repo.libgit2(&mut transaction).await?;
+    let libgit2_repo = repo.libgit2().await?;
 
     let object = libgit2_repo.revparse_single(&oid_str).map_err(|_| err!(NOT_FOUND, "Commit not found"))?;
 

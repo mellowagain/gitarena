@@ -1,6 +1,7 @@
 use crate::TASK_DB_POOL;
 use crate::contributions::insert_contributions;
 use crate::prelude::MapToFangError;
+use crate::repo_store;
 use crate::repository::Repository;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -42,10 +43,10 @@ impl AsyncRunnable for BackfillRepoContributionsTask {
             return Ok(());
         };
 
-        let path = repo.get_fs_path(&mut tx).await.fang()?;
+        let local_repo = repo_store::get().fang()?.open_read(repo.id).await.fang()?;
 
         let commit_data = spawn_blocking(move || -> Result<Vec<(String, String, NaiveDate)>> {
-            let git_repo = git2::Repository::open(&path)?;
+            let git_repo = local_repo.libgit2()?;
 
             if git_repo.is_empty()? {
                 return Ok(vec![]);
@@ -115,11 +116,11 @@ impl AsyncRunnable for BackfillEmailContributionsTask {
         let repos: Vec<Repository> = sqlx::query_as("select * from repositories").fetch_all(&mut *tx).await.fang()?;
 
         for repo in repos {
-            let path = repo.get_fs_path(&mut tx).await.fang()?;
+            let local_repo = repo_store::get().fang()?.open_read(repo.id).await.fang()?;
             let email = self.email.clone();
 
             let commit_data = spawn_blocking(move || -> Result<Vec<(String, String, NaiveDate)>> {
-                let git_repo = git2::Repository::open(&path)?;
+                let git_repo = local_repo.libgit2()?;
 
                 if git_repo.is_empty()? {
                     return Ok(vec![]);

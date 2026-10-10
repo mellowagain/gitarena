@@ -1,3 +1,5 @@
+use crate::prelude::MapToFangError;
+use crate::repo_store;
 use crate::storage::STORAGE;
 use async_trait::async_trait;
 use fang::{AsyncQueueable, AsyncRunnable, FangError, typetag};
@@ -5,14 +7,14 @@ use futures::{StreamExt, TryStreamExt, stream};
 use object_store::ObjectStore;
 use object_store::path::Path;
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
-use tokio::fs;
 use tracing::instrument;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "fang::serde")]
 pub(crate) struct DeletedRepoCleanupTask {
-    pub(crate) trash_path: Option<String>,
+    #[serde(default)]
+    pub(crate) repo_ids: Vec<Uuid>,
     pub(crate) s3_keys: Vec<String>,
 }
 
@@ -21,13 +23,10 @@ pub(crate) struct DeletedRepoCleanupTask {
 impl AsyncRunnable for DeletedRepoCleanupTask {
     #[instrument(skip(_client))]
     async fn run(&self, _client: &dyn AsyncQueueable) -> Result<(), FangError> {
-        if let Some(trash_path) = &self.trash_path
-            && let Err(err) = fs::remove_dir_all(trash_path).await
-            && err.kind() != ErrorKind::NotFound
-        {
-            return Err(FangError {
-                description: format!("failed to remove {trash_path}: {err}"),
-            });
+        let store = repo_store::get().fang()?;
+
+        for repo_id in &self.repo_ids {
+            store.purge(*repo_id).await.fang()?;
         }
 
         if self.s3_keys.is_empty() {

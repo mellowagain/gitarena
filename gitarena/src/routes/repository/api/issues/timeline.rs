@@ -47,7 +47,7 @@ pub(crate) async fn get_issue_timeline(
         die!(NOT_FOUND, "Issue not found");
     }
 
-    let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+    let gitoxide_repo = repo.gitoxide().await?;
     tx.commit().await?;
 
     let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;

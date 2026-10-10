@@ -11,6 +11,7 @@ use std::env;
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
 use crate::meili::MEILI_CLIENT;
+use crate::repo_store::REPO_STORE;
 use crate::storage::STORAGE;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::body::{BoxBody, EitherBody};
@@ -52,6 +53,7 @@ mod privileges;
 mod queue;
 mod release;
 mod replication;
+mod repo_store;
 mod repository;
 mod routes;
 mod session;
@@ -114,6 +116,9 @@ async fn main() -> Result<()> {
     STORAGE
         .set(storage.clone())
         .map_err(|_| anyhow!("s3 storage should not be set more than once"))?;
+
+    let repo_store = repo_store::init(&db_pool).await?;
+    REPO_STORE.set(repo_store).map_err(|_| anyhow!("repo store should not be set more than once"))?;
 
     let queue = queue::init().await?;
 
