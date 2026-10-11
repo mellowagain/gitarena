@@ -134,6 +134,9 @@ importers:
       lucide-react:
         specifier: ^1.48.0
         version: 1.48.0(react@19.3.0)
+      mdast-util-find-and-replace:
+        specifier: ^3.0.2
+        version: 3.0.2
       next:
         specifier: 16.3.6
         version: 16.3.6(@babel/core@7.29.0)(@playwright/test@1.63.0)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

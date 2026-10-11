@@ -90,7 +90,7 @@ interface DiffFile {
     hunks: DiffHunk[];
 }
 
-interface CommitDetailResponse {
+export interface CommitDetailResponse {
     commit: CommitMeta;
     branch?: string;
     stats: DiffStats;

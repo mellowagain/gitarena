@@ -55,6 +55,7 @@
         "input-otp": "1.5.0",
         "linguist-languages": "^9.5.0",
         "lucide-react": "^1.48.0",
+        "mdast-util-find-and-replace": "^3.0.2",
         "next": "16.3.6",
         "next-themes": "^0.4.6",
         "pretty-bytes": "^7.2.0",

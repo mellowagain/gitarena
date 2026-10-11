@@ -1,9 +1,12 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import useSWR from "swr";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkFrontmatter from "remark-frontmatter";
+import { findAndReplace } from "mdast-util-find-and-replace";
 import { parse as parseYaml } from "yaml";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -11,6 +14,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { gitarenaTheme } from "@/components/code-block";
 import { CodeBlockContent } from "@/components/code-block";
 import { Checkbox } from "@/components/ui/checkbox";
+import { jsonFetcher } from "@/lib/fetchers";
+import type { CommitDetailResponse } from "@/app/[user]/[repo]/commit/[hash]/page";
 
 const MARKDOWN_EXTENSIONS = new Set(["md", "mdx", "markdown"]);
 
@@ -20,9 +25,22 @@ const MARKDOWN_EXTENSIONS = new Set(["md", "mdx", "markdown"]);
 // additional tags useful in markdown: details/summary for collapsibles, kbd for keyboard keys, etc.
 const sanitizeSchema = {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames ?? []), "frontmatter", "mdxesm", "details", "summary", "kbd", "sub", "sup", "ins", "mark"],
+    tagNames: [
+        ...(defaultSchema.tagNames ?? []),
+        "frontmatter",
+        "mdxesm",
+        "commitref",
+        "details",
+        "summary",
+        "kbd",
+        "sub",
+        "sup",
+        "ins",
+        "mark",
+    ],
     attributes: {
         ...defaultSchema.attributes,
+        commitref: ["hash"],
         div: [...(defaultSchema.attributes?.div ?? []), "align"],
         p: [...(defaultSchema.attributes?.p ?? []), "align"],
         td: [...(defaultSchema.attributes?.td ?? []), "colspan", "rowspan"],
@@ -119,6 +137,44 @@ function remarkMdxEsm(): (tree: any, file: any) => void {
     };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function remarkCommitRefs(): (tree: any) => void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (tree: any): void => {
+        findAndReplace(
+            tree,
+            [
+                /\b[0-9a-f]{7,64}\b/gi,
+                (hash: string) => ({
+                    type: "text",
+                    value: hash,
+                    data: { hName: "commitref", hProperties: { hash }, hChildren: [{ type: "text", value: hash }] },
+                }),
+            ],
+            { ignore: ["link", "linkReference"] }
+        );
+    };
+}
+
+function CommitRef({ hash, user, repo }: { hash: string; user: string; repo: string }) {
+    const { data } = useSWR<CommitDetailResponse>(`/api/repos/${user}/${repo}/commits/${hash}`, jsonFetcher, {
+        shouldRetryOnError: false,
+    });
+
+    if (!data) {
+        return <>{hash}</>;
+    }
+
+    return (
+        <Link
+            href={`/${user}/${repo}/commit/${data.commit.oid}`}
+            className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+        >
+            <code className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">{data.commit.shortOid}</code>
+        </Link>
+    );
+}
+
 function FrontmatterValue({ value }: { value: unknown }) {
     if (Array.isArray(value)) {
         return (
@@ -205,6 +261,7 @@ export function MarkdownRenderer({
     filePath = "",
     showSource = false,
     wrapLines = false,
+    linkCommits = false,
     className = "p-8 space-y-4 text-sm leading-relaxed",
 }: {
     content: string;
@@ -215,11 +272,17 @@ export function MarkdownRenderer({
     filePath?: string;
     showSource?: boolean;
     wrapLines?: boolean;
+    linkCommits?: boolean;
     className?: string;
 }) {
     const isMdx = fileName.toLowerCase().endsWith(".mdx");
     // Frontmatter only exists in files, not in issue comments or release notes
-    const remarkPlugins = [remarkGfm, ...(fileName ? [remarkFrontmatter, remarkFrontmatterElement] : []), ...(isMdx ? [remarkMdxEsm] : [])];
+    const remarkPlugins = [
+        remarkGfm,
+        ...(fileName ? [remarkFrontmatter, remarkFrontmatterElement] : []),
+        ...(isMdx ? [remarkMdxEsm] : []),
+        ...(linkCommits ? [remarkCommitRefs] : []),
+    ];
 
     if (showSource) {
         return <CodeBlockContent content={content} filename={fileName} wrapLines={wrapLines} />;
@@ -234,6 +297,7 @@ export function MarkdownRenderer({
                     // Custom elements emitted by remarkFrontmatterElement / remarkMdxEsm
                     ...({
                         frontmatter: ({ children }: { children?: React.ReactNode }) => <Frontmatter yaml={String(children)} />,
+                        commitref: ({ hash }: { hash: string }) => <CommitRef hash={hash} user={user} repo={repo} />,
                         mdxesm: ({ children }: { children?: React.ReactNode }) => (
                             <SyntaxHighlighter
                                 language="jsx"

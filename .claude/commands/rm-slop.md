@@ -1,5 +1,5 @@
 ---
-description: Remove AI code slop from a diff (default: uncommitted vs HEAD; pass "main", "branch", or "task" to change scope)
+description: 'Remove AI code slop from a diff (default: uncommitted vs HEAD; pass "main", "branch", or "task" to change scope)'
 argument-hint: [HEAD|main|branch|task]
 ---
 

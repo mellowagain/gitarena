@@ -285,7 +285,7 @@ function CommentBlock({
                     )}
                 </div>
             </div>
-            <MarkdownRenderer content={comment.body} user={user} repo={repo} className="space-y-4 text-sm leading-relaxed" />
+            <MarkdownRenderer content={comment.body} user={user} repo={repo} linkCommits className="space-y-4 text-sm leading-relaxed" />
             <ReactionBar reactions={comment.reactions} onToggle={(emoji) => onToggleReaction(comment.id, emoji)} canReact={canReact} />
         </div>
     );
@@ -345,7 +345,13 @@ function CommentComposer({
                 <TabsContent value="preview">
                     <div className="px-3 py-2 min-h-[160px]">
                         {text.trim() ? (
-                            <MarkdownRenderer content={text} user={user} repo={repo} className="space-y-4 text-sm leading-relaxed" />
+                            <MarkdownRenderer
+                                content={text}
+                                user={user}
+                                repo={repo}
+                                linkCommits
+                                className="space-y-4 text-sm leading-relaxed"
+                            />
                         ) : (
                             <span className="text-muted-foreground italic">Nothing to preview.</span>
                         )}
@@ -870,7 +876,13 @@ export default function IssuePage() {
                                 ) : (
                                     <>
                                         {issue.body.trim() ? (
-                                            <MarkdownRenderer content={issue.body} user={user} repo={repo} className="space-y-4 text-sm" />
+                                            <MarkdownRenderer
+                                                content={issue.body}
+                                                user={user}
+                                                repo={repo}
+                                                linkCommits
+                                                className="space-y-4 text-sm"
+                                            />
                                         ) : (
                                             <p className="text-sm italic text-muted-foreground">No description provided.</p>
                                         )}
