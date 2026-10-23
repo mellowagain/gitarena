@@ -12,8 +12,9 @@ export function proxy(request: NextRequest) {
         if (pathname !== lowercased) {
             const url = request.nextUrl.clone();
             url.pathname = lowercased;
-            // Redirecting RSC prefetches makes the router refetch the original href forever, so rewrite them instead
-            if (request.headers.has("rsc")) {
+            // Redirecting RSC prefetches makes the router refetch the original href forever, so rewrite them instead.
+            // Next strips the `rsc` header before the proxy runs, so check Sec-Fetch-Dest instead
+            if (request.headers.get("sec-fetch-dest") === "empty") {
                 return NextResponse.rewrite(url);
             }
             return NextResponse.redirect(url, 308);
