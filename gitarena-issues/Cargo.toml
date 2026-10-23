@@ -18,11 +18,12 @@ gix = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = "0.11.0"
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
+pretty_assertions = { version = "=1.4.1", features = ["unstable"] }
 tempfile = "3.23.0"
-which = "8.0.2"
+test-with = { version = "0.17.2", default-features = false, features = ["executable"] }

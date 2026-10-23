@@ -171,3 +171,22 @@ fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> 
 
     serde_json::to_vec(&blob).expect("identity json to be able to be serialized")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use tempfile::tempdir;
+
+    #[test]
+    fn load_author_name_returns_username() {
+        let dir = tempdir().expect("tempdir");
+        let repo = gix::init(dir.path()).expect("gix::init");
+
+        let author = Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000);
+        author.write_identity_if_absent(&repo).expect("write_identity_if_absent");
+
+        let name = load_author_name(&repo, &author.id).expect("load_author_name");
+        assert_eq!(name, "testuser");
+    }
+}

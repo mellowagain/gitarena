@@ -35,6 +35,7 @@ pub fn add_comment(git_repo: &Repository, bug: Bug, author: Author, message: Str
         removed: None,
         target: None,
         files: Some(Value::Null),
+        raw_id: None,
     };
 
     let op_id = op.compute_id()?;
@@ -66,6 +67,7 @@ pub fn set_title(git_repo: &Repository, bug: Bug, author: Author, new_title: Str
         removed: None,
         target: None,
         files: None,
+        raw_id: None,
     };
 
     append_operation(git_repo, bug, author, op)
@@ -94,6 +96,7 @@ pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, status: BugSt
         removed: None,
         target: None,
         files: None,
+        raw_id: None,
     };
 
     append_operation(git_repo, bug, author, op)
@@ -123,6 +126,7 @@ pub fn change_labels(git_repo: &Repository, bug: Bug, author: Author, add: Vec<S
         removed: Some(remove),
         target: None,
         files: None,
+        raw_id: None,
     };
 
     append_operation(git_repo, bug, author, op)
@@ -152,6 +156,7 @@ pub fn edit_comment(git_repo: &Repository, bug: Bug, author: Author, target_op_i
         removed: None,
         target: Some(target_op_id),
         files: None,
+        raw_id: None,
     };
 
     append_operation(git_repo, bug, author, op)

@@ -1,116 +1,92 @@
-use gitarena_issues::author::{Author, load_author_name};
-use gitarena_issues::bug::create_bug;
+use common::{GitBug, make_author};
+use gitarena_issues::bug::{create_bug, list_bug_ids, load_bug};
 use gitarena_issues::operation::BugStatus;
 use gitarena_issues::ops::{add_comment, set_status};
-use serde_json::Value;
-use std::process::Command;
-use tempfile::tempdir;
-use uuid::Uuid;
-use which::which;
+use pretty_assertions::{assert_eq, assert_matches};
 
-#[test]
+mod common;
+
+#[test_with::executable(git-bug)]
 fn git_bug_can_read_created_bug() {
-    if which("git-bug").is_err() {
-        eprintln!("git-bug not installed, skipping tests...");
-        return;
-    }
+    let git_bug = GitBug::new();
 
-    let dir = tempdir().expect("tempdir");
-    let repo = gix::init(dir.path()).expect("gix::init");
+    let repo = &git_bug.repo;
 
     let author = make_author();
-    let bug = create_bug(&repo, author.clone(), "Test issue title".into(), "Body of the issue.".into()).expect("create_bug");
+    let bug = create_bug(repo, author.clone(), "Test issue title".into(), "Body of the issue.".into()).expect("create_bug");
 
     let bug_id = bug.id.clone();
 
-    let list_out = Command::new("git-bug").args(["bug"]).current_dir(dir.path()).output().expect("git-bug bug");
-
-    assert!(list_out.status.success(), "git-bug bug failed: {}", String::from_utf8_lossy(&list_out.stderr));
-
-    let list_text = String::from_utf8_lossy(&list_out.stdout);
+    let list_text = git_bug.run(&["bug"]);
 
     assert!(
         list_text.contains("Test issue title"),
         "git-bug bug did not list our issue.\nOutput:\n{list_text}"
     );
 
-    let show_out = Command::new("git-bug")
-        .args(["bug", "show", "--format", "json", &bug_id])
-        .current_dir(dir.path())
-        .output()
-        .expect("git-bug bug show");
+    let json = git_bug.show(&bug_id);
 
-    assert!(
-        show_out.status.success(),
-        "git-bug bug show failed: {}",
-        String::from_utf8_lossy(&show_out.stderr)
-    );
-
-    let show_text = String::from_utf8_lossy(&show_out.stdout);
-    let json: Value = serde_json::from_str(&show_text).unwrap_or_else(|err| panic!("git-bug show output is not valid JSON: {err}\nOutput:\n{show_text}"));
-
-    assert_eq!(json["title"].as_str().unwrap_or(""), "Test issue title", "title mismatch");
-    assert_eq!(json["status"].as_str().unwrap_or(""), "open", "status should be open");
-    assert_eq!(json["id"].as_str().unwrap_or(""), bug_id, "id mismatch");
+    assert_matches!(json["title"].as_str(), Some("Test issue title"));
+    assert_matches!(json["status"].as_str(), Some("open"));
+    assert_matches!(json["id"].as_str(), Some(id) if id == bug_id);
 
     let comments = json["comments"].as_array().expect("comments array");
     assert!(!comments.is_empty(), "expected at least one comment (the body)");
-    assert_eq!(comments[0]["message"].as_str().unwrap_or(""), "Body of the issue.", "body mismatch");
+    assert_matches!(comments[0]["message"].as_str(), Some("Body of the issue."));
 }
 
-#[test]
+#[test_with::executable(git-bug)]
 fn git_bug_can_read_comment_and_closed_status() {
-    if which("git-bug").is_err() {
-        eprintln!("git-bug not installed, skipping tests...");
-        return;
-    }
+    let git_bug = GitBug::new();
 
-    let dir = tempdir().expect("tempdir");
-    let repo = gix::init(dir.path()).expect("gix::init");
+    let repo = &git_bug.repo;
 
     let author = make_author();
-    let bug = create_bug(&repo, author.clone(), "Issue with comment".into(), "Initial body.".into()).expect("create_bug");
+    let bug = create_bug(repo, author.clone(), "Issue with comment".into(), "Initial body.".into()).expect("create_bug");
 
     let bug_id = bug.id.clone();
 
-    let (bug, _) = add_comment(&repo, bug, author.clone(), "A follow-up comment.".into()).expect("add_comment");
+    let (bug, _) = add_comment(repo, bug, author.clone(), "A follow-up comment.".into()).expect("add_comment");
 
-    let _ = set_status(&repo, bug, author, BugStatus::CLOSED).expect("set_status closed");
+    let _ = set_status(repo, bug, author, BugStatus::CLOSED).expect("set_status closed");
 
-    let show_out = Command::new("git-bug")
-        .args(["bug", "show", "--format", "json", &bug_id])
-        .current_dir(dir.path())
-        .output()
-        .expect("git-bug bug show");
+    let json = git_bug.show(&bug_id);
 
-    assert!(
-        show_out.status.success(),
-        "git-bug bug show failed: {}",
-        String::from_utf8_lossy(&show_out.stderr)
-    );
-
-    let show_text = String::from_utf8_lossy(&show_out.stdout);
-    let json: Value = serde_json::from_str(&show_text).unwrap_or_else(|err| panic!("not valid JSON: {err}\nOutput:\n{show_text}"));
-
-    assert_eq!(json["status"].as_str().unwrap_or(""), "closed", "status should be closed");
+    assert_matches!(json["status"].as_str(), Some("closed"));
 
     let comments = json["comments"].as_array().expect("comments array");
     assert_eq!(comments.len(), 2, "expected 2 comments (body + follow-up)");
-    assert_eq!(comments[1]["message"].as_str().unwrap_or(""), "A follow-up comment.", "comment body mismatch");
+    assert_matches!(comments[1]["message"].as_str(), Some("A follow-up comment."));
 }
 
-fn make_author() -> Author {
-    Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000)
-}
+#[test_with::executable(git-bug)]
+fn comment_ids_match_git_bug_for_html_characters() {
+    let git_bug = GitBug::new();
 
-#[test]
-fn load_author_name_returns_username() {
-    let dir = tempdir().expect("tempdir");
-    let repo = gix::init(dir.path()).expect("gix::init");
+    let repo = &git_bug.repo;
 
-    let author = make_author();
-    author.write_identity_if_absent(&repo).expect("write_identity_if_absent");
+    git_bug.run(&["user", "new", "--non-interactive", "-n", "tester", "-e", "tester@gitarena.local"]);
+    git_bug.run(&["bug", "new", "--non-interactive", "-t", "title", "-m", "body"]);
 
-    let name = load_author_name(&repo, &author.id).expect("load_author_name");
-    assert_eq!(name, "testuser");
+    let bug_id = list_bug_ids(repo).expect("list_bug_ids").pop().expect("bug id");
+    git_bug.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "a <b>tag</b> & stuff"]);
+
+    let show = git_bug.show(&bug_id);
+    let combined_id = show["comments"][1]["id"].as_str().expect("comment id");
+
+    let snapshot = load_bug(repo, &bug_id).expect("load_bug").snapshot();
+    let comment_id = &snapshot.comments[0].id;
+
+    // Combined IDs take the secondary (comment) ID at positions 1, 3, 5, 9 and every 5th from 14 (spec ids.md §5.1)
+    let secondary: String = combined_id
+        .chars()
+        .enumerate()
+        .filter(|(i, _)| matches!(i, 1 | 3 | 5 | 9) || (*i >= 10 && i % 5 == 4))
+        .map(|(_, c)| c)
+        .collect();
+
+    assert!(
+        comment_id.starts_with(&secondary),
+        "comment id {comment_id} does not match git-bug combined id {combined_id}"
+    );
 }

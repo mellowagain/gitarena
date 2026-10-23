@@ -94,7 +94,7 @@ impl Bug {
                             }
                         }
                     }
-                    _ => unreachable!(),
+                    _ => {}
                 }
             }
         }
@@ -170,6 +170,7 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
         removed: None,
         target: None,
         files: Some(serde_json::Value::Null),
+        raw_id: None,
     };
 
     let bug_id = create_op.compute_id()?;
@@ -422,4 +423,32 @@ pub fn delete_bug(git_repo: &Repository, bug_id_hex: &str) -> Result<()> {
 
     reference.delete().context("failed to delete bug ref")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use sha2::{Digest, Sha256};
+
+    #[test]
+    fn unknown_operation_types_are_skipped() {
+        let ops = r#"{"author":{"id":"a"},"ops":[{"type":1,"timestamp":1,"nonce":"n1","title":"title","message":"body","files":null},{"type":7,"timestamp":2,"nonce":"n2","metadata":{"k":"v"}},{"type":300,"timestamp":3,"nonce":"n3","status":"not-a-number","added":{}}]}"#;
+        let pack: OperationPack = serde_json::from_str(ops).expect("pack with unknown ops deserializes");
+
+        let create_raw = r#"{"type":1,"timestamp":1,"nonce":"n1","title":"title","message":"body","files":null}"#;
+        let bug_id = hex::encode(Sha256::digest(create_raw.as_bytes()));
+        assert_eq!(pack.ops[0].compute_id().expect("compute_id"), bug_id);
+
+        let bug = Bug {
+            id: bug_id,
+            packs: vec![pack],
+            create_clock: 1,
+            edit_clock: 1,
+        };
+
+        let snapshot = bug.snapshot();
+        assert_eq!(snapshot.title, "title");
+        assert_eq!(snapshot.body, "body");
+    }
 }
