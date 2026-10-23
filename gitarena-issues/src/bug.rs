@@ -2,9 +2,9 @@
 
 use crate::author::Author;
 use crate::clock::{self, BUGS_CREATE, BUGS_EDIT};
+use crate::error::Error;
 use crate::id::{BugId, OperationId};
 use crate::operation::{BugStatus, Operation, OperationPack, OperationType, random_nonce};
-use anyhow::{Context, Result, anyhow, ensure};
 use chrono::Utc;
 use gix::actor::Signature;
 use gix::bstr::ByteSlice;
@@ -23,9 +23,6 @@ use tracing::instrument;
 /// Ref location where bugs are stored.
 /// Build a path to a bug by concatenating this variable and the bug id
 pub const BUGS_REF_PREFIX: &str = "refs/bugs/";
-
-/// Sha1 of an empty file used for all clock and version tree entries
-pub const EMPTY_BLOB_SHA1: &str = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 
 /// Bug format version written to and accepted from the `version-<N>` tree entry
 pub const FORMAT_VERSION: u32 = 4;
@@ -175,7 +172,7 @@ pub struct CommentSnapshot {
 /// - `title`: Initial title
 /// - `body`: Initial body text
 #[instrument(err, skip(git_repo))]
-pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: String) -> Result<Bug> {
+pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: String) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
     let create_clock = clock::increment(git_repo, BUGS_CREATE)?;
     let edit_clock = clock::increment(git_repo, BUGS_EDIT)?;
@@ -206,10 +203,9 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
 
     let commit_id = write_pack_as_commit(git_repo, &pack, create_clock, edit_clock, Vec::new())?;
     let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
-    ensure!(
-        update_ref(git_repo, &ref_name, commit_id, PreviousValue::MustNotExist)?,
-        "bug {bug_id} already exists"
-    );
+    if !update_ref(git_repo, &ref_name, commit_id, PreviousValue::MustNotExist)? {
+        return Err(Error::BugAlreadyExists(bug_id));
+    }
 
     Ok(Bug {
         id: bug_id,
@@ -228,11 +224,11 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
 /// - `author`: Author of the operation
 /// - `op`: Operation to append
 #[instrument(err, skip(git_repo))]
-pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op: Operation) -> Result<Bug> {
+pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op: Operation) -> Result<Bug, Error> {
     // a clock-spammed bug elsewhere in the repo must not push this bug past the jump limit
     let edit_clock = clock::increment(git_repo, BUGS_EDIT)?.min(bug.edit_clock + MAX_CLOCK_JUMP);
     let ref_name = format!("{BUGS_REF_PREFIX}{}", bug.id);
-    let current_tip = find_ref_target(git_repo, &ref_name)?;
+    let current_tip = find_ref_target(git_repo, &ref_name)?.ok_or(Error::BugNotFound(bug.id))?;
 
     author.write_identity_if_absent(git_repo)?;
 
@@ -250,15 +246,12 @@ pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op:
     Ok(bug)
 }
 
-fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_clock: u64, edit_clock: u64, parents: Vec<ObjectId>) -> Result<ObjectId> {
-    let ops_json = serde_json::to_vec(pack).context("failed to serialize operation pack")?;
+fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_clock: u64, edit_clock: u64, parents: Vec<ObjectId>) -> Result<ObjectId, Error> {
+    let ops_json = serde_json::to_vec(pack).expect("operation pack to be able to be serialized");
 
-    let ops_blob_id = git_repo
-        .write_object(gix::objs::BlobRef { data: &ops_json })
-        .context("failed to write ops blob")?
-        .detach();
+    let ops_blob_id = git_repo.write_object(gix::objs::BlobRef { data: &ops_json }).map_err(Error::git)?.detach();
 
-    let empty_blob_id = ObjectId::from_hex(EMPTY_BLOB_SHA1.as_bytes()).context("invalid empty blob sha")?;
+    let empty_blob_id = ObjectId::empty_blob(git_repo.object_hash());
 
     let mut entries = vec![
         Entry {
@@ -289,7 +282,7 @@ fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_cloc
     entries.sort_by(|a, b| a.filename.cmp(&b.filename));
 
     let tree = Tree { entries };
-    let tree_id = git_repo.write_object(&tree).context("failed to write tree")?.detach();
+    let tree_id = git_repo.write_object(&tree).map_err(Error::git)?.detach();
 
     let now = Utc::now();
 
@@ -313,7 +306,7 @@ fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_cloc
             tree_id,
             parents,
         )
-        .context("failed to write bug commit")?;
+        .map_err(Error::git)?;
 
     Ok(commit.id)
 }
@@ -323,20 +316,20 @@ fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_cloc
 /// # Returns
 ///
 /// `false` if the ref was changed concurrently and `expected` no longer matches
-pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectId, expected: PreviousValue) -> Result<bool> {
+pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectId, expected: PreviousValue) -> Result<bool, Error> {
     // gix reads the ref before taking its lock, so without this concurrent updates overwrite each other
     let lock_dir = git_repo.git_dir().join("git-bug");
-    fs::create_dir_all(&lock_dir).context("failed to create git-bug directory")?;
+    fs::create_dir_all(&lock_dir).map_err(Error::RefLock)?;
 
-    let lock = File::create(lock_dir.join("refs.lock")).context("failed to open ref lock")?;
-    lock.lock().context("failed to lock refs")?;
+    let lock = File::create(lock_dir.join("refs.lock")).map_err(Error::RefLock)?;
+    lock.lock().map_err(Error::RefLock)?;
 
     match git_repo.reference(ref_name, new_tip, expected, "") {
         Ok(_) => Ok(true),
         Err(gix::reference::edit::Error::FileTransactionPrepare(
             PrepareError::ReferenceOutOfDate { .. } | PrepareError::MustNotExist { .. } | PrepareError::MustExist { .. } | PrepareError::LockAcquire { .. },
         )) => Ok(false),
-        Err(err) => Err(err).with_context(|| format!("failed to update {ref_name}")),
+        Err(err) => Err(Error::git(err)),
     }
 }
 
@@ -366,15 +359,18 @@ pub enum MergeOutcome {
 /// - `remote_tip`: Commit to merge, must already be in the object database
 /// - `author`: Author of the merge commit if the histories diverged
 #[instrument(err, skip(git_repo))]
-pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome> {
-    let remote = read_dag(git_repo, remote_tip)?;
+pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome, Error> {
+    let remote = read_dag(git_repo, bug_id, remote_tip)?;
     let remote_commits: HashSet<ObjectId> = remote.keys().copied().collect();
     build_bug(git_repo, bug_id, remote)?;
 
     let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
 
     loop {
-        let local_tip = git_repo.try_find_reference(ref_name.as_str())?.map(|reference| reference.id().detach());
+        let local_tip = git_repo
+            .try_find_reference(ref_name.as_str())
+            .map_err(Error::git)?
+            .map(|reference| reference.id().detach());
 
         let (outcome, new_tip, expected) = match local_tip {
             None => (MergeOutcome::New, remote_tip, PreviousValue::MustNotExist),
@@ -385,7 +381,7 @@ pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, au
                 PreviousValue::MustExistAndMatch(Target::Object(local_tip)),
             ),
             Some(local_tip) => {
-                let local = read_dag(git_repo, local_tip)?;
+                let local = read_dag(git_repo, bug_id, local_tip)?;
 
                 if local.contains_key(&remote_tip) {
                     return Ok(MergeOutcome::LocalAhead);
@@ -412,9 +408,9 @@ pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, au
     }
 }
 
-fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<ObjectId> {
-    let reference = git_repo.find_reference(ref_name).with_context(|| format!("bug ref not found: {ref_name}"))?;
-    Ok(reference.id().detach())
+fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<Option<ObjectId>, Error> {
+    let reference = git_repo.try_find_reference(ref_name).map_err(Error::git)?;
+    Ok(reference.map(|reference| reference.id().detach()))
 }
 
 /// Load a bug from the repository by its hex ID, rejecting it if it violates the `git-bug` spec.
@@ -424,52 +420,56 @@ fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<ObjectId> {
 ///
 /// - `git_repo`: Handle to a [`Repository`]
 /// - `bug_id`: ID of the bug to load
-pub fn load_bug(git_repo: &Repository, bug_id: &BugId) -> Result<Bug> {
+pub fn load_bug(git_repo: &Repository, bug_id: &BugId) -> Result<Bug, Error> {
     let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
-    let tip = find_ref_target(git_repo, &ref_name)?;
+    let tip = find_ref_target(git_repo, &ref_name)?.ok_or(Error::BugNotFound(*bug_id))?;
 
-    build_bug(git_repo, bug_id, read_dag(git_repo, tip)?)
+    build_bug(git_repo, bug_id, read_dag(git_repo, bug_id, tip)?)
 }
 
-fn build_bug(git_repo: &Repository, bug_id: &BugId, commits: HashMap<ObjectId, BugCommit>) -> Result<Bug> {
+fn build_bug(git_repo: &Repository, bug_id: &BugId, commits: HashMap<ObjectId, BugCommit>) -> Result<Bug, Error> {
+    let invalid = |reason: String| Error::InvalidBug { id: *bug_id, reason };
+
     let mut root = None;
 
     for (id, commit) in &commits {
         if commit.parents.is_empty() {
-            ensure!(root.replace(commit).is_none(), "bug {bug_id} has more than one root commit");
+            if root.replace(commit).is_some() {
+                return Err(invalid("has more than one root commit".to_owned()));
+            }
             continue;
         }
 
         let is_merge = commit.parents.len() > 1;
-        ensure!(!is_merge || commit.pack.ops.is_empty(), "merge commit {id} of bug {bug_id} carries operations");
+        if is_merge && !commit.pack.ops.is_empty() {
+            return Err(invalid(format!("merge commit {id} carries operations")));
+        }
 
         for parent in &commit.parents {
             let parent_clock = commits[parent].edit_clock;
 
-            ensure!(commit.edit_clock > parent_clock, "commit {id} of bug {bug_id} does not advance the edit-clock");
-            ensure!(
-                is_merge || commit.edit_clock - parent_clock <= MAX_CLOCK_JUMP,
-                "commit {id} of bug {bug_id} jumps the edit-clock by more than {MAX_CLOCK_JUMP}"
-            );
+            if commit.edit_clock <= parent_clock {
+                return Err(invalid(format!("commit {id} does not advance the edit-clock")));
+            }
+
+            if !is_merge && commit.edit_clock - parent_clock > MAX_CLOCK_JUMP {
+                return Err(invalid(format!("commit {id} jumps the edit-clock by more than {MAX_CLOCK_JUMP}")));
+            }
         }
     }
 
-    let root = root.with_context(|| format!("bug {bug_id} has no root commit"))?;
+    let root = root.ok_or_else(|| invalid("has no root commit".to_owned()))?;
 
     let create_clock = root
         .create_clock
         .filter(|clock| *clock > 0)
-        .with_context(|| format!("root commit of bug {bug_id} has no create-clock"))?;
+        .ok_or_else(|| invalid("root commit has no create-clock".to_owned()))?;
 
-    let create_op = root
-        .pack
-        .ops
-        .first()
-        .with_context(|| format!("root commit of bug {bug_id} has no operations"))?;
-    ensure!(
-        BugId::from_create_operation(create_op.compute_id()) == *bug_id,
-        "bug {bug_id} does not match the ID of its first operation"
-    );
+    let create_op = root.pack.ops.first().ok_or_else(|| invalid("root commit has no operations".to_owned()))?;
+
+    if BugId::from_create_operation(create_op.compute_id()) != *bug_id {
+        return Err(invalid("does not match the ID of its first operation".to_owned()));
+    }
 
     let mut commits: Vec<BugCommit> = commits.into_values().collect();
     commits.sort_by(|a, b| a.edit_clock.cmp(&b.edit_clock).then_with(|| a.pack_id.cmp(&b.pack_id)));
@@ -478,7 +478,9 @@ fn build_bug(git_repo: &Repository, bug_id: &BugId, commits: HashMap<ObjectId, B
 
     for op in commits.iter().flat_map(|commit| &commit.pack.ops) {
         let op_id = op.compute_id();
-        ensure!(op_ids.insert(op_id), "bug {bug_id} contains operation {op_id} more than once");
+        if !op_ids.insert(op_id) {
+            return Err(invalid(format!("contains operation {op_id} more than once")));
+        }
     }
 
     let edit_clock = commits.last().map_or(0, |commit| commit.edit_clock);
@@ -502,7 +504,7 @@ struct BugCommit {
     edit_clock: u64,
 }
 
-fn read_dag(git_repo: &Repository, tip: ObjectId) -> Result<HashMap<ObjectId, BugCommit>> {
+fn read_dag(git_repo: &Repository, bug_id: &BugId, tip: ObjectId) -> Result<HashMap<ObjectId, BugCommit>, Error> {
     let mut commits = HashMap::new();
     let mut pending = vec![tip];
 
@@ -511,7 +513,7 @@ fn read_dag(git_repo: &Repository, tip: ObjectId) -> Result<HashMap<ObjectId, Bu
             continue;
         }
 
-        let commit = read_commit(git_repo, commit_id)?;
+        let commit = read_commit(git_repo, bug_id, commit_id)?;
         pending.extend(commit.parents.iter().copied());
         commits.insert(commit_id, commit);
     }
@@ -519,14 +521,16 @@ fn read_dag(git_repo: &Repository, tip: ObjectId) -> Result<HashMap<ObjectId, Bu
     Ok(commits)
 }
 
-fn read_commit(git_repo: &Repository, commit_id: ObjectId) -> Result<BugCommit> {
-    let commit = git_repo.find_object(commit_id)?.try_into_commit()?;
-    let commit_ref = commit.decode()?;
+fn read_commit(git_repo: &Repository, bug_id: &BugId, commit_id: ObjectId) -> Result<BugCommit, Error> {
+    let invalid = |reason: String| Error::InvalidBug { id: *bug_id, reason };
+
+    let commit = git_repo.find_object(commit_id).map_err(Error::git)?.try_into_commit().map_err(Error::git)?;
+    let commit_ref = commit.decode().map_err(Error::git)?;
     let parents = commit_ref.parents().collect();
 
     let tree_id = commit_ref.tree();
-    let tree = git_repo.find_object(tree_id)?.try_into_tree()?;
-    let tree_ref = tree.decode()?;
+    let tree = git_repo.find_object(tree_id).map_err(Error::git)?.try_into_tree().map_err(Error::git)?;
+    let tree_ref = tree.decode().map_err(Error::git)?;
 
     let mut ops_data: Option<Vec<u8>> = None;
     let mut version: Option<u32> = None;
@@ -535,27 +539,34 @@ fn read_commit(git_repo: &Repository, commit_id: ObjectId) -> Result<BugCommit> 
 
     for entry in tree_ref.entries {
         let name = entry.filename.to_str_lossy();
-        let invalid_entry = || format!("invalid tree entry {name} in bug commit {commit_id}");
+        let invalid_entry = |_| invalid(format!("invalid tree entry {name} in commit {commit_id}"));
 
         if name == "ops" {
-            let blob = git_repo.find_object(entry.oid.to_owned())?.try_into_blob()?;
+            let blob = git_repo
+                .find_object(entry.oid.to_owned())
+                .map_err(Error::git)?
+                .try_into_blob()
+                .map_err(Error::git)?;
             ops_data = Some(blob.data.clone());
         } else if let Some(rest) = name.strip_prefix("version-") {
-            version = Some(rest.parse().with_context(invalid_entry)?);
+            version = Some(rest.parse().map_err(invalid_entry)?);
         } else if let Some(rest) = name.strip_prefix("create-clock-") {
-            create_clock = Some(rest.parse().with_context(invalid_entry)?);
+            create_clock = Some(rest.parse().map_err(invalid_entry)?);
         } else if let Some(rest) = name.strip_prefix("edit-clock-") {
-            edit_clock = Some(rest.parse().with_context(invalid_entry)?);
+            edit_clock = Some(rest.parse().map_err(invalid_entry)?);
         }
     }
 
-    let version = version.with_context(|| format!("version entry missing from bug commit {commit_id}"))?;
-    ensure!(version == FORMAT_VERSION, "bug commit {commit_id} has unsupported format version {version}");
+    let version = version.ok_or_else(|| invalid(format!("version entry missing from commit {commit_id}")))?;
 
-    let edit_clock = edit_clock.with_context(|| format!("edit-clock entry missing from bug commit {commit_id}"))?;
+    if version != FORMAT_VERSION {
+        return Err(invalid(format!("commit {commit_id} has unsupported format version {version}")));
+    }
 
-    let ops_bytes = ops_data.context("ops blob missing from bug commit tree")?;
-    let pack: OperationPack = serde_json::from_slice(&ops_bytes).context("failed to deserialize operation pack")?;
+    let edit_clock = edit_clock.ok_or_else(|| invalid(format!("edit-clock entry missing from commit {commit_id}")))?;
+
+    let ops_bytes = ops_data.ok_or_else(|| invalid(format!("ops blob missing from commit {commit_id}")))?;
+    let pack: OperationPack = serde_json::from_slice(&ops_bytes).map_err(|err| invalid(format!("commit {commit_id} has an invalid ops blob: {err}")))?;
 
     Ok(BugCommit {
         parents,
@@ -567,18 +578,18 @@ fn read_commit(git_repo: &Repository, commit_id: ObjectId) -> Result<BugCommit> 
 }
 
 /// List the hex IDs of all bugs stored in the repository
-pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<BugId>> {
-    let platform = git_repo.references()?;
-    let iter = platform.prefixed(BUGS_REF_PREFIX)?;
+pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<BugId>, Error> {
+    let platform = git_repo.references().map_err(Error::git)?;
+    let iter = platform.prefixed(BUGS_REF_PREFIX).map_err(Error::git)?;
 
     let mut ids = Vec::new();
 
     for reference in iter {
-        let reference = reference.map_err(|err| anyhow!("{err}"))?;
+        let reference = reference.map_err(Error::Git)?;
         let full_name = reference.name().as_bstr().to_str_lossy().to_string();
 
         if let Some(id) = full_name.strip_prefix(BUGS_REF_PREFIX) {
-            ids.push(id.parse()?);
+            ids.push(id.parse().map_err(|_| Error::InvalidBugRef(full_name.clone()))?);
         }
     }
 
@@ -591,14 +602,15 @@ pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<BugId>> {
 ///
 /// - `git_repo`: Handle to a [`gix::Repository`]
 /// - `bug_id`: ID of the bug to delete
-pub fn delete_bug(git_repo: &Repository, bug_id: &BugId) -> Result<()> {
+pub fn delete_bug(git_repo: &Repository, bug_id: &BugId) -> Result<(), Error> {
     let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
 
     let reference = git_repo
-        .find_reference(ref_name.as_str())
-        .with_context(|| format!("bug ref not found: {ref_name}"))?;
+        .try_find_reference(ref_name.as_str())
+        .map_err(Error::git)?
+        .ok_or(Error::BugNotFound(*bug_id))?;
 
-    reference.delete().context("failed to delete bug ref")?;
+    reference.delete().map_err(Error::git)?;
     Ok(())
 }
 

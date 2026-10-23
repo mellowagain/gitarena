@@ -1,6 +1,7 @@
 use super::*;
 use crate::ops::{AddedComment, add_comment, set_title};
-use pretty_assertions::assert_eq;
+use anyhow::Result;
+use pretty_assertions::{assert_eq, assert_matches};
 use std::panic;
 use std::thread;
 use tempfile::tempdir;
@@ -153,7 +154,7 @@ fn invalid_bugs_are_rejected() -> Result<()> {
         point(&repo, build(&repo)?)?;
 
         let err = load_bug(&repo, &bug_id()).expect_err(expected);
-        assert!(format!("{err:#}").contains(expected), "expected error containing {expected:?}, got {err:#}");
+        assert_matches!(err, Error::InvalidBug { ref reason, .. } if reason.contains(expected), "expected reason containing {expected:?}");
     }
 
     Ok(())
@@ -215,7 +216,7 @@ fn merge_bug_rejects_invalid_remote() -> Result<()> {
     let remote = commit(&repo, &pack(&[CREATE_OP]), &["create-clock-1", "edit-clock-1", "version-5"], &[])?;
     let err = merge_bug(&repo, &bug_id(), remote, &author()).expect_err("remote with unsupported version");
 
-    assert!(format!("{err:#}").contains("unsupported format version 5"), "got {err:#}");
+    assert_matches!(err, Error::InvalidBug { reason, .. } if reason.contains("unsupported format version 5"));
     assert!(repo.try_find_reference(format!("{BUGS_REF_PREFIX}{}", bug_id()).as_str())?.is_none());
 
     Ok(())
@@ -230,7 +231,7 @@ fn concurrent_appends_are_merged() -> Result<()> {
     let bug = create_bug(&repo, author.clone(), "title".into(), "body".into())?;
     let shared = repo.into_sync();
 
-    let results: Vec<Result<AddedComment>> = thread::scope(|scope| {
+    let results: Vec<Result<AddedComment, Error>> = thread::scope(|scope| {
         let handles: Vec<_> = (0..8)
             .map(|i| {
                 let (shared, bug, author) = (&shared, bug.clone(), author.clone());

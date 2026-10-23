@@ -1,6 +1,6 @@
 //! Lamport clocks shared with `git-bug`, stored in `.git/git-bug/clocks/`
 
-use anyhow::{Context, Result};
+use crate::error::Error;
 use gix::Repository;
 use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Read, Seek, Write};
@@ -17,7 +17,7 @@ pub const BUGS_EDIT: &str = "bugs-edit";
 ///
 /// - `git_repo`: Handle to a [`Repository`]
 /// - `name`: Clock name, e.g. [`BUGS_EDIT`]
-pub fn increment(git_repo: &Repository, name: &str) -> Result<u64> {
+pub fn increment(git_repo: &Repository, name: &str) -> Result<u64, Error> {
     update(git_repo, name, |current| current + 1)
 }
 
@@ -28,7 +28,7 @@ pub fn increment(git_repo: &Repository, name: &str) -> Result<u64> {
 /// - `git_repo`: Handle to a [`Repository`]
 /// - `name`: Clock name, e.g. [`BUGS_EDIT`]
 /// - `value`: Observed clock value
-pub fn witness(git_repo: &Repository, name: &str, value: u64) -> Result<()> {
+pub fn witness(git_repo: &Repository, name: &str, value: u64) -> Result<(), Error> {
     // load_bug witnesses on every read, so don't take the lock unless the clock actually moves
     if read(git_repo, name)? >= value {
         return Ok(());
@@ -38,11 +38,11 @@ pub fn witness(git_repo: &Repository, name: &str, value: u64) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn read(git_repo: &Repository, name: &str) -> Result<u64> {
+pub(crate) fn read(git_repo: &Repository, name: &str) -> Result<u64, Error> {
     match fs::read_to_string(clock_path(git_repo, name)) {
         Ok(content) => parse(&content, name),
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(0),
-        Err(err) => Err(err).with_context(|| format!("failed to read clock {name}")),
+        Err(source) => Err(Error::Clock { name: name.to_owned(), source }),
     }
 }
 
@@ -51,19 +51,20 @@ fn clock_path(git_repo: &Repository, name: &str) -> PathBuf {
     git_repo.git_dir().join("git-bug").join("clocks").join(name)
 }
 
-fn parse(content: &str, name: &str) -> Result<u64> {
+fn parse(content: &str, name: &str) -> Result<u64, Error> {
     if content.is_empty() {
         return Ok(0);
     }
 
-    content.trim().parse().with_context(|| format!("clock {name} is corrupt"))
+    content.trim().parse().map_err(|source| Error::CorruptClock { name: name.to_owned(), source })
 }
 
-fn update(git_repo: &Repository, name: &str, next: impl FnOnce(u64) -> u64) -> Result<u64> {
+fn update(git_repo: &Repository, name: &str, next: impl FnOnce(u64) -> u64) -> Result<u64, Error> {
+    let clock_err = |source| Error::Clock { name: name.to_owned(), source };
     let path = clock_path(git_repo, name);
 
     if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).context("failed to create clocks directory")?;
+        fs::create_dir_all(dir).map_err(clock_err)?;
     }
 
     let mut file = OpenOptions::new()
@@ -72,18 +73,18 @@ fn update(git_repo: &Repository, name: &str, next: impl FnOnce(u64) -> u64) -> R
         .create(true)
         .truncate(false)
         .open(&path)
-        .with_context(|| format!("failed to open clock {name}"))?;
+        .map_err(clock_err)?;
 
-    file.lock().with_context(|| format!("failed to lock clock {name}"))?;
+    file.lock().map_err(clock_err)?;
 
     let mut content = String::new();
-    file.read_to_string(&mut content)?;
+    file.read_to_string(&mut content).map_err(clock_err)?;
 
     let value = next(parse(&content, name)?);
 
-    file.set_len(0)?;
-    file.rewind()?;
-    write!(file, "{value}")?;
+    file.set_len(0).map_err(clock_err)?;
+    file.rewind().map_err(clock_err)?;
+    write!(file, "{value}").map_err(clock_err)?;
 
     Ok(value)
 }
@@ -91,6 +92,7 @@ fn update(git_repo: &Repository, name: &str, next: impl FnOnce(u64) -> u64) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Result;
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 

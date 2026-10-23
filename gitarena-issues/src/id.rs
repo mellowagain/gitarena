@@ -1,11 +1,17 @@
 //! sha256 IDs used by `git-bug` for bugs, operations and identities
 
-use anyhow::{Result, ensure};
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
+use thiserror::Error;
+
+/// Error returned when parsing a string that is not 64 lowercase hex characters into an ID
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("ID must be 64 lowercase hex characters")]
+#[non_exhaustive]
+pub struct ParseIdError;
 
 macro_rules! sha256_id {
     ($(#[$meta:meta])* $name:ident) => {
@@ -36,18 +42,16 @@ macro_rules! sha256_id {
         }
 
         impl FromStr for $name {
-            type Err = anyhow::Error;
+            type Err = ParseIdError;
 
-            fn from_str(s: &str) -> Result<Self> {
+            fn from_str(s: &str) -> Result<Self, ParseIdError> {
                 // uppercase hex would point to a different ref than the canonical lowercase ID
-                ensure!(
-                    s.len() == 64 && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')),
-                    "invalid {}: {s}",
-                    stringify!($name)
-                );
+                if s.len() != 64 || !s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
+                    return Err(ParseIdError);
+                }
 
                 let mut bytes = [0; 32];
-                hex::decode_to_slice(s, &mut bytes)?;
+                hex::decode_to_slice(s, &mut bytes).map_err(|_| ParseIdError)?;
                 Ok(Self(bytes))
             }
         }

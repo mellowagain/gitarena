@@ -11,7 +11,6 @@ description = "Rust library for interacting with `git-bug` as used by the GitAre
 workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true }
 gix = { workspace = true }
@@ -20,10 +19,12 @@ rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = "0.11.0"
+thiserror = "2.0.21"
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
+anyhow = { workspace = true }
 pretty_assertions = { version = "=1.4.1", features = ["unstable"] }
 tempfile = "3.23.0"
 test-with = { version = "0.17.2", default-features = false, features = ["executable"] }

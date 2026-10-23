@@ -1,8 +1,8 @@
 //! `git-bug` identities stored under [`IDENTITIES_REF_PREFIX`]
 
 use crate::bug::{MergeOutcome, update_ref};
+use crate::error::Error;
 use crate::id::AuthorId;
-use anyhow::{Context, Result, bail, ensure};
 use chrono::Utc;
 use gix::actor::Signature;
 use gix::date::Time;
@@ -82,7 +82,7 @@ impl Author {
     /// # Arguments
     ///
     /// - `repo`: Handle to a [`gix::Repository`]
-    pub fn write_identity_if_absent(&self, repo: &Repository) -> Result<()> {
+    pub fn write_identity_if_absent(&self, repo: &Repository) -> Result<(), Error> {
         let ref_name = format!("{IDENTITIES_REF_PREFIX}{}", self.id);
 
         if repo.find_reference(ref_name.as_str()).is_ok() {
@@ -91,10 +91,7 @@ impl Author {
 
         let identity_json = build_identity_json(&self.name, &self.email, &self.nonce, self.created_at);
 
-        let blob_id = repo
-            .write_object(BlobRef { data: &identity_json })
-            .context("failed to write identity blob")?
-            .detach();
+        let blob_id = repo.write_object(BlobRef { data: &identity_json }).map_err(Error::git)?.detach();
 
         let tree = Tree {
             entries: vec![Entry {
@@ -104,7 +101,7 @@ impl Author {
             }],
         };
 
-        let tree_id = repo.write_object(&tree).context("failed to write identity tree")?.detach();
+        let tree_id = repo.write_object(&tree).map_err(Error::git)?.detach();
 
         let now = Utc::now();
 
@@ -128,7 +125,7 @@ impl Author {
             tree_id,
             Vec::<ObjectId>::new(),
         )
-        .context("failed to write identity commit")?;
+        .map_err(Error::git)?;
 
         Ok(())
     }
@@ -140,12 +137,18 @@ impl Author {
 /// # Return
 ///
 /// `name` field from the latest identity version
-pub fn load_author_name(repo: &Repository, author_id: &AuthorId) -> Result<String> {
+pub fn load_author_name(repo: &Repository, author_id: &AuthorId) -> Result<String, Error> {
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
-    let reference = repo.find_reference(ref_name.as_str()).context("identity ref not found")?;
+    let reference = repo
+        .try_find_reference(ref_name.as_str())
+        .map_err(Error::git)?
+        .ok_or(Error::IdentityNotFound(*author_id))?;
 
     let (_, latest) = read_identity(repo, author_id, reference.id().detach())?;
-    let name = latest["name"].as_str().context("name field missing from identity blob")?;
+    let name = latest["name"].as_str().ok_or_else(|| Error::InvalidIdentity {
+        id: *author_id,
+        reason: "name field missing from latest version".to_owned(),
+    })?;
 
     Ok(name.to_owned())
 }
@@ -158,12 +161,15 @@ pub fn load_author_name(repo: &Repository, author_id: &AuthorId) -> Result<Strin
 /// - `repo`: Handle to a [`Repository`]
 /// - `author_id`: ID of the identity
 /// - `remote_tip`: Commit to merge, must already be in the object database
-pub fn merge_identity(repo: &Repository, author_id: &AuthorId, remote_tip: ObjectId) -> Result<MergeOutcome> {
+pub fn merge_identity(repo: &Repository, author_id: &AuthorId, remote_tip: ObjectId) -> Result<MergeOutcome, Error> {
     let (remote_chain, _) = read_identity(repo, author_id, remote_tip)?;
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
 
     loop {
-        let local_tip = repo.try_find_reference(ref_name.as_str())?.map(|reference| reference.id().detach());
+        let local_tip = repo
+            .try_find_reference(ref_name.as_str())
+            .map_err(Error::git)?
+            .map(|reference| reference.id().detach());
 
         let (outcome, expected) = match local_tip {
             None => (MergeOutcome::New, PreviousValue::MustNotExist),
@@ -171,10 +177,9 @@ pub fn merge_identity(repo: &Repository, author_id: &AuthorId, remote_tip: Objec
             Some(local_tip) if remote_chain.contains(&local_tip) => (MergeOutcome::FastForward, PreviousValue::MustExistAndMatch(Target::Object(local_tip))),
             Some(local_tip) => {
                 let (local_chain, _) = read_identity(repo, author_id, local_tip)?;
-                ensure!(
-                    local_chain.contains(&remote_tip),
-                    "identity {author_id} has diverged and cannot be fast-forwarded"
-                );
+                if !local_chain.contains(&remote_tip) {
+                    return Err(Error::IdentityDiverged(*author_id));
+                }
 
                 return Ok(MergeOutcome::LocalAhead);
             }
@@ -186,49 +191,59 @@ pub fn merge_identity(repo: &Repository, author_id: &AuthorId, remote_tip: Objec
     }
 }
 
-fn read_identity(repo: &Repository, author_id: &AuthorId, tip: ObjectId) -> Result<(Vec<ObjectId>, Value)> {
+fn read_identity(repo: &Repository, author_id: &AuthorId, tip: ObjectId) -> Result<(Vec<ObjectId>, Value), Error> {
+    let invalid = |reason: String| Error::InvalidIdentity { id: *author_id, reason };
+
     let mut commit_id = tip;
     let mut chain = Vec::new();
     let mut latest: Option<Value> = None;
 
     loop {
-        let commit = repo.find_object(commit_id)?.try_into_commit()?;
-        let commit_ref = commit.decode()?;
+        let commit = repo.find_object(commit_id).map_err(Error::git)?.try_into_commit().map_err(Error::git)?;
+        let commit_ref = commit.decode().map_err(Error::git)?;
         let parents: Vec<ObjectId> = commit_ref.parents().collect();
 
-        ensure!(parents.len() <= 1, "identity {author_id} has a merge commit");
+        if parents.len() > 1 {
+            return Err(invalid(format!("commit {commit_id} is a merge commit")));
+        }
 
-        let tree = repo.find_object(commit_ref.tree())?.try_into_tree()?;
-        let tree_ref = tree.decode()?;
+        let tree = repo.find_object(commit_ref.tree()).map_err(Error::git)?.try_into_tree().map_err(Error::git)?;
+        let tree_ref = tree.decode().map_err(Error::git)?;
 
         let [entry] = tree_ref.entries.as_slice() else {
-            bail!("identity commit {commit_id} must have exactly one tree entry");
+            return Err(invalid(format!("commit {commit_id} must have exactly one tree entry")));
         };
-        ensure!(entry.filename == "version", "identity commit {commit_id} has no version entry");
 
-        let blob = repo.find_object(entry.oid.to_owned())?.try_into_blob()?;
-        let value: Value = serde_json::from_slice(&blob.data).context("failed to parse identity blob")?;
-        ensure!(
-            value["version"] == 2,
-            "identity commit {commit_id} has unsupported version {}",
-            value["version"]
-        );
+        if entry.filename != "version" {
+            return Err(invalid(format!("commit {commit_id} has no version entry")));
+        }
+
+        let blob = repo
+            .find_object(entry.oid.to_owned())
+            .map_err(Error::git)?
+            .try_into_blob()
+            .map_err(Error::git)?;
+        let value: Value = serde_json::from_slice(&blob.data).map_err(|err| invalid(format!("commit {commit_id} has an invalid version blob: {err}")))?;
+
+        if value["version"] != 2 {
+            return Err(invalid(format!("commit {commit_id} has unsupported version {}", value["version"])));
+        }
 
         chain.push(commit_id);
         latest.get_or_insert(value);
 
         let Some(parent) = parents.first() else {
-            ensure!(
-                AuthorId::digest(&blob.data) == *author_id,
-                "identity {author_id} does not match the ID of its first version"
-            );
+            if AuthorId::digest(&blob.data) != *author_id {
+                return Err(invalid("does not match the ID of its first version".to_owned()));
+            }
             break;
         };
 
         commit_id = *parent;
     }
 
-    Ok((chain, latest.context("identity has no versions")?))
+    let latest = latest.ok_or_else(|| invalid("has no versions".to_owned()))?;
+    Ok((chain, latest))
 }
 
 fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> Vec<u8> {
@@ -247,7 +262,8 @@ fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
+    use anyhow::Result;
+    use pretty_assertions::{assert_eq, assert_matches};
     use tempfile::tempdir;
 
     #[test]
@@ -316,10 +332,10 @@ mod tests {
         assert_eq!(merge_identity(&repo, &author.id, first)?, MergeOutcome::LocalAhead);
 
         let err = merge_identity(&repo, &author.id, diverged).expect_err("diverged identity");
-        assert!(format!("{err:#}").contains("has diverged"), "got {err:#}");
+        assert_matches!(err, Error::IdentityDiverged(id) if id == author.id);
 
         let err = merge_identity(&repo, &"0".repeat(64).parse()?, renamed).expect_err("identity with another ID");
-        assert!(format!("{err:#}").contains("does not match"), "got {err:#}");
+        assert_matches!(err, Error::InvalidIdentity { reason, .. } if reason.contains("does not match"));
 
         repo.find_reference(ref_name.as_str())?.delete()?;
         assert_eq!(merge_identity(&repo, &author.id, renamed)?, MergeOutcome::New);

@@ -7,8 +7,6 @@ but open-sourced and published for greater usage by the Rust community.
 
 This crate is planned to be published on [crates.io](https://crates.io). Before that can be done, we need:
 
-- Add typed errors with `thiserror`
-- Replace `anyhow::Result` with `std::result::Result`
 - Setup CI publishing pipeline
 
 ## Limitations
