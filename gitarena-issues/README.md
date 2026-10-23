@@ -3,11 +3,9 @@
 Rust library for interacting with `git-bug` issues. Written primarily for usage with the `gitarena` software development platform (forge)
 but open-sourced and published for greater usage by the Rust community.
 
-## Publishing requirements
+## Target
 
-This crate is planned to be published on [crates.io](https://crates.io). Before that can be done, we need:
-
-- Setup CI publishing pipeline
+The library is currently targeting git-bug v0.11.0 and the test suite is testing against it.
 
 ## Limitations
 
@@ -40,6 +38,8 @@ assert_eq!(snapshot.comments.len(), 1);
 # Ok(())
 # }
 ```
+
+For advanced usage, consider checking out the [GitArena](https://github.com/mellowagain/gitarena/tree/main/gitarena) source code.
 
 ## Why not `git-bug` crate on crates.io
 
