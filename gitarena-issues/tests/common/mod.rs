@@ -4,7 +4,6 @@ use std::process::Command;
 use tempfile::{TempDir, tempdir};
 use uuid::Uuid;
 
-/// Temporary repository to run the `git-bug` CLI in
 pub struct GitBug {
     dir: TempDir,
     pub repo: gix::Repository,
@@ -18,7 +17,6 @@ impl GitBug {
         GitBug { dir, repo }
     }
 
-    /// Run `git-bug` with `args` and return its stdout, panicking if it fails
     pub fn run(&self, args: &[&str]) -> String {
         let out = Command::new("git-bug")
             .args(args)
@@ -30,7 +28,6 @@ impl GitBug {
         String::from_utf8_lossy(&out.stdout).into_owned()
     }
 
-    /// Add `upstream` as the `origin` remote so `git-bug pull origin` fetches from it
     pub fn add_origin(&self, upstream: &GitBug) {
         let status = Command::new("git")
             .args(["remote", "add", "origin"])

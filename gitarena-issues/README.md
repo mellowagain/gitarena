@@ -18,5 +18,5 @@ This crate is planned to be published on [crates.io](https://crates.io). Before 
 
 ## Example usage
 
-- `src/tests` - Integration tests testing against real `git-bug` CLI
+- `tests` - Integration tests testing against real `git-bug` CLI
 - `../gitarena` - Git forge implementing `git-bug`-backend storage for issues

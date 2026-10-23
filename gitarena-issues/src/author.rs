@@ -202,14 +202,16 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn load_author_name_returns_username() {
-        let dir = tempdir().expect("tempdir");
-        let repo = gix::init(dir.path()).expect("gix::init");
+    fn load_author_name_returns_username() -> Result<()> {
+        let dir = tempdir()?;
+        let repo = gix::init(dir.path())?;
 
         let author = Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000);
-        author.write_identity_if_absent(&repo).expect("write_identity_if_absent");
+        author.write_identity_if_absent(&repo)?;
 
-        let name = load_author_name(&repo, &author.id).expect("load_author_name");
+        let name = load_author_name(&repo, &author.id)?;
         assert_eq!(name, "testuser");
+
+        Ok(())
     }
 }

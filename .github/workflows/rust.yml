@@ -30,9 +30,9 @@ jobs:
       - name: build
         run: cargo build --verbose --release
 
-      - name: install git-bug for tests
+      - name: install git-bug v0.11.0 for tests
         run: |
-          curl -fsSL https://github.com/git-bug/git-bug/releases/download/v0.10.1/git-bug_linux_amd64 -o /usr/local/bin/git-bug
+          curl -fsSL https://github.com/git-bug/git-bug/releases/download/v0.11.0/git-bug_linux_amd64 -o /usr/local/bin/git-bug
           chmod +x /usr/local/bin/git-bug
 
       - name: test

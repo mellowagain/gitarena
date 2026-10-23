@@ -93,23 +93,25 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn increment_and_witness() {
-        let dir = tempdir().expect("tempdir");
-        let repo = gix::init(dir.path()).expect("gix::init");
+    fn increment_and_witness() -> Result<()> {
+        let dir = tempdir()?;
+        let repo = gix::init(dir.path())?;
 
-        assert_eq!(read(&repo, BUGS_EDIT).expect("read"), 0);
-        assert_eq!(increment(&repo, BUGS_EDIT).expect("increment"), 1);
-        assert_eq!(increment(&repo, BUGS_EDIT).expect("increment"), 2);
+        assert_eq!(read(&repo, BUGS_EDIT)?, 0);
+        assert_eq!(increment(&repo, BUGS_EDIT)?, 1);
+        assert_eq!(increment(&repo, BUGS_EDIT)?, 2);
 
-        witness(&repo, BUGS_EDIT, 10).expect("witness");
-        assert_eq!(read(&repo, BUGS_EDIT).expect("read"), 10);
+        witness(&repo, BUGS_EDIT, 10)?;
+        assert_eq!(read(&repo, BUGS_EDIT)?, 10);
 
-        witness(&repo, BUGS_EDIT, 5).expect("witness");
-        assert_eq!(increment(&repo, BUGS_EDIT).expect("increment"), 11);
+        witness(&repo, BUGS_EDIT, 5)?;
+        assert_eq!(increment(&repo, BUGS_EDIT)?, 11);
 
-        assert_eq!(read(&repo, BUGS_CREATE).expect("read"), 0);
+        assert_eq!(read(&repo, BUGS_CREATE)?, 0);
 
-        let stored = fs::read_to_string(dir.path().join(".git/git-bug/clocks/bugs-edit")).expect("clock file");
+        let stored = fs::read_to_string(dir.path().join(".git/git-bug/clocks/bugs-edit"))?;
         assert_eq!(stored, "11");
+
+        Ok(())
     }
 }
