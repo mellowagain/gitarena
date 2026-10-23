@@ -1,0 +1,88 @@
+name: Publish gitarena-issues
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - gitarena-issues/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/publish-issues.yml
+
+  pull_request:
+    paths:
+      - gitarena-issues/**
+      - Cargo.toml
+      - Cargo.lock
+      - .github/workflows/publish-issues.yml
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-issues-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'release' || '' }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        with:
+          toolchain: stable
+
+      - name: rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: test
+        run: cargo test -p gitarena-issues
+
+      - name: check if version is already published
+        id: version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "gitarena-issues") | .version')
+          
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -A "gitarena-issues publish workflow (https://github.com/${{ github.repository }})" \
+            "https://crates.io/api/v1/crates/gitarena-issues/$version")
+
+          case "$status" in
+            200) published=true ;;
+            404) published=false ;;
+            *)
+              echo "::error::unexpected status $status from crates.io"
+              exit 1
+              ;;
+          esac
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+
+          if [ "$published" = true ]; then
+            echo "::notice::gitarena-issues $version is already on crates.io and will not be published again"
+          fi
+
+      - name: publish (dry run)
+        if: github.event_name == 'pull_request'
+        run: cargo publish -p gitarena-issues --dry-run
+
+      - name: authenticate with crates.io
+        id: auth
+        if: github.event_name == 'push' && steps.version.outputs.published == 'false'
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+
+      - name: publish
+        if: github.event_name == 'push' && steps.version.outputs.published == 'false'
+        run: cargo publish -p gitarena-issues
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

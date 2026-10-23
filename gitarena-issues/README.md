@@ -43,7 +43,7 @@ assert_eq!(snapshot.comments.len(), 1);
 
 ## Why not `git-bug` crate on crates.io
 
-https://crates.io/crates/git-bug currently lacks write support. I wanted to contribute to it but the original source
+<https://crates.io/crates/git-bug> currently lacks write support. I wanted to contribute to it but the original source
 code repo linked from the crates.io page is down. The last update has also been as of writing over a year ago.
 
 ## Structure
