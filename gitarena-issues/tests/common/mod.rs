@@ -1,4 +1,5 @@
 use gitarena_issues::author::Author;
+use gitarena_issues::id::BugId;
 use serde_json::Value;
 use std::process::Command;
 use tempfile::{TempDir, tempdir};
@@ -37,8 +38,8 @@ impl GitBug {
         self.git(&["remote", "add", "origin", &upstream.dir.path().to_string_lossy()]);
     }
 
-    pub fn show(&self, bug_id: &str) -> Value {
-        let output = self.run(&["bug", "show", "--format", "json", bug_id]);
+    pub fn show(&self, bug_id: &BugId) -> Value {
+        let output = self.run(&["bug", "show", "--format", "json", &bug_id.to_string()]);
         serde_json::from_str(&output).unwrap_or_else(|err| panic!("git-bug show output is not valid JSON: {err}\nOutput:\n{output}"))
     }
 }

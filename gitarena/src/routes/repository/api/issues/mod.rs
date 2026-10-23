@@ -10,6 +10,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use gitarena_issues::bug::{create_bug, delete_bug, load_bug};
+use gitarena_issues::id::OperationId;
 use gitarena_issues::operation::BugStatus;
 use gitarena_issues::ops::{change_labels, edit_comment, set_status, set_title};
 use gitarena_macros::route;
@@ -138,7 +139,7 @@ pub(crate) async fn create_issue(
     )
     .bind(issue_id)
     .bind(repo.id)
-    .bind(&bug.id)
+    .bind(bug.id.to_string())
     .bind(next_index)
     .bind(user.id)
     .bind(&body.title)
@@ -296,7 +297,7 @@ pub(crate) async fn update_issue(
             die!(BAD_REQUEST, "Issue title cannot be empty");
         }
 
-        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
+        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
         set_title(&gitoxide_repo, bug, author.clone(), new_title.clone())?;
 
         sqlx::query("update issue_cache set title = $1, updated_at = now() where id = $2")
@@ -323,10 +324,10 @@ pub(crate) async fn update_issue(
     }
 
     if let Some(new_body) = &body.body {
-        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
-        let bug_id = bug.id.clone();
+        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
+        let target = OperationId::from(bug.id);
 
-        edit_comment(&gitoxide_repo, bug, author.clone(), bug_id, new_body.clone())?;
+        edit_comment(&gitoxide_repo, bug, author.clone(), target, new_body.clone())?;
 
         sqlx::query("update issue_cache set body = $1, updated_at = now() where id = $2")
             .bind(new_body)
@@ -352,7 +353,7 @@ pub(crate) async fn update_issue(
     }
 
     if let Some(new_status) = &body.status {
-        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
+        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
         let status = new_status.to_git_bug_status();
 
         set_status(&gitoxide_repo, bug, author.clone(), status)?;
@@ -395,7 +396,7 @@ pub(crate) async fn update_issue(
             die!(BAD_REQUEST, "Only one label per scope is allowed (conflict: {scope})");
         }
 
-        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
+        let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
         change_labels(&gitoxide_repo, bug, author.clone(), add.clone(), remove.clone())?;
 
         sqlx::query(
@@ -596,7 +597,7 @@ pub(crate) async fn delete_issue(
     }
 
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
-    delete_bug(&gitoxide_repo, &issue.git_bug_id)?;
+    delete_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
 
     sqlx::query("delete from issue_cache where id = $1").bind(issue.id).execute(&mut *tx).await?;
 

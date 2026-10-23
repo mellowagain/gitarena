@@ -1,5 +1,5 @@
 use super::*;
-use crate::ops::{add_comment, set_title};
+use crate::ops::{AddedComment, add_comment, set_title};
 use pretty_assertions::assert_eq;
 use std::panic;
 use std::thread;
@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 const CREATE_OP: &str = r#"{"type":1,"timestamp":1,"nonce":"n1","title":"title","message":"body","files":null}"#;
 const ROOT: &[&str] = &["create-clock-1", "edit-clock-1", "version-4"];
+const AUTHOR_ID: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 type InvalidCase = (&'static str, fn(&Repository) -> Result<ObjectId>);
 
@@ -15,12 +16,12 @@ fn author() -> Author {
     Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000)
 }
 
-fn bug_id() -> String {
-    hex::encode(Sha256::digest(CREATE_OP))
+fn bug_id() -> BugId {
+    BugId::from_create_operation(OperationId::digest(CREATE_OP))
 }
 
 fn pack(ops: &[&str]) -> String {
-    format!(r#"{{"author":{{"id":"a"}},"ops":[{}]}}"#, ops.join(","))
+    format!(r#"{{"author":{{"id":"{AUTHOR_ID}"}},"ops":[{}]}}"#, ops.join(","))
 }
 
 fn comment(message: &str) -> String {
@@ -229,7 +230,7 @@ fn concurrent_appends_are_merged() -> Result<()> {
     let bug = create_bug(&repo, author.clone(), "title".into(), "body".into())?;
     let shared = repo.into_sync();
 
-    let results: Vec<Result<(Bug, String)>> = thread::scope(|scope| {
+    let results: Vec<Result<AddedComment>> = thread::scope(|scope| {
         let handles: Vec<_> = (0..8)
             .map(|i| {
                 let (shared, bug, author) = (&shared, bug.clone(), author.clone());
@@ -286,15 +287,16 @@ fn labels_are_sorted_and_later_creates_are_ignored() -> Result<()> {
 
 #[test]
 fn unknown_operation_types_are_skipped() -> Result<()> {
-    let ops = r#"{"author":{"id":"a"},"ops":[{"type":1,"timestamp":1,"nonce":"n1","title":"title","message":"body","files":null},{"type":7,"timestamp":2,"nonce":"n2","metadata":{"k":"v"}},{"type":300,"timestamp":3,"nonce":"n3","status":"not-a-number","added":{}}]}"#;
-    let pack: OperationPack = serde_json::from_str(ops)?;
-
-    let create_raw = r#"{"type":1,"timestamp":1,"nonce":"n1","title":"title","message":"body","files":null}"#;
-    let bug_id = hex::encode(Sha256::digest(create_raw.as_bytes()));
-    assert_eq!(pack.ops[0].compute_id()?, bug_id);
+    let ops = pack(&[
+        CREATE_OP,
+        r#"{"type":7,"timestamp":2,"nonce":"n2","metadata":{"k":"v"}}"#,
+        r#"{"type":300,"timestamp":3,"nonce":"n3","status":"not-a-number","added":{}}"#,
+    ]);
+    let pack: OperationPack = serde_json::from_str(&ops)?;
+    assert_eq!(pack.ops[0].compute_id(), OperationId::from(bug_id()));
 
     let bug = Bug {
-        id: bug_id,
+        id: bug_id(),
         packs: vec![pack],
         create_clock: 1,
         edit_clock: 1,

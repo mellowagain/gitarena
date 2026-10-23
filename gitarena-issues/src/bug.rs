@@ -1,5 +1,8 @@
+//! Creating, loading and merging bugs stored under [`BUGS_REF_PREFIX`]
+
 use crate::author::Author;
 use crate::clock::{self, BUGS_CREATE, BUGS_EDIT};
+use crate::id::{BugId, OperationId};
 use crate::operation::{BugStatus, Operation, OperationPack, OperationType, random_nonce};
 use anyhow::{Context, Result, anyhow, ensure};
 use chrono::Utc;
@@ -33,9 +36,10 @@ pub const MAX_CLOCK_JUMP: u64 = 1_000_000;
 /// In-memory representation of a `git-bug` bug with all its operation packs loaded.
 /// Load from a repository with [`load_bug`] or create with [`create_bug`]
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Bug {
-    /// sha256 ID of the bug, derived from its initial CREATE operation
-    pub id: String,
+    /// ID of the bug, derived from its initial CREATE operation
+    pub id: BugId,
     /// Operation packs, one per commit
     pub packs: Vec<OperationPack>,
     /// Creation clock counter, encoded as a filename in the first commit
@@ -71,10 +75,8 @@ impl Bug {
                         }
                     }
                     OperationType::ADD_COMMENT => {
-                        let op_id = op.compute_id().unwrap_or_default();
-
                         comments.push(CommentSnapshot {
-                            id: op_id,
+                            id: op.compute_id(),
                             author: pack.author.clone(),
                             body: op.message.as_deref().unwrap_or_default().to_owned(),
                             created_at: op.timestamp,
@@ -103,7 +105,7 @@ impl Bug {
                     }
                     OperationType::EDIT_COMMENT => {
                         if let (Some(target), Some(new_body)) = (&op.target, &op.message) {
-                            if *target == self.id {
+                            if *target == OperationId::from(self.id) {
                                 body.clone_from(new_body);
                             } else if let Some(comment) = comments.iter_mut().find(|c| c.id == *target) {
                                 comment.body.clone_from(new_body);
@@ -117,7 +119,7 @@ impl Bug {
         }
 
         BugSnapshot {
-            id: self.id.clone(),
+            id: self.id,
             title,
             body,
             status,
@@ -130,9 +132,10 @@ impl Bug {
 
 /// Current state of a bug derived by replaying its operation packs
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct BugSnapshot {
-    /// sha256 ID of the bug
-    pub id: String,
+    /// ID of the bug
+    pub id: BugId,
     /// Title
     pub title: String,
     /// Body
@@ -149,9 +152,10 @@ pub struct BugSnapshot {
 
 /// A single comment in its current state
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct CommentSnapshot {
-    /// sha256 of the `ADD_COMMENT` operation json, used as the operation ID in `git-bug`
-    pub id: String,
+    /// ID of the `ADD_COMMENT` operation
+    pub id: OperationId,
     /// Author
     pub author: Author,
     /// Body
@@ -191,7 +195,7 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
         raw_id: None,
     };
 
-    let bug_id = create_op.compute_id()?;
+    let bug_id = BugId::from_create_operation(create_op.compute_id());
 
     let pack = OperationPack {
         author: author.clone(),
@@ -337,7 +341,8 @@ pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectI
 }
 
 /// Result of merging a remote tip into a local entity (spec dag-entity.md §10)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum MergeOutcome {
     /// Entity did not exist locally and was created at the remote tip
     New,
@@ -357,16 +362,16 @@ pub enum MergeOutcome {
 /// # Arguments
 ///
 /// - `git_repo`: Handle to a [`Repository`]
-/// - `bug_id_hex`: sha256 ID of the bug
+/// - `bug_id`: ID of the bug
 /// - `remote_tip`: Commit to merge, must already be in the object database
 /// - `author`: Author of the merge commit if the histories diverged
 #[instrument(err, skip(git_repo))]
-pub fn merge_bug(git_repo: &Repository, bug_id_hex: &str, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome> {
+pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome> {
     let remote = read_dag(git_repo, remote_tip)?;
     let remote_commits: HashSet<ObjectId> = remote.keys().copied().collect();
-    build_bug(git_repo, bug_id_hex, remote)?;
+    build_bug(git_repo, bug_id, remote)?;
 
-    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
 
     loop {
         let local_tip = git_repo.try_find_reference(ref_name.as_str())?.map(|reference| reference.id().detach());
@@ -386,7 +391,7 @@ pub fn merge_bug(git_repo: &Repository, bug_id_hex: &str, remote_tip: ObjectId, 
                     return Ok(MergeOutcome::LocalAhead);
                 }
 
-                build_bug(git_repo, bug_id_hex, local)?;
+                build_bug(git_repo, bug_id, local)?;
                 author.write_identity_if_absent(git_repo)?;
 
                 let pack = OperationPack {
@@ -418,63 +423,52 @@ fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<ObjectId> {
 /// # Arguments
 ///
 /// - `git_repo`: Handle to a [`Repository`]
-/// - `bug_id_hex`: sha256 ID of the bug to load
-pub fn load_bug(git_repo: &Repository, bug_id_hex: &str) -> Result<Bug> {
-    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
+/// - `bug_id`: ID of the bug to load
+pub fn load_bug(git_repo: &Repository, bug_id: &BugId) -> Result<Bug> {
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
     let tip = find_ref_target(git_repo, &ref_name)?;
 
-    build_bug(git_repo, bug_id_hex, read_dag(git_repo, tip)?)
+    build_bug(git_repo, bug_id, read_dag(git_repo, tip)?)
 }
 
-fn build_bug(git_repo: &Repository, bug_id_hex: &str, commits: HashMap<ObjectId, BugCommit>) -> Result<Bug> {
-    ensure!(
-        bug_id_hex.len() == 64 && bug_id_hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')),
-        "invalid bug id: {bug_id_hex}"
-    );
-
+fn build_bug(git_repo: &Repository, bug_id: &BugId, commits: HashMap<ObjectId, BugCommit>) -> Result<Bug> {
     let mut root = None;
 
     for (id, commit) in &commits {
         if commit.parents.is_empty() {
-            ensure!(root.replace(commit).is_none(), "bug {bug_id_hex} has more than one root commit");
+            ensure!(root.replace(commit).is_none(), "bug {bug_id} has more than one root commit");
             continue;
         }
 
         let is_merge = commit.parents.len() > 1;
-        ensure!(
-            !is_merge || commit.pack.ops.is_empty(),
-            "merge commit {id} of bug {bug_id_hex} carries operations"
-        );
+        ensure!(!is_merge || commit.pack.ops.is_empty(), "merge commit {id} of bug {bug_id} carries operations");
 
         for parent in &commit.parents {
             let parent_clock = commits[parent].edit_clock;
 
-            ensure!(
-                commit.edit_clock > parent_clock,
-                "commit {id} of bug {bug_id_hex} does not advance the edit-clock"
-            );
+            ensure!(commit.edit_clock > parent_clock, "commit {id} of bug {bug_id} does not advance the edit-clock");
             ensure!(
                 is_merge || commit.edit_clock - parent_clock <= MAX_CLOCK_JUMP,
-                "commit {id} of bug {bug_id_hex} jumps the edit-clock by more than {MAX_CLOCK_JUMP}"
+                "commit {id} of bug {bug_id} jumps the edit-clock by more than {MAX_CLOCK_JUMP}"
             );
         }
     }
 
-    let root = root.with_context(|| format!("bug {bug_id_hex} has no root commit"))?;
+    let root = root.with_context(|| format!("bug {bug_id} has no root commit"))?;
 
     let create_clock = root
         .create_clock
         .filter(|clock| *clock > 0)
-        .with_context(|| format!("root commit of bug {bug_id_hex} has no create-clock"))?;
+        .with_context(|| format!("root commit of bug {bug_id} has no create-clock"))?;
 
     let create_op = root
         .pack
         .ops
         .first()
-        .with_context(|| format!("root commit of bug {bug_id_hex} has no operations"))?;
+        .with_context(|| format!("root commit of bug {bug_id} has no operations"))?;
     ensure!(
-        create_op.compute_id()? == bug_id_hex,
-        "bug {bug_id_hex} does not match the ID of its first operation"
+        BugId::from_create_operation(create_op.compute_id()) == *bug_id,
+        "bug {bug_id} does not match the ID of its first operation"
     );
 
     let mut commits: Vec<BugCommit> = commits.into_values().collect();
@@ -483,8 +477,8 @@ fn build_bug(git_repo: &Repository, bug_id_hex: &str, commits: HashMap<ObjectId,
     let mut op_ids = HashSet::new();
 
     for op in commits.iter().flat_map(|commit| &commit.pack.ops) {
-        let op_id = op.compute_id()?;
-        ensure!(op_ids.insert(op_id.clone()), "bug {bug_id_hex} contains operation {op_id} more than once");
+        let op_id = op.compute_id();
+        ensure!(op_ids.insert(op_id), "bug {bug_id} contains operation {op_id} more than once");
     }
 
     let edit_clock = commits.last().map_or(0, |commit| commit.edit_clock);
@@ -493,7 +487,7 @@ fn build_bug(git_repo: &Repository, bug_id_hex: &str, commits: HashMap<ObjectId,
     clock::witness(git_repo, BUGS_EDIT, edit_clock)?;
 
     Ok(Bug {
-        id: bug_id_hex.to_owned(),
+        id: *bug_id,
         packs: commits.into_iter().map(|commit| commit.pack).collect(),
         create_clock,
         edit_clock,
@@ -573,7 +567,7 @@ fn read_commit(git_repo: &Repository, commit_id: ObjectId) -> Result<BugCommit> 
 }
 
 /// List the hex IDs of all bugs stored in the repository
-pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<String>> {
+pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<BugId>> {
     let platform = git_repo.references()?;
     let iter = platform.prefixed(BUGS_REF_PREFIX)?;
 
@@ -584,7 +578,7 @@ pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<String>> {
         let full_name = reference.name().as_bstr().to_str_lossy().to_string();
 
         if let Some(id) = full_name.strip_prefix(BUGS_REF_PREFIX) {
-            ids.push(id.to_owned());
+            ids.push(id.parse()?);
         }
     }
 
@@ -596,9 +590,9 @@ pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<String>> {
 /// # Arguments
 ///
 /// - `git_repo`: Handle to a [`gix::Repository`]
-/// - `bug_id_hex`: sha256 ID of the bug to delete
-pub fn delete_bug(git_repo: &Repository, bug_id_hex: &str) -> Result<()> {
-    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
+/// - `bug_id`: ID of the bug to delete
+pub fn delete_bug(git_repo: &Repository, bug_id: &BugId) -> Result<()> {
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
 
     let reference = git_repo
         .find_reference(ref_name.as_str())

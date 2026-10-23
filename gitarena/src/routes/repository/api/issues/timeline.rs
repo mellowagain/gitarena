@@ -50,7 +50,7 @@ pub(crate) async fn get_issue_timeline(
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
     tx.commit().await?;
 
-    let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
+    let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
     let events = build_timeline(&gitoxide_repo, &bug);
 
     Ok(HttpResponse::Ok().json(events))
@@ -61,7 +61,7 @@ fn build_timeline(gitoxide_repo: &gix::Repository, bug: &gitarena_issues::bug::B
     let mut current_title = String::new();
 
     for pack in &bug.packs {
-        let author_username = load_author_name(gitoxide_repo, &pack.author.id).unwrap_or_else(|_| pack.author.id.clone());
+        let author_username = load_author_name(gitoxide_repo, &pack.author.id).unwrap_or_else(|_| pack.author.id.to_string());
 
         for op in &pack.ops {
             match op.op_type {

@@ -19,5 +19,29 @@ This crate is planned to be published on [crates.io](https://crates.io). Before 
 
 ## Example usage
 
+```rust
+use anyhow::Result;
+use gitarena_issues::author::Author;
+use gitarena_issues::bug::{create_bug, load_bug};
+use gitarena_issues::operation::BugStatus;
+use gitarena_issues::ops::{add_comment, set_status};
+use uuid::Uuid;
+
+# fn main() -> Result<()> {
+# let dir = tempfile::tempdir()?;
+let repo = gix::init(dir.path())?;
+let author = Author::from_user(Uuid::new_v4(), "mari", "git_bug@git.mari.zip", 1_700_000_000);
+
+let bug = create_bug(&repo, author.clone(), "Crash on startup".into(), "Steps to reproduce: ...".into())?;
+let bug = add_comment(&repo, bug, author.clone(), "Fixed in abc123".into())?.bug;
+set_status(&repo, bug.clone(), author, BugStatus::CLOSED)?;
+
+let snapshot = load_bug(&repo, &bug.id)?.snapshot();
+assert_eq!(snapshot.status, BugStatus::CLOSED);
+assert_eq!(snapshot.comments.len(), 1);
+# Ok(())
+# }
+```
+
 - `tests` - Integration tests testing against real `git-bug` CLI
 - `../gitarena` - Git forge implementing `git-bug`-backend storage for issues

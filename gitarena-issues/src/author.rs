@@ -1,4 +1,7 @@
+//! `git-bug` identities stored under [`IDENTITIES_REF_PREFIX`]
+
 use crate::bug::{MergeOutcome, update_ref};
+use crate::id::AuthorId;
 use anyhow::{Context, Result, bail, ensure};
 use chrono::Utc;
 use gix::actor::Signature;
@@ -22,7 +25,7 @@ pub const IDENTITIES_REF_PREFIX: &str = "refs/identities/";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Author {
     /// Author IDs in `git-bug` are the sha256 digest of the identity json blob
-    pub id: String,
+    pub id: AuthorId,
     /// Username
     #[serde(skip)]
     pub name: String,
@@ -58,6 +61,7 @@ impl Author {
     /// - `username`: Username of the user
     /// - `email`: E-mail of the user. Note that this will be visible to any `git-bug` user so you may consider using an anonymized email like GitArena does.
     /// - `created_at`: Unix timestamp when the user was created
+    #[must_use]
     pub fn from_user(user_id: Uuid, username: &str, email: &str, created_at: i64) -> Self {
         let nonce_hash = Sha256::digest(format!("gitarena-identity:{user_id}").as_bytes());
         let nonce = base64::encode(&nonce_hash[..20]);
@@ -65,7 +69,7 @@ impl Author {
         let identity_json = build_identity_json(username, email, &nonce, created_at);
 
         Author {
-            id: hex::encode(Sha256::digest(&identity_json)),
+            id: AuthorId::digest(&identity_json),
             name: username.to_owned(),
             email: email.to_owned(),
             nonce,
@@ -136,7 +140,7 @@ impl Author {
 /// # Return
 ///
 /// `name` field from the latest identity version
-pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
+pub fn load_author_name(repo: &Repository, author_id: &AuthorId) -> Result<String> {
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
     let reference = repo.find_reference(ref_name.as_str()).context("identity ref not found")?;
 
@@ -152,9 +156,9 @@ pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
 /// # Arguments
 ///
 /// - `repo`: Handle to a [`Repository`]
-/// - `author_id`: sha256 ID of the identity
+/// - `author_id`: ID of the identity
 /// - `remote_tip`: Commit to merge, must already be in the object database
-pub fn merge_identity(repo: &Repository, author_id: &str, remote_tip: ObjectId) -> Result<MergeOutcome> {
+pub fn merge_identity(repo: &Repository, author_id: &AuthorId, remote_tip: ObjectId) -> Result<MergeOutcome> {
     let (remote_chain, _) = read_identity(repo, author_id, remote_tip)?;
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
 
@@ -182,7 +186,7 @@ pub fn merge_identity(repo: &Repository, author_id: &str, remote_tip: ObjectId) 
     }
 }
 
-fn read_identity(repo: &Repository, author_id: &str, tip: ObjectId) -> Result<(Vec<ObjectId>, Value)> {
+fn read_identity(repo: &Repository, author_id: &AuthorId, tip: ObjectId) -> Result<(Vec<ObjectId>, Value)> {
     let mut commit_id = tip;
     let mut chain = Vec::new();
     let mut latest: Option<Value> = None;
@@ -215,7 +219,7 @@ fn read_identity(repo: &Repository, author_id: &str, tip: ObjectId) -> Result<(V
 
         let Some(parent) = parents.first() else {
             ensure!(
-                hex::encode(Sha256::digest(&blob.data)) == author_id,
+                AuthorId::digest(&blob.data) == *author_id,
                 "identity {author_id} does not match the ID of its first version"
             );
             break;
@@ -314,7 +318,7 @@ mod tests {
         let err = merge_identity(&repo, &author.id, diverged).expect_err("diverged identity");
         assert!(format!("{err:#}").contains("has diverged"), "got {err:#}");
 
-        let err = merge_identity(&repo, &"0".repeat(64), renamed).expect_err("identity with another ID");
+        let err = merge_identity(&repo, &"0".repeat(64).parse()?, renamed).expect_err("identity with another ID");
         assert!(format!("{err:#}").contains("does not match"), "got {err:#}");
 
         repo.find_reference(ref_name.as_str())?.delete()?;

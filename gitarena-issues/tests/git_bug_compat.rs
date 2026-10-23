@@ -16,7 +16,7 @@ fn git_bug_can_read_created_bug() -> Result<()> {
     let author = make_author();
     let bug = create_bug(repo, author.clone(), "Test issue title".into(), "Body of the issue.".into())?;
 
-    let bug_id = bug.id.clone();
+    let bug_id = bug.id;
 
     let list_text = git_bug.run(&["bug"]);
 
@@ -29,7 +29,7 @@ fn git_bug_can_read_created_bug() -> Result<()> {
 
     assert_matches!(json["title"].as_str(), Some("Test issue title"));
     assert_matches!(json["status"].as_str(), Some("open"));
-    assert_matches!(json["id"].as_str(), Some(id) if id == bug_id);
+    assert_matches!(json["id"].as_str(), Some(id) if id == bug_id.to_string());
 
     let comments = json["comments"].as_array().context("git-bug show has no comments array")?;
     assert!(!comments.is_empty(), "expected at least one comment (the body)");
@@ -47,9 +47,9 @@ fn git_bug_can_read_comment_and_closed_status() -> Result<()> {
     let author = make_author();
     let bug = create_bug(repo, author.clone(), "Issue with comment".into(), "Initial body.".into())?;
 
-    let bug_id = bug.id.clone();
+    let bug_id = bug.id;
 
-    let (bug, _) = add_comment(repo, bug, author.clone(), "A follow-up comment.".into())?;
+    let bug = add_comment(repo, bug, author.clone(), "A follow-up comment.".into())?.bug;
 
     let _ = set_status(repo, bug, author, BugStatus::CLOSED)?;
 
@@ -74,7 +74,7 @@ fn comment_ids_match_git_bug_for_html_characters() -> Result<()> {
     git_bug.run(&["bug", "new", "--non-interactive", "-t", "title", "-m", "body"]);
 
     let bug_id = list_bug_ids(repo)?.pop().context("git-bug did not create a bug")?;
-    git_bug.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "a <b>tag</b> & stuff"]);
+    git_bug.run(&["bug", "comment", "new", &bug_id.to_string(), "--non-interactive", "-m", "a <b>tag</b> & stuff"]);
 
     let show = git_bug.show(&bug_id);
     let combined_id = show["comments"][1]["id"].as_str().context("git-bug comment has no id")?;
@@ -91,7 +91,7 @@ fn comment_ids_match_git_bug_for_html_characters() -> Result<()> {
         .collect();
 
     assert!(
-        comment_id.starts_with(&secondary),
+        comment_id.to_string().starts_with(&secondary),
         "comment id {comment_id} does not match git-bug combined id {combined_id}"
     );
 
@@ -111,8 +111,8 @@ fn concurrent_edits_merged_by_git_bug_are_loaded() -> Result<()> {
     local.run(&["pull", "origin"]);
     local.run(&["user", "new", "--non-interactive", "-n", "local", "-e", "local@gitarena.local"]);
 
-    local.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from local"]);
-    upstream.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from upstream"]);
+    local.run(&["bug", "comment", "new", &bug_id.to_string(), "--non-interactive", "-m", "from local"]);
+    upstream.run(&["bug", "comment", "new", &bug_id.to_string(), "--non-interactive", "-m", "from upstream"]);
     local.run(&["pull", "origin"]);
 
     let bug = load_bug(&local.repo, &bug_id)?;
@@ -145,8 +145,8 @@ fn git_bug_can_read_our_merge_commit() -> Result<()> {
     local.run(&["pull", "origin"]);
     local.run(&["user", "new", "--non-interactive", "-n", "local", "-e", "local@gitarena.local"]);
 
-    local.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from local"]);
-    upstream.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from upstream"]);
+    local.run(&["bug", "comment", "new", &bug_id.to_string(), "--non-interactive", "-m", "from local"]);
+    upstream.run(&["bug", "comment", "new", &bug_id.to_string(), "--non-interactive", "-m", "from upstream"]);
 
     local.git(&["fetch", "origin", "refs/bugs/*:refs/remotes/origin/bugs/*"]);
     let remote_tip = local.repo.find_reference(format!("refs/remotes/origin/bugs/{bug_id}").as_str())?.id().detach();

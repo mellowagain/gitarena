@@ -1,3 +1,5 @@
+//! Lamport clocks shared with `git-bug`, stored in `.git/git-bug/clocks/`
+
 use anyhow::{Context, Result};
 use gix::Repository;
 use std::fs::{self, OpenOptions};
