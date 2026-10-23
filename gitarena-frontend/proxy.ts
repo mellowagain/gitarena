@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PATHS = ["/new", "/import", "/settings", "/notifications", "/admin"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // File paths in tree and commits routes are case-sensitive — skip lowercasing for those
