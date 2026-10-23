@@ -29,6 +29,7 @@ pub fn add_comment(git_repo: &Repository, bug: Bug, author: Author, message: Str
         timestamp: now,
         nonce: random_nonce(),
         title: None,
+        was: None,
         message: Some(message),
         status: None,
         added: None,
@@ -55,12 +56,14 @@ pub fn add_comment(git_repo: &Repository, bug: Bug, author: Author, message: Str
 #[instrument(err, skip(git_repo))]
 pub fn set_title(git_repo: &Repository, bug: Bug, author: Author, new_title: String) -> Result<Bug> {
     let now = Utc::now().timestamp();
+    let was = bug.snapshot().title;
 
     let op = Operation {
         op_type: OperationType::SET_TITLE,
         timestamp: now,
         nonce: random_nonce(),
         title: Some(new_title),
+        was: Some(was),
         message: None,
         status: None,
         added: None,
@@ -90,6 +93,7 @@ pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, status: BugSt
         timestamp: now,
         nonce: random_nonce(),
         title: None,
+        was: None,
         message: None,
         status: Some(status),
         added: None,
@@ -120,6 +124,7 @@ pub fn change_labels(git_repo: &Repository, bug: Bug, author: Author, add: Vec<S
         timestamp: now,
         nonce: random_nonce(),
         title: None,
+        was: None,
         message: None,
         status: None,
         added: Some(add),
@@ -150,12 +155,13 @@ pub fn edit_comment(git_repo: &Repository, bug: Bug, author: Author, target_op_i
         timestamp: now,
         nonce: random_nonce(),
         title: None,
+        was: None,
         message: Some(new_message),
         status: None,
         added: None,
         removed: None,
         target: Some(target_op_id),
-        files: None,
+        files: Some(Value::Null),
         raw_id: None,
     };
 

@@ -52,6 +52,10 @@ pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
+    /// Title before the change, used by [`OperationType::SET_TITLE`]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub was: Option<String>,
+
     /// Comment or bug body, used by [`OperationType::CREATE`], [`OperationType::ADD_COMMENT`] and [`OperationType::EDIT_COMMENT`]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -110,7 +114,8 @@ pub struct OperationPack {
 #[derive(Deserialize)]
 struct RawOperationPack {
     author: Author,
-    ops: Vec<Box<RawValue>>,
+    // git-bug's merge commits store `null` here as Go marshals a nil slice as `null`
+    ops: Option<Vec<Box<RawValue>>>,
 }
 
 #[derive(Deserialize)]
@@ -127,6 +132,7 @@ impl TryFrom<RawOperationPack> for OperationPack {
     fn try_from(raw: RawOperationPack) -> Result<Self, Self::Error> {
         let ops = raw
             .ops
+            .unwrap_or_default()
             .iter()
             .map(|raw_op| {
                 let common: CommonFields = serde_json::from_str(raw_op.get())?;
@@ -144,6 +150,7 @@ impl TryFrom<RawOperationPack> for OperationPack {
                         timestamp: common.timestamp,
                         nonce: common.nonce,
                         title: None,
+                        was: None,
                         message: None,
                         status: None,
                         added: None,

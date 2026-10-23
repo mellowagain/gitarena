@@ -30,6 +30,18 @@ impl GitBug {
         String::from_utf8_lossy(&out.stdout).into_owned()
     }
 
+    /// Add `upstream` as the `origin` remote so `git-bug pull origin` fetches from it
+    pub fn add_origin(&self, upstream: &GitBug) {
+        let status = Command::new("git")
+            .args(["remote", "add", "origin"])
+            .arg(upstream.dir.path())
+            .current_dir(self.dir.path())
+            .status()
+            .expect("git to work");
+
+        assert!(status.success(), "git remote add failed");
+    }
+
     pub fn show(&self, bug_id: &str) -> Value {
         let output = self.run(&["bug", "show", "--format", "json", bug_id]);
         serde_json::from_str(&output).unwrap_or_else(|err| panic!("git-bug show output is not valid JSON: {err}\nOutput:\n{output}"))

@@ -90,3 +90,34 @@ fn comment_ids_match_git_bug_for_html_characters() {
         "comment id {comment_id} does not match git-bug combined id {combined_id}"
     );
 }
+
+#[test_with::executable(git-bug, git)]
+fn concurrent_edits_merged_by_git_bug_are_loaded() {
+    let upstream = GitBug::new();
+    upstream.run(&["user", "new", "--non-interactive", "-n", "upstream", "-e", "upstream@gitarena.local"]);
+    upstream.run(&["bug", "new", "--non-interactive", "-t", "title", "-m", "body"]);
+
+    let bug_id = list_bug_ids(&upstream.repo).expect("list_bug_ids").pop().expect("bug id");
+
+    let local = GitBug::new();
+    local.add_origin(&upstream);
+    local.run(&["pull", "origin"]);
+    local.run(&["user", "new", "--non-interactive", "-n", "local", "-e", "local@gitarena.local"]);
+
+    local.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from local"]);
+    upstream.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from upstream"]);
+    local.run(&["pull", "origin"]);
+
+    let bug = load_bug(&local.repo, &bug_id).expect("load_bug");
+    assert_eq!(bug.packs.len(), 4, "expected create, two concurrent comments and the merge commit");
+
+    let comments: Vec<String> = bug.snapshot().comments.into_iter().map(|comment| comment.body).collect();
+
+    let show = local.show(&bug_id);
+    let expected: Vec<String> = show["comments"].as_array().expect("comments array")[1..]
+        .iter()
+        .map(|comment| comment["message"].as_str().expect("message").to_owned())
+        .collect();
+
+    assert_eq!(comments, expected);
+}

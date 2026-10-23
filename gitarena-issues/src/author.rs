@@ -1,7 +1,6 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use chrono::Utc;
 use gix::actor::Signature;
-use gix::bstr::ByteSlice;
 use gix::date::Time;
 use gix::date::parse::TimeBuf;
 use gix::objs::tree::{Entry, EntryKind};
@@ -128,35 +127,59 @@ impl Author {
     }
 }
 
-/// Load the username of an author from the git identity ref stored at `refs/identities/<author_id>`
+/// Load the username of an author from the git identity ref stored at `refs/identities/<author_id>`,
+/// rejecting the identity if it violates the `git-bug` spec
 ///
 /// # Return
 ///
-/// `name` field from the identity blob
+/// `name` field from the latest identity version
 pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
     let reference = repo.find_reference(ref_name.as_str()).context("identity ref not found")?;
 
-    let commit_id = reference.id().detach();
-    let commit = repo.find_object(commit_id)?.try_into_commit()?;
-    let commit_ref = commit.decode()?;
+    let mut commit_id = reference.id().detach();
+    let mut latest: Option<Value> = None;
 
-    let tree_id = commit_ref.tree();
-    let tree = repo.find_object(tree_id)?.try_into_tree()?;
-    let tree_ref = tree.decode()?;
+    loop {
+        let commit = repo.find_object(commit_id)?.try_into_commit()?;
+        let commit_ref = commit.decode()?;
+        let parents: Vec<ObjectId> = commit_ref.parents().collect();
 
-    for entry in tree_ref.entries {
-        if entry.filename.to_str_lossy() == "version" {
-            let blob = repo.find_object(entry.oid.to_owned())?.try_into_blob()?;
+        ensure!(parents.len() <= 1, "identity {author_id} has a merge commit");
 
-            let value: Value = serde_json::from_slice(&blob.data).context("failed to parse identity blob")?;
-            let name = value["name"].as_str().context("name field missing from identity blob")?;
+        let tree = repo.find_object(commit_ref.tree())?.try_into_tree()?;
+        let tree_ref = tree.decode()?;
 
-            return Ok(name.to_owned());
-        }
+        let [entry] = tree_ref.entries.as_slice() else {
+            bail!("identity commit {commit_id} must have exactly one tree entry");
+        };
+        ensure!(entry.filename == "version", "identity commit {commit_id} has no version entry");
+
+        let blob = repo.find_object(entry.oid.to_owned())?.try_into_blob()?;
+        let value: Value = serde_json::from_slice(&blob.data).context("failed to parse identity blob")?;
+        ensure!(
+            value["version"] == 2,
+            "identity commit {commit_id} has unsupported version {}",
+            value["version"]
+        );
+
+        latest.get_or_insert(value);
+
+        let Some(parent) = parents.first() else {
+            ensure!(
+                hex::encode(Sha256::digest(&blob.data)) == author_id,
+                "identity {author_id} does not match the ID of its first version"
+            );
+            break;
+        };
+
+        commit_id = *parent;
     }
 
-    bail!("version entry not found in identity tree")
+    let latest = latest.context("identity has no versions")?;
+    let name = latest["name"].as_str().context("name field missing from identity blob")?;
+
+    Ok(name.to_owned())
 }
 
 fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> Vec<u8> {
