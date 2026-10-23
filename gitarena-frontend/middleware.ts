@@ -12,6 +12,10 @@ export function middleware(request: NextRequest) {
         if (pathname !== lowercased) {
             const url = request.nextUrl.clone();
             url.pathname = lowercased;
+            // Redirecting RSC prefetches makes the router refetch the original href forever, so rewrite them instead
+            if (request.headers.has("rsc")) {
+                return NextResponse.rewrite(url);
+            }
             return NextResponse.redirect(url, 308);
         }
     }

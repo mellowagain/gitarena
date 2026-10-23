@@ -32,3 +32,4 @@
 logs/
 repositories/
 gitarena/static/user_content/
+*.har
