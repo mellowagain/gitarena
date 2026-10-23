@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { AuthUser } from "@/hooks/use-auth";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { browserSupportsWebAuthnAutofill, startAuthentication, WebAuthnAbortService, WebAuthnError } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
 import { postJsonFetcher } from "@/lib/fetchers";
 import { toast } from "sonner";
@@ -69,16 +69,14 @@ function LoginContent() {
     const { isAuthenticated, isLoading: authLoading, isLoggingIn, loginError, login, mutate: mutateAuth } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
-    const [authMethod, setAuthMethod] = useState<"password" | "passkey">("password");
+    const [passkeyRound, setPasskeyRound] = useState(0);
     const [form, setForm] = useState({ identifier: "", password: "" });
     const { data, isLoading, error } = useSWR<SSOProviders>("/api/sso");
 
-    const { trigger: triggerPasskeyStart, isMutating: isPasskeyStarting } = useSWRMutation<
-        PasskeyLoginStartResponse,
-        Error,
-        string,
-        Record<string, never>
-    >("/api/auth/passkey/login/start", postJsonFetcher);
+    const { trigger: triggerPasskeyStart } = useSWRMutation<PasskeyLoginStartResponse, Error, string, Record<string, never>>(
+        "/api/auth/passkey/login/start",
+        postJsonFetcher
+    );
 
     const { trigger: triggerPasskeyFinish, isMutating: isPasskeyFinishing } = useSWRMutation<
         AuthUser,
@@ -88,8 +86,6 @@ function LoginContent() {
     >("/api/auth/passkey/login/finish", postJsonFetcher, {
         onSuccess: (user) => mutateAuth(user, { revalidate: false }),
     });
-
-    const isPasskeyLoading = isPasskeyStarting || isPasskeyFinishing;
 
     const rawRedirect = searchParams.get("redirect") ?? "/";
     // Reject absolute URLs and protocol-relative URLs to prevent open redirects.
@@ -101,24 +97,60 @@ function LoginContent() {
         }
     }, [isAuthenticated, authLoading, redirect, router]);
 
+    const loginWithPasskey = useCallback(
+        async (useBrowserAutofill: boolean, isCancelled: () => boolean = () => false) => {
+            try {
+                const startResponse = await triggerPasskeyStart({} as Record<string, never>);
+                if (isCancelled()) {
+                    return;
+                }
+                const credential = await startAuthentication({ optionsJSON: startResponse.options.publicKey, useBrowserAutofill });
+                const user = await triggerPasskeyFinish({ challenge_id: startResponse.challenge_id, credential });
+                if (user) {
+                    router.push(redirect);
+                }
+            } catch (err) {
+                if (err instanceof WebAuthnError && err.code === "ERROR_CEREMONY_ABORTED") {
+                    return;
+                }
+                toast.error(err instanceof Error ? err.message : "Passkey authentication failed");
+                // Only re-arm autofill after user interaction, otherwise errors that happen without any
+                // (backend down, bad RP ID) would retry in a loop.
+                if (!useBrowserAutofill || (err instanceof Error && err.name === "NotAllowedError")) {
+                    setPasskeyRound((round) => round + 1);
+                }
+            }
+        },
+        [triggerPasskeyStart, triggerPasskeyFinish, router, redirect]
+    );
+
+    useEffect(() => {
+        if (authLoading || isAuthenticated) {
+            return;
+        }
+
+        let cancelled = false;
+        browserSupportsWebAuthnAutofill().then((supported) => {
+            if (supported && !cancelled) {
+                void loginWithPasskey(true, () => cancelled);
+            }
+        });
+
+        // Login challenges expire after 5 minutes on the backend, so grab a fresh one before that.
+        const refresh = setTimeout(() => setPasskeyRound((round) => round + 1), 4 * 60 * 1000);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(refresh);
+            WebAuthnAbortService.cancelCeremony();
+        };
+    }, [authLoading, isAuthenticated, loginWithPasskey, passkeyRound]);
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         const user = await login(form.identifier, form.password).catch(() => null);
         if (user) {
             router.push(redirect);
-        }
-    }
-
-    async function handlePasskeyLogin() {
-        try {
-            const startResponse = await triggerPasskeyStart({} as Record<string, never>);
-            const credential = await startAuthentication({ optionsJSON: startResponse.options.publicKey });
-            const user = await triggerPasskeyFinish({ challenge_id: startResponse.challenge_id, credential });
-            if (user) {
-                router.push(redirect);
-            }
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Passkey authentication failed");
         }
     }
 
@@ -213,117 +245,77 @@ function LoginContent() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1 p-1 bg-card border border-border rounded-lg">
-                            <button
-                                onClick={() => setAuthMethod("password")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-md transition-colors ${
-                                    authMethod === "password"
-                                        ? "bg-background text-foreground border border-border"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                <Lock className="h-4 w-4" />
-                                Password
-                            </button>
-                            <button
-                                onClick={() => setAuthMethod("passkey")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-md transition-colors ${
-                                    authMethod === "passkey"
-                                        ? "bg-background text-foreground border border-border"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                <Fingerprint className="h-4 w-4" />
-                                Passkey
-                            </button>
-                        </div>
+                        <form className="space-y-4" onSubmit={handleSubmit}>
+                            {loginError && (
+                                <Alert variant="destructive">
+                                    <AlertDescription>{loginError.message}</AlertDescription>
+                                </Alert>
+                            )}
 
-                        {authMethod === "password" ? (
-                            <form className="space-y-4" onSubmit={handleSubmit}>
-                                {loginError && (
-                                    <Alert variant="destructive">
-                                        <AlertDescription>{loginError.message}</AlertDescription>
-                                    </Alert>
-                                )}
+                            <div className="space-y-2">
+                                <label htmlFor="identifier" className="text-sm font-medium">
+                                    Username or email
+                                </label>
+                                <Input
+                                    id="identifier"
+                                    value={form.identifier}
+                                    onChange={(e) => setForm((f) => ({ ...f, identifier: e.target.value }))}
+                                    placeholder="you@example.com"
+                                    autoComplete="username webauthn"
+                                    required
+                                    disabled={isLoggingIn}
+                                    className="h-11 px-4 md:text-base"
+                                />
+                            </div>
 
-                                <div className="space-y-2">
-                                    <label htmlFor="identifier" className="text-sm font-medium">
-                                        Username or email
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="password" className="text-sm font-medium">
+                                        Password
                                     </label>
-                                    <Input
-                                        id="identifier"
-                                        value={form.identifier}
-                                        onChange={(e) => setForm((f) => ({ ...f, identifier: e.target.value }))}
-                                        placeholder="you@example.com"
-                                        autoComplete="username"
+                                    <Link
+                                        href="/forgot-password"
+                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
+                                <InputGroup className="h-11">
+                                    <InputGroupInput
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={form.password}
+                                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                                        placeholder="Enter your password"
+                                        autoComplete="current-password"
                                         required
                                         disabled={isLoggingIn}
-                                        className="h-11 px-4 md:text-base"
+                                        className="md:text-base"
                                     />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label htmlFor="password" className="text-sm font-medium">
-                                            Password
-                                        </label>
-                                        <Link
-                                            href="/forgot-password"
-                                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                        >
-                                            Forgot password?
-                                        </Link>
-                                    </div>
-                                    <InputGroup className="h-11">
-                                        <InputGroupInput
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            value={form.password}
-                                            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                                            placeholder="Enter your password"
-                                            autoComplete="current-password"
-                                            required
-                                            disabled={isLoggingIn}
-                                            className="md:text-base"
-                                        />
-                                        <InputGroupAddon align="inline-end">
-                                            <InputGroupButton size="icon-xs" onClick={() => setShowPassword(!showPassword)}>
-                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </InputGroupButton>
-                                        </InputGroupAddon>
-                                    </InputGroup>
-                                </div>
-
-                                <Button type="submit" className="w-full h-11 gap-2" disabled={isLoggingIn}>
-                                    {isLoggingIn ? "Signing in..." : "Sign in"}
-                                    {!isLoggingIn && <ArrowRight className="h-4 w-4" />}
-                                </Button>
-                            </form>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="p-6 bg-card border border-border rounded-lg text-center space-y-4">
-                                    <div className="flex items-center justify-center h-16 w-16 mx-auto rounded-full bg-secondary">
-                                        <Fingerprint className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium">Sign in with your passkey</p>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            Use your device&apos;s biometric authentication or security key
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        className="w-full h-11 gap-2"
-                                        onClick={handlePasskeyLogin}
-                                        disabled={isPasskeyLoading}
-                                    >
-                                        <Fingerprint className="h-5 w-5" />
-                                        {isPasskeyLoading ? "Authenticating..." : "Continue with Passkey"}
-                                    </Button>
-                                </div>
+                                    <InputGroupAddon align="inline-end">
+                                        <InputGroupButton size="icon-xs" onClick={() => setShowPassword(!showPassword)}>
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </InputGroupButton>
+                                    </InputGroupAddon>
+                                </InputGroup>
                             </div>
-                        )}
 
+                            <Button type="submit" className="w-full h-11 gap-2" disabled={isLoggingIn}>
+                                {isLoggingIn ? "Signing in..." : "Sign in"}
+                                {!isLoggingIn && <ArrowRight className="h-4 w-4" />}
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full h-11 gap-2"
+                                onClick={() => loginWithPasskey(false)}
+                                disabled={isPasskeyFinishing}
+                            >
+                                <Fingerprint className="h-4 w-4" />
+                                {isPasskeyFinishing ? "Authenticating..." : "Sign in with a passkey"}
+                            </Button>
+                        </form>
                         {showSsoSection && (
                             <>
                                 <FieldSeparator className="mt-0 mb-6 *:data-[slot=field-separator-content]:px-4">
