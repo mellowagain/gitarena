@@ -10,7 +10,7 @@ import { findAndReplace } from "mdast-util-find-and-replace";
 import { parse as parseYaml } from "yaml";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { gitarenaTheme } from "@/components/code-block";
 import { CodeBlockContent } from "@/components/code-block";
 import { Checkbox } from "@/components/ui/checkbox";

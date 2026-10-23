@@ -295,7 +295,7 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
             style={gitarenaTheme}
             PreTag="div"
             renderer={({ rows, stylesheet }) => (
-                <div className={`font-mono text-sm leading-relaxed pr-6 [font-variant-ligatures:none] ${wrapLines ? "" : "min-w-max"}`}>
+                <div className={`font-mono text-sm leading-relaxed pr-6 ${wrapLines ? "" : "min-w-max"}`}>
                     {(rows as AstElement[]).map((row, i) => {
                         const lineNum = i + 1;
                         const isHighlighted = highlightRange !== null && lineNum >= highlightRange.start && lineNum <= highlightRange.end;

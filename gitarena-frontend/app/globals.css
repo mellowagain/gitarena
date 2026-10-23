@@ -83,8 +83,8 @@
 }
 
 @theme inline {
-    --font-sans: var(--font-geist-sans);
-    --font-mono: var(--font-geist-mono);
+    --font-sans: var(--font-host-grotesk);
+    --font-mono: var(--font-jetbrains-mono);
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -136,6 +136,9 @@
     }
     body {
         @apply bg-background text-foreground antialiased;
+    }
+    html:not(.ligatures) :is(.font-mono, code, pre, kbd, samp) {
+        font-variant-ligatures: none;
     }
     /* Smooth 180ms transitions for interactive elements */
     button,

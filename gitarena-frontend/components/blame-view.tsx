@@ -118,9 +118,7 @@ export function BlameView({ user, repo, hunks, content, filename, wrapLines = fa
             style={gitarenaTheme}
             PreTag="div"
             renderer={({ rows, stylesheet }) => (
-                <div
-                    className={`pr-3 font-mono text-sm leading-relaxed [font-variant-ligatures:none] sm:pr-6 ${wrapLines ? "" : "lg:min-w-max"}`}
-                >
+                <div className={`pr-3 font-mono text-sm leading-relaxed sm:pr-6 ${wrapLines ? "" : "lg:min-w-max"}`}>
                     <div className="mb-3 flex items-center justify-between gap-3 border-b border-border/30 px-3 py-3 sm:ml-4 sm:pr-6">
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="hidden w-1 mr-3 shrink-0 lg:block" />

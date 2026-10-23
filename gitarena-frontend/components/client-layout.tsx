@@ -5,10 +5,12 @@ import { useEffect, useRef } from "react";
 import { SWRConfig } from "swr";
 import { Toaster } from "@/components/ui/sonner";
 import { jsonFetcher } from "@/lib/fetchers";
+import { useLigatures } from "@/hooks/use-ligatures";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const lastPathRef = useRef("");
+    useLigatures();
 
     useEffect(() => {
         lastPathRef.current = window.location.pathname + window.location.search;

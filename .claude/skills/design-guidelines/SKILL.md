@@ -19,7 +19,7 @@ GitArena follows a near-black monochromatic design language inspired by Linear a
 | Styling       | Tailwind CSS v4 (CSS-only config via `@theme inline`)   |
 | Components    | shadcn/ui (`new-york` style, `neutral` base)            |
 | Icons         | Lucide React                                            |
-| Fonts         | Geist (sans) + Geist Mono (loaded via Next.js built-in) |
+| Fonts         | Host Grotesk + JetBrains Mono (next/font)               |
 | Color space   | oklch throughout                                        |
 | Class merging | `cn()` utility from `clsx` + `tailwind-merge`           |
 
@@ -66,8 +66,8 @@ The entire palette is achromatic (chroma `0` in oklch) except for the destructiv
 
 ### Typography
 
-- **Sans-serif (body/headings):** `Geist` with `Geist Fallback`
-- **Monospace (code, usernames):** `Geist Mono` with `Geist Mono Fallback`
+- **Sans-serif (body/headings):** `Host Grotesk` (`--font-host-grotesk`)
+- **Monospace (code, usernames):** `JetBrains Mono` (`--font-jetbrains-mono`)
 - **Base font size:** `18px` (112.5% scale, optimized for 4K readability)
 - **Antialiasing:** `-webkit-font-smoothing: antialiased` on body
 

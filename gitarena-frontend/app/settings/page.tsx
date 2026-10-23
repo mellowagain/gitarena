@@ -21,6 +21,7 @@ import {
     Palette,
     Activity,
     Copy,
+    ChevronDown,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { DeleteUserDialog } from "@/components/delete-user-dialog";
@@ -37,7 +38,12 @@ import {
 } from "@/lib/fetchers";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useLigatures } from "@/hooks/use-ligatures";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { LanguageBar } from "@/components/language-bar";
+import { gitarenaTheme } from "@/components/code-block";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/browser";
@@ -996,23 +1002,87 @@ function SecurityLogTab() {
     );
 }
 
+const PREVIEW_LANGUAGES: Record<string, number> = {
+    TSX: 54420,
+    Rust: 31500,
+    Markdown: 4960,
+    MDX: 3900,
+    SQL: 2000,
+    TypeScript: 800,
+    HCL: 600,
+    "Plain Text": 380,
+    JSON: 380,
+    CSS: 380,
+    TOML: 300,
+    JavaScript: 200,
+    YAML: 100,
+    Dockerfile: 40,
+    HTML: 30,
+    SVG: 10,
+};
+
+const PREVIEW_LIGATURES = `fn is_online(user: &User) -> bool {
+    user.status == Status::Active && user.idle <= 5
+}
+
+let has_more = page != last || count >= 10;
+let label = match idle { 0 => "online", _ => "away" };`;
+
+function SettingPreview({ children }: { children: React.ReactNode }) {
+    return (
+        <Collapsible className="mt-2">
+            <CollapsibleTrigger className="group flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className="h-3 w-3 transition-transform group-data-[state=open]:rotate-180" />
+                Preview
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 rounded-md border border-border p-4">{children}</CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 function AppearanceTab() {
     const [allLanguages, setAllLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
+    const [ligatures, setLigatures] = useLigatures();
 
     return (
         <div>
             <SectionHeader title="Appearance" description="Customize how GitArena looks and behaves for you." />
 
             <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <p className="text-sm font-medium">All languages</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                            Show all detected languages in repository language bars, including data and prose files. When off, only
-                            programming and markup languages are shown, with everything else grouped into &quot;Other&quot;.
-                        </p>
+                <div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium">All languages</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                Show all detected languages in repository language bars, including data and prose files. When off, only
+                                programming and markup languages are shown, with everything else grouped into &quot;Other&quot;.
+                            </p>
+                        </div>
+                        <Switch checked={allLanguages} onCheckedChange={setAllLanguages} />
                     </div>
-                    <Switch checked={allLanguages} onCheckedChange={setAllLanguages} />
+                    <SettingPreview>
+                        <LanguageBar languages={PREVIEW_LANGUAGES} allLanguages={allLanguages} />
+                    </SettingPreview>
+                </div>
+                <div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium">Font ligatures</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                Combine character sequences like != and -&gt; into single symbols in code.
+                            </p>
+                        </div>
+                        <Switch checked={ligatures} onCheckedChange={setLigatures} />
+                    </div>
+                    <SettingPreview>
+                        <SyntaxHighlighter
+                            language="rust"
+                            style={gitarenaTheme}
+                            customStyle={{ margin: 0, padding: 0, fontSize: "0.875rem", overflowX: "auto" }}
+                        >
+                            {PREVIEW_LIGATURES}
+                        </SyntaxHighlighter>
+                    </SettingPreview>
                 </div>
             </div>
         </div>

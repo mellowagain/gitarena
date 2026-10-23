@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { jsonFetcher } from "@/lib/fetchers";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import * as allLangs from "linguist-languages";
 import { TopBar } from "@/components/top-bar";
 import { UserAvatar } from "@/components/ui/user-avatar";

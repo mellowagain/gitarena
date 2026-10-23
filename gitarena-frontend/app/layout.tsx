@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Host_Grotesk, JetBrains_Mono } from "next/font/google";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ClientLayout } from "@/components/client-layout";
 import "./globals.css";
+
+const hostGrotesk = Host_Grotesk({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-host-grotesk",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-jetbrains-mono",
+});
 
 export const metadata: Metadata = {
     title: "GitArena - Lightweight Git Platform for Self-Hosting",
@@ -27,7 +38,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} bg-background`}>
+        <html lang="en" className={`${hostGrotesk.variable} ${jetbrainsMono.variable} bg-background`}>
             <body className="font-sans antialiased">
                 <Suspense fallback={null}>
                     <NavigationProgress />
