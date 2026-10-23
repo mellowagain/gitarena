@@ -10,6 +10,9 @@ description = "Rust library for interacting with `git-bug` as used by the GitAre
 [lints]
 workspace = true
 
+[features]
+tracing = ["dep:tracing"]
+
 [dependencies]
 base64 = { workspace = true }
 chrono = { workspace = true }
@@ -20,7 +23,7 @@ serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = "0.11.0"
 thiserror = "2.0.21"
-tracing = { workspace = true }
+tracing = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]

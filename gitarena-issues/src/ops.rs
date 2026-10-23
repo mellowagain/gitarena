@@ -8,6 +8,7 @@ use crate::operation::{BugStatus, Operation, OperationType, random_nonce};
 use chrono::Utc;
 use gix::Repository;
 use serde_json::Value;
+#[cfg(feature = "tracing")]
 use tracing::instrument;
 
 /// Result of [`add_comment`]
@@ -28,7 +29,7 @@ pub struct AddedComment {
 /// - `bug`: The bug to comment on
 /// - `author`: Author of the comment
 /// - `message`: Body of the comment
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn add_comment(git_repo: &Repository, bug: Bug, author: Author, message: String) -> Result<AddedComment, Error> {
     let now = Utc::now().timestamp();
 
@@ -61,7 +62,7 @@ pub fn add_comment(git_repo: &Repository, bug: Bug, author: Author, message: Str
 /// - `bug`: The bug whose title to update
 /// - `author`: Author of the change
 /// - `new_title`: New title
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn set_title(git_repo: &Repository, bug: Bug, author: Author, new_title: String) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
     let was = bug.snapshot().title;
@@ -92,7 +93,7 @@ pub fn set_title(git_repo: &Repository, bug: Bug, author: Author, new_title: Str
 /// - `bug`: The bug to update
 /// - `author`: Author of the change
 /// - `status`: The new [`BugStatus`] to set
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, status: BugStatus) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
 
@@ -123,7 +124,7 @@ pub fn set_status(git_repo: &Repository, bug: Bug, author: Author, status: BugSt
 /// - `author`: Author of the change
 /// - `add`: Labels to add
 /// - `remove`: Labels to remove
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn change_labels(git_repo: &Repository, bug: Bug, author: Author, add: Vec<String>, remove: Vec<String>) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
 
@@ -154,7 +155,7 @@ pub fn change_labels(git_repo: &Repository, bug: Bug, author: Author, add: Vec<S
 /// - `author`: Author of the edit
 /// - `target_op_id`: Operation ID of the comment to edit. Pass `OperationId::from(bug.id)` to edit the bug body
 /// - `new_message`: Replacement body text
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn edit_comment(git_repo: &Repository, bug: Bug, author: Author, target_op_id: OperationId, new_message: String) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
 

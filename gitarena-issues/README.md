@@ -7,6 +7,10 @@ but open-sourced and published for greater usage by the Rust community.
 
 The library is currently targeting git-bug v0.11.0 and the test suite is testing against it.
 
+## Features
+
+- `tracing`: Instrument the bug and operation functions with [`tracing`](https://crates.io/crates/tracing) spans
+
 ## Limitations
 
 - Merging (`merge_bug`, `merge_identity`) expects the remote commits to already be fetched into the repository, fetching and pushing is left to the caller.

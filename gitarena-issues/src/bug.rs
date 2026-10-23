@@ -18,6 +18,7 @@ use gix::{ObjectId, Repository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
+#[cfg(feature = "tracing")]
 use tracing::instrument;
 
 /// Ref location where bugs are stored.
@@ -171,7 +172,7 @@ pub struct CommentSnapshot {
 /// - `author`: Author of the bug
 /// - `title`: Initial title
 /// - `body`: Initial body text
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: String) -> Result<Bug, Error> {
     let now = Utc::now().timestamp();
     let create_clock = clock::increment(git_repo, BUGS_CREATE)?;
@@ -194,12 +195,9 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
 
     let bug_id = BugId::from_create_operation(create_op.compute_id());
 
-    let pack = OperationPack {
-        author: author.clone(),
-        ops: vec![create_op],
-    };
+    let pack = OperationPack { author, ops: vec![create_op] };
 
-    author.write_identity_if_absent(git_repo)?;
+    pack.author.write_identity_if_absent(git_repo)?;
 
     let commit_id = write_pack_as_commit(git_repo, &pack, create_clock, edit_clock, Vec::new())?;
     let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
@@ -223,7 +221,7 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
 /// - `bug`: The bug to append to
 /// - `author`: Author of the operation
 /// - `op`: Operation to append
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op: Operation) -> Result<Bug, Error> {
     // a clock-spammed bug elsewhere in the repo must not push this bug past the jump limit
     let edit_clock = clock::increment(git_repo, BUGS_EDIT)?.min(bug.edit_clock + MAX_CLOCK_JUMP);
@@ -358,7 +356,7 @@ pub enum MergeOutcome {
 /// - `bug_id`: ID of the bug
 /// - `remote_tip`: Commit to merge, must already be in the object database
 /// - `author`: Author of the merge commit if the histories diverged
-#[instrument(err, skip(git_repo))]
+#[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn merge_bug(git_repo: &Repository, bug_id: &BugId, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome, Error> {
     let remote = read_dag(git_repo, bug_id, remote_tip)?;
     let remote_commits: HashSet<ObjectId> = remote.keys().copied().collect();
