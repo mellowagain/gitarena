@@ -62,8 +62,8 @@ impl Bug {
                 match op.op_type {
                     OperationType::CREATE if !created => {
                         created = true;
-                        title = op.title.as_deref().unwrap_or_default().to_owned();
-                        body = op.message.as_deref().unwrap_or_default().to_owned();
+                        op.title.as_deref().unwrap_or_default().clone_into(&mut title);
+                        op.message.as_deref().unwrap_or_default().clone_into(&mut body);
                         created_at = op.timestamp;
                     }
                     OperationType::SET_TITLE => {
