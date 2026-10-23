@@ -28,15 +28,13 @@ impl GitBug {
         String::from_utf8_lossy(&out.stdout).into_owned()
     }
 
-    pub fn add_origin(&self, upstream: &GitBug) {
-        let status = Command::new("git")
-            .args(["remote", "add", "origin"])
-            .arg(upstream.dir.path())
-            .current_dir(self.dir.path())
-            .status()
-            .expect("git to work");
+    pub fn git(&self, args: &[&str]) {
+        let status = Command::new("git").args(args).current_dir(self.dir.path()).status().expect("git to work");
+        assert!(status.success(), "git {args:?} failed");
+    }
 
-        assert!(status.success(), "git remote add failed");
+    pub fn add_origin(&self, upstream: &GitBug) {
+        self.git(&["remote", "add", "origin", &upstream.dir.path().to_string_lossy()]);
     }
 
     pub fn show(&self, bug_id: &str) -> Value {

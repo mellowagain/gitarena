@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use common::{GitBug, make_author};
-use gitarena_issues::bug::{create_bug, list_bug_ids, load_bug};
+use gitarena_issues::bug::{MergeOutcome, create_bug, list_bug_ids, load_bug, merge_bug};
 use gitarena_issues::operation::BugStatus;
 use gitarena_issues::ops::{add_comment, set_status};
 use pretty_assertions::{assert_eq, assert_matches};
@@ -128,6 +128,43 @@ fn concurrent_edits_merged_by_git_bug_are_loaded() -> Result<()> {
         .context("git-bug comment has no message")?;
 
     assert_eq!(comments, expected);
+
+    Ok(())
+}
+
+#[test_with::executable(git-bug, git)]
+fn git_bug_can_read_our_merge_commit() -> Result<()> {
+    let upstream = GitBug::new();
+    upstream.run(&["user", "new", "--non-interactive", "-n", "upstream", "-e", "upstream@gitarena.local"]);
+    upstream.run(&["bug", "new", "--non-interactive", "-t", "title", "-m", "body"]);
+
+    let bug_id = list_bug_ids(&upstream.repo)?.pop().context("git-bug did not create a bug")?;
+
+    let local = GitBug::new();
+    local.add_origin(&upstream);
+    local.run(&["pull", "origin"]);
+    local.run(&["user", "new", "--non-interactive", "-n", "local", "-e", "local@gitarena.local"]);
+
+    local.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from local"]);
+    upstream.run(&["bug", "comment", "new", &bug_id, "--non-interactive", "-m", "from upstream"]);
+
+    local.git(&["fetch", "origin", "refs/bugs/*:refs/remotes/origin/bugs/*"]);
+    let remote_tip = local.repo.find_reference(format!("refs/remotes/origin/bugs/{bug_id}").as_str())?.id().detach();
+
+    assert_eq!(merge_bug(&local.repo, &bug_id, remote_tip, &make_author())?, MergeOutcome::Merged);
+
+    local.git(&["push", "origin", "refs/bugs/*:refs/bugs/*", "refs/identities/*:refs/identities/*"]);
+
+    let messages: Vec<String> = upstream.show(&bug_id)["comments"]
+        .as_array()
+        .context("git-bug show has no comments array")?
+        .iter()
+        .map(|comment| comment["message"].as_str().map(str::to_owned))
+        .collect::<Option<_>>()
+        .context("git-bug comment has no message")?;
+
+    assert_eq!(messages.len(), 3, "expected body and both comments, got {messages:?}");
+    assert!(messages.contains(&"from local".to_owned()) && messages.contains(&"from upstream".to_owned()));
 
     Ok(())
 }

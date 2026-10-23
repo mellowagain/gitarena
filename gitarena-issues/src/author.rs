@@ -1,3 +1,4 @@
+use crate::bug::{MergeOutcome, update_ref};
 use anyhow::{Context, Result, bail, ensure};
 use chrono::Utc;
 use gix::actor::Signature;
@@ -5,6 +6,8 @@ use gix::date::Time;
 use gix::date::parse::TimeBuf;
 use gix::objs::tree::{Entry, EntryKind};
 use gix::objs::{BlobRef, Tree};
+use gix::refs::Target;
+use gix::refs::transaction::PreviousValue;
 use gix::{ObjectId, Repository};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -137,7 +140,51 @@ pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
     let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
     let reference = repo.find_reference(ref_name.as_str()).context("identity ref not found")?;
 
-    let mut commit_id = reference.id().detach();
+    let (_, latest) = read_identity(repo, author_id, reference.id().detach())?;
+    let name = latest["name"].as_str().context("name field missing from identity blob")?;
+
+    Ok(name.to_owned())
+}
+
+/// Merge `remote_tip` into the local identity ref, e.g. after fetching `refs/remotes/<remote>/identities/<id>`.
+/// Identities can only be fast-forwarded (spec identity.md §6), so diverged histories are an error.
+///
+/// # Arguments
+///
+/// - `repo`: Handle to a [`Repository`]
+/// - `author_id`: sha256 ID of the identity
+/// - `remote_tip`: Commit to merge, must already be in the object database
+pub fn merge_identity(repo: &Repository, author_id: &str, remote_tip: ObjectId) -> Result<MergeOutcome> {
+    let (remote_chain, _) = read_identity(repo, author_id, remote_tip)?;
+    let ref_name = format!("{IDENTITIES_REF_PREFIX}{author_id}");
+
+    loop {
+        let local_tip = repo.try_find_reference(ref_name.as_str())?.map(|reference| reference.id().detach());
+
+        let (outcome, expected) = match local_tip {
+            None => (MergeOutcome::New, PreviousValue::MustNotExist),
+            Some(local_tip) if local_tip == remote_tip => return Ok(MergeOutcome::Identical),
+            Some(local_tip) if remote_chain.contains(&local_tip) => (MergeOutcome::FastForward, PreviousValue::MustExistAndMatch(Target::Object(local_tip))),
+            Some(local_tip) => {
+                let (local_chain, _) = read_identity(repo, author_id, local_tip)?;
+                ensure!(
+                    local_chain.contains(&remote_tip),
+                    "identity {author_id} has diverged and cannot be fast-forwarded"
+                );
+
+                return Ok(MergeOutcome::LocalAhead);
+            }
+        };
+
+        if update_ref(repo, &ref_name, remote_tip, expected)? {
+            return Ok(outcome);
+        }
+    }
+}
+
+fn read_identity(repo: &Repository, author_id: &str, tip: ObjectId) -> Result<(Vec<ObjectId>, Value)> {
+    let mut commit_id = tip;
+    let mut chain = Vec::new();
     let mut latest: Option<Value> = None;
 
     loop {
@@ -163,6 +210,7 @@ pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
             value["version"]
         );
 
+        chain.push(commit_id);
         latest.get_or_insert(value);
 
         let Some(parent) = parents.first() else {
@@ -176,10 +224,7 @@ pub fn load_author_name(repo: &Repository, author_id: &str) -> Result<String> {
         commit_id = *parent;
     }
 
-    let latest = latest.context("identity has no versions")?;
-    let name = latest["name"].as_str().context("name field missing from identity blob")?;
-
-    Ok(name.to_owned())
+    Ok((chain, latest.context("identity has no versions")?))
 }
 
 fn build_identity_json(name: &str, email: &str, nonce: &str, unix_time: i64) -> Vec<u8> {
@@ -211,6 +256,69 @@ mod tests {
 
         let name = load_author_name(&repo, &author.id)?;
         assert_eq!(name, "testuser");
+
+        Ok(())
+    }
+
+    fn version(repo: &Repository, name: &str, parent: ObjectId) -> Result<ObjectId> {
+        let blob = format!(r#"{{"version":2,"times":{{}},"unix_time":1,"name":"{name}","nonce":"bm9uY2U="}}"#);
+        let blob_id = repo.write_blob(blob)?.detach();
+
+        let tree = Tree {
+            entries: vec![Entry {
+                mode: EntryKind::Blob.into(),
+                filename: "version".into(),
+                oid: blob_id,
+            }],
+        };
+        let tree_id = repo.write_object(&tree)?.detach();
+
+        let sig = Signature {
+            name: "test".into(),
+            email: "test@gitarena.local".into(),
+            time: Time::default(),
+        };
+
+        let mut time_buffer_committer = TimeBuf::default();
+        let mut time_buffer_author = TimeBuf::default();
+
+        let commit = repo.new_commit_as(
+            sig.to_ref(&mut time_buffer_committer),
+            sig.to_ref(&mut time_buffer_author),
+            "",
+            tree_id,
+            [parent],
+        )?;
+
+        Ok(commit.id)
+    }
+
+    #[test]
+    fn merge_identity_only_fast_forwards() -> Result<()> {
+        let dir = tempdir()?;
+        let repo = gix::init(dir.path())?;
+
+        let author = Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000);
+        author.write_identity_if_absent(&repo)?;
+
+        let ref_name = format!("{IDENTITIES_REF_PREFIX}{}", author.id);
+        let first = repo.find_reference(ref_name.as_str())?.id().detach();
+        let renamed = version(&repo, "renamed", first)?;
+        let diverged = version(&repo, "diverged", first)?;
+
+        assert_eq!(merge_identity(&repo, &author.id, first)?, MergeOutcome::Identical);
+        assert_eq!(merge_identity(&repo, &author.id, renamed)?, MergeOutcome::FastForward);
+        assert_eq!(load_author_name(&repo, &author.id)?, "renamed");
+        assert_eq!(merge_identity(&repo, &author.id, first)?, MergeOutcome::LocalAhead);
+
+        let err = merge_identity(&repo, &author.id, diverged).expect_err("diverged identity");
+        assert!(format!("{err:#}").contains("has diverged"), "got {err:#}");
+
+        let err = merge_identity(&repo, &"0".repeat(64), renamed).expect_err("identity with another ID");
+        assert!(format!("{err:#}").contains("does not match"), "got {err:#}");
+
+        repo.find_reference(ref_name.as_str())?.delete()?;
+        assert_eq!(merge_identity(&repo, &author.id, renamed)?, MergeOutcome::New);
 
         Ok(())
     }

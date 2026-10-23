@@ -1,7 +1,8 @@
 use super::*;
-use crate::ops::set_title;
-use gix::refs::transaction::PreviousValue;
+use crate::ops::{add_comment, set_title};
 use pretty_assertions::assert_eq;
+use std::panic;
+use std::thread;
 use tempfile::tempdir;
 use uuid::Uuid;
 
@@ -9,6 +10,10 @@ const CREATE_OP: &str = r#"{"type":1,"timestamp":1,"nonce":"n1","title":"title",
 const ROOT: &[&str] = &["create-clock-1", "edit-clock-1", "version-4"];
 
 type InvalidCase = (&'static str, fn(&Repository) -> Result<ObjectId>);
+
+fn author() -> Author {
+    Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000)
+}
 
 fn bug_id() -> String {
     hex::encode(Sha256::digest(CREATE_OP))
@@ -63,9 +68,12 @@ fn commit(repo: &Repository, ops: &str, entries: &[&str], parents: &[ObjectId]) 
         )?
         .id;
 
-    repo.reference(format!("{BUGS_REF_PREFIX}{}", bug_id()), commit_id, PreviousValue::Any, "test")?;
-
     Ok(commit_id)
+}
+
+fn point(repo: &Repository, tip: ObjectId) -> Result<()> {
+    repo.reference(format!("{BUGS_REF_PREFIX}{}", bug_id()), tip, PreviousValue::Any, "test")?;
+    Ok(())
 }
 
 #[test]
@@ -79,7 +87,8 @@ fn concurrent_packs_are_ordered_by_edit_clock_then_pack_id() -> Result<()> {
     let root = commit(&repo, &pack(&[CREATE_OP]), ROOT, &[])?;
     let a = commit(&repo, &pack_a, &["edit-clock-2", "version-4"], &[root])?;
     let b = commit(&repo, &pack_b, &["edit-clock-2", "version-4"], &[root])?;
-    commit(&repo, &pack(&[]), &["edit-clock-3", "version-4"], &[b, a])?;
+    let merge = commit(&repo, &pack(&[]), &["edit-clock-3", "version-4"], &[b, a])?;
+    point(&repo, merge)?;
 
     let mut expected = vec![(hex::encode(Sha256::digest(&pack_a)), "a"), (hex::encode(Sha256::digest(&pack_b)), "b")];
     expected.sort();
@@ -140,7 +149,7 @@ fn invalid_bugs_are_rejected() -> Result<()> {
     for (expected, build) in cases {
         let dir = tempdir()?;
         let repo = gix::init(dir.path())?;
-        build(&repo)?;
+        point(&repo, build(&repo)?)?;
 
         let err = load_bug(&repo, &bug_id()).expect_err(expected);
         assert!(format!("{err:#}").contains(expected), "expected error containing {expected:?}, got {err:#}");
@@ -153,7 +162,7 @@ fn invalid_bugs_are_rejected() -> Result<()> {
 fn writes_use_repository_clocks() -> Result<()> {
     let dir = tempdir()?;
     let repo = gix::init(dir.path())?;
-    let author = Author::from_user(Uuid::nil(), "testuser", "testuser@gitarena.local", 1_700_000_000);
+    let author = author();
 
     let first = create_bug(&repo, author.clone(), "first".into(), "body".into())?;
     let second = create_bug(&repo, author.clone(), "second".into(), "body".into())?;
@@ -165,6 +174,88 @@ fn writes_use_repository_clocks() -> Result<()> {
     let loaded = load_bug(&repo, &first.id)?;
     assert_eq!(loaded.packs[1].ops[0].was.as_deref(), Some("first"));
     assert_eq!(loaded.snapshot().title, "renamed");
+
+    Ok(())
+}
+
+#[test]
+fn merge_bug_follows_the_spec_scenarios() -> Result<()> {
+    let dir = tempdir()?;
+    let repo = gix::init(dir.path())?;
+    let author = author();
+
+    let root = commit(&repo, &pack(&[CREATE_OP]), ROOT, &[])?;
+    let a = commit(&repo, &pack(&[comment("a").as_str()]), &["edit-clock-2", "version-4"], &[root])?;
+    let b = commit(&repo, &pack(&[comment("b").as_str()]), &["edit-clock-2", "version-4"], &[root])?;
+
+    assert_eq!(merge_bug(&repo, &bug_id(), root, &author)?, MergeOutcome::New);
+    assert_eq!(merge_bug(&repo, &bug_id(), root, &author)?, MergeOutcome::Identical);
+    assert_eq!(merge_bug(&repo, &bug_id(), a, &author)?, MergeOutcome::FastForward);
+    assert_eq!(merge_bug(&repo, &bug_id(), root, &author)?, MergeOutcome::LocalAhead);
+    assert_eq!(merge_bug(&repo, &bug_id(), b, &author)?, MergeOutcome::Merged);
+
+    let bug = load_bug(&repo, &bug_id())?;
+    let mut bodies: Vec<String> = bug.snapshot().comments.into_iter().map(|comment| comment.body).collect();
+    bodies.sort();
+
+    assert_eq!(bodies, ["a", "b"]);
+    assert_eq!(bug.packs.len(), 4);
+    assert!(bug.packs[3].ops.is_empty());
+    assert_eq!(bug.packs[3].author.id, author.id);
+
+    Ok(())
+}
+
+#[test]
+fn merge_bug_rejects_invalid_remote() -> Result<()> {
+    let dir = tempdir()?;
+    let repo = gix::init(dir.path())?;
+
+    let remote = commit(&repo, &pack(&[CREATE_OP]), &["create-clock-1", "edit-clock-1", "version-5"], &[])?;
+    let err = merge_bug(&repo, &bug_id(), remote, &author()).expect_err("remote with unsupported version");
+
+    assert!(format!("{err:#}").contains("unsupported format version 5"), "got {err:#}");
+    assert!(repo.try_find_reference(format!("{BUGS_REF_PREFIX}{}", bug_id()).as_str())?.is_none());
+
+    Ok(())
+}
+
+#[test]
+fn concurrent_appends_are_merged() -> Result<()> {
+    let dir = tempdir()?;
+    let repo = gix::init(dir.path())?;
+    let author = author();
+
+    let bug = create_bug(&repo, author.clone(), "title".into(), "body".into())?;
+    let shared = repo.into_sync();
+
+    let results: Vec<Result<(Bug, String)>> = thread::scope(|scope| {
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                let (shared, bug, author) = (&shared, bug.clone(), author.clone());
+                scope.spawn(move || add_comment(&shared.to_thread_local(), bug, author, i.to_string()))
+            })
+            .collect();
+
+        handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap_or_else(|payload| panic::resume_unwind(payload)))
+            .collect()
+    });
+
+    for result in results {
+        result?;
+    }
+
+    let mut bodies: Vec<String> = load_bug(&shared.to_thread_local(), &bug.id)?
+        .snapshot()
+        .comments
+        .into_iter()
+        .map(|comment| comment.body)
+        .collect();
+    bodies.sort();
+
+    assert_eq!(bodies, ["0", "1", "2", "3", "4", "5", "6", "7"]);
 
     Ok(())
 }

@@ -13,7 +13,8 @@ This crate is planned to be published on [crates.io](https://crates.io). Before 
 
 ## Limitations
 
-- The library can write and read `git-bug` issues and identities, but **cannot yet** do CRDT for allowing offline editing of issues.
+- Merging (`merge_bug`, `merge_identity`) expects the remote commits to already be fetched into the repository, fetching and pushing is left to the caller.
+- Bug ref updates are only serialized between users of this crate. A `git` or `git-bug` process updating the same ref at the same time can still have its update dropped, as gix checks the old ref value before taking the ref lock.
 - Git writes are not in a transaction, meaning caller errors (e.g Postgres failures) from for example GitArena will still create the git-bug issue
 
 ## Example usage

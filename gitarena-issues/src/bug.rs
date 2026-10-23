@@ -8,9 +8,13 @@ use gix::bstr::ByteSlice;
 use gix::date::parse::TimeBuf;
 use gix::objs::Tree;
 use gix::objs::tree::{Entry, EntryKind};
+use gix::refs::Target;
+use gix::refs::file::transaction::prepare::Error as PrepareError;
+use gix::refs::transaction::PreviousValue;
 use gix::{ObjectId, Repository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use std::fs::{self, File};
 use tracing::instrument;
 
 /// Ref location where bugs are stored.
@@ -195,7 +199,13 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
     };
 
     author.write_identity_if_absent(git_repo)?;
-    write_pack_as_commit(git_repo, &pack, create_clock, edit_clock, None, &bug_id)?;
+
+    let commit_id = write_pack_as_commit(git_repo, &pack, create_clock, edit_clock, Vec::new())?;
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id}");
+    ensure!(
+        update_ref(git_repo, &ref_name, commit_id, PreviousValue::MustNotExist)?,
+        "bug {bug_id} already exists"
+    );
 
     Ok(Bug {
         id: bug_id,
@@ -223,7 +233,12 @@ pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op:
     author.write_identity_if_absent(git_repo)?;
 
     let pack = OperationPack { author, ops: vec![op] };
-    write_pack_as_commit(git_repo, &pack, 0, edit_clock, Some(current_tip), &bug.id)?;
+    let commit_id = write_pack_as_commit(git_repo, &pack, 0, edit_clock, vec![current_tip])?;
+
+    if !update_ref(git_repo, &ref_name, commit_id, PreviousValue::MustExistAndMatch(Target::Object(current_tip)))? {
+        merge_bug(git_repo, &bug.id, commit_id, &pack.author)?;
+        return load_bug(git_repo, &bug.id);
+    }
 
     bug.packs.push(pack);
     bug.edit_clock = edit_clock;
@@ -231,14 +246,7 @@ pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op:
     Ok(bug)
 }
 
-fn write_pack_as_commit(
-    git_repo: &Repository,
-    pack: &OperationPack,
-    create_clock: u64,
-    edit_clock: u64,
-    parent: Option<ObjectId>,
-    bug_id_hex: &str,
-) -> Result<ObjectId> {
+fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_clock: u64, edit_clock: u64, parents: Vec<ObjectId>) -> Result<ObjectId> {
     let ops_json = serde_json::to_vec(pack).context("failed to serialize operation pack")?;
 
     let ops_blob_id = git_repo
@@ -290,25 +298,113 @@ fn write_pack_as_commit(
         },
     };
 
-    let parents: Vec<ObjectId> = parent.into_iter().collect();
-    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
-
     let mut time_buffer_committer = TimeBuf::default();
     let mut time_buffer_author = TimeBuf::default();
 
-    let commit_id = git_repo
-        .commit_as(
+    let commit = git_repo
+        .new_commit_as(
             sig.to_ref(&mut time_buffer_committer),
             sig.to_ref(&mut time_buffer_author),
-            ref_name.as_str(),
             "",
             tree_id,
             parents,
         )
-        .context("failed to write bug commit")?
-        .detach();
+        .context("failed to write bug commit")?;
 
-    Ok(commit_id)
+    Ok(commit.id)
+}
+
+/// Point `ref_name` at `new_tip` if it still matches `expected`
+///
+/// # Returns
+///
+/// `false` if the ref was changed concurrently and `expected` no longer matches
+pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectId, expected: PreviousValue) -> Result<bool> {
+    // gix reads the ref before taking its lock, so without this concurrent updates overwrite each other
+    let lock_dir = git_repo.git_dir().join("git-bug");
+    fs::create_dir_all(&lock_dir).context("failed to create git-bug directory")?;
+
+    let lock = File::create(lock_dir.join("refs.lock")).context("failed to open ref lock")?;
+    lock.lock().context("failed to lock refs")?;
+
+    match git_repo.reference(ref_name, new_tip, expected, "") {
+        Ok(_) => Ok(true),
+        Err(gix::reference::edit::Error::FileTransactionPrepare(
+            PrepareError::ReferenceOutOfDate { .. } | PrepareError::MustNotExist { .. } | PrepareError::MustExist { .. } | PrepareError::LockAcquire { .. },
+        )) => Ok(false),
+        Err(err) => Err(err).with_context(|| format!("failed to update {ref_name}")),
+    }
+}
+
+/// Result of merging a remote tip into a local entity (spec dag-entity.md §10)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MergeOutcome {
+    /// Entity did not exist locally and was created at the remote tip
+    New,
+    /// Local and remote tip are the same commit
+    Identical,
+    /// Remote tip is an ancestor of the local tip
+    LocalAhead,
+    /// Local tip was an ancestor of the remote tip and got advanced to it
+    FastForward,
+    /// Histories diverged and were joined with a merge commit
+    Merged,
+}
+
+/// Merge `remote_tip` into the local bug ref, e.g. after fetching `refs/remotes/<remote>/bugs/<id>`.
+/// The remote history is validated like [`load_bug`] does before the local ref is touched.
+///
+/// # Arguments
+///
+/// - `git_repo`: Handle to a [`Repository`]
+/// - `bug_id_hex`: sha256 ID of the bug
+/// - `remote_tip`: Commit to merge, must already be in the object database
+/// - `author`: Author of the merge commit if the histories diverged
+#[instrument(err, skip(git_repo))]
+pub fn merge_bug(git_repo: &Repository, bug_id_hex: &str, remote_tip: ObjectId, author: &Author) -> Result<MergeOutcome> {
+    let remote = read_dag(git_repo, remote_tip)?;
+    let remote_commits: HashSet<ObjectId> = remote.keys().copied().collect();
+    build_bug(git_repo, bug_id_hex, remote)?;
+
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
+
+    loop {
+        let local_tip = git_repo.try_find_reference(ref_name.as_str())?.map(|reference| reference.id().detach());
+
+        let (outcome, new_tip, expected) = match local_tip {
+            None => (MergeOutcome::New, remote_tip, PreviousValue::MustNotExist),
+            Some(local_tip) if local_tip == remote_tip => return Ok(MergeOutcome::Identical),
+            Some(local_tip) if remote_commits.contains(&local_tip) => (
+                MergeOutcome::FastForward,
+                remote_tip,
+                PreviousValue::MustExistAndMatch(Target::Object(local_tip)),
+            ),
+            Some(local_tip) => {
+                let local = read_dag(git_repo, local_tip)?;
+
+                if local.contains_key(&remote_tip) {
+                    return Ok(MergeOutcome::LocalAhead);
+                }
+
+                build_bug(git_repo, bug_id_hex, local)?;
+                author.write_identity_if_absent(git_repo)?;
+
+                let pack = OperationPack {
+                    author: author.clone(),
+                    ops: Vec::new(),
+                };
+
+                let edit_clock = clock::increment(git_repo, BUGS_EDIT)?;
+                let merge_commit = write_pack_as_commit(git_repo, &pack, 0, edit_clock, vec![local_tip, remote_tip])?;
+
+                (MergeOutcome::Merged, merge_commit, PreviousValue::MustExistAndMatch(Target::Object(local_tip)))
+            }
+        };
+
+        if update_ref(git_repo, &ref_name, new_tip, expected)? {
+            return Ok(outcome);
+        }
+    }
 }
 
 fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<ObjectId> {
@@ -324,15 +420,18 @@ fn find_ref_target(git_repo: &Repository, ref_name: &str) -> Result<ObjectId> {
 /// - `git_repo`: Handle to a [`Repository`]
 /// - `bug_id_hex`: sha256 ID of the bug to load
 pub fn load_bug(git_repo: &Repository, bug_id_hex: &str) -> Result<Bug> {
+    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
+    let tip = find_ref_target(git_repo, &ref_name)?;
+
+    build_bug(git_repo, bug_id_hex, read_dag(git_repo, tip)?)
+}
+
+fn build_bug(git_repo: &Repository, bug_id_hex: &str, commits: HashMap<ObjectId, BugCommit>) -> Result<Bug> {
     ensure!(
         bug_id_hex.len() == 64 && bug_id_hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')),
         "invalid bug id: {bug_id_hex}"
     );
 
-    let ref_name = format!("{BUGS_REF_PREFIX}{bug_id_hex}");
-    let tip = find_ref_target(git_repo, &ref_name)?;
-
-    let commits = read_dag(git_repo, tip)?;
     let mut root = None;
 
     for (id, commit) in &commits {
