@@ -23,6 +23,6 @@ This includes:
 - Any other style that is inconsistent with the file
 - Unnecessary emoji usage
 
-Only touch lines that are part of the checked diff — do not "improve" pre-existing code.
+Only touch lines that are part of the checked diff — do not "improve" pre-existing code. Before doing anything, read your memory about this skill especially.
 
 Report at the end with only a 1-3 sentence summary of what you changed.

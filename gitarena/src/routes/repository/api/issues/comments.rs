@@ -60,14 +60,14 @@ pub(crate) async fn add_issue_comment(
     }
 
     let git_repo = repo.gitoxide(&mut tx).await?;
-    let bug = load_bug(&git_repo, &issue.git_bug_id)?;
+    let bug = load_bug(&git_repo, &issue.git_bug_id.parse()?)?;
 
-    let (_, op_id) = add_comment(&git_repo, bug, user.as_git_bug_author(&mut tx).await?, body.body.clone())?;
+    let op_id = add_comment(&git_repo, bug, user.as_git_bug_author(&mut tx).await?, body.body.clone())?.comment_id;
     let comment_id = Uuid::now_v7();
 
     sqlx::query("insert into issue_comment_cache (id, op_id, issue_id, author_id, body) values ($1, $2, $3, $4, $5)")
         .bind(comment_id)
-        .bind(&op_id)
+        .bind(op_id.to_string())
         .bind(issue.id)
         .bind(user.id)
         .bind(&body.body)
@@ -153,9 +153,9 @@ pub(crate) async fn edit_issue_comment(
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
 
     let author = user.as_git_bug_author(&mut tx).await?;
-    let bug = load_bug(&gitoxide_repo, &issue.git_bug_id)?;
+    let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
 
-    edit_comment(&gitoxide_repo, bug, author, comment.op_id.clone(), body.body.clone())?;
+    edit_comment(&gitoxide_repo, bug, author, comment.op_id.parse()?, body.body.clone())?;
 
     let now = Utc::now();
 
