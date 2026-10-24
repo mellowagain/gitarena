@@ -798,7 +798,7 @@ fn tag_commit_info(libgit2_repo: &git2::Repository, tag: &str) -> (Option<String
     };
 
     let id = commit.id().to_string();
-    let message = commit.message().and_then(|m| m.lines().next()).unwrap_or_default().to_owned();
+    let message = commit.message().ok().and_then(|m| m.lines().next()).unwrap_or_default().to_owned();
 
     (Some(id), Some(message))
 }

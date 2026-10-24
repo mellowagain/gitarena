@@ -60,7 +60,7 @@ pub(crate) async fn branches(repo: Repository, db_pool: web::Data<Pool>) -> Resu
     for reference in libgit2_repo.references()? {
         let reference = reference?;
 
-        let Some(full_name) = reference.name() else { continue };
+        let Ok(full_name) = reference.name() else { continue };
         let Some(short_name) = full_name.strip_prefix("refs/heads/") else { continue };
 
         let branch_oid = reference.peel_to_commit()?.id();

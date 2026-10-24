@@ -43,7 +43,7 @@ pub(crate) async fn list_tags(repo: Repository, db_pool: web::Data<Pool>) -> Res
         };
 
         let (kind, message) = match libgit2_repo.find_tag(oid) {
-            Ok(tag) => (TagKind::Annotated, tag.message().map(str::to_owned)),
+            Ok(tag) => (TagKind::Annotated, tag.message().ok().flatten().map(str::to_owned)),
             Err(_) => (TagKind::Lightweight, None),
         };
 
@@ -58,7 +58,7 @@ pub(crate) async fn list_tags(repo: Repository, db_pool: web::Data<Pool>) -> Res
         raw.push(RawTagData {
             name: name.to_owned(),
             commit: commit.id().to_string(),
-            commit_message: commit.message().and_then(|m| m.lines().next()).unwrap_or("").to_owned(),
+            commit_message: commit.message().ok().and_then(|m| m.lines().next()).unwrap_or("").to_owned(),
             author: commit.author().to_owned(),
             timestamp: commit.time().seconds(),
             kind,

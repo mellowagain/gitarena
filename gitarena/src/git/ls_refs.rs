@@ -71,7 +71,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
 
             if let Some(oid) = reference.target() {
                 line = format!("{oid} {name}");
-            } else if let Some(sym_target) = reference.symbolic_target() {
+            } else if let Some(sym_target) = reference.symbolic_target().ok()? {
                 match repo.find_reference(sym_target).ok() {
                     Some(sym_target_ref) => {
                         if let Some(sym_target_oid) = sym_target_ref.target() {
@@ -114,7 +114,7 @@ pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&s
 }
 
 pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
-    let head_symref = repo.find_reference("HEAD")?.symbolic_target().map(ToString::to_string);
+    let head_symref = repo.find_reference("HEAD")?.symbolic_target()?.map(ToString::to_string);
 
     ls_refs_all_inner(repo, service_header, |_| {
         let symref = head_symref.as_deref().map(|target| format!(" symref=HEAD:{target}")).unwrap_or_default();
@@ -137,7 +137,7 @@ async fn ls_refs_all_inner(repo: &Git2Repository, service_header: Option<&str>, 
     for result in repo.references()? {
         match result {
             Ok(reference) => {
-                if let Some(name) = reference.name()
+                if let Ok(name) = reference.name()
                     && let Some(oid) = reference.target()
                 {
                     let mut line = format!("{oid} {name}");

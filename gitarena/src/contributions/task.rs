@@ -62,7 +62,7 @@ impl AsyncRunnable for BackfillRepoContributionsTask {
                 let Ok(commit) = git_repo.find_commit(oid) else { continue };
 
                 let author = commit.author();
-                let Some(email) = author.email() else { continue };
+                let Ok(email) = author.email() else { continue };
 
                 let Some(dt) = Utc.timestamp_opt(author.when().seconds(), 0).single() else {
                     continue;
@@ -136,7 +136,7 @@ impl AsyncRunnable for BackfillEmailContributionsTask {
                     let Ok(commit) = git_repo.find_commit(oid) else { continue };
 
                     let author = commit.author();
-                    let Some(author_email) = author.email() else { continue };
+                    let Ok(author_email) = author.email() else { continue };
 
                     if author_email.to_lowercase() != email {
                         continue;

@@ -68,7 +68,7 @@ pub(crate) async fn batch_last_commits(repo: &Git2Repository, reference: &str, p
 pub(crate) async fn last_commit_for_ref(repo: &Git2Repository, reference_name: &str) -> Result<Option<Oid>> {
     let reference = repo.find_reference(reference_name)?;
 
-    if let Some(target) = reference.symbolic_target() {
+    if let Some(target) = reference.symbolic_target()? {
         return last_commit_for_ref(repo, target).await;
     }
 
@@ -229,10 +229,9 @@ pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
 
     for reference in repo.references()? {
         let reference = reference?;
+        let name = reference.name()?;
 
-        if let Some(name) = reference.name() {
-            results.push(name.replacen("refs/heads/", "", 1));
-        }
+        results.push(name.replacen("refs/heads/", "", 1));
     }
 
     Ok(results)
@@ -242,5 +241,5 @@ pub(crate) async fn all_branches(repo: &Git2Repository) -> Result<Vec<String>> {
 pub(crate) async fn all_tags(repo: &Git2Repository, prefix: Option<&str>) -> Result<Vec<String>> {
     let tags = repo.tag_names(prefix)?;
 
-    Ok(tags.iter().filter_map(|o| o.map(ToOwned::to_owned)).collect())
+    Ok(tags.iter().filter_map(|r| r.ok().flatten().map(ToOwned::to_owned)).collect())
 }

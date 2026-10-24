@@ -374,7 +374,7 @@ pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, Str
                 .unwrap_or(false)
         })
         .min_by_key(|r| i32::from(r.name().unwrap_or("") != default_ref))
-        .and_then(|r| r.shorthand().map(ToOwned::to_owned));
+        .and_then(|r| r.shorthand().ok().map(ToOwned::to_owned));
 
     transaction.commit().await?;
 
