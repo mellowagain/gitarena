@@ -6,6 +6,8 @@ use crate::database::Database;
 use crate::prelude::MapToFangError;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
+use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use chrono::{DateTime, Utc};
 use fang::{AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use serde_cbor_2::Value as CborValue;
@@ -25,7 +27,7 @@ fn aaguid_map() -> &'static HashMap<&'static str, &'static str> {
 pub(crate) fn aaguid_from_raw_credential(raw_credential: &Value) -> Option<String> {
     let attest_b64 = raw_credential.pointer("/response/attestationObject").and_then(|v| v.as_str())?;
 
-    let attest_bytes = base64::decode_config(attest_b64, base64::URL_SAFE_NO_PAD).ok()?;
+    let attest_bytes = BASE64_URL_SAFE_NO_PAD.decode(attest_b64).ok()?;
 
     // Parse CBOR: { "fmt": ..., "attStmt": ..., "authData": bytes }
     let cbor_val: CborValue = serde_cbor_2::from_slice(&attest_bytes).ok()?;

@@ -10,6 +10,8 @@ use crate::events::Event;
 use actix_identity::Identity;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
+use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use fang::AsyncQueue;
 use gitarena_macros::route;
 use serde::{Deserialize, Serialize};
@@ -325,7 +327,7 @@ pub(crate) async fn post_login_finish(
         .identify_discoverable_authentication(&body.credential)
         .context("Failed to identify passkey")?;
 
-    let cred_id_b64 = base64_url_encode(cred_id_bytes);
+    let cred_id_b64 = BASE64_URL_SAFE_NO_PAD.encode(cred_id_bytes);
 
     let user_id = StoredPasskey::find_user_id_by_cred_id(&cred_id_b64, &mut tx)
         .await?
@@ -403,8 +405,4 @@ pub(crate) async fn post_login_finish(
 pub(crate) struct LoginFinishRequest {
     pub(crate) challenge_id: Uuid,
     pub(crate) credential: PublicKeyCredential,
-}
-
-fn base64_url_encode(bytes: &[u8]) -> String {
-    base64::encode_config(bytes, base64::URL_SAFE_NO_PAD)
 }

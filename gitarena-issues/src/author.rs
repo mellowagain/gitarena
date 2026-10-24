@@ -3,6 +3,8 @@
 use crate::bug::{MergeOutcome, update_ref};
 use crate::error::Error;
 use crate::id::AuthorId;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use chrono::Utc;
 use gix::actor::Signature;
 use gix::date::Time;
@@ -64,7 +66,8 @@ impl Author {
     #[must_use]
     pub fn from_user(user_id: Uuid, username: &str, email: &str, created_at: i64) -> Self {
         let nonce_hash = Sha256::digest(format!("gitarena-identity:{user_id}").as_bytes());
-        let nonce = base64::encode(&nonce_hash[..20]);
+
+        let nonce = BASE64_STANDARD.encode(&nonce_hash[..20]);
 
         let identity_json = build_identity_json(username, email, &nonce, created_at);
 

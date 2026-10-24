@@ -1,3 +1,7 @@
+# v0.2.1
+
+Update to base64 v0.23.1
+
 # v0.2.0
 
 Update to gix v0.90.0

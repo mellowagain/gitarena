@@ -2,6 +2,8 @@
 
 use crate::author::Author;
 use crate::id::OperationId;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
@@ -180,5 +182,5 @@ impl TryFrom<RawOperationPack> for OperationPack {
 #[must_use]
 pub fn random_nonce() -> String {
     let bytes: [u8; 20] = rand::rng().random();
-    base64::encode(bytes)
+    BASE64_STANDARD.encode(bytes)
 }

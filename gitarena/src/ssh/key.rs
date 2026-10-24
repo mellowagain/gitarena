@@ -2,6 +2,8 @@ use crate::database::Database;
 use crate::user::User;
 use anyhow::Result;
 use anyhow::{Error, bail};
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use russh::keys::Algorithm;
@@ -54,12 +56,12 @@ impl SshKey {
     }
 
     pub(crate) fn as_string(&self) -> String {
-        format!("{} {}", &self.algorithm, base64::encode(&self.key))
+        format!("{} {}", &self.algorithm, BASE64_STANDARD.encode(&self.key))
     }
 }
 
 fn serialize_key_as_base64<S: Serializer>(key: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&base64::encode(key))
+    serializer.serialize_str(&BASE64_STANDARD.encode(key))
 }
 
 #[derive(Type, Debug, Display, Deserialize, Serialize, Copy, Clone)]
