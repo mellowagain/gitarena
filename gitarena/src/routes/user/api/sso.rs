@@ -14,7 +14,7 @@ use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result};
 use gitarena_macros::{from_config, route};
 use oauth2::TokenResponse;
@@ -72,15 +72,10 @@ pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: W
 #[route("/api/sso/{service}/callback", method = "GET", err = "json")]
 pub(crate) async fn sso_callback(
     sso_request: web::Path<SSORequest>,
-    id: Identity,
     request: HttpRequest,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
-    if id.identity().is_some() {
-        die!(UNAUTHORIZED, "Already logged in");
-    }
-
     let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|()| err!(BAD_REQUEST, "Unknown service"))?;
     let provider_impl = provider.get_implementation();
 
@@ -145,7 +140,7 @@ pub(crate) async fn sso_callback(
     // don't protect in this case against cross-site request forgery.
 
     let session = Session::new(&request, &user, &mut transaction).await?;
-    id.remember(session.to_string());
+    Identity::login(&request.extensions(), session.to_string())?;
 
     Event::new(
         "auth.login",

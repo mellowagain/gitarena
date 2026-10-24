@@ -2,11 +2,6 @@ use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::session::Session;
 use crate::{die, err, session};
 
-use std::convert::TryFrom;
-use std::fmt;
-use std::pin::Pin;
-use std::sync::Arc;
-
 use crate::config::get_setting;
 use crate::database::Database;
 use crate::database::Pool;
@@ -23,6 +18,10 @@ use ipnetwork::IpNetwork;
 use object_store::path::Path;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
+use std::convert::{Infallible, TryFrom};
+use std::fmt;
+use std::pin::Pin;
+use std::sync::Arc;
 use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
 use uuid::Uuid;
@@ -204,7 +203,7 @@ impl FromRequest for WebUser {
         match req.app_data::<Data<Pool>>() {
             Some(db_pool) => {
                 let (ip_network, user_agent) = session::extract_ip_and_ua_owned(req);
-                let id_future = Identity::from_request(req, payload);
+                let id_future = Option::<Identity>::from_request(req, payload);
 
                 let db_pool = db_pool.clone();
 
@@ -228,37 +227,35 @@ impl FromRequest for WebUser {
 }
 
 #[instrument(err, skip(db_pool, id_future))]
-async fn extract_webuser_from_request<F: Future<Output = actix_web::Result<Identity>>>(
+async fn extract_webuser_from_request<F: Future<Output = Result<Option<Identity>, Infallible>>>(
     db_pool: Data<Pool>,
     id_future: F,
     ip_network: IpNetwork,
     user_agent: String,
 ) -> Result<WebUser> {
-    let id = id_future.await.map_err(|_| anyhow!("Failed to build identity"))?;
+    if let Ok(Some(identity)) = id_future.await
+        && identity.id().is_ok()
+    {
+        let mut transaction = db_pool.begin().await?;
 
-    match id.identity() {
-        Some(identity) => {
-            let mut transaction = db_pool.begin().await?;
+        let result = if let Some(session) = Session::from_identity(Some(&identity), &mut transaction).await? {
+            session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
 
-            let result = if let Some(session) = Session::from_identity(Some(identity), &mut transaction).await? {
-                session.update_explicit(&ip_network, user_agent.as_str(), &mut transaction).await?;
+            let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
+                .bind(session.user_id)
+                .fetch_optional(&mut *transaction)
+                .await?;
 
-                let user: Option<User> = sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                    .bind(session.user_id)
-                    .fetch_optional(&mut *transaction)
-                    .await?;
+            user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
+        } else {
+            identity.logout();
 
-                user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
-            } else {
-                id.forget();
+            WebUser::Anonymous
+        };
 
-                WebUser::Anonymous
-            };
-
-            transaction.commit().await?;
-
-            Ok(result)
-        }
-        None => Ok(WebUser::Anonymous),
+        transaction.commit().await?;
+        Ok(result)
+    } else {
+        Ok(WebUser::Anonymous)
     }
 }

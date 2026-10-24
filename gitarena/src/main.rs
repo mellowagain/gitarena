@@ -6,24 +6,27 @@ use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
 use crate::utils::system::SYSTEM_INFO;
 
-use std::env;
-
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
 use crate::meili::MEILI_CLIENT;
 use crate::storage::STORAGE;
-use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::body::{BoxBody, EitherBody};
-use actix_web::cookie::SameSite;
+use actix_identity::IdentityMiddleware;
+use actix_session::SessionMiddleware;
+use actix_session::config::{PersistentSession, SessionLifecycle, TtlExtensionPolicy};
+use actix_session::storage::CookieSessionStore;
+use actix_web::body::BoxBody;
+use actix_web::cookie::{Key, SameSite};
 use actix_web::dev::{Service, ServiceResponse};
 use actix_web::http::Method;
 use actix_web::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, HeaderValue};
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route};
 use actix_web::{App, HttpServer, web};
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
+use std::env;
+use std::time::Duration;
 use time::Duration as TimeDuration;
 use tokio::sync::OnceCell;
 use tracing::{info, warn};
@@ -96,8 +99,13 @@ async fn main() -> Result<()> {
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
     let (secret, domain): (Option<String>, Option<String>) = from_optional_config!("secret" => String, "domain.app" => String);
-    let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
     let secure = domain.as_deref().is_some_and(|d| d.starts_with("https"));
+
+    let secret = secret.ok_or_else(|| anyhow!("Unable to read secret from database"))?;
+
+    if secret.len() < 32 {
+        bail!("Secret key needs to be at least 32 characters");
+    }
 
     let webauthn_origin: Option<String> = from_optional_config!("webauthn.origin" => String);
     let webauthn_domain = domain.unwrap_or_else(|| "http://localhost:8320".to_owned());
@@ -123,14 +131,22 @@ async fn main() -> Result<()> {
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
     let server = HttpServer::new(move || {
-        let identity_service = IdentityService::new(
-            CookieIdentityPolicy::new(secret.as_bytes())
-                .name("gitarena-auth")
-                .max_age(TimeDuration::days(30))
-                .http_only(true)
-                .same_site(SameSite::Lax)
-                .secure(secure),
-        );
+        let identity_middleware = IdentityMiddleware::builder()
+            .id_key("user")
+            .visit_deadline(Some(Duration::from_hours(30 * 24)))
+            .build();
+
+        let session_middleware = SessionMiddleware::builder(CookieSessionStore::default(), Key::derive_from(secret.as_bytes()))
+            .cookie_name("gitarena-session".to_string())
+            .session_lifecycle(SessionLifecycle::PersistentSession(
+                PersistentSession::default()
+                    .session_ttl(TimeDuration::days(30))
+                    .session_ttl_extension_policy(TtlExtensionPolicy::OnEveryRequest),
+            ))
+            .cookie_http_only(true)
+            .cookie_same_site(SameSite::Lax)
+            .cookie_secure(secure)
+            .build();
 
         App::new()
             .app_data(Data::new(db_pool.clone()))
@@ -142,11 +158,12 @@ async fn main() -> Result<()> {
             .wrap(RequestTracing::new()) // must we outermost wrap to capture full duration
             .wrap(RequestMetrics::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .wrap(identity_service)
+            .wrap(identity_middleware)
+            .wrap(session_middleware)
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
-                    let mut res: ServiceResponse<EitherBody<BoxBody>> = fut.await?;
+                    let mut res: ServiceResponse<BoxBody> = fut.await?;
 
                     if res.request().path().contains(".git") {
                         // https://git-scm.com/docs/http-protocol/en#_smart_server_response

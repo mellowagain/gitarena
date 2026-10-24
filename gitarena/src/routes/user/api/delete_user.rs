@@ -34,7 +34,7 @@ pub(crate) async fn delete_self(
 
     delete_user(&user, user.id, &request, tx, &meili_client, &db_pool, &queue).await?;
 
-    id.forget();
+    id.logout();
 
     Ok(HttpResponse::NoContent().finish())
 }

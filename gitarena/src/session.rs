@@ -1,16 +1,12 @@
 use crate::prelude::{HttpRequestExtensions, MapToFangError};
 use crate::user::User;
 
-use std::error::Error;
-use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::net::Ipv6Addr;
-use std::str::FromStr;
-
 use crate::database::{Database, Pool};
 use crate::mail::Email;
 use crate::mail::templates::{EmailTemplate, NewLoginTemplate};
 use crate::passkey::name_from_user_agent;
 use crate::{TASK_DB_POOL, geoip};
+use actix_identity::Identity;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
@@ -20,6 +16,10 @@ use gitarena_macros::from_config;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
+use std::error::Error;
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::net::Ipv6Addr;
+use std::str::FromStr;
 use tracing::{debug, instrument, warn};
 use tracing_unwrap::ResultExt;
 use uuid::Uuid;
@@ -59,10 +59,10 @@ impl Session {
     }
 
     /// Finds existing session from Identity (Display of Session)
-    #[instrument(err, skip(tx))]
-    pub(crate) async fn from_identity(identity: Option<String>, tx: &mut Transaction<'_, Database>) -> Result<Option<Session>> {
-        match identity {
-            Some(identity) => {
+    #[instrument(err, skip(identity, tx))]
+    pub(crate) async fn from_identity(identity: Option<&Identity>, tx: &mut Transaction<'_, Database>) -> Result<Option<Session>> {
+        match identity.map(|id| id.id()) {
+            Some(Ok(identity)) => {
                 let (user_id_str, hash) = identity.split_once('$').ok_or_else(|| anyhow!("Unable to parse identity"))?;
 
                 // Old sessions used i32 user IDs; if parsing as UUID fails, treat as expired and force logout
@@ -76,7 +76,7 @@ impl Session {
 
                 Ok(option)
             }
-            None => Ok(None),
+            _ => Ok(None),
         }
     }
 

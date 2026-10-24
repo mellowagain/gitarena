@@ -11,7 +11,7 @@ use crate::events::Event;
 use crate::mail::Email;
 use crate::meili::MeiliClient;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use fang::AsyncQueue;
 use gitarena_macros::route;
@@ -23,17 +23,11 @@ use uuid::Uuid;
 #[route("/api/user", method = "POST", err = "json")]
 pub(crate) async fn post_register(
     body: web::Json<RegisterJsonRequest>,
-    id: Identity,
     request: HttpRequest,
     queue: web::Data<AsyncQueue>,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
-    if id.identity().is_some() {
-        // Maybe just redirect to home page?
-        die!(UNAUTHORIZED, "Already logged in");
-    }
-
     let mut tx = db_pool.begin().await?;
 
     let allow_registrations: bool = get_setting("allow_registrations", &mut tx).await?;
@@ -148,7 +142,7 @@ pub(crate) async fn post_register(
 
     send_verification_mail(&user, email.email, &queue, &db_pool).await?;
 
-    id.remember(session.to_string());
+    Identity::login(&request.extensions(), session.to_string())?;
 
     user.index_meili(&meili_client).await;
 

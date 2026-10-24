@@ -8,7 +8,7 @@ use crate::{die, err};
 
 use crate::events::Event;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
 use fang::AsyncQueue;
 use gitarena_macros::route;
@@ -305,7 +305,6 @@ pub(crate) async fn post_login_finish(
     body: web::Json<LoginFinishRequest>,
     web_user: WebUser,
     request: HttpRequest,
-    id: Identity,
     webauthn: web::Data<Webauthn>,
     queue: web::Data<AsyncQueue>,
     db_pool: web::Data<Pool>,
@@ -372,7 +371,7 @@ pub(crate) async fn post_login_finish(
     }
 
     let session = Session::new(&request, &user, &mut tx).await?;
-    id.remember(session.to_string());
+    Identity::login(&request.extensions(), session.to_string())?;
 
     Event::new(
         "auth.login",

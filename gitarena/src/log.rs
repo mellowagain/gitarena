@@ -126,6 +126,8 @@ pub fn default_env(err: &FromEnvError) -> EnvFilter {
         .add_directive(level.into())
         .add_directive("actix_http=info".parse().unwrap())
         .add_directive("actix_server=info".parse().unwrap())
+        .add_directive("actix_identity=info".parse().unwrap())
+        .add_directive("actix_web::extract=info".parse().unwrap())
         .add_directive("askalono=warn".parse().unwrap())
         .add_directive("globset=info".parse().unwrap())
         .add_directive("h2=info".parse().unwrap())
@@ -134,4 +136,5 @@ pub fn default_env(err: &FromEnvError) -> EnvFilter {
         .add_directive("rustls=info".parse().unwrap())
         .add_directive("sqlx=warn".parse().unwrap())
         .add_directive("opentelemetry=info".parse().unwrap())
+        .add_directive("maxminddb=info".parse().unwrap())
 }
