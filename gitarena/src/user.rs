@@ -24,11 +24,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tracing::{error, instrument};
 use tracing_unwrap::OptionExt;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub(crate) mod delete;
 
-#[derive(FromRow, Display, Debug, Serialize, Clone)]
+#[derive(FromRow, Display, Debug, Serialize, Clone, ToSchema)]
 #[display("{username}")]
 pub(crate) struct User {
     pub(crate) id: Uuid,

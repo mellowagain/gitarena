@@ -23,6 +23,7 @@ use sqlx::{FromRow, Transaction};
 use std::fmt::{Debug, Formatter, Result as FmtResult, Write};
 use std::time::{Duration, UNIX_EPOCH};
 use tracing::debug;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub(crate) mod task;
@@ -30,7 +31,7 @@ pub(crate) mod templates;
 
 pub(crate) static TRANSPORTER: OnceCell<AsyncSmtpTransport<Tokio1Executor>> = OnceCell::new();
 
-#[derive(FromRow, Display, Serialize)]
+#[derive(FromRow, Display, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[display("{email}")]
 pub(crate) struct Email {

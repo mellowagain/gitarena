@@ -1,4 +1,5 @@
 use crate::issue::IssueStatus;
+use crate::mail::Email;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
@@ -44,7 +45,9 @@ use crate::routes::user::api::issues::AssignedIssueEntry;
 use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sso::SSOProvidersResponse;
 use crate::routes::user::avatar::UploadAvatarResponse;
+use crate::ssh::key::{KeyType, SshKey};
 use crate::token::{Token, TokenPermission, TokenScope, TokenType};
+use crate::user::User;
 
 use actix_web::web::ServiceConfig;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
@@ -211,6 +214,10 @@ impl Modify for CookieAuth {
         InstanceComponent,
         ComponentStatus,
         ExtendedUser,
+        User,
+        Email,
+        SshKey,
+        KeyType,
         EventResponse,
         ContributionsResponse,
         ContributionDay,

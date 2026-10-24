@@ -87,8 +87,8 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json", "st
 tracing-unwrap = "1.0.1"
 trust-dns-resolver = { version = "0.23.2", features = ["dnssec-ring"] }
 url = "2.5.8"
-utoipa = { version = "4.2.3", features = ["actix_extras", "chrono", "url", "uuid"] }
-utoipa-rapidoc = { version = "1", features = ["actix-web"] }
+utoipa = { version = "6.0.0", features = ["actix_extras", "chrono", "url", "uuid"] }
+utoipa-rapidoc = { version = "7.0.0", features = ["actix-web"] }
 uuid = { workspace = true, features = ["v4", "v5", "v7"] }
 webauthn-rs = { version = "0.5.4", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 zip = { version = "0.5.13", default-features = false, features = ["deflate", "time"] }

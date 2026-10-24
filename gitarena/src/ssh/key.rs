@@ -14,9 +14,10 @@ use serde::{Serialize, Serializer};
 use sqlx::Type;
 use sqlx::{FromRow, Transaction};
 use tracing::instrument;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(FromRow, Display, derive_more::Debug, Serialize, Clone)]
+#[derive(FromRow, Display, derive_more::Debug, Serialize, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[display("{title}")]
 pub(crate) struct SshKey {
@@ -26,6 +27,7 @@ pub(crate) struct SshKey {
     pub(crate) fingerprint: String,
     pub(crate) algorithm: KeyType,
     #[serde(rename = "pubkey", serialize_with = "serialize_key_as_base64")]
+    #[schema(value_type = String)]
     #[debug(skip)]
     key: Vec<u8>,
     pub(crate) expires_at: Option<DateTime<Utc>>,
@@ -64,7 +66,7 @@ fn serialize_key_as_base64<S: Serializer>(key: &Vec<u8>, serializer: S) -> Resul
     serializer.serialize_str(&BASE64_STANDARD.encode(key))
 }
 
-#[derive(Type, Debug, Display, Deserialize, Serialize, Copy, Clone)]
+#[derive(Type, Debug, Display, Deserialize, Serialize, Copy, Clone, ToSchema)]
 #[sqlx(type_name = "ssh_key_type", rename_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
 #[display(rename_all = "kebab-case")]

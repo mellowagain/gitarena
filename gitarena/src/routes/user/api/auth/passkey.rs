@@ -154,6 +154,7 @@ pub(crate) async fn post_register_start(web_user: WebUser, webauthn: web::Data<W
 #[derive(Serialize, ToSchema)]
 pub(crate) struct RegisterStartResponse {
     pub(crate) challenge_id: Uuid,
+    #[schema(value_type = Object)]
     pub(crate) options: CreationChallengeResponse,
 }
 
@@ -404,5 +405,6 @@ pub(crate) async fn post_login_finish(
 #[derive(Deserialize, ToSchema)]
 pub(crate) struct LoginFinishRequest {
     pub(crate) challenge_id: Uuid,
+    #[schema(value_type = Object)]
     pub(crate) credential: PublicKeyCredential,
 }
