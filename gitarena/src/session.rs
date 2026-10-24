@@ -185,7 +185,7 @@ pub(crate) async fn send_login_email(user: &User, method: &str, request: &HttpRe
         let (ip, user_agent) = extract_ip_and_ua(request);
 
         let location = if log_ip {
-            let (city, country) = geoip::lookup(ip.ip());
+            let (city, country) = geoip::lookup(ip.ip()).unwrap_or_else(|_| (None, None));
             let mut result = String::new();
 
             if let Some(city) = city {

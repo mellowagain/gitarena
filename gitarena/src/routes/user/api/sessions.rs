@@ -29,7 +29,7 @@ pub(crate) struct SessionResponse {
 impl SessionResponse {
     pub(crate) fn new(session: Session, is_current: bool) -> Self {
         let ip = session.ip_address.ip();
-        let (city, country) = geoip::lookup(ip);
+        let (city, country) = geoip::lookup(ip).unwrap_or_else(|_| (None, None));
 
         SessionResponse {
             is_current,

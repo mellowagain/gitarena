@@ -2446,7 +2446,7 @@ dependencies = [
  "hmac 0.13.0",
  "http 1.5.0",
  "infer",
- "ipnetwork",
+ "ipnetwork 0.20.0",
  "itertools 0.15.0",
  "lettre",
  "linguist",
@@ -5153,6 +5153,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipnetwork"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf370abdafd54d13e54a620e8c3e1145f28e46cc9d704bc6d94414559df41763"
+
+[[package]]
 name = "iso8601"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5562,14 +5568,14 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "maxminddb"
-version = "0.24.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6087e5d8ea14861bb7c7f573afbc7be3798d3ef0fae87ec4fd9a4de9a127c3c"
+checksum = "9b43d2458d977b610b04a3858e6504f06133663d303a1a0606601b530bfc9bc6"
 dependencies = [
- "ipnetwork",
- "log",
+ "ipnetwork 0.21.1",
  "memchr",
  "serde",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -7958,7 +7964,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "hashlink",
  "indexmap",
- "ipnetwork",
+ "ipnetwork 0.20.0",
  "log",
  "memchr",
  "once_cell",
@@ -8080,7 +8086,7 @@ dependencies = [
  "hkdf 0.12.4",
  "hmac 0.12.1",
  "home",
- "ipnetwork",
+ "ipnetwork 0.20.0",
  "itoa",
  "log",
  "md-5 0.10.6",

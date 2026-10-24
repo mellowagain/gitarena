@@ -51,7 +51,7 @@ ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync 
 itertools = "0.15.0"
 lettre = { version = "0.11.23", features = ["smtp-transport", "tokio1", "tokio1-native-tls"] }
 linguist = "0.1.17"
-maxminddb = "0.24"
+maxminddb = "0.32.0"
 memmem = "0.1.1"
 meilisearch-sdk = "0.33.0"
 num_cpus = "1.17.0"
@@ -73,7 +73,7 @@ serde = { workspace = true }
 sha2 = "0.11.1"
 serde_cbor_2 = "0.13.0"
 serde_json = { workspace = true }
-sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] }
+sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] } # needs to be in sync with version fang uses
 sysinfo = "0.29.0"
 strum = { version = "0.28.0", features = ["derive"] }
 time = "0.3.55"
