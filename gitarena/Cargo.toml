@@ -33,7 +33,6 @@ bytes = "1.12.1"
 chrono = { workspace = true }
 console-subscriber = { version = "0.5.0", features = ["parking_lot"] }
 derive_more = { version = "2.1.1", features = ["debug"] }
-dos-date-time = { version = "0.3.0", features = ["chrono"] }
 either = "1.19.0"
 fang = { version = "0.11.0", default-features = false, features = ["asynk-postgres"] }
 fs2 = "0.4.3"
@@ -90,8 +89,8 @@ url = "2.5.8"
 utoipa = { version = "6.0.0", features = ["actix_extras", "chrono", "url", "uuid"] }
 utoipa-rapidoc = { version = "7.0.0", features = ["actix-web"] }
 uuid = { workspace = true, features = ["v4", "v5", "v7"] }
-webauthn-rs = { version = "0.5.4", features = ["danger-allow-state-serialisation", "conditional-ui"] }
-zip = { version = "0.5.13", default-features = false, features = ["deflate", "time"] }
+webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
+zip = { version = "9.1.0", default-features = false, features = ["deflate", "time", "chrono"] }
 
 [build-dependencies]
 vergen-gix = "10.0.3"

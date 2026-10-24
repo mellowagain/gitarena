@@ -23,7 +23,7 @@ use gix::odb::Store;
 use gix::odb::pack::FindExt;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::ZipWriter;
-use zip::write::FileOptions as ZipFileOptions;
+use zip::write::SimpleFileOptions;
 
 #[utoipa::path(
     get,
@@ -244,7 +244,7 @@ async fn write_directory_zip(
                 let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
                 let tree = Tree::from(tree_ref);
 
-                let dir_options = ZipFileOptions::default().last_modified_time(unix_secs_to_zip_datetime(mtime));
+                let dir_options = SimpleFileOptions::default().last_modified_time(unix_secs_to_zip_datetime(mtime));
                 writer.add_directory(format!("{}", path.display()), dir_options)?;
 
                 write_directory_zip(store.clone(), tree, path, writer, buffer, timestamps).await?;
@@ -252,7 +252,7 @@ async fn write_directory_zip(
             EntryKind::Blob | EntryKind::BlobExecutable => {
                 let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
-                let options = ZipFileOptions::default()
+                let options = SimpleFileOptions::default()
                     .unix_permissions(if matches!(kind, EntryKind::BlobExecutable) { 0o775 } else { 0o664 })
                     .last_modified_time(unix_secs_to_zip_datetime(mtime))
                     .large_file(content.len() >= 4_294_967_000); // 4 GiB
@@ -263,7 +263,7 @@ async fn write_directory_zip(
             EntryKind::Link => {
                 let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
 
-                let options = ZipFileOptions::default()
+                let options = SimpleFileOptions::default()
                     .unix_permissions(0o120_777)
                     .last_modified_time(unix_secs_to_zip_datetime(mtime));
 
@@ -284,7 +284,5 @@ fn unix_secs_to_zip_datetime(unix_secs: i64) -> zip::DateTime {
         .unwrap_or(chrono::DateTime::<chrono::Utc>::UNIX_EPOCH)
         .naive_utc();
 
-    let dos_dt = dos_date_time::DateTime::try_from(dt).unwrap_or(dos_date_time::DateTime::MIN);
-
-    zip::DateTime::from_msdos(dos_dt.date().to_raw(), dos_dt.time().to_raw())
+    zip::DateTime::try_from(dt).unwrap_or_default()
 }
