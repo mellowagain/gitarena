@@ -15,7 +15,7 @@ use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::decode::{Stream, streaming};
 use opentelemetry::KeyValue;
 use russh::keys::{HashAlg, PublicKey};
-use russh::server::{Auth, Handler, Msg, Server, Session};
+use russh::server::{Auth, ChannelOpenHandle, Handler, Msg, Server, Session};
 use russh::{Channel, ChannelId};
 use std::io;
 use std::mem;
@@ -194,8 +194,9 @@ impl Handler for SshHandler {
         self.finish_receive_pack(repo, channel, session).await
     }
 
-    async fn channel_open_session(&mut self, _channel: Channel<Msg>, _session: &mut Session) -> Result<bool, Self::Error> {
-        Ok(true)
+    async fn channel_open_session(&mut self, _: Channel<Msg>, handle: ChannelOpenHandle, _: &mut Session) -> Result<(), Self::Error> {
+        handle.accept().await;
+        Ok(())
     }
 
     #[instrument(skip(session))]

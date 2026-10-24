@@ -67,7 +67,7 @@ opentelemetry-semantic-conventions = "0.33.0"
 opentelemetry_sdk = { version = "0.33.0", features = ["rt-tokio"] }
 qstring = "0.7.2"
 rand = { workspace = true }
-russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
+russh = { version = "0.64.1", features = ["aws-lc-rs", "serde"] }
 rust-argon2 = { version = "3.0.0", features = ["crossbeam-utils"] }
 serde = { workspace = true }
 sha2 = "0.11.1"

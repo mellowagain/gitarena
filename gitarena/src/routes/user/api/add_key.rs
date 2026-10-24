@@ -54,7 +54,7 @@ pub(crate) async fn put_ssh_key(
     let key_title = if !body.title.is_empty() {
         &body.title
     } else if !public_key.comment().is_empty() {
-        public_key.comment()
+        public_key.comment().as_str_lossy()
     } else {
         die!(BAD_REQUEST, "Key requires a title");
     };
