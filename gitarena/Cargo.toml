@@ -59,12 +59,12 @@ oauth2 = { version = "4.1.0", default-features = false, git = "https://github.co
 http = "1.5.0"
 object_store = { version = "0.14.2", features = ["tokio", "http", "aws"] }
 once_cell = "1.21.4"
-opentelemetry = "0.31.0"
-opentelemetry-appender-tracing = { version = "0.31.1", default-features = false, features = ["log"] }
-opentelemetry-instrumentation-actix-web = { version = "0.23.0", features = ["metrics", "awc"] }
-opentelemetry-otlp = { version = "0.31.1", features = ["grpc-tonic", "tls-webpki-roots", "http-proto", "http-json", "reqwest-rustls-webpki-roots"] }
-opentelemetry-semantic-conventions = "0.31.0"
-opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
+opentelemetry = "0.33.1"
+opentelemetry-appender-tracing = { version = "0.33.1", default-features = false, features = ["log"] }
+opentelemetry-instrumentation-actix-web = { version = "0.25.0", features = ["metrics", "awc"] }
+opentelemetry-otlp = { version = "0.33.1", features = ["grpc-tonic", "tls-webpki-roots", "http-proto", "http-json", "reqwest-rustls"] }
+opentelemetry-semantic-conventions = "0.33.0"
+opentelemetry_sdk = { version = "0.33.0", features = ["rt-tokio"] }
 qstring = "0.7.2"
 rand = { workspace = true }
 russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
@@ -82,7 +82,7 @@ tokio = { version = "1.54.1", features = ["full", "tracing"] }
 tokio-tar = "0.3.1"
 tracing = { workspace = true }
 tracing-appender = "0.2.5"
-tracing-opentelemetry = "0.32.1"
+tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json", "std"] }
 tracing-unwrap = "1.0.1"
 trust-dns-resolver = { version = "0.23.2", features = ["dnssec-ring"] }
@@ -94,4 +94,4 @@ webauthn-rs = { version = "0.5.4", features = ["danger-allow-state-serialisation
 zip = { version = "0.5.13", default-features = false, features = ["deflate", "time"] }
 
 [build-dependencies]
-vergen = { version = "6.0.0", default-features = false, features = ["git", "rustc"] }
+vergen-gix = "10.0.3"
