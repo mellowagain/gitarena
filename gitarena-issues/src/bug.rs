@@ -223,10 +223,13 @@ pub fn create_bug(git_repo: &Repository, author: Author, title: String, body: St
 /// - `op`: Operation to append
 #[cfg_attr(feature = "tracing", instrument(err, skip(git_repo)))]
 pub fn append_operation(git_repo: &Repository, mut bug: Bug, author: Author, op: Operation) -> Result<Bug, Error> {
-    // a clock-spammed bug elsewhere in the repo must not push this bug past the jump limit
-    let edit_clock = clock::increment(git_repo, BUGS_EDIT)?.min(bug.edit_clock + MAX_CLOCK_JUMP);
     let ref_name = format!("{BUGS_REF_PREFIX}{}", bug.id);
     let current_tip = find_ref_target(git_repo, &ref_name)?.ok_or(Error::BugNotFound(bug.id))?;
+    let parent_clock = read_commit(git_repo, &bug.id, current_tip)?.edit_clock;
+
+    clock::witness(git_repo, BUGS_EDIT, parent_clock)?;
+    // a clock-spammed bug elsewhere in the repo must not push this bug past the jump limit
+    let edit_clock = clock::increment(git_repo, BUGS_EDIT)?.min(parent_clock + MAX_CLOCK_JUMP);
 
     author.write_identity_if_absent(git_repo)?;
 
@@ -464,6 +467,10 @@ fn build_bug(git_repo: &Repository, bug_id: &BugId, commits: HashMap<ObjectId, B
         .ok_or_else(|| invalid("root commit has no create-clock".to_owned()))?;
 
     let create_op = root.pack.ops.first().ok_or_else(|| invalid("root commit has no operations".to_owned()))?;
+
+    if create_op.op_type != OperationType::CREATE {
+        return Err(invalid("first operation is not a create operation".to_owned()));
+    }
 
     if BugId::from_create_operation(create_op.compute_id()) != *bug_id {
         return Err(invalid("does not match the ID of its first operation".to_owned()));

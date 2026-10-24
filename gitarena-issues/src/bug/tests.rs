@@ -110,7 +110,7 @@ fn concurrent_packs_are_ordered_by_edit_clock_then_pack_id() -> Result<()> {
 
 #[test]
 fn invalid_bugs_are_rejected() -> Result<()> {
-    let cases: [InvalidCase; 9] = [
+    let cases: [InvalidCase; 10] = [
         ("unsupported format version 5", |repo| {
             commit(repo, &pack(&[CREATE_OP]), &["create-clock-1", "edit-clock-1", "version-5"], &[])
         }),
@@ -120,8 +120,12 @@ fn invalid_bugs_are_rejected() -> Result<()> {
         ("has no create-clock", |repo| {
             commit(repo, &pack(&[CREATE_OP]), &["edit-clock-1", "version-4"], &[])
         }),
-        ("does not match the ID of its first operation", |repo| {
+        ("first operation is not a create operation", |repo| {
             commit(repo, &pack(&[comment("a").as_str()]), ROOT, &[])
+        }),
+        ("does not match the ID of its first operation", |repo| {
+            let other_create = CREATE_OP.replace("n1", "n2");
+            commit(repo, &pack(&[other_create.as_str()]), ROOT, &[])
         }),
         ("does not advance the edit-clock", |repo| {
             let root = commit(repo, &pack(&[CREATE_OP]), ROOT, &[])?;
@@ -218,6 +222,32 @@ fn merge_bug_rejects_invalid_remote() -> Result<()> {
 
     assert_matches!(err, Error::InvalidBug { reason, .. } if reason.contains("unsupported format version 5"));
     assert!(repo.try_find_reference(format!("{BUGS_REF_PREFIX}{}", bug_id()).as_str())?.is_none());
+
+    Ok(())
+}
+
+#[test]
+fn append_uses_the_clock_of_the_current_tip() -> Result<()> {
+    let dir = tempdir()?;
+    let repo = gix::init(dir.path())?;
+
+    let root = commit(&repo, &pack(&[CREATE_OP]), ROOT, &[])?;
+    let a = commit(&repo, &pack(&[comment("a").as_str()]), &["edit-clock-1000001", "version-4"], &[root])?;
+    let b = commit(&repo, &pack(&[comment("b").as_str()]), &["edit-clock-2000001", "version-4"], &[a])?;
+    point(&repo, b)?;
+
+    let stale = Bug {
+        id: bug_id(),
+        packs: Vec::new(),
+        create_clock: 1,
+        edit_clock: 1,
+    };
+
+    add_comment(&repo, stale, author(), "c".into())?;
+
+    let bug = load_bug(&repo, &bug_id())?;
+    assert_eq!(bug.edit_clock, 2_000_002);
+    assert_eq!(bug.snapshot().comments.len(), 3);
 
     Ok(())
 }
