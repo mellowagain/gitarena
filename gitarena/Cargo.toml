@@ -55,7 +55,7 @@ maxminddb = "0.32.0"
 memmem = "0.1.1"
 meilisearch-sdk = "0.33.0"
 num_cpus = "1.17.0"
-oauth2 = { version = "4.1.0", default-features = false, git = "https://github.com/mellowagain/oauth2-rs" }
+oauth2 = { version = "5.0.0", default-features = false }
 http = "1.5.0"
 object_store = { version = "0.14.2", features = ["tokio", "http", "aws"] }
 once_cell = "1.21.4"

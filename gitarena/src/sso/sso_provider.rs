@@ -14,7 +14,7 @@ use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::url::Url;
-use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
+use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointMaybeSet, EndpointNotSet, EndpointSet, RedirectUrl, Scope, TokenUrl};
 use qstring::QString;
 use sqlx::Transaction;
 use tracing::instrument;
@@ -28,7 +28,11 @@ pub(crate) trait SSOProvider {
     fn get_token_url(&self) -> Option<TokenUrl>;
 
     #[instrument(skip(self, db_pool))]
-    async fn build_client(&self, provider: &SSOProviderType, db_pool: &Pool) -> Result<BasicClient> {
+    async fn build_client(
+        &self,
+        provider: &SSOProviderType,
+        db_pool: &Pool,
+    ) -> Result<BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointMaybeSet>> {
         let mut transaction = db_pool.begin().await?;
 
         let (client_id, client_secret) = match provider {
@@ -75,7 +79,16 @@ pub(crate) trait SSOProvider {
 
         transaction.commit().await?;
 
-        Ok(BasicClient::new(client_id, client_secret, auth_url, token_url).set_redirect_uri(redirect_url))
+        let mut client = BasicClient::new(client_id)
+            .set_auth_uri(auth_url)
+            .set_token_uri_option(token_url)
+            .set_redirect_uri(redirect_url);
+
+        if let Some(client_secret) = client_secret {
+            client = client.set_client_secret(client_secret);
+        }
+
+        Ok(client)
     }
 
     fn get_scopes_as_str(&self) -> Vec<&'static str>;
@@ -114,8 +127,8 @@ pub(crate) trait SSOProvider {
         let client = self.build_client(provider, db_pool).await?;
 
         Ok(client
-            .exchange_code(code)
-            .request_async(async_http_client)
+            .exchange_code(code)?
+            .request_async(&async_http_client)
             .await
             .with_context(|| format!("Failed to contact {} in order to exchange oauth token", &self.get_name()))?)
     }
