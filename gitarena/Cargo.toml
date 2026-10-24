@@ -45,7 +45,7 @@ gitarena-issues = { path = "../gitarena-issues", features = ["tracing"] }
 gitarena-macros = { path = "../gitarena-macros" }
 gix = { workspace = true, features = ["async-network-client"] }
 hex = { workspace = true }
-hmac = "0.12.1"
+hmac = "0.13.0"
 infer = "0.22.0"
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses
 itertools = "0.15.0"
@@ -70,7 +70,7 @@ rand = { workspace = true }
 russh = { version = "0.60.2", features = ["aws-lc-rs", "serde"] }
 rust-argon2 = { version = "3.0.0", features = ["crossbeam-utils"] }
 serde = { workspace = true }
-sha2 = "0.10"
+sha2 = "0.11.1"
 serde_cbor_2 = "0.13.0"
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] }
