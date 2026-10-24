@@ -14,6 +14,6 @@ proc-macro = true
 
 [dependencies]
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.27"
-quote = "1.0.9"
+proc-macro2 = "1.0.107"
+quote = "1.0.47"
 syn = { version = "1.0.73", features = ["full"] }

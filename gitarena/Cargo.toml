@@ -20,7 +20,7 @@ actix-identity = "0.9.0"
 actix-session = { version = "0.11.0", features = ["cookie-session"] }
 actix-web = { version = "4.18.1", features = ["cookies", "secure-cookies"] }
 anyhow = { workspace = true }
-askalono = { version = "0.4.4", git = "https://github.com/mellowagain/askalono" } # Currently uses my own fork until https://github.com/jpeddicord/askalono/pull/73 is merged
+askalono = "0.5.0"
 askama = { version = "0.16.1", default-features = false, features = ["config", "derive", "std"] }
 async-compression = { version = "0.4.51", features = ["gzip", "tokio"] }
 async-recursion = "1.2.0"
