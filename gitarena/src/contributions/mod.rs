@@ -89,11 +89,15 @@ pub(crate) fn walk_new_commits(store: &Arc<Store>, old_oid: Option<ObjectId>, ne
                 continue;
             }
 
-            let Ok(commit) = CommitRef::from_bytes(data.data) else { continue };
-            let Ok(email) = std::str::from_utf8(commit.author.email) else { continue };
-            let parents: Vec<ObjectId> = commit.parents.iter().filter_map(|p| ObjectId::from_hex(p).ok()).collect();
+            let Ok(commit) = CommitRef::from_bytes(data.data, store.object_hash()) else {
+                continue;
+            };
 
-            (email.to_owned(), commit.author.seconds(), parents)
+            let Ok(author) = commit.author() else { continue };
+            let Ok(email) = std::str::from_utf8(author.email) else { continue };
+
+            let parents: Vec<ObjectId> = commit.parents.iter().filter_map(|p| ObjectId::from_hex(p).ok()).collect();
+            (email.to_owned(), author.seconds(), parents)
         };
 
         commits.push((format!("{oid}"), email, timestamp));

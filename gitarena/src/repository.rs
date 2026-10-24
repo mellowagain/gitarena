@@ -23,7 +23,6 @@ use derive_more::{Deref, Display};
 use fs_extra::dir;
 use git2::{Repository as Git2Repository, RepositoryInitOptions};
 use gix::Repository as GitoxideRepository;
-use gix::refs::file::find::existing::Error as GitoxideFindError;
 use gix::refs::file::loose::Reference;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
@@ -311,8 +310,8 @@ async fn extract_branch_from_request(db_pool: Data<Pool>, repo: Repository, tree
 
     let reference = match gitoxide_repo.refs.find_loose(tree.as_str()) {
         Ok(loose_ref) => Ok(loose_ref),
-        Err(GitoxideFindError::Find(err)) => Err(err),
-        Err(GitoxideFindError::NotFound { name: _ }) => die!(NOT_FOUND, "Tree not found"),
+        Err(err) if err.is_not_found() => die!(NOT_FOUND, "Tree not found"),
+        Err(err) => Err(err),
     }?;
 
     transaction.commit().await?;

@@ -12,7 +12,6 @@ use gix::date::parse::TimeBuf;
 use gix::objs::Tree;
 use gix::objs::tree::{Entry, EntryKind};
 use gix::refs::Target;
-use gix::refs::file::transaction::prepare::Error as PrepareError;
 use gix::refs::transaction::PreviousValue;
 use gix::{ObjectId, Repository};
 use sha2::{Digest, Sha256};
@@ -327,9 +326,7 @@ pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectI
 
     match git_repo.reference(ref_name, new_tip, expected, "") {
         Ok(_) => Ok(true),
-        Err(gix::reference::edit::Error::FileTransactionPrepare(
-            PrepareError::ReferenceOutOfDate { .. } | PrepareError::MustNotExist { .. } | PrepareError::MustExist { .. },
-        )) => Ok(false),
+        Err(err) if err.is_conflict() || err.is_not_found() => Ok(false),
         Err(err) => Err(Error::git(err)),
     }
 }
@@ -590,7 +587,7 @@ pub fn list_bug_ids(git_repo: &Repository) -> Result<Vec<BugId>, Error> {
     let mut ids = Vec::new();
 
     for reference in iter {
-        let reference = reference.map_err(Error::Git)?;
+        let reference = reference.map_err(Error::git)?;
         let full_name = reference.name().as_bstr().to_str_lossy().to_string();
 
         if let Some(id) = full_name.strip_prefix(BUGS_REF_PREFIX) {

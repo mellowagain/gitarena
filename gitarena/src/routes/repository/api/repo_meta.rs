@@ -8,7 +8,6 @@ use anyhow::{Result, bail};
 use bstr::ByteSlice;
 use gitarena_macros::route;
 use gix::objs::Tree;
-use gix::refs::file::find::existing::Error as GitoxideFindError;
 use serde::Serialize;
 use sqlx::Transaction;
 use utoipa::ToSchema;
@@ -58,8 +57,8 @@ async fn find_readme_file_name(repo: &Repository, tx: &mut Transaction<'_, Datab
 
     let reference = match gitoxide_repo.refs.find_loose(repo.default_branch.as_str()) {
         Ok(reference) => reference,
-        Err(GitoxideFindError::Find(err)) => bail!(err),
-        Err(GitoxideFindError::NotFound { .. }) => return Ok((true, None)),
+        Err(err) if err.is_not_found() => return Ok((true, None)),
+        Err(err) => bail!(err),
     };
 
     let tree_ref = repo_files_at_ref(&reference, store, &gitoxide_repo, &mut buffer).await?;

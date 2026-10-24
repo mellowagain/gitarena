@@ -28,7 +28,7 @@ unused_self = "allow"
 anyhow = "1.0.52"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
-gix = { version = "0.75.0", features = ["max-performance"] }
+gix = { version = "0.90.0", features = ["max-performance"] }
 hex = "0.4.3"
 rand = "0.10.1"
 serde = { version = "1.0.133", features = ["derive"] }

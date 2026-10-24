@@ -7,7 +7,6 @@ use crate::repository::Repository;
 use crate::user::User;
 use anyhow::{Context, Error, Result};
 use gitarena_macros::from_config;
-use gix::config::parse::section::ValueName;
 use gix::config::{File, Source};
 use sqlx::Transaction;
 use std::fs;
@@ -56,20 +55,14 @@ pub(crate) async fn init_zoekt_config(repo: &Repository, tx: &mut Transaction<'_
 
     let mut section = git_config.new_section("zoekt", None).context("failed to create zoekt section")?;
 
-    section.push(ValueName::try_from("repoid")?, Some(repo.zoekt_id.to_string().as_str().into()));
-    section.push(ValueName::try_from("name")?, Some(format!("{username}/{}", repo.name).as_str().into()));
-    section.push(
-        ValueName::try_from("web-url")?,
-        Some(format!("{domain}/{username}/{}", repo.name).as_str().into()),
-    );
-    section.push(ValueName::try_from("web-url-type")?, Some("gitea".into())); // seems compatible with our url schema
+    section.push("repoid", Some(repo.zoekt_id.to_string().as_str().into()))?;
+    section.push("name", Some(format!("{username}/{}", repo.name).as_str().into()))?;
+    section.push("web-url", Some(format!("{domain}/{username}/{}", repo.name).as_str().into()))?;
+    section.push("web-url-type", Some("gitea".into()))?; // seems compatible with our url schema
 
-    section.push(ValueName::try_from("archived")?, Some(repo.archived_at.is_some().to_string().as_str().into()));
-    section.push(ValueName::try_from("fork")?, Some(repo.forked_from.is_some().to_string().as_str().into()));
-    section.push(
-        ValueName::try_from("public")?,
-        Some(matches!(repo.visibility, RepoVisibility::Public).to_string().as_str().into()),
-    );
+    section.push("archived", Some(repo.archived_at.is_some().to_string().as_str().into()))?;
+    section.push("fork", Some(repo.forked_from.is_some().to_string().as_str().into()))?;
+    section.push("public", Some(matches!(repo.visibility, RepoVisibility::Public).to_string().as_str().into()))?;
 
     spawn_blocking(move || {
         let mut file = fs::File::create(path).context("failed to open git config in rw mode")?;

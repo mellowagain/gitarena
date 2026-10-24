@@ -7,7 +7,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable, Deserialize, FangError, Scheduled, Serialize, typetag};
 use gitarena_macros::from_config;
-use tracing::{info, instrument};
+use tracing::{debug, instrument};
 use uuid::Uuid;
 
 #[instrument(err, skip(queue, db_pool))]
@@ -65,7 +65,7 @@ impl AsyncRunnable for ExpiredVerifyLinkRemovalTask {
 
         tx.commit().await.fang()?;
 
-        info!(count = %result.rows_affected(), "deleted expired user verification links");
+        debug!(count = %result.rows_affected(), "deleted expired user verification links");
         Ok(())
     }
 

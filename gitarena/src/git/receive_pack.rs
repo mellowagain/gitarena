@@ -63,13 +63,14 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, gitoxide_repo:
 
             match data.kind {
                 Kind::Commit => {
-                    let commit = CommitRef::from_bytes(data.data)?;
-                    (commit.committer.to_owned()?, BString::from(commit.message))
+                    let commit = CommitRef::from_bytes(data.data, store.object_hash())?;
+                    (commit.committer()?, BString::from(commit.message))
                 }
                 Kind::Tag => {
-                    let tag = TagRef::from_bytes(data.data)?;
-                    let tagger = tag.tagger.ok_or_else(|| anyhow!("Pushed tag object has no tagger field"))?;
-                    (tagger.to_owned()?, BString::from(tag.message))
+                    let tag = TagRef::from_bytes(data.data, store.object_hash())?;
+                    let tagger = tag.tagger()?.ok_or_else(|| anyhow!("Pushed tag object has no tagger field"))?;
+
+                    (tagger, BString::from(tag.message))
                 }
                 _ => die!(BAD_REQUEST, "Unexpected payload data type"),
             }
@@ -103,7 +104,7 @@ pub(crate) async fn process_create_update(ref_update: &RefUpdate, gitoxide_repo:
             .transaction()
             .prepare(edits, REF_LOCK_FAIL_MODE, REF_LOCK_FAIL_MODE)
             .map_err(|err| anyhow!("Failed to commit transaction: {err}"))?
-            .commit(committer.to_ref(&mut TimeBuf::default()))?;
+            .commit(committer)?;
     }
 
     if ref_update.report_status || ref_update.report_status_v2 {

@@ -20,7 +20,7 @@ use gitarena_macros::from_config;
 use ipnetwork::{IpNetwork, Ipv6Network};
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
-use tracing::{info, instrument, warn};
+use tracing::{debug, instrument, warn};
 use tracing_unwrap::ResultExt;
 use uuid::Uuid;
 
@@ -250,7 +250,7 @@ impl AsyncRunnable for ExpiredSessionsRemovalTask {
 
         tx.commit().await.fang()?;
 
-        info!(count = %result.rows_affected(), "deleted expired user sessions");
+        debug!(count = %result.rows_affected(), "deleted expired user sessions");
         Ok(())
     }
 
