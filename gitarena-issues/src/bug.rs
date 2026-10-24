@@ -325,7 +325,7 @@ pub(crate) fn update_ref(git_repo: &Repository, ref_name: &str, new_tip: ObjectI
     match git_repo.reference(ref_name, new_tip, expected, "") {
         Ok(_) => Ok(true),
         Err(gix::reference::edit::Error::FileTransactionPrepare(
-            PrepareError::ReferenceOutOfDate { .. } | PrepareError::MustNotExist { .. } | PrepareError::MustExist { .. } | PrepareError::LockAcquire { .. },
+            PrepareError::ReferenceOutOfDate { .. } | PrepareError::MustNotExist { .. } | PrepareError::MustExist { .. },
         )) => Ok(false),
         Err(err) => Err(Error::git(err)),
     }
