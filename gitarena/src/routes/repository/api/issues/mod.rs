@@ -108,6 +108,10 @@ pub(crate) async fn create_issue(
         die!(BAD_REQUEST, "Issue title cannot be empty");
     }
 
+    if body.title.contains(['\n', '\r']) {
+        die!(BAD_REQUEST, "Issue title cannot contain line breaks");
+    }
+
     let mut tx = db_pool.begin().await?;
 
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
@@ -295,6 +299,10 @@ pub(crate) async fn update_issue(
     if let Some(new_title) = &body.title {
         if new_title.trim().is_empty() {
             die!(BAD_REQUEST, "Issue title cannot be empty");
+        }
+
+        if new_title.contains(['\n', '\r']) {
+            die!(BAD_REQUEST, "Issue title cannot contain line breaks");
         }
 
         let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;

@@ -17,6 +17,7 @@ use actix_web::http::header::{CONTENT_TYPE, HeaderValue};
 use actix_web::{HttpResponse, HttpResponseBuilder, ResponseError};
 use anyhow::{Error, Result};
 use derive_more::{Display, Error};
+use gitarena_issues::error::Error as IssuesError;
 use serde_json::json;
 use tracing::error;
 
@@ -145,9 +146,13 @@ pub(crate) struct GitArenaError {
 
 impl GitArenaError {
     fn status_code(&self) -> StatusCode {
-        match self.source.downcast_ref::<WithStatusCode>() {
-            Some(with_code) => with_code.code,
-            None => StatusCode::INTERNAL_SERVER_ERROR,
+        if let Some(with_code) = self.source.downcast_ref::<WithStatusCode>() {
+            return with_code.code;
+        }
+
+        match self.source.downcast_ref::<IssuesError>() {
+            Some(IssuesError::BugNotFound(_)) => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

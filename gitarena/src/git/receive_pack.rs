@@ -24,6 +24,8 @@ use anyhow::{Result, anyhow};
 use bstr::BString;
 use fang::{AsyncQueueable, AsyncRunnable};
 use git2::Repository as Git2Repository;
+use gitarena_issues::author::IDENTITIES_REF_PREFIX;
+use gitarena_issues::bug::BUGS_REF_PREFIX;
 use gix::actor::Signature;
 use gix::date::parse::TimeBuf;
 use gix::lock::acquire::Fail;
@@ -164,8 +166,11 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
     let side_band = updates[0].side_band_64k;
 
     for update in &updates {
-        if update.target_ref.starts_with("refs/bugs/") {
-            die!(FORBIDDEN, "Issues are managed through the GitArena web interface and cannot be pushed directly");
+        if update.target_ref.starts_with(BUGS_REF_PREFIX) || update.target_ref.starts_with(IDENTITIES_REF_PREFIX) {
+            die!(
+                FORBIDDEN,
+                "Issues and identities are managed through the GitArena web interface and cannot be pushed directly"
+            );
         }
     }
 

@@ -6,8 +6,8 @@ use crate::user::WebUser;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use gitarena_issues::author::load_author_name;
-use gitarena_issues::bug::load_bug;
-use gitarena_issues::operation::{BugStatus, OperationType};
+use gitarena_issues::bug::{Bug, load_bug};
+use gitarena_issues::operation::BugStatus;
 use gitarena_macros::route;
 use serde::Serialize;
 use tracing::instrument;
@@ -48,6 +48,7 @@ pub(crate) async fn get_issue_timeline(
     }
 
     let gitoxide_repo = repo.gitoxide(&mut tx).await?;
+
     tx.commit().await?;
 
     let bug = load_bug(&gitoxide_repo, &issue.git_bug_id.parse()?)?;
@@ -56,86 +57,93 @@ pub(crate) async fn get_issue_timeline(
     Ok(HttpResponse::Ok().json(events))
 }
 
-fn build_timeline(gitoxide_repo: &gix::Repository, bug: &gitarena_issues::bug::Bug) -> Vec<TimelineEvent> {
+fn build_timeline(gitoxide_repo: &gix::Repository, bug: &Bug) -> Vec<TimelineEvent> {
     let mut events = Vec::new();
-    let mut current_title = String::new();
 
-    for pack in &bug.packs {
+    let mut replayed = bug.clone();
+    replayed.packs.clear();
+
+    let mut before = replayed.snapshot();
+
+    for (pack_index, pack) in bug.packs.iter().enumerate() {
         let author_username = load_author_name(gitoxide_repo, &pack.author.id).unwrap_or_else(|_| pack.author.id.to_string());
 
-        for op in &pack.ops {
-            match op.op_type {
-                OperationType::CREATE => {
-                    current_title = op.title.clone().unwrap_or_default();
-                    events.push(TimelineEvent {
-                        kind: "created".to_owned(),
-                        timestamp: op.timestamp,
-                        author_username: author_username.clone(),
-                        old_title: None,
-                        new_title: None,
-                        status: None,
-                        label: None,
-                    });
-                }
-                OperationType::SET_TITLE => {
-                    let new_title = op.title.clone().unwrap_or_default();
-                    events.push(TimelineEvent {
-                        kind: "title_changed".to_owned(),
-                        timestamp: op.timestamp,
-                        author_username: author_username.clone(),
-                        old_title: Some(current_title.clone()),
-                        new_title: Some(new_title.clone()),
-                        status: None,
-                        label: None,
-                    });
-                    current_title = new_title;
-                }
-                OperationType::SET_STATUS => {
-                    let status_str = match op.status {
-                        Some(s) if s == BugStatus::OPEN => "open",
-                        _ => "closed",
-                    };
-                    events.push(TimelineEvent {
-                        kind: "status_changed".to_owned(),
-                        timestamp: op.timestamp,
-                        author_username: author_username.clone(),
-                        old_title: None,
-                        new_title: None,
-                        status: Some(status_str.to_owned()),
-                        label: None,
-                    });
-                }
-                OperationType::LABEL_CHANGE => {
-                    if let Some(added) = &op.added {
-                        for label in added {
-                            events.push(TimelineEvent {
-                                kind: "label_added".to_owned(),
-                                timestamp: op.timestamp,
-                                author_username: author_username.clone(),
-                                old_title: None,
-                                new_title: None,
-                                status: None,
-                                label: Some(label.clone()),
-                            });
-                        }
-                    }
-                    if let Some(removed) = &op.removed {
-                        for label in removed {
-                            events.push(TimelineEvent {
-                                kind: "label_removed".to_owned(),
-                                timestamp: op.timestamp,
-                                author_username: author_username.clone(),
-                                old_title: None,
-                                new_title: None,
-                                status: None,
-                                label: Some(label.clone()),
-                            });
-                        }
-                    }
-                }
-                // ADD_COMMENT and EDIT_COMMENT are handled separately via comments API
-                _ => {}
+        for (op_index, op) in pack.ops.iter().enumerate() {
+            let mut partial = pack.clone();
+            partial.ops.truncate(op_index + 1);
+            replayed.packs.truncate(pack_index);
+            replayed.packs.push(partial);
+
+            let after = replayed.snapshot();
+
+            if pack_index == 0 && op_index == 0 {
+                events.push(TimelineEvent {
+                    kind: "created".to_owned(),
+                    timestamp: op.timestamp,
+                    author_username: author_username.clone(),
+                    old_title: None,
+                    new_title: None,
+                    status: None,
+                    label: None,
+                });
+
+                before = after;
+                continue;
             }
+
+            if before.title != after.title {
+                events.push(TimelineEvent {
+                    kind: "title_changed".to_owned(),
+                    timestamp: op.timestamp,
+                    author_username: author_username.clone(),
+                    old_title: Some(op.was.clone().unwrap_or_else(|| before.title.clone())),
+                    new_title: Some(after.title.clone()),
+                    status: None,
+                    label: None,
+                });
+            }
+
+            if before.status != after.status {
+                events.push(TimelineEvent {
+                    kind: "status_changed".to_owned(),
+                    timestamp: op.timestamp,
+                    author_username: author_username.clone(),
+                    old_title: None,
+                    new_title: None,
+                    status: Some(if after.status == BugStatus::OPEN {
+                        "open".to_owned()
+                    } else {
+                        "closed".to_owned()
+                    }),
+                    label: None,
+                });
+            }
+
+            for label in after.labels.iter().filter(|label| !before.labels.contains(label)) {
+                events.push(TimelineEvent {
+                    kind: "label_added".to_owned(),
+                    timestamp: op.timestamp,
+                    author_username: author_username.clone(),
+                    old_title: None,
+                    new_title: None,
+                    status: None,
+                    label: Some(label.clone()),
+                });
+            }
+
+            for label in before.labels.iter().filter(|label| !after.labels.contains(label)) {
+                events.push(TimelineEvent {
+                    kind: "label_removed".to_owned(),
+                    timestamp: op.timestamp,
+                    author_username: author_username.clone(),
+                    old_title: None,
+                    new_title: None,
+                    status: None,
+                    label: Some(label.clone()),
+                });
+            }
+
+            before = after;
         }
     }
 
