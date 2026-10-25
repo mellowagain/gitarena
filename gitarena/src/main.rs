@@ -25,6 +25,7 @@ use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result, anyhow, bail};
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
+use rustls::crypto::ring;
 use std::env;
 use std::time::Duration;
 use time::Duration as TimeDuration;
@@ -75,6 +76,8 @@ pub(crate) static TASK_DB_POOL: OnceCell<Pool> = OnceCell::const_new();
 async fn main() -> Result<()> {
     let (telemetry_guards, logger_provider) = telemetry::init("gitarena")?;
     let broadcaster = Broadcaster::new();
+
+    let _ = ring::default_provider().install_default();
 
     let _log_guards = init_logger(&broadcaster, Some(&logger_provider))?;
 

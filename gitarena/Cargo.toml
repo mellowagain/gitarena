@@ -25,7 +25,7 @@ askama = { version = "0.16.1", default-features = false, features = ["config", "
 async-compression = { version = "0.4.51", features = ["gzip", "tokio"] }
 async-recursion = "1.2.0"
 async-trait = "0.1.92"
-awc = { version = "3.11.0", features = ["rustls"] }
+awc = { version = "3.11.0", features = ["rustls-0_23-webpki-roots"] }
 base64 = { workspace = true }
 bstr = "1.13.1"
 bs58 = "0.5.1"
@@ -66,8 +66,9 @@ opentelemetry-semantic-conventions = "0.33.0"
 opentelemetry_sdk = { version = "0.33.0", features = ["rt-tokio"] }
 qstring = "0.7.2"
 rand = { workspace = true }
-russh = { version = "0.64.1", features = ["aws-lc-rs", "serde"] }
+russh = { version = "0.64.1", default-features = false, features = ["flate2", "rsa", "ring", "serde"] }
 rust-argon2 = { version = "3.0.0", features = ["crossbeam-utils"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring"] }
 serde = { workspace = true }
 sha2 = "0.11.1"
 serde_cbor_2 = "0.13.0"
