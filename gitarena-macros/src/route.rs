@@ -1,18 +1,18 @@
+use manyhow::Result;
+use manyhow::{Emitter, bail, error_message};
 use proc_macro::TokenStream;
-use proc_macro_error::{abort, abort_call_site, abort_if_dirty, emit_error};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{ToTokens, quote};
+use syn::parse::Parser;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{Expr, ExprLit, FnArg, ItemFn, Lit, LitStr, Pat, Token, parse_macro_input};
+use syn::{Expr, ExprLit, FnArg, ItemFn, Lit, LitStr, Pat, Token};
 
 #[allow(clippy::too_many_lines)]
-pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut args: Vec<Expr> = parse_macro_input!(args with Punctuated::<Expr, Token![,]>::parse_terminated)
-        .into_iter()
-        .collect();
+pub(crate) fn route(args: TokenStream, input: TokenStream, emitter: &mut Emitter) -> Result<TokenStream> {
+    let mut args: Vec<Expr> = Punctuated::<Expr, Token![,]>::parse_terminated.parse(args)?.into_iter().collect();
 
-    let mut input = parse_macro_input!(input as ItemFn);
+    let mut input: ItemFn = syn::parse(input)?;
 
     let mut error_type = ErrorDisplayType::Unset;
     let mut error_type_index = 0;
@@ -28,20 +28,17 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
 
                     if lowered.as_str() == "err"
                         && let Expr::Lit(ExprLit { lit, .. }) = &*assign.right
-                        && let Some(parsed_error_type) = match_error_type(lit)
+                        && let Some(parsed_error_type) = match_error_type(lit, emitter)
                     {
                         error_type = parsed_error_type;
                         error_type_index = index;
                     }
                 } else {
-                    emit_error! {
-                        meta.span(),
-                        "meta name cannot be empty"
-                    }
+                    emitter.emit(error_message!(meta.span(), "meta name cannot be empty"));
                 }
             }
             Expr::Lit(ExprLit { lit: literal, .. }) if index == 0 => {
-                if let Some(meta) = sanitize_first_argument(literal) {
+                if let Some(meta) = sanitize_first_argument(literal, emitter) {
                     sanitized_first_arg = Some(meta);
                 }
             }
@@ -50,10 +47,10 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     if matches!(error_type, ErrorDisplayType::Unset) {
-        abort_call_site! {
+        bail!(
             "function does not have \"err\" attribute";
             help = "consider adding `err = \"json|git|text|plain\"`"
-        }
+        );
     }
 
     // actix-web doesn't know how to handle "err" so we remove it
@@ -66,7 +63,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     // Abort right now if the previous argument parsing emitted errors
-    abort_if_dirty();
+    emitter.into_result()?;
 
     let attrs = &mut input.attrs;
     let vis = &input.vis;
@@ -74,10 +71,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let body = &input.block;
 
     if sig.asyncness.is_none() {
-        abort! {
-            sig.fn_token.span,
-            "function needs to be async"
-        }
+        bail!(sig.fn_token.span, "function needs to be async");
     }
 
     // Create name for our generated function
@@ -128,11 +122,11 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
     let dummy_function_tokens = TokenStream::from(quote! {
         fn __generated__dummy() -> actix_web::Result<impl actix_web::Responder> {}
     });
-    let mut dummy_function = parse_macro_input!(dummy_function_tokens as ItemFn);
+    let mut dummy_function: ItemFn = syn::parse(dummy_function_tokens)?;
     let dummy_signature = &mut dummy_function.sig;
     sig.output = dummy_signature.output.clone();
 
-    TokenStream::from(quote! {
+    Ok(TokenStream::from(quote! {
         #(#attrs)*
         #[actix_web::route(#(#args),*)]
         #[tracing::instrument(name=#ident, skip_all)]
@@ -150,7 +144,7 @@ pub(crate) fn route(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }))
         }
-    })
+    }))
 }
 
 #[derive(Clone)]
@@ -174,7 +168,7 @@ impl ToTokens for ErrorDisplayType {
     }
 }
 
-fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
+fn match_error_type(input: &Lit, emitter: &mut Emitter) -> Option<ErrorDisplayType> {
     if let Lit::Str(str) = input {
         let value = str.value().to_lowercase();
 
@@ -183,11 +177,11 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
             "git" => Some(ErrorDisplayType::Git),
             "text" | "plain" => Some(ErrorDisplayType::Plain),
             _ => {
-                emit_error! {
+                emitter.emit(error_message!(
                     input.span(),
                     "unknown error type";
                     help = "accepted types are: \"json\", \"git\", \"text\" or \"plain\""
-                }
+                ));
 
                 None
             }
@@ -199,16 +193,16 @@ fn match_error_type(input: &Lit) -> Option<ErrorDisplayType> {
 
 /// Transforms routes which are only a "/" to an empty string. This allows scoped routes to have index
 /// pages without having to declare their route with a literal empty string (which is quite confusing).
-fn sanitize_first_argument(literal: &Lit) -> Option<Expr> {
+fn sanitize_first_argument(literal: &Lit, emitter: &mut Emitter) -> Option<Expr> {
     if let Lit::Str(str) = literal {
         let value = str.value();
 
         if value.is_empty() {
-            emit_error! {
+            emitter.emit(error_message!(
                 str.span(),
                 "route cannot be empty";
                 help = "if you want to match on index, use \"/\""
-            }
+            ));
         } else if value == "/" {
             return Some(Expr::Lit(ExprLit {
                 attrs: Vec::new(),

@@ -2,8 +2,8 @@ use crate::config::from_config as internal_from_config;
 use crate::config::from_optional_config as internal_from_optional_config;
 use crate::route::route as internal_route;
 
+use manyhow::{Emitter, manyhow};
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
 
 mod config;
 mod route;
@@ -29,10 +29,10 @@ mod route;
 /// 1. This macro requires `anyhow::Result` as a return type while the actix macro requires `actix_web::Result`
 /// 2. This macro attaches `#[instrument(skip_all)]` from the tracing library to the function with the correct method name
 ///
+#[manyhow]
 #[proc_macro_attribute]
-#[proc_macro_error]
-pub fn route(args: TokenStream, input: TokenStream) -> TokenStream {
-    internal_route(args, input)
+pub fn route(args: TokenStream, input: TokenStream, emitter: &mut Emitter) -> manyhow::Result<TokenStream> {
+    internal_route(args, input, emitter)
 }
 
 #[proc_macro]
