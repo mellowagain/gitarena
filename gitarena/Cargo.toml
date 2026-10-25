@@ -45,6 +45,7 @@ gitarena-issues = { version = "0.2.1", path = "../gitarena-issues", features = [
 gitarena-macros = { version = "0.0.0", path = "../gitarena-macros" }
 gix = { workspace = true, features = ["async-network-client"] }
 hex = { workspace = true }
+hickory-resolver = "0.26.3"
 hmac = "0.13.0"
 infer = "0.22.0"
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses
@@ -85,7 +86,6 @@ tracing-appender = "0.2.5"
 tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json", "std"] }
 tracing-unwrap = "1.0.1"
-trust-dns-resolver = { version = "0.23.2", features = ["dnssec-ring"] }
 url = "2.5.8"
 utoipa = { version = "6.0.0", features = ["actix_extras", "chrono", "url", "uuid"] }
 utoipa-rapidoc = { version = "7.0.0", features = ["actix-web"] }
