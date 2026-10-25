@@ -1,5 +1,5 @@
+use actix_web::web::Bytes;
 use anyhow::Result;
-use bytes::Bytes;
 use futures::stream::BoxStream;
 use object_store::path::Path;
 use object_store::{ObjectStore, ObjectStoreExt, PutPayload};
