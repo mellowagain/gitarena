@@ -40,8 +40,8 @@ fs_extra = "1.3.0"
 futures = "0.3.34"
 futures-locks = "0.7.1"
 git2 = "0.21.0"
-gitarena-issues = { path = "../gitarena-issues", features = ["tracing"] }
-gitarena-macros = { path = "../gitarena-macros" }
+gitarena-issues = { version = "0.2.1", path = "../gitarena-issues", features = ["tracing"] }
+gitarena-macros = { version = "0.0.0", path = "../gitarena-macros" }
 gix = { workspace = true, features = ["async-network-client"] }
 hex = { workspace = true }
 hmac = "0.13.0"
