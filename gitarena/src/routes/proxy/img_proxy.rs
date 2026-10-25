@@ -15,7 +15,7 @@ use serde::Deserialize;
 use tracing::{debug, instrument};
 use url::Url;
 
-const REQUEST_PASSTHROUGH_HEADERS: &[&str] = &["if-modified-since", "if-none-match", "cache-control", "pragma"];
+const REQUEST_PASSTHROUGH_HEADERS: &[&str] = &["accept-encoding", "if-modified-since", "if-none-match", "cache-control", "pragma"];
 const RESPONSE_PASSTHROUGH_HEADERS: &[&str] = &[
     "cache-control",
     "content-length",
@@ -118,7 +118,7 @@ pub(crate) async fn proxy(uri: web::Path<ProxyRequest>, request: HttpRequest) ->
 // TODO: cache this
 #[instrument(skip(request))]
 async fn request_ip(url: &str, address: IpAddr, port: u16, request: &HttpRequest) -> Result<HttpResponse> {
-    let mut client = Client::gitarena().get(url);
+    let mut client = Client::gitarena().get(url).no_decompress();
 
     for (name, value) in request
         .headers()

@@ -239,16 +239,16 @@ function resolveImageUrl(url: string, user: string, repo: string, branch: string
     if (/^data:image\//.test(url)) {
         return url;
     }
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     if (/^https?:\/\//.test(url)) {
         const hex = Array.from(url)
             .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
             .join("");
-        return `/api/proxy/${hex}`;
+        return `${backendUrl}/api/proxy/${hex}`;
     }
     // Relative path — resolve against the directory of the markdown file, serve raw bytes via blob URL
     const dir = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
     const resolved = dir ? `${dir}/${url}` : url;
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     return `${backendUrl}/${user}/${repo}/tree/${branch}/~blob/${resolved}`;
 }
 
