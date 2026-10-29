@@ -9,6 +9,7 @@ use gitarena_macros::route;
 #[utoipa::path(
     get,
     path = "/api/users/me/events",
+    summary = "Get Dashboard Feed",
     params(
         ("offset" = Option<i64>, Query, description = "Pagination offset"),
         ("limit" = Option<i64>, Query, description = "Maximum number of results (max 100, default 20)"),

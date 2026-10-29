@@ -47,6 +47,7 @@ pub(crate) struct BlameResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/branch/{tree}/blame/{file_path}",
+    summary = "Get Blame",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

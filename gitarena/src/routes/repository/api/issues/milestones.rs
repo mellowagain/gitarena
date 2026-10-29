@@ -15,6 +15,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/milestones",
+    summary = "List Milestones",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -77,6 +78,7 @@ pub(crate) struct MilestoneEntry {
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/milestones",
+    summary = "Create Milestone",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -151,6 +153,7 @@ pub(crate) struct CreateMilestoneRequest {
 #[utoipa::path(
     patch,
     path = "/api/repos/{namespace}/{repository}/milestones/{milestone_id}",
+    summary = "Update Milestone",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -249,6 +252,7 @@ pub(crate) struct UpdateMilestoneRequest {
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/milestones/{milestone_id}",
+    summary = "Delete Milestone",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

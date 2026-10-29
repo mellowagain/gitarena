@@ -26,6 +26,7 @@ pub(crate) struct RepoSearchResponse {
 #[utoipa::path(
     get,
     path = "/api/search/repositories",
+    summary = "Search Repositories",
     params(
         ("query" = String, Query, description = "Search query string"),
         ("offset" = Option<u32>, Query, description = "Pagination offset"),

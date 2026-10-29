@@ -13,6 +13,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/reactions",
+    summary = "Toggle Issue Reaction",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -81,6 +82,7 @@ pub(crate) async fn toggle_issue_reaction(
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/comments/{comment_id}/reactions",
+    summary = "Toggle Comment Reaction",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

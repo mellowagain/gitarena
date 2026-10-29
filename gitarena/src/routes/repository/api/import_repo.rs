@@ -26,6 +26,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/repo/import",
+    summary = "Import Repository",
     request_body = ImportJsonRequest,
     responses(
         (status = 200, description = "Repository import queued successfully", body = CreateJsonResponse),

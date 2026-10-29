@@ -34,6 +34,7 @@ pub(crate) struct UpsertCollaboratorRequest {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/collaborators",
+    summary = "List Collaborators",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -82,6 +83,7 @@ pub(crate) async fn list_collaborators(repo: Repository, web_user: WebUser, db_p
 #[utoipa::path(
     put,
     path = "/api/repos/{namespace}/{repository}/collaborators",
+    summary = "Add Collaborator",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -167,6 +169,7 @@ pub(crate) async fn upsert_collaborator(
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/collaborators/{username}",
+    summary = "Remove Collaborator",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

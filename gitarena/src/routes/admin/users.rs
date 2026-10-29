@@ -18,6 +18,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/admin/users",
+    summary = "List Users",
     responses(
         (status = 201, description = "Instance users", body = Vec<ExtendedUser>),
         (status = 400, description = "Invalid query strings"),
@@ -71,6 +72,7 @@ pub(crate) async fn get_instance_users(web_user: WebUser, request: HttpRequest, 
 #[utoipa::path(
     delete,
     path = "/api/admin/users/{id}",
+    summary = "Delete User",
     params(
         ("id" = Uuid, Path, description = "User ID"),
     ),

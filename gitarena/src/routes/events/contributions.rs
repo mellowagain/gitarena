@@ -17,6 +17,7 @@ const CONTRIBUTION_TYPES: &[&str] = &["issue.opened", "issue.closed", "pr.opened
 #[utoipa::path(
     get,
     path = "/api/users/{username}/contributions",
+    summary = "Get Contributions",
     params(
         ("username" = String, Path, description = "Username to look up"),
         ("year" = Option<i32>, Query, description = "Year to query (defaults to last 365 days)"),

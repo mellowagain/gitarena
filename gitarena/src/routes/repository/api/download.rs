@@ -28,6 +28,7 @@ use zip::write::SimpleFileOptions;
 #[utoipa::path(
     get,
     path = "/api/repo/{namespace}/{repository}/tree/{tree}/download/targz",
+    summary = "Download Tarball",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -170,6 +171,7 @@ async fn write_directory_tar(
 #[utoipa::path(
     get,
     path = "/api/repo/{namespace}/{repository}/tree/{tree}/download/zip",
+    summary = "Download Zip",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

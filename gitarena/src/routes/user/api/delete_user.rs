@@ -11,6 +11,7 @@ use gitarena_macros::route;
 #[utoipa::path(
     delete,
     path = "/api/users/me",
+    summary = "Delete Account",
     responses(
         (status = 204, description = "Account deleted"),
         (status = 401, description = "Authentication required"),

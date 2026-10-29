@@ -31,6 +31,7 @@ pub(crate) struct BranchesResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/branches",
+    summary = "List Branches",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

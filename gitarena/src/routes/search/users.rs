@@ -29,6 +29,7 @@ pub(crate) struct SearchUser {
 #[utoipa::path(
     get,
     path = "/api/search/users",
+    summary = "Search Users",
     params(
         ("query" = String, Query, description = "Search query string"),
         ("offset" = Option<u32>, Query, description = "Pagination offset"),

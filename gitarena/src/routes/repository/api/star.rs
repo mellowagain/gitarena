@@ -41,6 +41,7 @@ pub(crate) struct RepoStatsDetailResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/stats",
+    summary = "Get Repository Stats",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -84,6 +85,7 @@ pub(crate) async fn get_stats(repo: Repository, web_user: WebUser, db_pool: web:
 #[utoipa::path(
     post,
     path = "/api/repo/{namespace}/{repository}/star",
+    summary = "Star Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -119,6 +121,7 @@ pub(crate) async fn post_star(repo: Repository, web_user: WebUser, request: Http
 #[utoipa::path(
     delete,
     path = "/api/repo/{namespace}/{repository}/star",
+    summary = "Unstar Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

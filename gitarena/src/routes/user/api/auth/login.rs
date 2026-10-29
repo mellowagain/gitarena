@@ -20,6 +20,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/auth/login",
+    summary = "Log In",
     request_body = LoginJsonRequest,
     responses(
         (status = 200, description = "Login successful", body = MeResponse),

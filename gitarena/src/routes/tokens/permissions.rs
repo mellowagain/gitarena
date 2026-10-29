@@ -8,6 +8,7 @@ use gitarena_macros::route;
 #[utoipa::path(
     get,
     path = "/api/tokens/permissions",
+    summary = "List Token Permissions",
     responses(
         (status = 200, description = "Permissions that can be granted to a token", body = Vec<String>),
         (status = 401, description = "Authentication required"),

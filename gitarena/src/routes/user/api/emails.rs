@@ -17,6 +17,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/emails",
+    summary = "List Emails",
     responses(
         (status = 200, description = "List of emails for the authenticated user", body = Vec<Email>),
         (status = 401, description = "Authentication required"),
@@ -47,6 +48,7 @@ pub(crate) struct AddEmailRequest {
 #[utoipa::path(
     post,
     path = "/api/emails",
+    summary = "Add Email",
     request_body = AddEmailRequest,
     responses(
         (status = 201, description = "Email added", body = Email),
@@ -119,6 +121,7 @@ pub(crate) async fn post_email(
 #[utoipa::path(
     delete,
     path = "/api/emails/{id}",
+    summary = "Delete Email",
     params(("id" = Uuid, Path, description = "Email ID")),
     responses(
         (status = 204, description = "Email deleted"),
@@ -183,6 +186,7 @@ pub(crate) struct UpdateEmailRequest {
 #[utoipa::path(
     patch,
     path = "/api/emails/{id}",
+    summary = "Update Email",
     params(("id" = Uuid, Path, description = "Email ID")),
     request_body = UpdateEmailRequest,
     responses(
@@ -275,6 +279,7 @@ pub(crate) async fn patch_email(
 #[utoipa::path(
     post,
     path = "/api/emails/{id}/verify",
+    summary = "Resend Verification Email",
     params(("id" = Uuid, Path, description = "Email ID")),
     responses(
         (status = 204, description = "Verification email sent (or SMTP disabled)"),

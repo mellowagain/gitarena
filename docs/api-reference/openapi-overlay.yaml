@@ -1,0 +1,54 @@
+overlay: 1.0.0
+info:
+  title: GitArena docs overlay
+  version: 1.0.0
+actions:
+  - target: $
+    update:
+      servers:
+        - url: https://api.git.mari.zip
+  - target: $.tags[?(@.name == 'api')]
+    update:
+      x-group: General
+  - target: $.tags[?(@.name == 'explore')]
+    update:
+      x-group: Explore
+  - target: $.tags[?(@.name == 'repository')]
+    update:
+      x-group: Repositories
+  - target: $.tags[?(@.name == 'issues')]
+    update:
+      x-group: Issues
+  - target: $.tags[?(@.name == 'organization')]
+    update:
+      x-group: Organizations
+  - target: $.tags[?(@.name == 'user')]
+    update:
+      x-group: Users
+  - target: $.tags[?(@.name == 'search')]
+    update:
+      x-group: Search
+  - target: $.tags[?(@.name == 'admin')]
+    update:
+      x-group: Admin
+  - target: $.tags[?(@.name == 'token')]
+    update:
+      x-group: Tokens
+  - target: $.paths['/api/auth/passkey/register/start'].post
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/passkey/register/finish'].post
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/passkey/login/start'].post
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/passkey/login/finish'].post
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/login'].post
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/logout'].post
+    update:
+      x-hidden: true

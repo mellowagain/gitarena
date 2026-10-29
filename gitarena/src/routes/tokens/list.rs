@@ -15,6 +15,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/tokens",
+    summary = "List Tokens",
     params(
         ("org" = Option<Uuid>, Query, description = "List the tokens owned by this organization"),
         ("repo" = Option<Uuid>, Query, description = "List the tokens owned by this repository"),
@@ -109,6 +110,7 @@ impl TokenListParams {
 #[utoipa::path(
     get,
     path = "/api/tokens/{id}",
+    summary = "Get Token",
     params(("id" = Uuid, Path, description = "Token ID")),
     responses(
         (status = 200, description = "Token", body = TokenResponse),

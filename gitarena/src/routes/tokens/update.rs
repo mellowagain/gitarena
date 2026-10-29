@@ -19,6 +19,7 @@ use uuid::Uuid;
 #[utoipa::path(
     patch,
     path = "/api/tokens/{id}",
+    summary = "Update Token",
     params(("id" = Uuid, Path, description = "Token ID")),
     request_body = UpdateTokenRequest,
     responses(

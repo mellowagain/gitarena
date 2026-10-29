@@ -1,8 +1,10 @@
-use crate::issue::IssueStatus;
+use crate::events::{Event, EventClass, Subject};
+use crate::issue::{IssueCache, IssueCommentCache, IssueStatus};
 use crate::mail::Email;
 use crate::organization::{OrgMember, OrgRole, Organization};
 use crate::privileges::repo_access::AccessLevel;
 use crate::privileges::repo_visibility::RepoVisibility;
+use crate::release::Release;
 use crate::release::assets::{Arch, Kind, Libc, Os, ReleaseAssets};
 use crate::repository::Repository;
 use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceHealth};
@@ -14,25 +16,39 @@ use crate::routes::events::contributions::{ContributionDay, ContributionsRespons
 use crate::routes::explore::{ExploreRepo, ExploreResponse};
 use crate::routes::organization::api::create_org::CreateOrgRequest;
 use crate::routes::organization::api::members::{AddMemberRequest, OrgMemberEntry};
+use crate::routes::organization::api::org::UpdateOrgRequest;
+use crate::routes::organization::api::repos::OrgRepo;
 use crate::routes::repository::api::CreateJsonResponse;
 use crate::routes::repository::api::archive::ArchiveRequest;
 use crate::routes::repository::api::blame::{BlameHunk, BlameResponse};
-use crate::routes::repository::api::branch_files::{BranchFilesResponse, FileCommitInfo, FileEntry, FileType};
+use crate::routes::repository::api::branch_commits::{BranchCommitsResponse, SortOrder};
+use crate::routes::repository::api::branch_files::{BranchFilesResponse, CommitInfo, FileCommitInfo, FileEntry, FileType};
+use crate::routes::repository::api::branches::{BranchInfo, BranchesResponse};
 use crate::routes::repository::api::collaborators::{CollaboratorResponse, UpsertCollaboratorRequest};
 use crate::routes::repository::api::commit_detail::{
     CommitDetailResponse, CommitMeta, DiffFile, DiffHunk, DiffLineEntry, DiffLineKind, DiffStats, DiffStatus, FileStats, SignatureInfo,
 };
 use crate::routes::repository::api::create_repo::CreateJsonRequest;
+use crate::routes::repository::api::file_content::FileContentResponse;
+use crate::routes::repository::api::fork_repo::ForkJsonRequest;
 use crate::routes::repository::api::import_repo::ImportJsonRequest;
+use crate::routes::repository::api::issues::comments::{AddCommentRequest, EditCommentRequest};
 use crate::routes::repository::api::issues::labels::{CreateLabelRequest, LabelEntry, LabelsResponse, UpdateLabelRequest};
 use crate::routes::repository::api::issues::milestones::{CreateMilestoneRequest, MilestoneEntry, MilestonesResponse, UpdateMilestoneRequest};
+use crate::routes::repository::api::issues::reactions::{ReactionsResponse, ToggleReactionRequest};
 use crate::routes::repository::api::issues::timeline::TimelineEvent;
+use crate::routes::repository::api::issues::{
+    CommentResponse, CreateIssueRequest, IssueDetailResponse, IssueResponse, IssuesListResponse, MilestoneBrief, ReactionGroup, UpdateIssueRequest,
+};
 use crate::routes::repository::api::permissions::{PermissionsResponse, RepoPermissions};
 use crate::routes::repository::api::releases::{CreateAssetRequest, CreateAssetResponse, CreateReleaseRequest, ReleaseResponse, UpdateReleaseRequest};
+use crate::routes::repository::api::repo_meta::RepoMetaResponse;
 use crate::routes::repository::api::repo_readme::ReadmeResponse;
 use crate::routes::repository::api::star::{RepoStatsDetailResponse, RepoStatsStarsResponse};
 use crate::routes::repository::api::tags::{TagInfo, TagKind, TagsResponse};
+use crate::routes::repository::api::validate_repo::{ValidateQuery, ValidateResponse};
 use crate::routes::search::code::CodeSearchResponse;
+use crate::routes::search::issues::{IssueSearchResponse, IssueSearchResult};
 use crate::routes::search::repositories::RepoSearchResponse;
 use crate::routes::search::users::{SearchUser, UserSearchResponse};
 use crate::routes::tokens::TokenResponse;
@@ -41,8 +57,12 @@ use crate::routes::tokens::update::UpdateTokenRequest;
 use crate::routes::user::api::add_key::{AddKeyJsonRequest, AddKeyJsonResponse};
 use crate::routes::user::api::auth::login::LoginJsonRequest;
 use crate::routes::user::api::auth::me::MeResponse;
+use crate::routes::user::api::auth::passkey::{LoginFinishRequest, LoginStartResponse, PasskeyListItem, RegisterFinishRequest, RegisterStartResponse};
+use crate::routes::user::api::emails::{AddEmailRequest, UpdateEmailRequest};
 use crate::routes::user::api::issues::AssignedIssueEntry;
-use crate::routes::user::api::profile::{UserProfileRepo, UserProfileResponse, UserProfileStats};
+use crate::routes::user::api::orgs::UserOrgEntry;
+use crate::routes::user::api::profile::{UserByIdResponse, UserProfileRepo, UserProfileResponse, UserProfileStats};
+use crate::routes::user::api::sessions::SessionResponse;
 use crate::routes::user::api::sso::SSOProvidersResponse;
 use crate::routes::user::avatar::UploadAvatarResponse;
 use crate::ssh::key::{KeyType, SshKey};
@@ -77,7 +97,7 @@ struct CookieAuth;
 impl Modify for CookieAuth {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         if let Some(components) = openapi.components.as_mut() {
-            components.add_security_scheme("cookieAuth", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("gitarena-auth"))));
+            components.add_security_scheme("cookieAuth", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("gitarena-session"))));
         }
     }
 }
@@ -90,6 +110,7 @@ impl Modify for CookieAuth {
         crate::routes::api::api,
         crate::routes::explore::explore,
         crate::routes::repository::api::create_repo::create,
+        crate::routes::repository::api::validate_repo::validate,
         crate::routes::repository::api::import_repo::import,
         crate::routes::repository::api::repo_meta::meta,
         crate::routes::repository::api::repo_readme::readme,
@@ -100,6 +121,11 @@ impl Modify for CookieAuth {
         crate::routes::repository::api::star::post_star,
         crate::routes::repository::api::star::delete_star,
         crate::routes::repository::api::branch_files::branch_files,
+        crate::routes::repository::api::branches::branches,
+        crate::routes::repository::api::branch_commits::branch_commits,
+        crate::routes::repository::api::file_content::file_content,
+        crate::routes::repository::api::download::zip_file,
+        crate::routes::repository::api::download::tar_gz_file,
         crate::routes::repository::api::blame::blame,
         crate::routes::repository::api::commit_detail::commit_detail,
         crate::routes::user::api::add_key::put_ssh_key,
@@ -107,7 +133,25 @@ impl Modify for CookieAuth {
         crate::routes::user::api::auth::login::post_login,
         crate::routes::user::api::auth::logout::post_logout,
         crate::routes::user::api::auth::me::get_me,
+        crate::routes::user::api::auth::passkey::get_passkeys,
+        crate::routes::user::api::auth::passkey::delete_passkey,
+        crate::routes::user::api::auth::passkey::post_register_start,
+        crate::routes::user::api::auth::passkey::post_register_finish,
+        crate::routes::user::api::auth::passkey::post_login_start,
+        crate::routes::user::api::auth::passkey::post_login_finish,
         crate::routes::user::api::profile::get_user_profile,
+        crate::routes::user::api::profile::get_user_by_id,
+        crate::routes::user::api::orgs::get_user_orgs,
+        crate::routes::user::api::emails::get_emails,
+        crate::routes::user::api::emails::post_email,
+        crate::routes::user::api::emails::patch_email,
+        crate::routes::user::api::emails::delete_email,
+        crate::routes::user::api::emails::resend_verify_email,
+        crate::routes::user::api::sessions::get_sessions,
+        crate::routes::user::api::sessions::delete_session,
+        crate::routes::user::api::sessions::delete_all_sessions,
+        crate::routes::user::api::ssh_keys::get_ssh_keys,
+        crate::routes::user::api::ssh_keys::delete_ssh_key,
         crate::routes::user::api::delete_user::delete_self,
         crate::routes::user::api::issues::get_assigned_issues,
         crate::routes::user::avatar::get_avatar,
@@ -115,7 +159,9 @@ impl Modify for CookieAuth {
         crate::routes::user::avatar::delete_avatar,
         crate::routes::organization::api::create_org::create_org,
         crate::routes::organization::api::org::get_org,
+        crate::routes::organization::api::org::update_org,
         crate::routes::organization::api::org::delete_org,
+        crate::routes::organization::api::repos::list_repos,
         crate::routes::organization::api::members::list_members,
         crate::routes::organization::api::members::add_member,
         crate::routes::organization::api::members::remove_member,
@@ -130,12 +176,23 @@ impl Modify for CookieAuth {
         crate::routes::events::org_audit_log::get_org_audit_log,
         crate::routes::events::dashboard::get_dashboard_feed,
         crate::routes::search::code::get_code_search,
+        crate::routes::search::issues::get_issue_search,
         crate::routes::search::repositories::get_repo_search,
         crate::routes::search::users::get_user_search,
         crate::routes::repository::api::collaborators::list_collaborators,
         crate::routes::repository::api::collaborators::upsert_collaborator,
         crate::routes::repository::api::collaborators::remove_collaborator,
         crate::routes::repository::api::permissions::get_permissions,
+        crate::routes::repository::api::issues::list_issues,
+        crate::routes::repository::api::issues::create_issue,
+        crate::routes::repository::api::issues::get_issue_detail,
+        crate::routes::repository::api::issues::update_issue,
+        crate::routes::repository::api::issues::delete_issue,
+        crate::routes::repository::api::issues::comments::add_issue_comment,
+        crate::routes::repository::api::issues::comments::edit_issue_comment,
+        crate::routes::repository::api::issues::comments::delete_issue_comment,
+        crate::routes::repository::api::issues::reactions::toggle_issue_reaction,
+        crate::routes::repository::api::issues::reactions::toggle_comment_reaction,
         crate::routes::repository::api::issues::labels::list_labels,
         crate::routes::repository::api::issues::labels::create_label,
         crate::routes::repository::api::issues::labels::update_label,
@@ -171,6 +228,10 @@ impl Modify for CookieAuth {
         ExploreRepo,
         RepoVisibility,
         Repository,
+        RepoMetaResponse,
+        ValidateQuery,
+        ValidateResponse,
+        ForkJsonRequest,
         CreateJsonRequest,
         CreateJsonResponse,
         ImportJsonRequest,
@@ -181,6 +242,12 @@ impl Modify for CookieAuth {
         FileEntry,
         FileCommitInfo,
         FileType,
+        CommitInfo,
+        BranchInfo,
+        BranchesResponse,
+        BranchCommitsResponse,
+        SortOrder,
+        FileContentResponse,
         BlameResponse,
         BlameHunk,
         CommitDetailResponse,
@@ -198,9 +265,19 @@ impl Modify for CookieAuth {
         SSOProvidersResponse,
         LoginJsonRequest,
         MeResponse,
+        PasskeyListItem,
+        RegisterStartResponse,
+        RegisterFinishRequest,
+        LoginStartResponse,
+        LoginFinishRequest,
+        AddEmailRequest,
+        UpdateEmailRequest,
+        SessionResponse,
         UserProfileResponse,
         UserProfileRepo,
         UserProfileStats,
+        UserByIdResponse,
+        UserOrgEntry,
         AssignedIssueEntry,
         UploadAvatarResponse,
         Organization,
@@ -209,6 +286,8 @@ impl Modify for CookieAuth {
         CreateOrgRequest,
         AddMemberRequest,
         OrgMemberEntry,
+        UpdateOrgRequest,
+        OrgRepo,
         InstanceStats,
         InstanceHealth,
         InstanceComponent,
@@ -219,11 +298,16 @@ impl Modify for CookieAuth {
         SshKey,
         KeyType,
         EventResponse,
+        Event,
+        EventClass,
+        Subject,
         ContributionsResponse,
         ContributionDay,
         CodeSearchResponse,
         RepoSearchResponse,
         UserSearchResponse,
+        IssueSearchResponse,
+        IssueSearchResult,
         SearchUser,
         AccessLevel,
         CollaboratorResponse,
@@ -240,10 +324,25 @@ impl Modify for CookieAuth {
         UpdateMilestoneRequest,
         IssueStatus,
         TimelineEvent,
+        IssueCache,
+        IssueCommentCache,
+        IssuesListResponse,
+        IssueResponse,
+        IssueDetailResponse,
+        MilestoneBrief,
+        CommentResponse,
+        ReactionGroup,
+        CreateIssueRequest,
+        UpdateIssueRequest,
+        AddCommentRequest,
+        EditCommentRequest,
+        ToggleReactionRequest,
+        ReactionsResponse,
         TagInfo,
         TagKind,
         TagsResponse,
         ReleaseResponse,
+        Release,
         CreateAssetResponse,
         CreateReleaseRequest,
         UpdateReleaseRequest,
@@ -267,6 +366,7 @@ impl Modify for CookieAuth {
         (name = "api", description = "General API endpoints"),
         (name = "explore", description = "Explore public repositories"),
         (name = "repository", description = "Repository management"),
+        (name = "issues", description = "Issue tracking"),
         (name = "organization", description = "Organization management"),
         (name = "user", description = "User account management"),
         (name = "search", description = "Search endpoints"),

@@ -151,6 +151,7 @@ pub(crate) struct CommitDetailResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/commits/{oid}",
+    summary = "Get Commit",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

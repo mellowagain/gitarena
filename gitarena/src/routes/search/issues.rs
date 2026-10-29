@@ -18,6 +18,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/search/issues",
+    summary = "Search Issues",
     params(
         ("query" = String, Query, description = "Search query string"),
         ("offset" = Option<u32>, Query, description = "Pagination offset"),

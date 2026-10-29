@@ -25,6 +25,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/releases",
+    summary = "List Releases",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -86,6 +87,7 @@ pub(crate) struct ReleaseResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/releases/latest",
+    summary = "Get Latest Release",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -132,6 +134,7 @@ pub(crate) async fn latest_release(repo: Repository, db_pool: web::Data<Pool>) -
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}",
+    summary = "Get Release",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -184,6 +187,7 @@ pub(crate) async fn get_release(repo: Repository, path: web::Path<(String, Strin
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/releases",
+    summary = "Create Release",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -287,6 +291,7 @@ pub(crate) struct CreateReleaseRequest {
 #[utoipa::path(
     patch,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}",
+    summary = "Update Release",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -398,6 +403,7 @@ pub(crate) struct UpdateReleaseRequest {
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}",
+    summary = "Delete Release",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -470,6 +476,7 @@ pub(crate) async fn delete_release(
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}/assets",
+    summary = "Create Release Asset",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -571,6 +578,7 @@ pub(crate) struct CreateAssetResponse {
 #[utoipa::path(
     put,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}/assets/{asset_id}/confirm",
+    summary = "Confirm Release Asset",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -646,6 +654,7 @@ pub(crate) async fn confirm_asset(
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}/assets/{asset_id}/download",
+    summary = "Download Release Asset",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -717,6 +726,7 @@ pub(crate) async fn download_asset(
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/releases/{release_id}/assets/{asset_id}",
+    summary = "Delete Release Asset",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

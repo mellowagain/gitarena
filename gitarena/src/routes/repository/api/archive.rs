@@ -21,6 +21,7 @@ pub(crate) struct ArchiveRequest {
 #[utoipa::path(
     patch,
     path = "/api/repos/{namespace}/{repository}/archive",
+    summary = "Archive Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

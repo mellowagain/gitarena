@@ -23,6 +23,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/repo/{namespace}/{repository}/fork",
+    summary = "Fork Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

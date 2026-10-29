@@ -173,6 +173,7 @@ fn collect_entries(tree: Tree, path_prefix: &str, store: &Arc<Store>, files: &mu
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/branch/{tree}/files",
+    summary = "List Files",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

@@ -45,11 +45,11 @@ Route handlers use the `gitarena-macros` `#[route(...)]` macro and are registere
 | Request tracing | Adds tracing spans around requests |
 | Request metrics | Records HTTP metrics |
 | `NormalizePath` | Normalizes trailing slashes |
-| `actix-identity` | Cookie-based identity through the `gitarena-auth` cookie |
+| `actix-identity` + `actix-session` | Cookie-based identity through the encrypted `gitarena-session` cookie |
 | Header wrapper | Adds `Access-Control-Allow-Origin: *` to non-`.git` responses and no-cache headers to `.git` responses |
 | Error renderer | Converts application errors into JSON, text, git, HTML, or HTMX responses |
 
-The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 10-day max age. The `Secure` flag is added when the `domain` setting starts with `https`. Each session maps to a row in the `sessions` table, storing the user ID, IP address, user agent, and timestamps.
+The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 30-day max age that renews on every request. The `Secure` flag is added when the `domain` setting starts with `https`. Each session maps to a row in the `sessions` table, storing the user ID, IP address, user agent, and timestamps.
 
 ## Error handling
 

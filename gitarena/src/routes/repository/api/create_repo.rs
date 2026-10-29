@@ -23,6 +23,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/repo",
+    summary = "Create Repository",
     request_body = CreateJsonRequest,
     responses(
         (status = 200, description = "Repository created successfully", body = CreateJsonResponse),

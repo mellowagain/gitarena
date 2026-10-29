@@ -19,6 +19,7 @@ const REQUEST_PASSTHROUGH_HEADERS: &[&str] = &["accept-encoding", "if-modified-s
 const RESPONSE_PASSTHROUGH_HEADERS: &[&str] = &[
     "cache-control",
     "content-length",
+    "content-type",
     "etag",
     "expires",
     "last-modified",

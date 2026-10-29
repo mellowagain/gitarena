@@ -38,6 +38,7 @@ pub(crate) struct AssignedIssueEntry {
 #[utoipa::path(
     get,
     path = "/api/users/me/assigned-issues",
+    summary = "List Assigned Issues",
     responses(
         (status = 200, description = "Issues assigned to the authenticated user", body = Vec<AssignedIssueEntry>),
         (status = 401, description = "Authentication required"),

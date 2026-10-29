@@ -14,6 +14,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/labels",
+    summary = "List Labels",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -42,6 +43,7 @@ pub(crate) async fn list_labels(repo: Repository, db_pool: web::Data<Pool>) -> R
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/labels",
+    summary = "Create Label",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -111,6 +113,7 @@ pub(crate) async fn create_label(repo: Repository, web_user: WebUser, body: web:
 #[utoipa::path(
     put,
     path = "/api/repos/{namespace}/{repository}/labels/{label_id}",
+    summary = "Update Label",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -216,6 +219,7 @@ pub(crate) async fn update_label(
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/labels/{label_id}",
+    summary = "Delete Label",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

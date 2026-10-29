@@ -26,6 +26,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     get,
     path = "/api/sso",
+    summary = "List SSO Providers",
     responses(
         (status = 200, description = "Which SSO providers are enabled on this instance", body = SSOProvidersResponse),
     ),

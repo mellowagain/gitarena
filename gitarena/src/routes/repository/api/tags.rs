@@ -16,6 +16,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/tags",
+    summary = "List Tags",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
@@ -100,6 +101,7 @@ pub(crate) async fn list_tags(repo: Repository, db_pool: web::Data<Pool>) -> Res
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/tags/{tag}",
+    summary = "Delete Tag",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

@@ -22,7 +22,7 @@ export function proxy(request: NextRequest) {
     }
 
     const isProtected = PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-    if (isProtected && !request.cookies.has("gitarena-auth")) {
+    if (isProtected && !request.cookies.has("gitarena-session")) {
         const url = request.nextUrl.clone();
         url.pathname = "/login";
         url.searchParams.set("redirect", pathname);
