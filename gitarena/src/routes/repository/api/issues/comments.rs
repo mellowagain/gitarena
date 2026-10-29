@@ -20,6 +20,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/comments",
+    summary = "Add Comment",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -102,6 +103,7 @@ pub(crate) async fn add_issue_comment(
 #[utoipa::path(
     patch,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/comments/{comment_id}",
+    summary = "Edit Comment",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -195,6 +197,7 @@ pub(crate) async fn edit_issue_comment(
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/comments/{comment_id}",
+    summary = "Delete Comment",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

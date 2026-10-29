@@ -27,6 +27,7 @@ pub(crate) struct PermissionsResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/permissions",
+    summary = "Get Permissions",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

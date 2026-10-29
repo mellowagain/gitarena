@@ -48,6 +48,7 @@ pub(crate) struct UserProfileRepo {
 #[utoipa::path(
     get,
     path = "/api/users/{username}",
+    summary = "Get User Profile",
     params(
         ("username" = String, Path, description = "Username to look up"),
     ),
@@ -140,6 +141,7 @@ pub(crate) struct UserByIdResponse {
 #[utoipa::path(
     get,
     path = "/api/users/by-id/{id}",
+    summary = "Get User by ID",
     params(
         ("id" = Uuid, Path, description = "User ID to look up"),
     ),

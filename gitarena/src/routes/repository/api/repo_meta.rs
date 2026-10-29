@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all(serialize = "camelCase"))]
-struct RepoMetaResponse {
+pub(crate) struct RepoMetaResponse {
     #[serde(flatten)]
     repo: Repository,
     /// Whether the repository has no content yet
@@ -27,6 +27,7 @@ struct RepoMetaResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}",
+    summary = "Get Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

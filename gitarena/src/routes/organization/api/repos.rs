@@ -28,6 +28,7 @@ pub(crate) struct OrgRepo {
 #[utoipa::path(
     get,
     path = "/api/orgs/{name}/repos",
+    summary = "List Organization Repositories",
     params(
         ("name" = String, Path, description = "Organization name")
     ),

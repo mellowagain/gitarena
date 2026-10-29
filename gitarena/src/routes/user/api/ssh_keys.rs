@@ -13,6 +13,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/ssh-keys",
+    summary = "List SSH Keys",
     responses(
         (status = 200, description = "List of SSH keys for the authenticated user", body = Vec<SshKey>),
         (status = 401, description = "Authentication required"),
@@ -35,6 +36,7 @@ pub(crate) async fn get_ssh_keys(web_user: WebUser, db_pool: web::Data<Pool>) ->
 #[utoipa::path(
     delete,
     path = "/api/ssh-keys/{id}",
+    summary = "Delete SSH Key",
     params(("id" = Uuid, Path, description = "SSH key ID")),
     responses(
         (status = 204, description = "SSH key deleted"),

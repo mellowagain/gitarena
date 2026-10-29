@@ -46,6 +46,7 @@ impl SessionResponse {
 #[utoipa::path(
     get,
     path = "/api/sessions",
+    summary = "List Sessions",
     responses(
         (status = 200, description = "List of active sessions", body = Vec<SessionResponse>),
         (status = 401, description = "Authentication required"),
@@ -84,6 +85,7 @@ pub(crate) async fn get_sessions(id: Identity, web_user: WebUser, db_pool: web::
 #[utoipa::path(
     delete,
     path = "/api/sessions/{hash}",
+    summary = "Revoke Session",
     params(("hash" = String, Path, description = "Session hash to revoke")),
     responses(
         (status = 204, description = "Session revoked"),
@@ -148,6 +150,7 @@ pub(crate) async fn delete_session(
 #[utoipa::path(
     delete,
     path = "/api/sessions",
+    summary = "Revoke All Other Sessions",
     responses(
         (status = 204, description = "All other sessions revoked"),
         (status = 401, description = "Authentication required"),

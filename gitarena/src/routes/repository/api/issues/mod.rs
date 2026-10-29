@@ -31,12 +31,13 @@ pub(crate) mod timeline;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/issues",
+    summary = "List Issues",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
-        (status = 200, description = "List of issues", body = Vec<IssueResponse>),
+        (status = 200, description = "List of issues", body = IssuesListResponse),
         (status = 404, description = "Repository not found or access denied"),
     ),
     security((), ("cookieAuth" = [])),
@@ -75,6 +76,7 @@ pub(crate) async fn list_issues(repo: Repository, web_user: WebUser, db_pool: we
 #[utoipa::path(
     post,
     path = "/api/repos/{namespace}/{repository}/issues",
+    summary = "Create Issue",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -184,6 +186,7 @@ pub(crate) async fn create_issue(
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/issues/{index}",
+    summary = "Get Issue",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -251,6 +254,7 @@ pub(crate) async fn get_issue_detail(
 #[utoipa::path(
     patch,
     path = "/api/repos/{namespace}/{repository}/issues/{index}",
+    summary = "Update Issue",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),
@@ -566,6 +570,7 @@ pub(crate) async fn update_issue(
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}/issues/{index}",
+    summary = "Delete Issue",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

@@ -27,6 +27,7 @@ fn default_limit() -> i64 {
 #[utoipa::path(
     get,
     path = "/api/admin/audit-log",
+    summary = "Get Admin Audit Log",
     params(
         ("offset" = Option<i64>, Query, description = "Pagination offset"),
         ("limit" = Option<i64>, Query, description = "Maximum number of results (max 100, default 20)"),

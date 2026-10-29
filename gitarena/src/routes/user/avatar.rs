@@ -17,6 +17,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/avatar/{user_id}",
+    summary = "Get Avatar",
     params(("user_id" = Uuid, Path, description = "User ID")),
     responses(
         (status = 200, description = "User avatar", content_type = "image/webp"),
@@ -60,6 +61,7 @@ pub(crate) async fn get_avatar(request: web::Path<AvatarRequest>, storage: web::
 #[utoipa::path(
     post,
     path = "/api/avatar",
+    summary = "Upload Avatar",
     responses(
         (status = 200, description = "Avatar upload URL", body = UploadAvatarResponse),
         (status = 401, description = "Authentication required"),
@@ -94,6 +96,7 @@ pub(crate) async fn put_avatar(web_user: WebUser, storage: web::Data<Storage>) -
 #[utoipa::path(
     delete,
     path = "/api/avatar",
+    summary = "Delete Avatar",
     responses(
         (status = 204, description = "Avatar deleted"),
         (status = 401, description = "Authentication required"),

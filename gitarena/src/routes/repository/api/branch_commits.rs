@@ -19,7 +19,7 @@ fn default_limit() -> usize {
 
 #[derive(Deserialize, Default, ToSchema)]
 #[serde(rename_all = "lowercase")]
-enum SortOrder {
+pub(crate) enum SortOrder {
     #[default]
     Desc,
     Asc,
@@ -43,13 +43,14 @@ struct CommitsQuery {
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-struct BranchCommitsResponse {
+pub(crate) struct BranchCommitsResponse {
     commits: Vec<FileCommitInfo>,
 }
 
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/branch/{tree}/commits",
+    summary = "List Commits",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

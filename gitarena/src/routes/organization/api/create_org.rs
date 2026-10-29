@@ -26,6 +26,7 @@ pub(crate) struct CreateOrgRequest {
 #[utoipa::path(
     post,
     path = "/api/orgs",
+    summary = "Create Organization",
     request_body = CreateOrgRequest,
     responses(
         (status = 200, description = "Organization created successfully", body = Organization),

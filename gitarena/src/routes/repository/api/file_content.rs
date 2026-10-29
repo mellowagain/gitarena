@@ -33,7 +33,7 @@ struct FileContentRequest {
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-struct FileContentResponse {
+pub(crate) struct FileContentResponse {
     /// File content as UTF-8. Null for binary files or files exceeding the 5 MB size limit
     content: Option<String>,
     /// File size in bytes
@@ -49,6 +49,7 @@ struct FileContentResponse {
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/branch/{tree}/files/{file_path}",
+    summary = "Get File Content",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

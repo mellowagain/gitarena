@@ -79,7 +79,10 @@
             ]
           }
         ],
-        "openapi": "https://api.git.mari.zip/api-docs/openapi.json"
+        "openapi": {
+          "source": "https://api.git.mari.zip/api-docs/openapi.json",
+          "overlays": ["api-reference/openapi-overlay.yaml"]
+        }
       }
     ],
     "global": {
@@ -114,7 +117,8 @@
       "copy",
       "view",
       "chatgpt",
-      "claude"
+      "claude",
+      "download-spec"
     ]
   },
   "footer": {

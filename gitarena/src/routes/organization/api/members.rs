@@ -25,6 +25,7 @@ pub(crate) struct OrgMemberEntry {
 #[utoipa::path(
     get,
     path = "/api/orgs/{name}/members",
+    summary = "List Organization Members",
     params(
         ("name" = String, Path, description = "Organization name")
     ),
@@ -69,6 +70,7 @@ fn default_role() -> OrgRole {
 #[utoipa::path(
     put,
     path = "/api/orgs/{name}/members",
+    summary = "Add Organization Member",
     params(
         ("name" = String, Path, description = "Organization name")
     ),
@@ -160,6 +162,7 @@ pub(crate) async fn add_member(
 #[utoipa::path(
     delete,
     path = "/api/orgs/{name}/members/{username}",
+    summary = "Remove Organization Member",
     params(
         ("name" = String, Path, description = "Organization name"),
         ("username" = String, Path, description = "Username to remove"),

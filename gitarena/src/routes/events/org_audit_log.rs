@@ -11,6 +11,7 @@ use gitarena_macros::route;
 #[utoipa::path(
     get,
     path = "/api/orgs/{name}/audit-log",
+    summary = "Get Organization Audit Log",
     params(
         ("name" = String, Path, description = "Organization name"),
         ("offset" = Option<i64>, Query, description = "Pagination offset"),

@@ -33,6 +33,7 @@ pub(crate) struct ApiInfoResponse {
 #[utoipa::path(
     get,
     path = "/api",
+    summary = "Get Instance Info",
     responses(
         (status = 200, description = "API information", body = ApiInfoResponse),
     ),

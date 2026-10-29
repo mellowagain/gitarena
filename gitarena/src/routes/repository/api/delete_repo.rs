@@ -15,6 +15,7 @@ use serde_json::json;
 #[utoipa::path(
     delete,
     path = "/api/repos/{namespace}/{repository}",
+    summary = "Delete Repository",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),

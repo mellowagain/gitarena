@@ -26,6 +26,7 @@ pub(crate) struct ExploreResponse {
 #[utoipa::path(
     get,
     path = "/api/explore",
+    summary = "Explore Repositories",
     params(
         ("sort" = Option<String>, Query, description = "Sort order"),
         ("archived" = Option<u8>, Query, description = "Include archived repositories"),

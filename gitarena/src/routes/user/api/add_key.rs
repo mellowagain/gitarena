@@ -21,6 +21,7 @@ use uuid::Uuid;
 #[utoipa::path(
     put,
     path = "/api/ssh-key",
+    summary = "Add SSH Key",
     request_body = AddKeyJsonRequest,
     responses(
         (status = 201, description = "SSH key added successfully", body = AddKeyJsonResponse),

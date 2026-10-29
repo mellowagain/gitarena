@@ -11,7 +11,7 @@ GitArena supports multiple authentication methods: password login, passkeys (Web
 
 ## Cookie sessions
 
-After a successful login, GitArena creates a session and sets a cookie named `gitarena-auth`. The cookie value is `{user_id}${session_hash}`, which maps to a row in the `sessions` table.
+After a successful login, GitArena creates a session and sets an encrypted cookie named `gitarena-session`. It holds `{user_id}${session_hash}`, which maps to a row in the `sessions` table.
 
 Each session stores the user ID, IP address, user agent (truncated to 256 characters), and created/last-seen timestamps.
 
@@ -19,8 +19,8 @@ Cookie properties:
 
 | Property | Value |
 |----------|-------|
-| Name | `gitarena-auth` |
-| Max age | 10 days |
+| Name | `gitarena-session` |
+| Max age | 30 days, renewed on every request |
 | HttpOnly | Yes |
 | SameSite | Lax |
 | Secure | Yes when the `domain` setting starts with `https` |

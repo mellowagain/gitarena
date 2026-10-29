@@ -26,6 +26,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     get,
     path = "/api/admin/health",
+    summary = "Get Instance Health",
     responses(
         (status = 201, description = "Instance health", body = InstanceHealth),
         (status = 401, description = "Authentication required"),

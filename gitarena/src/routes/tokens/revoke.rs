@@ -15,6 +15,7 @@ use uuid::Uuid;
 #[utoipa::path(
     delete,
     path = "/api/tokens/{id}",
+    summary = "Revoke Token",
     params(("id" = Uuid, Path, description = "Token ID")),
     responses(
         (status = 204, description = "Token revoked"),

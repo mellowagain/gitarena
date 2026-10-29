@@ -15,6 +15,7 @@ use utoipa::{IntoParams, ToSchema};
 #[utoipa::path(
     get,
     path = "/api/repo/validate",
+    summary = "Validate Repository",
     params(ValidateQuery),
     responses(
         (status = 200, description = "Validation result with optional per-field errors", body = ValidateResponse),

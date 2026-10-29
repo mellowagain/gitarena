@@ -18,6 +18,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/orgs/{name}",
+    summary = "Get Organization",
     params(
         ("name" = String, Path, description = "Organization name")
     ),
@@ -45,6 +46,7 @@ pub(crate) async fn get_org(name: web::Path<String>, db_pool: web::Data<Pool>) -
 #[utoipa::path(
     delete,
     path = "/api/orgs/{name}",
+    summary = "Delete Organization",
     params(
         ("name" = String, Path, description = "Organization name")
     ),
@@ -117,6 +119,7 @@ pub(crate) struct UpdateOrgRequest {
 #[utoipa::path(
     patch,
     path = "/api/orgs/{name}",
+    summary = "Update Organization",
     params(
         ("name" = String, Path, description = "Organization name")
     ),

@@ -12,6 +12,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     get,
     path = "/api/admin/stats",
+    summary = "Get Instance Stats",
     responses(
         (status = 201, description = "Instance stats", body = InstanceStats),
         (status = 401, description = "Authentication required"),

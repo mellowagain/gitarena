@@ -22,6 +22,7 @@ pub(crate) struct UserOrgEntry {
 #[utoipa::path(
     get,
     path = "/api/users/{username}/orgs",
+    summary = "List User Organizations",
     params(
         ("username" = String, Path, description = "Username"),
     ),

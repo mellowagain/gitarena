@@ -28,6 +28,7 @@ pub(crate) struct CodeSearchResponse {
 #[utoipa::path(
     get,
     path = "/api/search/code",
+    summary = "Search Code",
     params(
         ("query" = String, Query, description = "Zoekt query string"),
         ("limit" = Option<i32>, Query, description = "Maximum number of files to return"),

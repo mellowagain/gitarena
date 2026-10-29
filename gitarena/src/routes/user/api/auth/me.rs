@@ -11,6 +11,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/auth/me",
+    summary = "Get Current User",
     responses(
         (status = 200, description = "Currently authenticated user", body = MeResponse),
         (status = 401, description = "Not authenticated"),

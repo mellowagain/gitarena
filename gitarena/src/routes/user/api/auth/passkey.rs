@@ -26,8 +26,9 @@ use webauthn_rs::prelude::{
 #[utoipa::path(
     get,
     path = "/api/auth/passkey",
+    summary = "List Passkeys",
     responses(
-        (status = 200, description = "List of registered passkeys"),
+        (status = 200, description = "List of registered passkeys", body = Vec<PasskeyListItem>),
         (status = 401, description = "Not authenticated"),
     ),
     security(("cookieAuth" = [])),
@@ -59,6 +60,7 @@ pub(crate) struct PasskeyListItem {
 #[utoipa::path(
     delete,
     path = "/api/auth/passkey/{id}",
+    summary = "Delete Passkey",
     params(("id" = Uuid, Path, description = "Passkey ID")),
     responses(
         (status = 204, description = "Passkey deleted"),
@@ -110,8 +112,9 @@ pub(crate) async fn delete_passkey(path: web::Path<Uuid>, web_user: WebUser, req
 #[utoipa::path(
     post,
     path = "/api/auth/passkey/register/start",
+    summary = "Start Passkey Registration",
     responses(
-        (status = 200, description = "Registration challenge"),
+        (status = 200, description = "Registration challenge", body = RegisterStartResponse),
         (status = 401, description = "Not authenticated"),
     ),
     security(("cookieAuth" = [])),
@@ -161,6 +164,7 @@ pub(crate) struct RegisterStartResponse {
 #[utoipa::path(
     post,
     path = "/api/auth/passkey/register/finish",
+    summary = "Finish Passkey Registration",
     request_body = RegisterFinishRequest,
     responses(
         (status = 201, description = "Passkey registered successfully"),
@@ -254,8 +258,9 @@ pub(crate) struct RegisterFinishRequest {
 #[utoipa::path(
     post,
     path = "/api/auth/passkey/login/start",
+    summary = "Start Passkey Login",
     responses(
-        (status = 200, description = "Authentication challenge"),
+        (status = 200, description = "Authentication challenge", body = LoginStartResponse),
         (status = 409, description = "Already logged in"),
     ),
     tag = "user"
@@ -292,6 +297,7 @@ pub(crate) struct LoginStartResponse {
 #[utoipa::path(
     post,
     path = "/api/auth/passkey/login/finish",
+    summary = "Finish Passkey Login",
     request_body = LoginFinishRequest,
     responses(
         (status = 200, description = "Login successful", body = MeResponse),

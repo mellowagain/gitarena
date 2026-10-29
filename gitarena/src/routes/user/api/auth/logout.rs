@@ -13,6 +13,7 @@ use tracing::debug;
 #[utoipa::path(
     post,
     path = "/api/auth/logout",
+    summary = "Log Out",
     responses(
         (status = 204, description = "Logged out successfully"),
         (status = 401, description = "Not logged in"),

@@ -16,6 +16,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     get,
     path = "/api/repos/{namespace}/{repository}/issues/{index}/timeline",
+    summary = "Get Issue Timeline",
     params(
         ("namespace" = String, Path, description = "Repository namespace"),
         ("repository" = String, Path, description = "Repository name"),

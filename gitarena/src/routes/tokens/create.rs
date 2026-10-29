@@ -21,6 +21,7 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/api/tokens",
+    summary = "Create Token",
     request_body = CreateTokenRequest,
     responses(
         (status = 201, description = "Token created", body = CreateTokenResponse),

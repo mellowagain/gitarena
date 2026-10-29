@@ -10,6 +10,7 @@ use gitarena_macros::route;
 #[utoipa::path(
     get,
     path = "/api/users/{username}/events",
+    summary = "Get User Activity",
     params(
         ("username" = String, Path, description = "Username to look up"),
         ("offset" = Option<i64>, Query, description = "Pagination offset"),

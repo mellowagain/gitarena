@@ -22,6 +22,7 @@ pub(crate) struct ReadmeResponse {
 #[utoipa::path(
     get,
     path = "/api/repo/{namespace}/{repository}/tree/{tree}/readme",
+    summary = "Get Readme",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
         ("repository" = String, Path, description = "Repository name"),
