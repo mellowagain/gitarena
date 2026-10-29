@@ -150,7 +150,7 @@ pub(crate) async fn delete_session(
 #[utoipa::path(
     delete,
     path = "/api/sessions",
-    summary = "Revoke All Sessions",
+    summary = "Revoke All Other Sessions",
     responses(
         (status = 204, description = "All other sessions revoked"),
         (status = 401, description = "Authentication required"),

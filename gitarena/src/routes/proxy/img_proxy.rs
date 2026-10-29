@@ -8,7 +8,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
 use awc::Client;
 use awc::http::StatusCode;
-use awc::http::header::USER_AGENT;
+use awc::http::header::{CONTENT_SECURITY_POLICY, USER_AGENT, X_CONTENT_TYPE_OPTIONS};
 use gitarena_macros::route;
 use opentelemetry_instrumentation_actix_web::ClientExt;
 use serde::Deserialize;
@@ -150,6 +150,10 @@ async fn request_ip(url: &str, address: IpAddr, port: u16, request: &HttpRequest
 
     let status = upstream_response.status();
     let mut response = HttpResponse::build(status);
+
+    // SVGs are documents and can run scripts on our origin when opened directly
+    response.insert_header((CONTENT_SECURITY_POLICY, "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"));
+    response.insert_header((X_CONTENT_TYPE_OPTIONS, "nosniff"));
 
     for (name, value) in upstream_response.headers() {
         let lowered_name = name.as_str().to_lowercase();

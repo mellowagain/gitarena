@@ -21,13 +21,14 @@ use gix::objs::Tree;
 use gix::objs::tree::EntryKind;
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
+use tokio::io::AsyncWriteExt;
 use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
 #[utoipa::path(
     get,
-    path = "/api/repo/{namespace}/{repository}/tree/{tree}/download/targz",
+    path = "/api/{namespace}/{repository}/tree/{tree}/download/targz",
     summary = "Download Tarball",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),
@@ -70,7 +71,9 @@ pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch, db_pool: web::
 
     let tar_data = builder.into_inner().await?;
 
-    let encoder = GzipEncoder::new(tar_data);
+    let mut encoder = GzipEncoder::new(Vec::new());
+    encoder.write_all(&tar_data).await?;
+    encoder.shutdown().await?;
     let gzip_data = encoder.into_inner();
 
     Ok(HttpResponse::Ok()
@@ -170,7 +173,7 @@ async fn write_directory_tar(
 
 #[utoipa::path(
     get,
-    path = "/api/repo/{namespace}/{repository}/tree/{tree}/download/zip",
+    path = "/api/{namespace}/{repository}/tree/{tree}/download/zip",
     summary = "Download Zip",
     params(
         ("namespace" = String, Path, description = "Repository namespace (user or organization)"),

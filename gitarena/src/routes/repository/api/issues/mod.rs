@@ -37,7 +37,7 @@ pub(crate) mod timeline;
         ("repository" = String, Path, description = "Repository name"),
     ),
     responses(
-        (status = 200, description = "List of issues", body = Vec<IssueResponse>),
+        (status = 200, description = "List of issues", body = IssuesListResponse),
         (status = 404, description = "Repository not found or access denied"),
     ),
     security((), ("cookieAuth" = [])),
