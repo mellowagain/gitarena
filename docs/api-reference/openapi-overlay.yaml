@@ -52,3 +52,24 @@ actions:
   - target: $.paths['/api/auth/logout'].post
     update:
       x-hidden: true
+  - target: $.paths['/api/users/me'].delete
+    update:
+      x-hidden: true
+  - target: $.paths['/api/sessions'].get
+    update:
+      x-hidden: true
+  - target: $.paths['/api/sessions'].delete
+    update:
+      x-hidden: true
+  - target: $.paths['/api/sessions/{hash}'].delete
+    update:
+      x-hidden: true
+  - target: $.paths['/api/auth/passkey/{id}'].delete
+    update:
+      x-hidden: true
+  - target: $.paths['/api/sso'].get
+    update:
+      x-hidden: true
+  - target: $.paths['/api/repo/validate'].get
+    update:
+      x-hidden: true
