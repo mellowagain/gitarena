@@ -247,7 +247,11 @@ async fn extract_webuser_from_request<F: Future<Output = Result<Option<Identity>
                 .fetch_optional(&mut *transaction)
                 .await?;
 
-            user.map_or_else(|| WebUser::Anonymous, WebUser::Authenticated)
+            match user {
+                Some(user) if user.disabled => WebUser::Anonymous,
+                Some(user) => WebUser::Authenticated(user),
+                None => WebUser::Anonymous,
+            }
         } else {
             identity.logout();
 

@@ -141,7 +141,12 @@ impl Handler for SshHandler {
 
         let user = User::find_using_id(key.owner, &mut tx)
             .await
-            .expect("existing ssh key to be associated with a existant user");
+            .expect("existing ssh key to be associated with a existent user");
+
+        if user.disabled {
+            debug!(user.username, user.id = %user.id, "Received ssh from disabled user");
+            return Ok(Auth::reject());
+        }
 
         tx.commit().await?;
 
