@@ -14,6 +14,8 @@ COPY --from=planner /usr/src/gitarena/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
+ARG VERGEN_GIT_SHA
+
 RUN cargo build --release
 
 FROM golang:trixie AS zoekt-builder
