@@ -1,0 +1,13 @@
+{
+  "name": "gitarena",
+  "image": "ghcr.io/mellowagain/gitarena-dev:latest",
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    "source=codex-config-${devcontainerId},target=/home/vscode/.codex,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  }
+}

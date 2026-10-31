@@ -1,0 +1,9 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts", "pnpmVersion": "10.33.0" },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  }
+}
