@@ -63,7 +63,6 @@ use crate::routes::user::api::issues::AssignedIssueEntry;
 use crate::routes::user::api::orgs::UserOrgEntry;
 use crate::routes::user::api::profile::{UserByIdResponse, UserProfileRepo, UserProfileResponse, UserProfileStats};
 use crate::routes::user::api::sessions::SessionResponse;
-use crate::routes::user::api::sso::SSOProvidersResponse;
 use crate::routes::user::avatar::UploadAvatarResponse;
 use crate::ssh::key::{KeyType, SshKey};
 use crate::token::{Token, TokenPermission, TokenScope, TokenType};
@@ -262,7 +261,6 @@ impl Modify for CookieAuth {
         DiffFile,
         AddKeyJsonRequest,
         AddKeyJsonResponse,
-        SSOProvidersResponse,
         LoginJsonRequest,
         MeResponse,
         PasskeyListItem,

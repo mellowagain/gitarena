@@ -30,6 +30,7 @@ use std::env;
 use std::time::Duration;
 use time::Duration as TimeDuration;
 use tokio::sync::OnceCell;
+use tokio::task::LocalSet;
 use tracing::{info, warn};
 use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
@@ -130,6 +131,8 @@ async fn main() -> Result<()> {
 
     zoekt::init(&db_pool).await?;
     contributions::init(&db_pool).await?;
+
+    LocalSet::new().run_until(sso::provider::init(&db_pool)).await?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 

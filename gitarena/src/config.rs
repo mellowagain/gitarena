@@ -50,7 +50,7 @@ where
 ///
 /// The later case should never happen if the programmer added their setting to schema.sql
 #[instrument(err, skip(tx))]
-pub(crate) async fn get_setting<T>(key: &'static str, tx: &mut Transaction<'_, Database>) -> Result<T>
+pub(crate) async fn get_setting<T>(key: &str, tx: &mut Transaction<'_, Database>) -> Result<T>
 where
     T: TryFrom<Setting> + Send,
     <T as TryFrom<Setting>>::Error: HoldsError + Send + Sync + 'static,
@@ -63,6 +63,14 @@ where
 
     let result: T = setting.try_into().map_err(|err: T::Error| err.into_inner())?;
     Ok(result)
+}
+
+#[instrument(err, skip(tx))]
+pub(crate) async fn get_settings_like(like: &str, tx: &mut Transaction<'_, Database>) -> Result<Vec<Setting>> {
+    Ok(sqlx::query_as::<_, Setting>("select * from settings where key like $1 order by key")
+        .bind(like)
+        .fetch_all(&mut **tx)
+        .await?)
 }
 
 #[instrument(err, skip(tx))]

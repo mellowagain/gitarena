@@ -1,19 +1,24 @@
-use crate::sso::sso_provider_type::SSOProviderType;
-
+use chrono::{DateTime, Utc};
+use serde_json::Value;
 use sqlx::FromRow;
+use sqlx::types::Json;
 use uuid::Uuid;
 
-mod bitbucket_sso;
-mod github_sso;
-mod gitlab_sso;
-mod oauth2_awc_client;
-pub(crate) mod oauth_request;
-pub(crate) mod sso_provider;
-pub(crate) mod sso_provider_type;
+pub(crate) mod oidc;
+pub(crate) mod provider;
 
-#[derive(FromRow)]
-pub(crate) struct SSO {
-    pub(crate) user_id: Uuid, // User id on our end
-    pub(crate) provider: SSOProviderType,
-    pub(crate) provider_id: String, // User id on the provider end
+#[derive(FromRow, Debug)]
+pub(crate) struct SsoConnection {
+    pub(crate) user_id: Uuid,
+    pub(crate) provider: String,
+    pub(crate) provider_id: String,
+}
+
+#[derive(FromRow, derive_more::Debug)]
+pub(crate) struct SsoState {
+    #[debug(skip)]
+    csrf_token: String,
+    #[debug(skip)]
+    state: Json<Value>,
+    created_at: DateTime<Utc>,
 }

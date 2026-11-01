@@ -1,147 +1,200 @@
+use crate::config::get_setting;
+use crate::crypto::random_hex_string;
 use crate::database::Pool;
-use crate::prelude::HttpRequestExtensions;
-use crate::session::Session;
-use crate::sso::SSO;
-use crate::sso::sso_provider::SSOProvider;
-use crate::sso::sso_provider_type::SSOProviderType;
-use crate::user::{User, WebUser};
-use crate::{die, err};
-
-use std::str::FromStr;
-
 use crate::events::Event;
-use crate::mail::Email;
 use crate::meili::MeiliClient;
+use crate::session::Session;
+use crate::sso::provider::{SSO_PROVIDERS, SsoProvider, SsoProviderType};
+use crate::user::{User, WebUser};
+use crate::verification::send_verification_mail;
+use crate::{die, sso};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
-use anyhow::{Context, Result};
-use gitarena_macros::{from_config, route};
-use oauth2::TokenResponse;
-use serde::{Deserialize, Serialize};
+use anyhow::Result;
+use chrono::Local;
+use fang::AsyncQueue;
+use gitarena_macros::route;
+use serde::Deserialize;
 use serde_json::json;
+use sqlx::types::Json;
 use tracing::debug;
-use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[utoipa::path(
     get,
     path = "/api/sso",
     summary = "List SSO Providers",
     responses(
-        (status = 200, description = "Which SSO providers are enabled on this instance", body = SSOProvidersResponse),
+        (status = 200, description = "Which SSO providers are enabled on this instance", body = Vec<String>),
     ),
     tag = "user"
 )]
 #[route("/api/sso", method = "GET", err = "json")]
-pub(crate) async fn get_sso_providers(db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let (sso_github_enabled, sso_gitlab_enabled, sso_bitbucket_enabled) = from_config!(
-        "sso.github.enabled" => bool,
-        "sso.gitlab.enabled" => bool,
-        "sso.bitbucket.enabled" => bool
-    );
-
-    Ok(HttpResponse::Ok().json(SSOProvidersResponse {
-        github: sso_github_enabled,
-        gitlab: sso_gitlab_enabled,
-        bitbucket: sso_bitbucket_enabled,
-    }))
-}
-
-/// Whether the specific SSO methods are enabled
-#[derive(Serialize, ToSchema)]
-pub(crate) struct SSOProvidersResponse {
-    github: bool,
-    gitlab: bool,
-    bitbucket: bool,
+pub(crate) async fn get_sso_providers() -> Result<impl Responder> {
+    let providers = SSO_PROVIDERS
+        .get()
+        .map(|v| v.iter().map(SsoProviderType::name).collect::<Vec<_>>())
+        .unwrap_or_default();
+    Ok(HttpResponse::Ok().json(providers))
 }
 
 #[route("/api/sso/{service}", method = "GET", err = "json")]
-pub(crate) async fn initiate_sso(sso_request: web::Path<SSORequest>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn initiate_sso(service: web::Path<String>, web_user: WebUser, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     if matches!(web_user, WebUser::Authenticated(_)) {
         die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|()| err!(BAD_REQUEST, "Unknown service"))?;
-    let provider_impl = provider.get_implementation();
+    let Some(provider) = sso::provider::get(&service) else {
+        return Ok(HttpResponse::NotFound().finish());
+    };
 
-    // TODO: Save token in cache to check for CSRF
-    let (url, _token) = SSOProvider::generate_auth_url(&*provider_impl, &provider, &db_pool).await?;
+    let mut tx = db_pool.begin().await?;
+    let auth_url_return = provider.auth_url().await?;
 
-    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, url.to_string())).finish())
+    sqlx::query("insert into sso_state (csrf_token, provider, state) values ($1, lower($2), $3)")
+        .bind(auth_url_return.csrf_token)
+        .bind(service.as_str())
+        .bind(Json(auth_url_return.state))
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, auth_url_return.auth_url)).finish())
 }
 
-#[route("/api/sso/{service}/callback", method = "GET", err = "json")]
+#[route("/api/sso/{service}/authorize", method = "GET", err = "json")]
 pub(crate) async fn sso_callback(
-    sso_request: web::Path<SSORequest>,
+    service: web::Path<String>,
+    query: web::Query<CallbackQuery>,
+    web_user: WebUser,
     request: HttpRequest,
+    queue: web::Data<AsyncQueue>,
     meili_client: web::Data<MeiliClient>,
     db_pool: web::Data<Pool>,
 ) -> Result<impl Responder> {
-    let provider = SSOProviderType::from_str(sso_request.service.as_str()).map_err(|()| err!(BAD_REQUEST, "Unknown service"))?;
-    let provider_impl = provider.get_implementation();
-
-    let query_string = request.q_string();
-    let token_response = SSOProvider::exchange_response(&*provider_impl, &query_string, &provider, &db_pool).await?;
-
-    if !SSOProvider::validate_scopes(&*provider_impl, token_response.scopes()) {
-        die!(CONFLICT, "Not all required scopes have been granted");
+    if matches!(web_user, WebUser::Authenticated(_)) {
+        die!(UNAUTHORIZED, "Already logged in");
     }
 
-    let access_token = token_response.access_token();
-    let token = access_token.secret();
-
-    let mut transaction = db_pool.begin().await?;
-
-    let provider_id = SSOProvider::get_provider_id(&*provider_impl, token.as_str()).await?;
-
-    let sso = sqlx::query_as::<_, SSO>("select * from sso where provider = $1 and provider_id = $2 limit 1")
-        .bind(&provider)
-        .bind(provider_id.as_str())
-        .fetch_optional(&mut *transaction)
-        .await?;
-
-    let user = match sso {
-        Some(sso) => {
-            // User link already exists -> Login user
-            sqlx::query_as::<_, User>("select * from users where id = $1 limit 1")
-                .bind(sso.user_id)
-                .fetch_one(&mut *transaction)
-                .await?
-        }
-        None => {
-            // User link does not exist -> Create new user
-            SSOProvider::create_user(&*provider_impl, token.as_str(), &request, &meili_client, &db_pool)
-                .await
-                .context("Failed to create new user using sso")?
-        }
+    let Some(provider) = sso::provider::get(&service) else {
+        return Ok(HttpResponse::NotFound().finish());
     };
 
-    let primary_email = Email::find_primary_email(user.id, &mut transaction)
-        .await?
-        .ok_or_else(|| err!(UNAUTHORIZED, "No primary email"))?;
+    let mut tx = db_pool.begin().await?;
 
-    if user.disabled {
-        debug!(
-            %provider,
-            user.username,
-            user.id = %user.id,
-            "Received sso login request from disabled user"
-        );
+    let Json(state): Json<_> = sqlx::query_scalar("delete from sso_state where csrf_token = $1 and provider = lower($2) returning state")
+        .bind(&query.state)
+        .bind(service.as_str())
+        .fetch_one(&mut *tx)
+        .await?;
 
-        die!(FORBIDDEN, "Account has been disabled. Please contact support.");
-    }
+    let mut exchange_return = provider.exchange(query.code.clone(), state).await?;
 
-    if !primary_email.is_allowed_login() {
-        debug!(user.username, user.id = %user.id, "Received sso login request from unverified user");
-        die!(FORBIDDEN, "Verify your email address before logging in.");
-    }
+    let user_id: Option<Uuid> = sqlx::query_scalar("select user_id from sso_connections where provider = lower($1) and provider_id = $2 limit 1")
+        .bind(service.as_str())
+        .bind(&exchange_return.subject_id)
+        .fetch_optional(&mut *tx)
+        .await?;
 
-    // We're now doing something *very* illegal: We're changing state in a GET request
-    // For this reason we need additional protection in the form of CSRF tokens as "Same-Site: Lax" cookies
-    // don't protect in this case against cross-site request forgery.
+    let user = if let Some(user_id) = user_id
+        && let Some(user) = User::find_using_id(user_id, &mut tx).await
+    {
+        user
+    } else {
+        if !get_setting::<bool>("allow_registrations", &mut tx).await? {
+            die!(FORBIDDEN, "registrations are currently disabled");
+        }
 
-    let session = Session::new(&request, &user, &mut transaction).await?;
-    Identity::login(&request.extensions(), session.to_string())?;
+        let username_exists: bool = sqlx::query_scalar("select exists(select 1 from users where username = lower($1))")
+            .bind(&exchange_return.username)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        if username_exists {
+            exchange_return.username.push_str(&random_hex_string(6)?);
+        }
+
+        let user: User = sqlx::query_as("insert into users (id, username, password) values ($1, lower($2), $3) returning *")
+            .bind(Uuid::now_v7())
+            .bind(&exchange_return.username)
+            .bind("sso-login")
+            .fetch_one(&mut *tx)
+            .await?;
+
+        Event::new(
+            "user.created",
+            user.id,
+            &request,
+            (&user).into(),
+            Some(json!({
+                "origin": "sso",
+                "sso_provider": service.to_lowercase(),
+            })),
+        )
+        .save(&mut tx)
+        .await?;
+
+        let mut primary_flag = true;
+        let verify_time = if exchange_return.emails_verified { Some(Local::now()) } else { None };
+
+        for email_address in exchange_return.emails {
+            if sqlx::query(
+                "insert into emails (id, owner, email, \"primary\", commit, notification, public, verified_at) values ($1, $2, $3, $4, true, true, true, $5)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(user.id)
+            .bind(&email_address)
+            .bind(primary_flag)
+            .bind(verify_time)
+            .execute(&mut *tx)
+            .await
+            .is_err()
+            {
+                continue;
+            }
+
+            Event::new(
+                "email.added",
+                user.id,
+                &request,
+                (&user).into(),
+                Some(json!({
+                    "email": email_address,
+                    "action": "account_create",
+                    "source": "sso",
+                    "sso_provider": service.to_lowercase(),
+                })),
+            )
+            .save(&mut tx)
+            .await?;
+
+            if primary_flag {
+                primary_flag = false;
+
+                if verify_time.is_none() {
+                    tx.commit().await?;
+
+                    send_verification_mail(&user, email_address, &queue, &db_pool).await?;
+
+                    tx = db_pool.begin().await?;
+                }
+            }
+        }
+
+        sqlx::query("insert into sso_connections (provider, provider_id, user_id) values (lower($1), $2, $3)")
+            .bind(service.as_str())
+            .bind(&exchange_return.subject_id)
+            .bind(user.id)
+            .execute(&mut *tx)
+            .await?;
+
+        user.index_meili(&meili_client).await;
+        user
+    };
+
+    let session = Session::new(&request, &user, &mut tx).await?;
 
     Event::new(
         "auth.login",
@@ -150,25 +203,30 @@ pub(crate) async fn sso_callback(
         (&user).into(),
         Some(json!({
             "type": "sso",
-            "provider": provider.to_string(),
+            "sso_provider": service.to_lowercase(),
         })),
     )
-    .save(&mut transaction)
+    .save(&mut tx)
     .await?;
 
+    let frontend_url: String = get_setting("webauthn.origin", &mut tx).await?;
+
+    tx.commit().await?;
+
+    Identity::login(&request.extensions(), session.to_string())?;
+
     debug!(
-        %provider,
+        provider = service.as_str(),
         user.username,
         user.id = %user.id,
         "User logged in through sso"
     );
 
-    transaction.commit().await?;
-
-    Ok(HttpResponse::Found().append_header((LOCATION, "/")).finish())
+    Ok(HttpResponse::Found().append_header((LOCATION, frontend_url)).finish())
 }
 
-#[derive(Deserialize)]
-pub(crate) struct SSORequest {
-    service: String,
+#[derive(Debug, Deserialize)]
+struct CallbackQuery {
+    code: String,
+    state: String,
 }

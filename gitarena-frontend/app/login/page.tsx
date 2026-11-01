@@ -4,13 +4,10 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorDisplay } from "@/components/error-display";
 import { Lock, Eye, EyeOff, Fingerprint, ArrowRight, Compass, GitMerge, KeyRound } from "lucide-react";
-import { GitHubIcon } from "@/components/github-icon";
+import { SsoProviders } from "@/components/sso-providers";
 import { useAuth } from "@/hooks/use-auth";
 import type { AuthUser } from "@/hooks/use-auth";
-import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { browserSupportsWebAuthnAutofill, startAuthentication, WebAuthnAbortService, WebAuthnError } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
@@ -20,30 +17,6 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FieldSeparator } from "@/components/ui/field";
-
-// SSO Provider icons
-function GitLabIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
-        </svg>
-    );
-}
-
-function BitbucketIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646l3.27-20.03a.768.768 0 0 0-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
-        </svg>
-    );
-}
-
-interface SSOProviders {
-    github: boolean;
-    gitlab: boolean;
-    bitbucket: boolean;
-}
 
 interface PasskeyLoginStartResponse {
     challenge_id: string;
@@ -71,7 +44,6 @@ function LoginContent() {
     const [showPassword, setShowPassword] = useState(false);
     const [passkeyRound, setPasskeyRound] = useState(0);
     const [form, setForm] = useState({ identifier: "", password: "" });
-    const { data, isLoading, error } = useSWR<SSOProviders>("/api/sso");
 
     const { trigger: triggerPasskeyStart } = useSWRMutation<PasskeyLoginStartResponse, Error, string, Record<string, never>>(
         "/api/auth/passkey/login/start",
@@ -153,10 +125,6 @@ function LoginContent() {
             router.push(redirect);
         }
     }
-
-    const anySsoEnabled = !!data && (data.github || data.gitlab || data.bitbucket);
-
-    const showSsoSection = isLoading || error || anySsoEnabled;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -316,55 +284,7 @@ function LoginContent() {
                                 {isPasskeyFinishing ? "Authenticating..." : "Sign in with a passkey"}
                             </Button>
                         </form>
-                        {showSsoSection && (
-                            <>
-                                <FieldSeparator className="mt-0 mb-6 *:data-[slot=field-separator-content]:px-4">
-                                    or continue with
-                                </FieldSeparator>
-
-                                {isLoading && (
-                                    <div className="flex items-center justify-center gap-3">
-                                        <Skeleton className="h-11 w-11 rounded-lg" />
-                                        <Skeleton className="h-11 w-11 rounded-lg" />
-                                        <Skeleton className="h-11 w-11 rounded-lg" />
-                                    </div>
-                                )}
-
-                                {error && <ErrorDisplay failed="SSO providers" error={error} />}
-
-                                {anySsoEnabled && (
-                                    <div className="flex items-center justify-center gap-3">
-                                        {data?.github && (
-                                            <a
-                                                href="/api/sso/github"
-                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                                title="GitHub"
-                                            >
-                                                <GitHubIcon className="h-5 w-5" />
-                                            </a>
-                                        )}
-                                        {data?.gitlab && (
-                                            <a
-                                                href="/api/sso/gitlab"
-                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                                title="GitLab"
-                                            >
-                                                <GitLabIcon className="h-5 w-5" />
-                                            </a>
-                                        )}
-                                        {data?.bitbucket && (
-                                            <a
-                                                href="/api/sso/bitbucket"
-                                                className="flex items-center justify-center h-11 w-11 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                                                title="Bitbucket"
-                                            >
-                                                <BitbucketIcon className="h-5 w-5" />
-                                            </a>
-                                        )}
-                                    </div>
-                                )}
-                            </>
-                        )}
+                        <SsoProviders />
 
                         <p className="text-center text-sm text-muted-foreground lg:hidden">
                             New to GitArena?{" "}
