@@ -59,11 +59,11 @@ impl Email {
     }
 
     // This method should only be called on the primary email upon login
-    pub(crate) fn is_allowed_login(&self) -> bool {
+    pub(crate) async fn is_allowed_login(&self, tx: &mut Transaction<'_, Database>) -> Result<bool> {
         assert!(self.primary);
 
-        if self.verified_at.is_some() {
-            true
+        if self.verified_at.is_some() || !get_setting::<bool>("smtp.enabled", tx).await? {
+            Ok(true)
         } else {
             // allow login within 24 hours of account creation
             let created_at = self.id.get_timestamp().map(|ts| {
@@ -71,7 +71,7 @@ impl Email {
                 DateTime::<Local>::from(UNIX_EPOCH + Duration::new(secs, nanos))
             });
 
-            created_at.is_some_and(|t| Local::now().signed_duration_since(t).num_hours() < 24)
+            Ok(created_at.is_some_and(|t| Local::now().signed_duration_since(t).num_hours() < 24))
         }
     }
 }

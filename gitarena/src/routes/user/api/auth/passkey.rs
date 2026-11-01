@@ -375,7 +375,7 @@ pub(crate) async fn post_login_finish(
         die!(FORBIDDEN, "Account has been disabled. Please contact support.");
     }
 
-    if !primary_email.is_allowed_login() {
+    if !primary_email.is_allowed_login(&mut tx).await? {
         die!(FORBIDDEN, "Verify your email address before logging in.");
     }
 

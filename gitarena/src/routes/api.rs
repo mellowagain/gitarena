@@ -28,6 +28,8 @@ pub(crate) struct ApiInfoResponse {
     ssh_port: Option<i32>,
     /// Whether object storage is available
     object_storage_available: bool,
+    /// Whether SMTP is enabled
+    smtp_enabled: bool,
 }
 
 #[utoipa::path(
@@ -41,11 +43,12 @@ pub(crate) struct ApiInfoResponse {
 )]
 #[route("/api", method = "GET", err = "json")]
 pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -> Result<impl Responder> {
-    let (domain, user_email_domain, ssh_enabled, ssh_port) = from_config!(
+    let (domain, user_email_domain, ssh_enabled, ssh_port, smtp_enabled) = from_config!(
         "domain.app" => String,
         "domain.user_email" => String,
         "ssh.enabled" => bool,
-        "ssh.port" => i32
+        "ssh.port" => i32,
+        "smtp.enabled" => bool
     );
 
     Ok(HttpResponse::Ok().json(ApiInfoResponse {
@@ -58,5 +61,6 @@ pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -
         commit: env!("VERGEN_GIT_SHA"),
         ssh_port: if ssh_enabled { Some(ssh_port) } else { None },
         object_storage_available: storage.as_ref().is_some(),
+        smtp_enabled,
     }))
 }

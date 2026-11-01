@@ -28,6 +28,7 @@ import {
 import { TopBar } from "@/components/top-bar";
 import { ErrorDisplay } from "@/components/error-display";
 import { useAuth } from "@/hooks/use-auth";
+import { useInstanceConfig } from "@/components/instance-config-provider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PriorityIndicator, type Priority } from "@/components/priority-indicator";
 import { ActivityEvent, type EventResponse } from "@/components/activity-event";
@@ -211,8 +212,10 @@ export default function DashboardPage() {
         authFetcher
     );
 
+    const instanceConfig = useInstanceConfig();
+
     const primaryEmail = emails?.find((e) => e.primary) ?? null;
-    const emailUnverified = primaryEmail !== null && primaryEmail?.verifiedAt === null;
+    const emailUnverified = instanceConfig?.smtpEnabled === true && primaryEmail !== null && primaryEmail?.verifiedAt === null;
     const verifyDeadline = primaryEmail ? addHours(uuidToDate(primaryEmail.id), 24) : null;
     const verifyExpired = emailUnverified && verifyDeadline !== null && verifyDeadline < new Date();
     const deletionDate = primaryEmail ? addHours(uuidToDate(primaryEmail.id), 24 * 8) : null; // 24h verify deadline + 7 days

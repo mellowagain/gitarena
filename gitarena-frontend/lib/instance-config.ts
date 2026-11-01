@@ -8,4 +8,5 @@ export interface InstanceConfig {
     commit: string;
     sshPort?: number;
     objectStorageAvailable: boolean;
+    smtpEnabled: boolean;
 }
