@@ -23,6 +23,8 @@ updates:
     ignore:
       - dependency-name: "sqlx"
         versions: [ ">=0.9.0" ]
+      - dependency-name: "ipnetwork"
+        versions: [ ">=0.20.0" ]
 
   - package-ecosystem: npm
     directory: "/gitarena-frontend"
