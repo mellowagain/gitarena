@@ -15,6 +15,12 @@ This guide gets your development environment running from scratch. For a broader
 | PostgreSQL 14+ | System package manager or Docker |
 | sqlx-cli | `cargo install sqlx-cli --no-default-features --features postgres` |
 
+### Use the dev container
+
+The repository includes a `.devcontainer.json` that uses the prebuilt `ghcr.io/mellowagain/gitarena-dev:latest` image. Open the repository in an editor that supports dev containers to get Rust, sqlx-cli, Node.js, and pnpm preinstalled. The image also includes the Claude Code and Codex CLIs.
+
+The dev container does not include PostgreSQL. You still need a database for the `DATABASE_URL` in your `.env` file, for example a PostgreSQL container or a database on your host.
+
 ## Getting started
 
 <Steps>
