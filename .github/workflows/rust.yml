@@ -2,7 +2,7 @@ name: Backend CI
 
 on:
   - push
-  - pull_request_target
+  - pull_request
 
 permissions:
   contents: read
@@ -17,9 +17,11 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: install rust toolchain
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: stable
           components: clippy, rustfmt
@@ -39,7 +41,7 @@ jobs:
         run: cargo test --verbose
 
       - name: clippy
-        uses: auguwu/clippy-action@9817d076b82df0194935be9db6154c56ac07b317 # v1.5.0
+        uses: auguwu/clippy-action@9817d076b82df0194935be9db6154c56ac07b317 # 1.5.0
         continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

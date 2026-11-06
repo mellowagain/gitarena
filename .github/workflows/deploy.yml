@@ -1,18 +1,25 @@
 name: Deploy to git.mari.zip
 
 on:
-  workflow_run:
-    workflows:
-      - Docker build
-    branches:
-      - main
-    types:
-      - completed
+  workflow_call:
+    secrets:
+      SSH_ADDRESS:
+        required: true
+      SSH_PORT:
+        required: true
+      SSH_USERNAME:
+        required: true
+      SSH_KEY:
+        required: true
+
+permissions: {}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: production
+      url: https://git.mari.zip
     steps:
       - name: ssh
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
@@ -35,16 +42,16 @@ jobs:
           parsed=$(echo "$response" | jq)
           
           echo "Curl response:" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           echo "$parsed" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           
           commit=$(echo "$response" | jq -r '.commit')
           
-          if [ "$commit" != "${{ github.event.workflow_run.head_sha }}" ]; then
+          if [ "$commit" != "${GITHUB_SHA}" ]; then
             echo "::error::hash mismatched."
             echo "::error::deployed: $commit"
-            echo "::error::expected: ${{ github.event.workflow_run.head_sha }}"
+            echo "::error::expected: ${GITHUB_SHA}"
             exit 1
           else
             echo "hash matched. deploy success."

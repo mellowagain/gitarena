@@ -5,11 +5,7 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
-  attestations: write
+permissions: {}
 
 env:
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
@@ -18,9 +14,16 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     steps:
       - name: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: login to ghcr
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
@@ -81,3 +84,12 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: mellowagain/gitarena
           enable-url-completion: true
+
+  deploy:
+    needs: build
+    uses: $/.github/workflows/deploy.yml
+    secrets:
+      SSH_ADDRESS: ${{ secrets.SSH_ADDRESS }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
