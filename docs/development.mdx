@@ -42,9 +42,9 @@ npm install -g pnpm
     createdb gitarena_dev
     ```
 
-    ```bash .env
-    DATABASE_URL=postgres://your_user@localhost/gitarena_dev
-    BIND_ADDRESS=127.0.0.1:8080
+    ```bash
+    export DATABASE_URL=postgres://your_user@localhost/gitarena_dev
+    export BIND_ADDRESS=127.0.0.1:8080
     ```
 
     Migrations run automatically when GitArena starts. Do not run `sqlx migrate run` manually.
