@@ -1,103 +1,88 @@
 ---
 title: "SSO"
-description: "Let users sign in with GitHub, GitLab, or Bitbucket."
+description: "Let users sign in to GitArena with any OpenID Connect provider, such as Keycloak, Authentik, or GitLab, configured in the settings table."
 ---
 
-GitArena supports OAuth2 single sign-on with GitHub, GitLab, and Bitbucket. Each provider is configured independently through the settings table.
+GitArena supports single sign-on through OpenID Connect (OIDC). You can add any number of OIDC providers. Each provider is configured through a group of keys in the settings table.
 
-## GitHub
+<Warning>
+  OAuth2 providers (GitHub, GitLab OAuth apps, and Bitbucket) are not supported yet. When you upgrade an instance that had GitHub, GitLab, or Bitbucket sign-in enabled, the database migration moves those credentials to `sso.oauth2.<provider>.client_id` and `sso.oauth2.<provider>.client_secret`. GitArena fails to start while any `sso.oauth2.*.client_id` key has a value. Clear those values to keep your instance running:
+
+  ```sql
+  UPDATE settings SET value = NULL WHERE key LIKE 'sso.oauth2.%.client_id';
+  ```
+</Warning>
+
+## Settings keys
+
+Every provider has a name that you choose, such as `keycloak`. The name appears in the provider's settings keys, its sign-in URL, and its login button.
+
+| Key | Description |
+|-----|-------------|
+| `sso.oidc.<name>.client_id` | Client ID issued by the provider. GitArena loads the provider only when this has a value. |
+| `sso.oidc.<name>.client_secret` | Client secret issued by the provider |
+| `sso.oidc.<name>.issuer_url` | Issuer URL. GitArena discovers the provider's endpoints from it. |
+| `sso.oidc.<name>.scopes` | Comma-separated scopes to request, e.g. `profile,email`. GitArena always requests `openid`. |
+
+All four keys are required. GitArena fails to start if one of them is missing for a provider that has a `client_id`.
+
+## Add an OIDC provider
 
 <Steps>
-  <Step title="Create a GitHub OAuth app">
-    Go to **GitHub Settings → Developer settings → OAuth Apps → New OAuth App** and fill in:
+  <Step title="Register GitArena with your provider">
+    Create an OIDC client (sometimes called an application) in your identity provider. Use the authorization code flow and set the redirect URI to:
 
-    - **Application name**: your instance name
-    - **Homepage URL**: `https://git.example.com`
-    - **Authorization callback URL**: `https://git.example.com/api/sso/github/callback`
+    ```text
+    https://git.example.com/api/sso/<name>/authorize
+    ```
 
-    After registering, copy the **Client ID** and generate a **Client secret**.
+    Replace `<name>` with the provider name you use in the settings keys. Copy the client ID, client secret, and issuer URL.
   </Step>
-  <Step title="Configure GitArena">
-    Update the settings table:
+  <Step title="Add the provider to the settings table">
+    The migrations do not create OIDC keys, so insert them:
 
     ```sql
-    UPDATE settings SET value = 'true'               WHERE key = 'sso.github.enabled';
-    UPDATE settings SET value = 'your_client_id'     WHERE key = 'sso.github.client_id';
-    UPDATE settings SET value = 'your_client_secret' WHERE key = 'sso.github.client_secret';
+    INSERT INTO settings (key, value, type) VALUES
+      ('sso.oidc.keycloak.client_id',     'your_client_id',                          'string'),
+      ('sso.oidc.keycloak.client_secret', 'your_client_secret',                      'string'),
+      ('sso.oidc.keycloak.issuer_url',    'https://auth.example.com/realms/gitarena', 'string'),
+      ('sso.oidc.keycloak.scopes',        'profile,email',                           'string');
     ```
+  </Step>
+  <Step title="Restart GitArena">
+    GitArena loads SSO providers once at startup. After the restart, the login and registration pages show a button for the provider.
   </Step>
 </Steps>
 
-## GitLab
+The login button uses the provider name. The names `github`, `gitlab`, and `bitbucket` get their brand label and icon. Any other name is shown capitalized with a key icon.
 
-<Steps>
-  <Step title="Create a GitLab OAuth app">
-    Go to **GitLab → User Settings → Applications** and fill in:
+## How the sign-in flow works
 
-    - **Name**: your instance name
-    - **Redirect URI**: `https://git.example.com/api/sso/gitlab/callback`
-    - **Scopes**: `read_user`
-
-    After saving, copy the **Application ID** and **Secret**.
-  </Step>
-  <Step title="Configure GitArena">
-    ```sql
-    UPDATE settings SET value = 'true'        WHERE key = 'sso.gitlab.enabled';
-    UPDATE settings SET value = 'your_app_id' WHERE key = 'sso.gitlab.app_id';
-    UPDATE settings SET value = 'your_secret' WHERE key = 'sso.gitlab.client_secret';
-    ```
-  </Step>
-</Steps>
-
-## Bitbucket
-
-<Steps>
-  <Step title="Create a Bitbucket OAuth consumer">
-    Go to **Bitbucket → Settings → OAuth → Add consumer** and fill in:
-
-    - **Name**: your instance name
-    - **Callback URL**: `https://git.example.com/api/sso/bitbucket/callback`
-    - **Permissions**: Account → Read and Email → Read
-
-    After saving, copy the **Key** (client ID) and **Secret**.
-  </Step>
-  <Step title="Configure GitArena">
-    ```sql
-    UPDATE settings SET value = 'true'        WHERE key = 'sso.bitbucket.enabled';
-    UPDATE settings SET value = 'your_key'    WHERE key = 'sso.bitbucket.key';
-    UPDATE settings SET value = 'your_secret' WHERE key = 'sso.bitbucket.secret';
-    ```
-  </Step>
-</Steps>
-
-## How the OAuth flow works
-
-When a user clicks "Sign in with GitHub" or another provider:
+When a user clicks a provider button:
 
 <Steps>
   <Step title="Redirect to the provider">
-    GitArena redirects the user to the provider's authorization URL.
+    The browser goes to `/api/sso/<name>`, and GitArena redirects to the provider's authorization URL. The request uses PKCE and a nonce.
   </Step>
   <Step title="Handle the callback">
-    The provider redirects back to `/api/sso/{service}/callback` with an authorization code.
-  </Step>
-  <Step title="Fetch the profile">
-    GitArena exchanges the code for an access token and fetches the provider profile.
+    The provider redirects back to `/api/sso/<name>/authorize` with an authorization code. GitArena exchanges the code for tokens and validates the ID token.
   </Step>
   <Step title="Resolve the account">
-    If an existing SSO link matches the provider account, GitArena logs in that user. Otherwise, the provider flow creates a new user when possible.
+    If the provider account is already linked to a GitArena user, GitArena logs in that user. Otherwise, GitArena creates a new account when `allow_registrations` is `true`, and returns `403` when it is `false`.
   </Step>
   <Step title="Create the session">
-    GitArena sets the `gitarena-session` cookie and the user is logged in.
+    GitArena sets the `gitarena-session` cookie and redirects the user to `webauthn.origin`.
   </Step>
 </Steps>
 
+New accounts use the provider's `preferred_username` claim as the username. If that username is taken, GitArena appends a random suffix. The provider's email address becomes the primary email. GitArena marks it as verified when the provider's `email_verified` claim is `true`, and sends a verification email otherwise.
+
 ## Disabling a provider
 
-Set the `enabled` key to `false`:
+Clear the provider's client ID and restart GitArena:
 
 ```sql
-UPDATE settings SET value = 'false' WHERE key = 'sso.github.enabled';
+UPDATE settings SET value = NULL WHERE key = 'sso.oidc.keycloak.client_id';
 ```
 
-The login button for that provider disappears immediately. Existing accounts linked to that provider are not affected.
+The login button for that provider disappears after the restart. Existing accounts linked to that provider are not deleted.
