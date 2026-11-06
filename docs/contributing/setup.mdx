@@ -17,9 +17,9 @@ This guide gets your development environment running from scratch. For a broader
 
 ### Use the dev container
 
-The repository includes a `.devcontainer.json` that uses the prebuilt `ghcr.io/mellowagain/gitarena-dev:latest` image. Open the repository in an editor that supports dev containers to get Rust, sqlx-cli, Node.js, and pnpm preinstalled. The image also includes the Claude Code and Codex CLIs.
+The repository includes a `.devcontainer.json` that uses the prebuilt `ghcr.io/mellowagain/gitarena-dev:latest` image. Open the repository in an editor that supports dev containers to get the development toolchain preinstalled: Rust, sqlx-cli, Node.js, and pnpm.
 
-The dev container does not include PostgreSQL. You still need a database for the `DATABASE_URL` in your `.env` file, for example a PostgreSQL container or a database on your host.
+The dev container does not include the services GitArena needs at runtime, such as PostgreSQL, Zoekt, Meilisearch, or S3-compatible object storage. Run these yourself, for example as separate containers or on your host, and point your `.env` file at them.
 
 ## Getting started
 
