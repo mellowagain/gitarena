@@ -45,8 +45,6 @@ The dev container does not include the services GitArena needs at runtime, such 
     export DATABASE_URL=postgres://your_user@localhost/gitarena_dev
     export BIND_ADDRESS=127.0.0.1:8080
     ```
-
-    `sqlx` uses `DATABASE_URL` at compile time to verify queries. Run `cargo build` again to confirm the connection works.
   </Step>
 
   <Step title="Install frontend dependencies">
