@@ -1,8 +1,7 @@
 [advisories]
 ignore = [
     { id = "RUSTSEC-2026-0258", reason = "waiting for actix/actix-web#4321" },
-    { id = "RUSTSEC-2023-0071", reason = "only private key operations are affected, we use ed25519 host keys and only verify rsa signatures" },
-    { id = "RUSTSEC-2026-0387", reason = "waiting for kanidm/webauthn-rs#583, webauthn only uses public keys" },
+    { id = "RUSTSEC-2023-0071", reason = "waiting on rsa v0.10.0 release: RustCrypto/RSA#711#issuecomment-6668984110" },
     { id = "RUSTSEC-2026-0374", reason = "waiting for askama-rs/askama#771, compile time only" },
     { id = "RUSTSEC-2020-0163", reason = "waiting for XAMPPRocky/tokei#1347" },
     { id = "RUSTSEC-2025-0074", reason = "build time only, tokei needs to upgrade to tera 2" },

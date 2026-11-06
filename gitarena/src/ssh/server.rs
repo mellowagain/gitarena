@@ -14,8 +14,8 @@ use anyhow::{Context, Result, anyhow};
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::decode::{Stream, streaming};
 use opentelemetry::KeyValue;
-use russh::keys::{HashAlg, PublicKey};
-use russh::server::{Auth, ChannelOpenHandle, Handler, Msg, Server, Session};
+use russh::keys::HashAlg;
+use russh::server::{Auth, ChannelOpenHandle, Handler, Msg, PublicKeyOffer, Server, Session, VerifiedPublicKey};
 use russh::{Channel, ChannelId};
 use std::io;
 use std::mem;
@@ -121,14 +121,14 @@ impl Handler for SshHandler {
     type Error = anyhow::Error;
 
     #[instrument]
-    async fn auth_publickey_offered(&mut self, user: &str, public_key: &PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey_offered(&mut self, user: &str, public_key: PublicKeyOffer<'_>) -> Result<Auth, Self::Error> {
         if user != "git" {
             debug!(?user, "received ssh login from unknown user, should be `git`");
             return Ok(Auth::reject());
         }
 
-        let algorithm = public_key.algorithm();
-        let fingerprint = public_key.fingerprint(HashAlg::Sha256);
+        let algorithm = public_key.public_key.algorithm();
+        let fingerprint = public_key.public_key.fingerprint(HashAlg::Sha256);
 
         debug!(?algorithm, ?fingerprint, "ssh public key offered");
 
@@ -157,7 +157,7 @@ impl Handler for SshHandler {
         Ok(Auth::Accept)
     }
 
-    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey(&mut self, _: &str, _: VerifiedPublicKey<'_>) -> Result<Auth, Self::Error> {
         // key was already validated in auth_publickey_offered
         if self.user.is_some() && self.key.is_some() {
             Ok(Auth::Accept)

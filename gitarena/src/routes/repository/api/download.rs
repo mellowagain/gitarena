@@ -3,7 +3,6 @@ use crate::git::history::batch_last_commits;
 use crate::git::utils::{read_raw_blob_content, repo_files_at_ref};
 use crate::repository::{Branch, Repository};
 
-use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Write};
 use std::path::Path;
@@ -21,8 +20,9 @@ use gix::objs::Tree;
 use gix::objs::tree::EntryKind;
 use gix::odb::Store;
 use gix::odb::pack::FindExt;
+use tar_codec::builder::BuilderPolicy;
+use tar_codec::{ArchiveBuilder, Builder as TarBuilder, EntryMetadata, TarEncoder};
 use tokio::io::AsyncWriteExt;
-use tokio_tar::{Builder as TarBuilder, Header as TarHeader};
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -42,10 +42,7 @@ use zip::write::SimpleFileOptions;
     tag = "repository"
 )]
 #[route("/api/{namespace}/{repository}/tree/{tree:.*}/download/targz", method = "GET", err = "text")]
-pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch, db_pool: web::Data<Pool>) -> Result<impl Responder> {
-    let mut tx = db_pool.begin().await?;
-    let libgit2_repo = repo.libgit2(&mut tx).await?;
-
+pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch) -> Result<impl Responder> {
     let gitoxide_repo = branch.gitoxide_repo;
     let mut buffer = Vec::<u8>::new();
     let store = gitoxide_repo.objects.store().clone();
@@ -53,27 +50,15 @@ pub(crate) async fn tar_gz_file(repo: Repository, branch: Branch, db_pool: web::
     let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
     let tree = Tree::from(tree_ref);
 
-    let mut paths = HashSet::new();
-    collect_paths(store.clone(), tree, "", &mut paths, &mut buffer).await?;
+    let mut builder = TarEncoder::new(GzipEncoder::new(Vec::new()))
+        .builder()
+        .with_policy(BuilderPolicy::default().name_validator(None)); // git file names are way more forgiving
 
-    let commit_oids = batch_last_commits(&libgit2_repo, branch.reference.name.as_bstr().to_str()?, paths).await?;
+    write_directory_tar(store.clone(), tree, Path::new(""), &mut builder, &mut buffer).await?;
 
-    let timestamps: HashMap<String, i64> = commit_oids
-        .into_iter()
-        .filter_map(|(path, oid)| libgit2_repo.find_commit(oid).ok().map(|c| (path, c.time().seconds())))
-        .collect();
-
-    let tree_ref = repo_files_at_ref(&branch.reference, store.clone(), &gitoxide_repo, &mut buffer).await?;
-    let tree = Tree::from(tree_ref);
-
-    let mut builder = TarBuilder::new(Vec::new());
-    write_directory_tar(store.clone(), tree, Path::new("."), &mut builder, &mut buffer, &timestamps).await?;
-
-    let tar_data = builder.into_inner().await?;
-
-    let mut encoder = GzipEncoder::new(Vec::new());
-    encoder.write_all(&tar_data).await?;
+    let mut encoder = builder.finish_into_inner().await?.into_inner();
     encoder.shutdown().await?;
+
     let gzip_data = encoder.into_inner();
 
     Ok(HttpResponse::Ok()
@@ -115,9 +100,8 @@ async fn write_directory_tar(
     store: Arc<Store>,
     tree: Tree,
     path: &Path,
-    builder: &mut TarBuilder<Vec<u8>>,
+    builder: &mut TarBuilder<TarEncoder<GzipEncoder<Vec<u8>>>>,
     buffer: &mut Vec<u8>,
-    timestamps: &HashMap<String, i64>,
 ) -> Result<()> {
     for entry in tree.entries {
         let filename = entry.filename.to_str()?;
@@ -129,40 +113,13 @@ async fn write_directory_tar(
                 let (tree_ref, _) = store.to_cache_arc().find_tree(entry.oid.as_ref(), buffer)?;
                 let tree = Tree::from(tree_ref);
 
-                write_directory_tar(store.clone(), tree, path.as_path(), builder, buffer, timestamps).await?;
+                write_directory_tar(store.clone(), tree, path.as_path(), builder, buffer).await?;
             }
             EntryKind::Blob | EntryKind::BlobExecutable | EntryKind::Link => {
                 let content = read_raw_blob_content(entry.oid.as_ref(), store.clone()).await?;
+                let metadata = EntryMetadata::default().executable(matches!(kind, EntryKind::BlobExecutable));
 
-                let path_str = path.to_string_lossy();
-                let path_key = path_str.strip_prefix("./").unwrap_or(&path_str);
-                let mtime = timestamps.get(path_key).copied().unwrap_or(0).max(0).cast_unsigned();
-
-                let mut header = TarHeader::new_gnu();
-                header.set_size(content.len() as u64);
-
-                header.set_mode(if matches!(kind, EntryKind::BlobExecutable) { 0o775 } else { 0o664 });
-
-                header.set_uid(0);
-                header.set_gid(0);
-                header.set_username("gitarena")?;
-                header.set_groupname("gitarena")?;
-
-                header.set_device_major(0)?;
-                header.set_device_minor(0)?;
-
-                header.set_mtime(mtime);
-
-                if matches!(entry.mode.kind(), EntryKind::Link) {
-                    let cow = String::from_utf8_lossy(&content[..]);
-                    let borrow: &str = cow.borrow();
-
-                    header.set_link_name(Path::new(borrow))?;
-                }
-
-                header.set_cksum();
-
-                builder.append_data(&mut header, path.as_path(), &content[..]).await?;
+                builder.add_file(path.as_path(), &content[..], metadata).await?;
             }
             EntryKind::Commit => {}
         }

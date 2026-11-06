@@ -20,7 +20,7 @@ use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, DiscoverableAuthentication, DiscoverableKey, PasskeyRegistration, PublicKeyCredential, RegisterPublicKeyCredential, Webauthn,
+    CreationChallengeResponse, DiscoverableAuthentication, PasskeyRegistration, PublicKeyCredential, RegisterPublicKeyCredential, Webauthn,
 };
 
 #[utoipa::path(
@@ -336,15 +336,15 @@ pub(crate) async fn post_login_finish(
 
     let cred_id_b64 = BASE64_URL_SAFE_NO_PAD.encode(cred_id_bytes);
 
-    let user_id = StoredPasskey::find_user_id_by_cred_id(&cred_id_b64, &mut tx)
+    let stored_passkey = StoredPasskey::find_by_cred_id(&cred_id_b64, &mut tx)
         .await?
         .ok_or_else(|| err!(NOT_FOUND, "Unknown passkey credential"))?;
 
-    let stored_passkeys = StoredPasskey::find_for_user(user_id, &mut tx).await?;
-    let discoverable_keys: Vec<DiscoverableKey> = stored_passkeys.into_iter().filter_map(|s| s.into_passkey().ok()).map(Into::into).collect();
+    let user_id = stored_passkey.user_id;
+    let passkey = stored_passkey.into_passkey()?;
 
     let auth_result = webauthn
-        .finish_discoverable_authentication(&body.credential, auth_state, &discoverable_keys)
+        .finish_discoverable_authentication_v2(&body.credential, auth_state, &passkey)
         .map_err(|e| anyhow!("Passkey authentication failed: {e:?}"))?;
 
     let new_counter = i64::from(auth_result.counter());

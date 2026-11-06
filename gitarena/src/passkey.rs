@@ -135,13 +135,11 @@ impl StoredPasskey {
         Ok(rows)
     }
 
-    pub(crate) async fn find_user_id_by_cred_id(cred_id_b64: &str, tx: &mut Transaction<'_, Database>) -> Result<Option<Uuid>> {
-        let row: Option<(Uuid,)> = sqlx::query_as("select user_id from passkeys where credential->'cred'->>'cred_id' = $1 limit 1")
+    pub(crate) async fn find_by_cred_id(cred_id_b64: &str, tx: &mut Transaction<'_, Database>) -> Result<Option<StoredPasskey>> {
+        Ok(sqlx::query_as("select * from passkeys where credential->'cred'->>'cred_id' = $1 limit 1")
             .bind(cred_id_b64)
             .fetch_optional(&mut **tx)
-            .await?;
-
-        Ok(row.map(|(id,)| id))
+            .await?)
     }
 }
 

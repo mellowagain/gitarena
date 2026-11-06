@@ -20,6 +20,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "sqlx"
+        versions: [ ">=0.9.0" ]
 
   - package-ecosystem: npm
     directory: "/gitarena-frontend"
