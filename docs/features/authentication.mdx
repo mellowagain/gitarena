@@ -3,7 +3,7 @@ title: "Authentication"
 description: "Sessions, passkeys, SSH keys, SSO, and per-device session management."
 ---
 
-GitArena supports multiple authentication methods: password login, passkeys (WebAuthn), and OAuth2 SSO through GitHub, GitLab, and Bitbucket.
+GitArena supports multiple authentication methods: password login, passkeys (WebAuthn), and SSO through OpenID Connect (OIDC) providers.
 
 <Frame>
   <img src="/readme_screenshots/login.png" alt="GitArena login page" />
@@ -43,9 +43,9 @@ Users add public SSH keys for pushing to repositories over SSH. Keys are stored 
 
 See the [SSH architecture page](/architecture/ssh) for how SSH authentication works, and the [API reference](/api-reference/introduction) for the SSH key endpoints.
 
-## SSO (OAuth2)
+## SSO (OIDC)
 
-Users can sign in with GitHub, GitLab, or Bitbucket via a standard OAuth2 authorization code flow. Each provider must be individually enabled in the instance settings.
+Users can sign in with any OpenID Connect provider the instance admin configures. The login and registration pages show one button per configured provider.
 
 See the [SSO setup guide](/self-hosting/sso) for configuration steps.
 
