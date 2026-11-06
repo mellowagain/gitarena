@@ -19,7 +19,7 @@ This guide gets your development environment running from scratch. For a broader
 
 The repository includes a `.devcontainer.json` that uses the prebuilt `ghcr.io/mellowagain/gitarena-dev:latest` image. Open the repository in an editor that supports dev containers to get the development toolchain preinstalled: Rust, sqlx-cli, Node.js, and pnpm.
 
-The dev container does not include the services GitArena needs at runtime, such as PostgreSQL, Zoekt, Meilisearch, or S3-compatible object storage. Run these yourself, for example as separate containers or on your host, and point your `.env` file at them.
+The dev container does not include the services GitArena needs at runtime, such as PostgreSQL, Zoekt, Meilisearch, or S3-compatible object storage. Run these yourself, for example as separate containers or on your host, and point GitArena's environment variables at them.
 
 ## Getting started
 
@@ -35,15 +35,15 @@ The dev container does not include the services GitArena needs at runtime, such 
   </Step>
 
   <Step title="Set up the database">
-    Create a development database and a `.env` file in the project root:
+    Create a development database and export the backend environment variables in your shell:
 
     ```bash
     createdb gitarena_dev
     ```
 
-    ```bash .env
-    DATABASE_URL=postgres://your_user@localhost/gitarena_dev
-    BIND_ADDRESS=127.0.0.1:8080
+    ```bash
+    export DATABASE_URL=postgres://your_user@localhost/gitarena_dev
+    export BIND_ADDRESS=127.0.0.1:8080
     ```
 
     `sqlx` uses `DATABASE_URL` at compile time to verify queries. Run `cargo build` again to confirm the connection works.
