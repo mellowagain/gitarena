@@ -1,5 +1,8 @@
 x-backend: &backend
-  build: .
+  build:
+    context: .
+    args:
+      VERGEN_GIT_SHA: ${VERGEN_GIT_SHA:-unknown}
   image: ghcr.io/mellowagain/gitarena:main
   environment: &backend-environment
     BIND_ADDRESS: "0.0.0.0:8080"

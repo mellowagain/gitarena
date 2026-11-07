@@ -142,7 +142,13 @@ CI publishes these images to `ghcr.io/mellowagain` and `docker.io/mellowagain`, 
 | `sha-<commit>` | A specific commit, for example `sha-1a2b3c4` |
 | `1.2.3`, `1.2`, `1` | A release. The backend, Zoekt and all-in-one images follow `gitarena-v*` git tags, the frontend follows `gitarena-frontend-v*`. |
 
-To build the images from your checkout instead, pass `--build` to Compose, for example `docker compose up -d --build`. The all-in-one image is built with Bake:
+To build the images from your checkout instead, pass `--build` to Compose. Set `VERGEN_GIT_SHA` so the backend reports the commit it was built from, otherwise it reports `unknown`:
+
+```bash
+VERGEN_GIT_SHA=$(git rev-parse HEAD) docker compose up -d --build
+```
+
+The all-in-one image is built with Bake, which takes the same variable:
 
 ```bash
 docker buildx bake -f docker-bake.hcl --load all-in-one
@@ -167,6 +173,26 @@ Back up at least `pgdata`, `repos` and `rustfs_data`.
 The main database pool supports `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE`, but the background queue currently requires `DATABASE_URL` directly. Keep the password in `DATABASE_URL` until queue startup supports file-based secrets.
 
 ## Upgrading
+
+<Warning>
+  Older versions of `docker-compose.yml` mounted `pgdata` at `/var/lib/postgresql/data`. PostgreSQL 18 images keep their data in a versioned subdirectory of `/var/lib/postgresql` instead and don't see a cluster at the root of the volume, so GitArena would start with an empty database. Before switching, dump the database with the old Compose file still running:
+
+  ```bash
+  docker compose exec -T postgres pg_dumpall -U gitarena > gitarena.sql
+  docker compose down
+  docker volume rm gitarena_pgdata
+  ```
+
+  Then start only PostgreSQL with the new Compose file and restore the dump, before starting the rest:
+
+  ```bash
+  docker compose up -d postgres
+  docker compose exec -T postgres psql -U gitarena -d gitarena < gitarena.sql
+  docker compose up -d
+  ```
+
+  `pg_dumpall` also moves the data across PostgreSQL major versions.
+</Warning>
 
 Pull the new images and restart:
 

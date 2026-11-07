@@ -50,7 +50,7 @@ ENV BIND_ADDRESS="127.0.0.1:8080" \
 
 EXPOSE 80 443 443/udp 2222
 
-HEALTHCHECK CMD curl -fsS http://127.0.0.1:8080/healthz || exit 1
+HEALTHCHECK CMD curl -fsS -o /dev/null http://127.0.0.1:8080/healthz && curl -fsS -o /dev/null http://127.0.0.1:3000/
 
 ENTRYPOINT ["/init"]
 CMD []

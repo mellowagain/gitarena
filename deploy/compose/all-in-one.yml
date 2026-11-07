@@ -54,6 +54,7 @@ services:
       - -c
       - >-
         status=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT
+        --max-time 10 --retry 5 --retry-all-errors --retry-delay 2
         --aws-sigv4 'aws:amz:us-east-1:s3' --user "$$RUSTFS_ACCESS_KEY:$$RUSTFS_SECRET_KEY"
         -H 'x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
         http://rustfs:9000/gitarena);

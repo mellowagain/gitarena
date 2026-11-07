@@ -8,7 +8,7 @@ export function proxy(request: NextRequest) {
     const { pathname, search } = request.nextUrl;
 
     if (pathname === "/api" || pathname.startsWith("/api/")) {
-        return NextResponse.rewrite(new URL(pathname + search, BACKEND_URL));
+        return NextResponse.rewrite(new URL(BACKEND_URL.replace(/\/$/, "") + pathname + search));
     }
 
     // File paths in tree and commits routes are case-sensitive — skip lowercasing for those

@@ -96,14 +96,20 @@ export function FileContent({
                     <EmptyTitle>Binary file</EmptyTitle>
                     <EmptyDescription>Binary files cannot be displayed on the frontend</EmptyDescription>
                 </EmptyHeader>
-                <EmptyContent>
-                    <Button asChild variant="outline" size="sm">
-                        <a href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${filename}`} target="_blank" rel="noreferrer">
-                            <ExternalLink />
-                            View Raw
-                        </a>
-                    </Button>
-                </EmptyContent>
+                {instanceConfig && (
+                    <EmptyContent>
+                        <Button asChild variant="outline" size="sm">
+                            <a
+                                href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <ExternalLink />
+                                View Raw
+                            </a>
+                        </Button>
+                    </EmptyContent>
+                )}
             </Empty>
         );
     }
@@ -115,14 +121,16 @@ export function FileContent({
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>
                 Content has been truncated to 5 MB because the file is too large to display in full.{" "}
-                <a
-                    href={`${instanceConfig?.baseUrl ?? ""}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-2 hover:opacity-70 transition-opacity"
-                >
-                    View raw file
-                </a>
+                {instanceConfig && (
+                    <a
+                        href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2 hover:opacity-70 transition-opacity"
+                    >
+                        View raw file
+                    </a>
+                )}
             </span>
         </div>
     );

@@ -37,8 +37,12 @@ impl AsyncRunnable for ZoektIndexRepo {
         tx.commit().await.fang()?;
 
         let home = env::var("HOME").unwrap_or_default();
-        zoekt_index_binary_path = zoekt_index_binary_path.replacen('~', home.to_str().unwrap_or_default(), 1);
-        zoekt_index_dir = zoekt_index_dir.replacen('~', home.to_str().unwrap_or_default(), 1);
+        if let Some(rest) = zoekt_index_binary_path.strip_prefix('~') {
+            zoekt_index_binary_path = format!("{}{rest}", home.to_str().unwrap_or_default());
+        }
+        if let Some(rest) = zoekt_index_dir.strip_prefix('~') {
+            zoekt_index_dir = format!("{}{rest}", home.to_str().unwrap_or_default());
+        }
 
         {
             let git_repo = gix::open(&path).context("failed to open git repository").fang()?;

@@ -14,7 +14,7 @@ COPY --from=planner /usr/src/gitarena/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
-ARG VERGEN_GIT_SHA
+ARG VERGEN_GIT_SHA=unknown
 
 RUN cargo build --release
 

@@ -1,5 +1,5 @@
 variable "VERGEN_GIT_SHA" {
-  default = ""
+  default = "unknown"
 }
 
 variable "CACHE_SCOPE" {
