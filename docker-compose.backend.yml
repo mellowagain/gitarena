@@ -1,0 +1,21 @@
+services:
+  gitarena:
+    build: .
+    image: ghcr.io/mellowagain/gitarena:main
+    environment:
+      BIND_ADDRESS: "0.0.0.0:8080"
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to your PostgreSQL connection string}
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "2222:2222"
+    volumes:
+      - repos:/repositories
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  repos:

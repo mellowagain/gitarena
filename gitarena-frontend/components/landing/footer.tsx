@@ -1,11 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import useSWR from "swr";
+import { Skeleton } from "@/components/ui/skeleton";
 import { InstanceConfig } from "@/lib/instance-config";
 
-interface FooterProps {
-    apiInfo?: InstanceConfig | null;
-}
-
-export function Footer({ apiInfo }: FooterProps) {
+export function Footer() {
+    const { data: apiInfo, isLoading } = useSWR<InstanceConfig>("/api");
     const repoUrl = apiInfo?.repository ?? "https://github.com/mellowagain/gitarena";
     const releaseUrl = apiInfo?.version ? `${repoUrl}/releases/tag/v${apiInfo.version}` : repoUrl;
     const shortCommit = apiInfo?.commit?.slice(0, 7);
@@ -24,6 +25,7 @@ export function Footer({ apiInfo }: FooterProps) {
                         >
                             GITARENA
                         </a>
+                        {isLoading && <Skeleton className="h-4 w-28" />}
                         {apiInfo && (
                             <span className="text-sm text-muted-foreground font-mono">
                                 <a

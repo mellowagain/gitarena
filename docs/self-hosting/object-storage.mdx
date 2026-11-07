@@ -1,11 +1,15 @@
 ---
 title: "Object storage"
-description: "Configure S3-compatible object storage for release asset uploads."
+description: "Configure S3-compatible object storage for avatars and release assets."
 ---
 
-GitArena uses S3-compatible object storage to host release assets. Files upload directly from the browser to storage using presigned URLs — they do not pass through the GitArena process.
+GitArena uses S3-compatible object storage to host user avatars and release assets. Files upload directly from the browser to storage using presigned URLs — they do not pass through the GitArena process.
 
-Any S3-compatible provider works: AWS S3, Cloudflare R2, Supabase Storage, MinIO, Garage, and others.
+Any S3-compatible provider works: AWS S3, Cloudflare R2, Supabase Storage, RustFS, MinIO, Garage, and others.
+
+<Tip>
+  `docker-compose.all-in-one.yml` runs RustFS and configures all of this for you. See the [Docker guide](/self-hosting/docker#all-in-one).
+</Tip>
 
 ## Configuration
 
@@ -36,6 +40,13 @@ When `s3.enabled` is `false`, the remaining settings are not read and do not nee
 <Warning>
   When `s3.enabled` is `true`, all other `s3.*` settings except `s3.endpoint` are required. GitArena will fail to start if any of them are missing.
 </Warning>
+
+## Browser access
+
+Because browsers upload and download directly, two things are required:
+
+- **Public endpoint:** browsers must be able to reach `s3.endpoint`, because presigned URLs are signed for that host. GitArena also uses it for its own requests, so it must be reachable from the backend too.
+- **CORS:** the bucket or storage server has to allow `PUT` requests from your instance's origin, or avatar and asset uploads fail in the browser.
 
 ## Provider-specific notes
 
@@ -79,6 +90,20 @@ UPDATE settings SET value = 'https://<project>.supabase.co/storage/v1/s3'      W
 UPDATE settings SET value = 'true'                                              WHERE key = 's3.force_path_style';
 ```
 
+### RustFS
+
+Point `s3.endpoint` at the RustFS S3 API, enable path-style access, and allow your instance's origin through `RUSTFS_CORS_ALLOWED_ORIGINS`:
+
+```sql
+UPDATE settings SET value = 'true'                     WHERE key = 's3.enabled';
+UPDATE settings SET value = 'gitarena'                 WHERE key = 's3.bucket';
+UPDATE settings SET value = 'us-east-1'                WHERE key = 's3.region';
+UPDATE settings SET value = 'your-access-key'          WHERE key = 's3.access_key_id';
+UPDATE settings SET value = 'your-secret-key'          WHERE key = 's3.secret_access_key';
+UPDATE settings SET value = 'https://s3.example.com'   WHERE key = 's3.endpoint';
+UPDATE settings SET value = 'true'                     WHERE key = 's3.force_path_style';
+```
+
 ### MinIO
 
 Point `s3.endpoint` at your MinIO server and enable path-style access:
@@ -106,3 +131,5 @@ Restrict the credentials to the specific bucket used for GitArena assets.
 ## Object layout
 
 Assets are stored under `releases/{releaseId}/{assetId}/{filename}`. The filename is preserved so that presigned download URLs carry the original file name.
+
+Avatars are stored as `avatars/{userId}.webp`.

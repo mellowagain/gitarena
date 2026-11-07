@@ -44,6 +44,10 @@ UPDATE settings SET value = 'false'               WHERE key = 'smtp.tls';
 
 `STARTTLS` is not supported yet. Make your voice heard on the issue tracker if you want this feature.
 
+<Tip>
+  For local development, `docker-compose.dev.yml` runs [Mailpit](https://mailpit.axllent.org), which catches all outgoing email on port `1025` and shows it at `http://127.0.0.1:8025`. `deploy/compose/dev.sql` points the SMTP settings at it. See [setup](/contributing/setup#run-the-services-with-docker-compose).
+</Tip>
+
 ## Email verification flow
 
 When a user adds an email address (during registration or from account settings), GitArena:

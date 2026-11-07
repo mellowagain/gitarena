@@ -120,15 +120,14 @@ You can either spin up everything via a Docker Compose or the backend and fronte
 
 ### Docker
 
-A `docker-compose.yml` is provided to spin up all GitArena components:
-
-- Rust backend
-- Next.js frontend
-- Postgresql
+`docker-compose.yml` starts the Rust backend, Next.js frontend, PostgreSQL and Caddy at `http://localhost`:
 
 ```
 $ docker compose up -d
 ```
+
+`docker-compose.all-in-one.yml` adds Meilisearch, Zoekt and S3 object storage, and `docker-compose.observability.yml` adds OpenObserve on top of that.
+For all stacks and their variables, see [the Docker docs](docs/self-hosting/docker.mdx).
 
 ### Backend
 
@@ -164,7 +163,7 @@ The frontend will now be reachable at https://localhost:8080/api or your configu
 In order to run the GitArena frontend, the following environment variables need to be set:
 
 - `NODE_ENV`: set to `production`
-- `NEXT_PUBLIC_API_URL`: URL to the GitArena backend, defaults to `http://localhost:8080`
+- `BACKEND_URL`: URL the frontend forwards `/api` requests to, defaults to `http://localhost:8080`
 
 Optionally you can set:
 

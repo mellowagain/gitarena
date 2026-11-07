@@ -1,0 +1,23 @@
+services:
+  openobserve:
+    image: openobserve/openobserve:v1.1.2
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: ${OPENOBSERVE_EMAIL:-admin@gitarena.local}
+      ZO_ROOT_USER_PASSWORD: ${OPENOBSERVE_PASSWORD:?set OPENOBSERVE_PASSWORD for the OpenObserve admin account}
+    ports:
+      - "127.0.0.1:5080:5080"
+    volumes:
+      - openobserve_data:/data
+    restart: unless-stopped
+
+  gitarena:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      # compose can't base64 encode, so this has to be passed in precomputed. the exporter url-decodes header values
+      OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic%20${OPENOBSERVE_AUTH:?set OPENOBSERVE_AUTH to the base64 of email:password}
+    depends_on:
+      - openobserve
+
+volumes:
+  openobserve_data:

@@ -15,6 +15,7 @@ import { gitarenaTheme } from "@/components/code-block";
 import { CodeBlockContent } from "@/components/code-block";
 import { Checkbox } from "@/components/ui/checkbox";
 import { jsonFetcher } from "@/lib/fetchers";
+import { useInstanceConfig } from "@/components/instance-config-provider";
 import type { CommitDetailResponse } from "@/app/[user]/[repo]/commit/[hash]/page";
 
 const MARKDOWN_EXTENSIONS = new Set(["md", "mdx", "markdown"]);
@@ -235,11 +236,10 @@ const codeBlockStyle: React.CSSProperties = {
     overflowX: "auto",
 };
 
-function resolveImageUrl(url: string, user: string, repo: string, branch: string, filePath: string): string {
+function resolveImageUrl(url: string, backendUrl: string, user: string, repo: string, branch: string, filePath: string): string {
     if (/^data:image\//.test(url)) {
         return url;
     }
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     if (/^https?:\/\//.test(url)) {
         const hex = Array.from(url)
             .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
@@ -275,6 +275,7 @@ export function MarkdownRenderer({
     linkCommits?: boolean;
     className?: string;
 }) {
+    const instanceConfig = useInstanceConfig();
     const isMdx = fileName.toLowerCase().endsWith(".mdx");
     // Frontmatter only exists in files, not in issue comments or release notes
     const remarkPlugins = [
@@ -378,7 +379,11 @@ export function MarkdownRenderer({
                     img: ({ src, alt }) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                            src={typeof src === "string" ? resolveImageUrl(src, user, repo, branch, filePath) : undefined}
+                            src={
+                                typeof src === "string" && instanceConfig
+                                    ? resolveImageUrl(src, instanceConfig.baseUrl, user, repo, branch, filePath)
+                                    : undefined
+                            }
                             alt={alt}
                             className="inline-block align-middle"
                         />

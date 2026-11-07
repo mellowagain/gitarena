@@ -81,6 +81,6 @@ flowchart TD
 
 ## Database
 
-All persistent application state lives in PostgreSQL. Migrations are embedded in the backend binary through `sqlx::migrate!` and run automatically on startup. The migration files live in `migrations/`.
+All persistent application state lives in PostgreSQL. Migrations are embedded in the backend binary through `sqlx::migrate!` and run automatically on startup, or on their own with `gitarena migrate`. The migration files live in `migrations/`.
 
 Bare git repositories live on disk under the path stored in `repositories.base_dir`.

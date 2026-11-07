@@ -1,0 +1,6 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+cd /frontend
+export NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=127.0.0.1 BACKEND_URL="http://$GITARENA_BACKEND"
+exec node server.js

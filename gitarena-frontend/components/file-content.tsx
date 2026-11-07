@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import useSWR from "swr";
+import { useInstanceConfig } from "@/components/instance-config-provider";
 import { CodeBlockContent, CodeBlockSkeleton } from "@/components/code-block";
 import { MarkdownRenderer, isMarkdown } from "@/components/markdown-renderer";
 import { BlameView, type BlameHunk } from "@/components/blame-view";
@@ -56,6 +57,7 @@ export function FileContent({
     setCommit,
     setIsBinary,
 }: FileContentProps) {
+    const instanceConfig = useInstanceConfig();
     const { data, error, isLoading } = useSWR<FileContentResponse>(`/api/repos/${user}/${repo}/branch/${branch}/files/${filename}`);
     const { data: blameData, isLoading: isBlameLoading } = useSWR<BlameResponse>(
         showBlame && data && !data.isBinary ? `/api/repos/${user}/${repo}/branch/${branch}/blame/${filename}` : null
@@ -114,7 +116,7 @@ export function FileContent({
             <span>
                 Content has been truncated to 5 MB because the file is too large to display in full.{" "}
                 <a
-                    href={`${process.env.NEXT_PUBLIC_API_URL ?? ""}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
+                    href={`${instanceConfig?.baseUrl ?? ""}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
                     target="_blank"
                     rel="noreferrer"
                     className="underline underline-offset-2 hover:opacity-70 transition-opacity"

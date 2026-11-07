@@ -48,6 +48,10 @@ npm install -g pnpm
     ```
 
     Migrations run automatically when GitArena starts. Do not run `sqlx migrate run` manually.
+
+    <Tip>
+      `docker-compose.dev.yml` runs PostgreSQL along with Meilisearch, Zoekt, RustFS, Mailpit and OpenObserve. See [setup](/contributing/setup#run-the-services-with-docker-compose).
+    </Tip>
   </Step>
   <Step title="Run the backend">
     ```bash
@@ -64,7 +68,7 @@ npm install -g pnpm
     pnpm run dev
     ```
 
-    The Next.js dev server starts at `http://localhost:8321`. By default it proxies `/api/*` and smart HTTP `*.git` paths to `http://localhost:8080`. Override the backend target with `NEXT_PUBLIC_API_URL`.
+    The Next.js dev server starts at `http://localhost:8321`. By default it proxies `/api/*` to `http://localhost:8080`. Override the backend target with `BACKEND_URL`.
   </Step>
 </Steps>
 

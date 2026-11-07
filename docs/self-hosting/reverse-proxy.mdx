@@ -3,13 +3,32 @@ title: "Reverse proxy"
 description: "Put Nginx or Caddy in front of the frontend and backend for TLS termination."
 ---
 
-GitArena should run behind a reverse proxy in production for TLS termination and real IP forwarding. The current backend Docker image does not serve the Next.js frontend, so route browser traffic to the frontend and backend-only paths to the backend.
+The Compose stacks that run both the frontend and backend already include Caddy, configured in `deploy/compose/caddy/Caddyfile`. Use this page if you run your own proxy instead, for example in front of `docker-compose.backend.yml` and `docker-compose.frontend.yml`.
 
-Set the public `domain` setting to the HTTPS URL. GitArena adds the `Secure` flag to session cookies when `domain` starts with `https`:
+## Routing
+
+The frontend and backend share one public origin. Route these paths to the backend and everything else to the frontend:
+
+| Path | Purpose |
+|------|---------|
+| `/api`, `/api/*` | REST API |
+| `/api-docs/*`, `/rapidoc` | OpenAPI spec and RapiDoc UI |
+| `/healthz` | Health check |
+| `/logout` | Logout |
+| `/{user}.keys` | A user's public SSH keys |
+| `/{namespace}/{repository}.git/*` | Git smart HTTP |
+| `/{namespace}/{repository}/tree/{ref}/~blob/*` | Raw file downloads |
+
+Git over SSH is not HTTP. Expose the backend's SSH port (`2222` by default) directly.
+
+Set `domain.app` and `webauthn.origin` to the public URL. The frontend builds clone URLs and raw file links from `domain.app`, and GitArena adds the `Secure` flag to session cookies when `domain.app` starts with `https`:
 
 ```sql
-UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain';
+UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain.app';
+UPDATE settings SET value = 'https://git.example.com' WHERE key = 'webauthn.origin';
 ```
+
+Restart the backend afterwards, as it reads both at startup.
 
 ## Nginx
 
@@ -18,7 +37,6 @@ server {
     listen 80;
     server_name git.example.com;
 
-    # Redirect HTTP to HTTPS
     return 301 https://$host$request_uri;
 }
 
@@ -29,27 +47,20 @@ server {
     ssl_certificate     /etc/letsencrypt/live/git.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/git.example.com/privkey.pem;
 
-    # Git operations can involve large pack files
-    client_max_body_size 500m;
+    # Nginx rejects request bodies over 1 MB by default, which breaks git pushes
+    client_max_body_size 0;
 
-    location ~ ^/[^/]+/[^/]+\.git/ {
+    location ~ ^/(api(/|$)|api-docs/|rapidoc$|healthz$|logout$|[^/]+\.keys$|[^/]+/[^/]+\.git/|[^/]+/[^/]+/tree/.+/~blob/) {
         proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
 
-        proxy_buffering    off;
-        proxy_read_timeout 300s;
-    }
-
-    location ~ ^/(api|api-docs|rapidoc|healthz)(/|$) {
-        proxy_pass         http://127.0.0.1:8080;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_buffering    off;
+        proxy_buffering         off;
+        proxy_request_buffering off;
+        proxy_read_timeout      300s;
     }
 
     location / {
@@ -72,21 +83,27 @@ sudo systemctl reload nginx
 
 ## Caddy
 
-Caddy handles TLS automatically via Let's Encrypt.
+Caddy obtains TLS certificates automatically and sets the `X-Forwarded-*` headers itself.
 
 ```caddy /etc/caddy/Caddyfile
 git.example.com {
-    @backend path /api/* /api-docs/* /rapidoc* /healthz /*/*.git/*
-    reverse_proxy @backend 127.0.0.1:8080 {
-        flush_interval -1
-    }
+	@backend path /api /api/* /api-docs/* /rapidoc /healthz /logout
+	handle @backend {
+		reverse_proxy 127.0.0.1:8080 {
+			flush_interval -1
+		}
+	}
 
-    reverse_proxy 127.0.0.1:3000
+	@backend_paths path_regexp ^/([^/]+\.keys|[^/]+/[^/]+\.git/.*|[^/]+/[^/]+/tree/.+/~blob/.*)$
+	handle @backend_paths {
+		reverse_proxy 127.0.0.1:8080 {
+			flush_interval -1
+		}
+	}
 
-    # Increase timeouts for large git operations
-    request_body {
-        max_size 500MB
-    }
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
 }
 ```
 
@@ -98,7 +115,7 @@ sudo systemctl reload caddy
 
 ## Notes
 
-- **`proxy_buffering off`** (Nginx) / **`flush_interval -1`** (Caddy) — useful for large git pack file transfers.
-- **`client_max_body_size`** — set this large enough to accommodate git push operations with large files. 500 MB is a reasonable default; adjust based on your repository sizes.
-- **X-Forwarded-For** — GitArena uses this header to record the real client IP in sessions. Make sure your proxy sets it correctly.
-- **Large file support** — If you use Git LFS, increase the body size limit to match your largest expected LFS object.
+- **Buffering:** Nginx buffers requests and responses by default. Turn both off for the backend so git pushes and clones stream through. Caddy doesn't buffer request bodies. It also flushes streamed responses (such as git packs and server-sent events) immediately; `flush_interval -1` extends that to all backend responses.
+- **Body size:** Caddy has no request body limit by default. Don't add a `request_body` limit unless you want to cap push sizes.
+- **Client IP:** GitArena records the client IP for sessions from `Forwarded` or `X-Forwarded-For`, falling back to the socket address. Make sure your proxy sets one of them.
+- **Object storage:** Browsers upload avatars and release assets directly to the storage endpoint, so it needs to be publicly reachable. See [object storage](/self-hosting/object-storage).

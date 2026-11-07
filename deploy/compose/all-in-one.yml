@@ -1,0 +1,97 @@
+x-s3-credentials: &s3-credentials
+  RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?set RUSTFS_ACCESS_KEY for the object storage}
+  RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?set RUSTFS_SECRET_KEY for the object storage}
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.56.1
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-gitarena-meilisearch-master-key}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7700/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  zoekt:
+    build:
+      context: .
+      target: zoekt-webserver
+    image: ghcr.io/mellowagain/gitarena-zoekt-webserver:main
+    command: ["-index", "/data/index", "-listen", ":6070", "-rpc"]
+    volumes:
+      - zoekt_index:/data/index:ro
+    restart: unless-stopped
+
+  rustfs:
+    image: rustfs/rustfs:1.0.4
+    environment:
+      <<: *s3-credentials
+      # Browsers upload avatars and release assets straight to presigned URLs
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${GITARENA_SCHEME:-http}://${GITARENA_DOMAIN:-localhost}
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  rustfs-init:
+    image: rustfs/rustfs:1.0.4
+    environment: *s3-credentials
+    # 409 means the bucket already exists
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        status=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT
+        --aws-sigv4 'aws:amz:us-east-1:s3' --user "$$RUSTFS_ACCESS_KEY:$$RUSTFS_SECRET_KEY"
+        -H 'x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+        http://rustfs:9000/gitarena);
+        echo "create bucket: HTTP $$status";
+        [ "$$status" = 200 ] || [ "$$status" = 409 ]
+    depends_on:
+      rustfs:
+        condition: service_healthy
+
+  setup:
+    environment:
+      <<: *s3-credentials
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-gitarena-meilisearch-master-key}
+      S3_URL: ${GITARENA_SCHEME:-http}://s3.${GITARENA_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/compose/setup/20-all-in-one.sql:/setup/20-all-in-one.sql:ro
+
+  gitarena:
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+      zoekt:
+        condition: service_started
+      rustfs-init:
+        condition: service_completed_successfully
+    volumes:
+      - zoekt_index:/data/index
+
+  caddy:
+    volumes:
+      - ./deploy/compose/caddy/s3.caddy:/etc/caddy/sites/s3.caddy:ro
+    networks:
+      default:
+        # The backend signs S3 URLs for the public hostname and also calls it itself, so resolve it to Caddy internally
+        aliases:
+          - s3.${GITARENA_DOMAIN:-localhost}
+
+volumes:
+  meili_data:
+  zoekt_index:
+  rustfs_data:

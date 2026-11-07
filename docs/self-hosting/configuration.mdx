@@ -34,6 +34,14 @@ Set these before starting GitArena. In Docker, pass them under `environment:` in
 | `MAX_POOL_CONNECTIONS` | Maximum number of Postgres connections to keep open. |
 | `NO_STDOUT_LOG` | Disable stdout logging when set. |
 | `DEBUG_FILE_LOG` | Enable rolling file logging in non-debug builds when set. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint for traces, metrics and logs. Exporting is disabled unless this or a signal-specific `OTEL_EXPORTER_OTLP_*_ENDPOINT` is set. |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` (default), `http/json` or `grpc`. |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Extra request headers as `key=value` pairs, e.g. `Authorization=Basic%20...`. Values are URL-decoded. |
+| `OTEL_SERVICE_NAME` | Service name reported to the collector. Defaults to `gitarena`. |
+
+### Commands
+
+Running the binary with `migrate` (`gitarena migrate`) applies pending migrations and exits without starting the server. The Docker Compose stacks use it to migrate before writing settings. A normal start also applies migrations, so you don't need to run it yourself.
 
 ## Instance settings
 
@@ -41,10 +49,10 @@ Instance settings live in the `settings` table. Edit them directly with SQL:
 
 ```sql
 -- Read a setting
-SELECT value FROM settings WHERE key = 'domain';
+SELECT value FROM settings WHERE key = 'domain.app';
 
 -- Update a setting
-UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain';
+UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain.app';
 ```
 
 Some settings are read at startup, while others are read per request. Restart GitArena after direct database edits if the behavior does not update immediately.
@@ -53,7 +61,7 @@ Some settings are read at startup, while others are read per request. Restart Gi
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `domain` | `http://localhost:8080` | Public base URL of the instance. Session cookies use `Secure` when this starts with `https`. |
+| `domain.app` | `http://localhost:8080` | Public base URL of the instance. Session cookies use `Secure` when this starts with `https`. |
 | `secret` | Generated | Secret used for cookie key material. |
 | `allow_registrations` | `true` | Allow new users to register. Set to `false` to close registrations. |
 
