@@ -175,26 +175,20 @@ The main database pool supports `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE`
 ## Upgrading
 
 <Warning>
-  Older versions of `docker-compose.yml` mounted `pgdata` at `/var/lib/postgresql/data`. PostgreSQL 18 images keep their data in a versioned subdirectory of `/var/lib/postgresql` instead and don't see a cluster at the root of the volume, so GitArena would start with an empty database. Before switching, dump the database and note the volume's name with the old Compose file still running:
+  Older versions of `docker-compose.yml` mounted `pgdata` at `/var/lib/postgresql/data`. PostgreSQL 18 images keep their data in a versioned subdirectory of `/var/lib/postgresql` instead and don't see a cluster at the root of the volume, so GitArena would start with an empty database. Before switching, dump the database with the old Compose file still running, then copy the volume to a backup and remove it:
 
   ```bash
   docker compose exec -T postgres pg_dump -U gitarena -d gitarena > gitarena.sql && test -s gitarena.sql
-  volume=$(docker inspect -f '{{range .Mounts}}{{.Name}}{{end}}' "$(docker compose ps -q postgres)")
-  echo "$volume"
-  ```
-
-  Stop the stack, copy the volume to a backup and remove it:
-
-  ```bash
+  volume=$(docker inspect -f '{{range .Mounts}}{{.Name}}{{end}}' "$(docker compose ps -q postgres)") && test -n "$volume"
   docker compose down
   docker run --rm -v "$volume":/from -v gitarena_pgdata_backup:/to alpine cp -a /from/. /to
   docker volume rm "$volume"
   ```
 
-  Then start only PostgreSQL with the new Compose file and restore the dump. `ON_ERROR_STOP` makes `psql` fail on the first error, so the rest of the stack only starts after a complete restore:
+  Then start only PostgreSQL with the new Compose file, wait until it's healthy and restore the dump. `ON_ERROR_STOP` makes `psql` fail on the first error, so the rest of the stack only starts after a complete restore:
 
   ```bash
-  docker compose up -d postgres
+  docker compose up -d --wait postgres
   docker compose exec -T postgres psql -U gitarena -d gitarena -v ON_ERROR_STOP=1 -q < gitarena.sql && docker compose up -d
   ```
 

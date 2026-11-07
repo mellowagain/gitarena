@@ -304,7 +304,7 @@ export function RepoPageContent({
     const canPush = permsData?.permissions.push ?? false;
     const canAdmin = permsData?.permissions.admin ?? false;
     const rawFileUrl = instanceConfig
-        ? `${instanceConfig.baseUrl}/${user}/${repo}/tree/${branch}/~blob/${selectedFile?.split("/").map(encodeURIComponent).join("/")}`
+        ? `${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${selectedFile?.split("/").map(encodeURIComponent).join("/")}`
         : undefined;
 
     function handleSelectFile(file: string | null) {

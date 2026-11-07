@@ -19,7 +19,7 @@ services:
       # PostgreSQL 18+ images keep their data in a versioned subdirectory of this path
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gitarena -d gitarena"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U gitarena -d gitarena"]
       interval: 5s
       timeout: 3s
       retries: 10
