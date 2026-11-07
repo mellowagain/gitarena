@@ -36,7 +36,7 @@ export function Footer() {
                                 >
                                     v{apiInfo.version}
                                 </a>
-                                {shortCommit && (
+                                {shortCommit && apiInfo.commit !== "unknown" && (
                                     <>
                                         {" "}
                                         ·{" "}
