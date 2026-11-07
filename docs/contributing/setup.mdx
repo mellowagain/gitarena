@@ -19,7 +19,38 @@ This guide gets your development environment running from scratch. For a broader
 
 The repository includes a `.devcontainer.json` that uses the prebuilt `ghcr.io/mellowagain/gitarena-dev:latest` image. Open the repository in an editor that supports dev containers to get the development toolchain preinstalled: Rust, sqlx-cli, Node.js, and pnpm.
 
-The dev container does not include the services GitArena needs at runtime, such as PostgreSQL, Zoekt, Meilisearch, or S3-compatible object storage. Run these yourself, for example as separate containers or on your host, and point GitArena's environment variables at them.
+The dev container does not include the services GitArena needs at runtime, such as PostgreSQL, Zoekt, Meilisearch, or S3-compatible object storage. Use the development Compose file below to run them.
+
+### Run the services with Docker Compose
+
+`docker-compose.dev.yml` starts everything except GitArena itself, bound to `127.0.0.1`:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| PostgreSQL | `5432` | Database (`gitarena` / `gitarena`) |
+| Meilisearch | `7700` | Search |
+| Zoekt | `6070` | Code search |
+| RustFS | `9000`, console `9001` | S3 object storage (`rustfsadmin` / `rustfsadmin`) |
+| Mailpit | SMTP `1025`, UI `8025` | Catches outgoing email |
+| OpenObserve | `5080` | Traces, metrics and logs (`admin@gitarena.local` / `gitarena-dev`) |
+
+The backend's `zoekt-git-index` writes the code search index on the host, and the Zoekt container reads it from the same directory. Create it first:
+
+```bash
+mkdir -p ~/.local/share/gitarena/zoekt-index
+docker compose -f docker-compose.dev.yml up -d
+export DATABASE_URL=postgres://gitarena:gitarena@localhost/gitarena
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:5080/api/default
+export OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic%20YWRtaW5AZ2l0YXJlbmEubG9jYWw6Z2l0YXJlbmEtZGV2
+```
+
+After the backend has started once and created the schema, point its settings at these services:
+
+```bash
+docker compose -f docker-compose.dev.yml exec -T postgres psql -U gitarena -d gitarena -v ON_ERROR_STOP=1 < deploy/compose/dev.sql
+```
+
+Then restart the backend. Zoekt indexing also needs `zoekt-git-index` on the host (see [search](/self-hosting/search)).
 
 ## Getting started
 

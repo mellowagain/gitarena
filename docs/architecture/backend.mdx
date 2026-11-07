@@ -11,7 +11,7 @@ The main `gitarena` crate is an [Actix-Web](https://actix.rs) backend. It handle
 
 <Steps>
   <Step title="Load runtime settings">
-    The process reads environment variables, opens the PostgreSQL pool, runs embedded migrations, and reads `secret` and `domain` from the settings table.
+    The process reads environment variables, opens the PostgreSQL pool, runs embedded migrations, and reads `secret` and `domain.app` from the settings table. When started as `gitarena migrate`, it exits right after the migrations.
   </Step>
   <Step title="Start shared services">
     Startup creates the WebAuthn configuration, mail transport, fang queue workers, expiry cron task, and built-in SSH server.
@@ -49,7 +49,7 @@ Route handlers use the `gitarena-macros` `#[route(...)]` macro and are registere
 | Header wrapper | Adds `Access-Control-Allow-Origin: *` to non-`.git` responses and no-cache headers to `.git` responses |
 | Error renderer | Converts application errors into JSON, text, git, HTML, or HTMX responses |
 
-The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 30-day max age that renews on every request. The `Secure` flag is added when the `domain` setting starts with `https`. Each session maps to a row in the `sessions` table, storing the user ID, IP address, user agent, and timestamps.
+The session cookie is configured with `HttpOnly`, `SameSite::Lax`, and a 30-day max age that renews on every request. The `Secure` flag is added when the `domain.app` setting starts with `https`. Each session maps to a row in the `sessions` table, storing the user ID, IP address, user agent, and timestamps.
 
 ## Error handling
 

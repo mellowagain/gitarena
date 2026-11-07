@@ -1,23 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // only the docker image needs this, vercel has its own build output
+    output: process.env.NEXT_STANDALONE === "true" ? "standalone" : undefined,
     typescript: {
         ignoreBuildErrors: true,
     },
     images: {
         unoptimized: true,
-    },
-    async rewrites() {
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-        return [
-            {
-                source: "/api/:path*",
-                destination: `${backendUrl}/api/:path*`,
-            },
-            {
-                source: "/:username/:repo.git/:path*",
-                destination: `${backendUrl}/:username/:repo.git/:path*`,
-            },
-        ];
     },
 };
 

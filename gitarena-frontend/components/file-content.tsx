@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import useSWR from "swr";
+import { useInstanceConfig } from "@/components/instance-config-provider";
 import { CodeBlockContent, CodeBlockSkeleton } from "@/components/code-block";
 import { MarkdownRenderer, isMarkdown } from "@/components/markdown-renderer";
 import { BlameView, type BlameHunk } from "@/components/blame-view";
@@ -56,9 +57,11 @@ export function FileContent({
     setCommit,
     setIsBinary,
 }: FileContentProps) {
-    const { data, error, isLoading } = useSWR<FileContentResponse>(`/api/repos/${user}/${repo}/branch/${branch}/files/${filename}`);
+    const instanceConfig = useInstanceConfig();
+    const encodedFilename = filename.split("/").map(encodeURIComponent).join("/");
+    const { data, error, isLoading } = useSWR<FileContentResponse>(`/api/repos/${user}/${repo}/branch/${branch}/files/${encodedFilename}`);
     const { data: blameData, isLoading: isBlameLoading } = useSWR<BlameResponse>(
-        showBlame && data && !data.isBinary ? `/api/repos/${user}/${repo}/branch/${branch}/blame/${filename}` : null
+        showBlame && data && !data.isBinary ? `/api/repos/${user}/${repo}/branch/${branch}/blame/${encodedFilename}` : null
     );
 
     useEffect(() => {
@@ -94,14 +97,20 @@ export function FileContent({
                     <EmptyTitle>Binary file</EmptyTitle>
                     <EmptyDescription>Binary files cannot be displayed on the frontend</EmptyDescription>
                 </EmptyHeader>
-                <EmptyContent>
-                    <Button asChild variant="outline" size="sm">
-                        <a href={`http://localhost:8080/${user}/${repo}/tree/${branch}/~blob/${filename}`} target="_blank" rel="noreferrer">
-                            <ExternalLink />
-                            View Raw
-                        </a>
-                    </Button>
-                </EmptyContent>
+                {instanceConfig && (
+                    <EmptyContent>
+                        <Button asChild variant="outline" size="sm">
+                            <a
+                                href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <ExternalLink />
+                                View Raw
+                            </a>
+                        </Button>
+                    </EmptyContent>
+                )}
             </Empty>
         );
     }
@@ -113,14 +122,16 @@ export function FileContent({
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>
                 Content has been truncated to 5 MB because the file is too large to display in full.{" "}
-                <a
-                    href={`${process.env.NEXT_PUBLIC_API_URL ?? ""}/${user}/${repo}/tree/${branch}/~blob/${filename}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-2 hover:opacity-70 transition-opacity"
-                >
-                    View raw file
-                </a>
+                {instanceConfig && (
+                    <a
+                        href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2 hover:opacity-70 transition-opacity"
+                    >
+                        View raw file
+                    </a>
+                )}
             </span>
         </div>
     );

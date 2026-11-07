@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_DB: gitarena
+      POSTGRES_USER: gitarena
+      POSTGRES_PASSWORD: gitarena
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitarena -d gitarena"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.56.1
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: gitarena-meilisearch-master-key
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "127.0.0.1:7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+  zoekt:
+    build:
+      context: .
+      target: zoekt-webserver
+    image: ghcr.io/mellowagain/gitarena-zoekt-webserver:main
+    command: ["-index", "/data/index", "-listen", ":6070", "-rpc"]
+    ports:
+      - "127.0.0.1:6070:6070"
+    volumes:
+      - type: bind
+        source: ${HOME}/.local/share/gitarena/zoekt-index
+        target: /data/index
+        read_only: true
+        bind:
+          create_host_path: false
+
+  rustfs:
+    image: rustfs/rustfs:1.0.4
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:8321
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rustfs-init:
+    image: rustfs/rustfs:1.0.4
+    # 409 means the bucket already exists
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        status=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT
+        --max-time 10 --retry 5 --retry-all-errors --retry-delay 2
+        --aws-sigv4 'aws:amz:us-east-1:s3' --user rustfsadmin:rustfsadmin
+        -H 'x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+        http://rustfs:9000/gitarena);
+        echo "create bucket: HTTP $$status";
+        [ "$$status" = 200 ] || [ "$$status" = 409 ]
+    depends_on:
+      rustfs:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    environment:
+      # The backend always authenticates, so accept any credentials over plain SMTP
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  openobserve:
+    image: openobserve/openobserve:v1.1.2
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: admin@gitarena.local
+      ZO_ROOT_USER_PASSWORD: gitarena-dev
+    ports:
+      - "127.0.0.1:5080:5080"
+    volumes:
+      - openobserve_data:/data
+
+volumes:
+  pgdata:
+  meili_data:
+  rustfs_data:
+  openobserve_data:

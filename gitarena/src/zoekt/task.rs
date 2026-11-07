@@ -29,7 +29,7 @@ impl AsyncRunnable for ZoektIndexRepo {
 
         let mut tx = db_pool.begin().await.fang()?;
 
-        let zoekt_index_dir: String = config::get_setting("zoekt.index_dir", &mut tx).await.fang()?;
+        let mut zoekt_index_dir: String = config::get_setting("zoekt.index_dir", &mut tx).await.fang()?;
         let mut zoekt_index_binary_path: String = config::get_setting("zoekt.index_binary_path", &mut tx).await.fang()?;
 
         let path = self.repo.get_fs_path(&mut tx).await.fang()?;
@@ -37,7 +37,12 @@ impl AsyncRunnable for ZoektIndexRepo {
         tx.commit().await.fang()?;
 
         let home = env::var("HOME").unwrap_or_default();
-        zoekt_index_binary_path = zoekt_index_binary_path.replacen('~', home.to_str().unwrap_or_default(), 1);
+        if let Some(rest) = zoekt_index_binary_path.strip_prefix('~') {
+            zoekt_index_binary_path = format!("{}{rest}", home.to_str().unwrap_or_default());
+        }
+        if let Some(rest) = zoekt_index_dir.strip_prefix('~') {
+            zoekt_index_dir = format!("{}{rest}", home.to_str().unwrap_or_default());
+        }
 
         {
             let git_repo = gix::open(&path).context("failed to open git repository").fang()?;

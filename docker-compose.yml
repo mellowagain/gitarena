@@ -1,39 +1,99 @@
+x-backend: &backend
+  build:
+    context: .
+    args:
+      VERGEN_GIT_SHA: ${VERGEN_GIT_SHA:-unknown}
+  image: ghcr.io/mellowagain/gitarena:main
+  environment: &backend-environment
+    BIND_ADDRESS: "0.0.0.0:8080"
+    DATABASE_URL: "postgresql://gitarena:${POSTGRES_PASSWORD:-gitarena}@postgres:5432/gitarena"
+
 services:
   postgres:
-    image: postgres:trixie
+    image: postgres:18.6-trixie
     environment:
       POSTGRES_DB: gitarena
       POSTGRES_USER: gitarena
-      POSTGRES_PASSWORD: gitarena
-    expose:
-      - "5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gitarena}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18+ images keep their data in a versioned subdirectory of this path
+      - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gitarena"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U gitarena -d gitarena"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+    restart: unless-stopped
 
-  gitarena:
-    build: Dockerfile
+  migrate:
+    <<: *backend
+    command: ["migrate"]
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
-    volumes:
-      - repos:repositories
+
+  # The backend reads these settings once at startup, so they are written after migrating but before it starts
+  setup:
+    image: postgres:18.6-trixie
+    entrypoint: ["sh", "-c", 'for file in /setup/*.sql; do psql -v ON_ERROR_STOP=1 -f "$$file" || exit 1; done']
     environment:
-      # TODO: Remove this once nginx is also added to this compose
-      SERVE_STATIC_FILES: true
-      DATABASE_URL: "postgresql://gitarena@gitarena:5432/gitarena?sslmode=disable"
+      PGHOST: postgres
+      PGDATABASE: gitarena
+      PGUSER: gitarena
+      PGPASSWORD: ${POSTGRES_PASSWORD:-gitarena}
+      GITARENA_URL: ${GITARENA_SCHEME:-http}://${GITARENA_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/compose/setup/10-base.sql:/setup/10-base.sql:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  gitarena:
+    <<: *backend
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    ports:
+      - "2222:2222"
+    volumes:
+      - repos:/repositories
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build: ./gitarena-frontend
+    image: ghcr.io/mellowagain/gitarena-frontend:main
+    environment:
+      BACKEND_URL: http://gitarena:8080
+    depends_on:
+      gitarena:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.11.9-alpine
+    environment:
+      GITARENA_SCHEME: ${GITARENA_SCHEME:-http}
+      GITARENA_DOMAIN: ${GITARENA_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/compose/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - gitarena
+      - frontend
+    restart: unless-stopped
 
 volumes:
   pgdata:
   repos:
+  caddy_data:
+  caddy_config:

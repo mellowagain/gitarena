@@ -87,6 +87,11 @@ async fn main() -> Result<()> {
     }
 
     let db_pool = create_postgres_pool(None).await?;
+
+    if env::args().nth(1).as_deref() == Some("migrate") {
+        return Ok(());
+    }
+
     TASK_DB_POOL
         .set(db_pool.clone())
         .map_err(|_| anyhow!("task db pool should not be set more than once"))?;

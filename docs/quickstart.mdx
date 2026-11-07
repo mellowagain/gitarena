@@ -1,89 +1,36 @@
 ---
 title: "Quickstart"
-description: "Start the current Docker backend and connect it to Postgres."
+description: "Start GitArena with Docker Compose."
 ---
-
-<Warning>
-  Docker support currently builds the Rust backend only. The image does not build or serve the Next.js frontend, so a full web instance needs the frontend deployed separately.
-</Warning>
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- A checked-out GitArena repository if you build the local Dockerfile
-- A separate frontend deployment or development server for the user-facing UI
+- A checkout of the GitArena repository
 
 <Steps>
-  <Step title="Create a Compose file">
-    Use this Compose file from the repository root:
-
-    ```yaml docker-compose.yml
-    services:
-      postgres:
-        image: postgres:trixie
-        environment:
-          POSTGRES_DB: gitarena
-          POSTGRES_USER: gitarena
-          POSTGRES_PASSWORD: change_me
-        volumes:
-          - pgdata:/var/lib/postgresql/data
-        healthcheck:
-          test: ["CMD-SHELL", "pg_isready -U gitarena"]
-          interval: 5s
-          timeout: 5s
-          retries: 5
-
-      gitarena:
-        build: .
-        depends_on:
-          postgres:
-            condition: service_healthy
-        environment:
-          BIND_ADDRESS: "0.0.0.0:8080"
-          DATABASE_URL: "postgres://gitarena:change_me@postgres/gitarena"
-        volumes:
-          - repos:/repositories
-        ports:
-          - "127.0.0.1:8080:8080"
-          - "2222:2222"
-
-    volumes:
-      pgdata:
-      repos:
-    ```
-
-    Replace both `change_me` values with the same strong password.
-
-    <Warning>
-      Don't expose port 8080 directly to the internet. Bind it to `127.0.0.1` and put a reverse proxy in front of it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
-    </Warning>
-  </Step>
-
   <Step title="Start GitArena">
+    From the repository root:
+
     ```bash
-    docker compose up -d
+    POSTGRES_PASSWORD=change_me docker compose up -d
     ```
 
-    Docker builds the backend image, starts Postgres, waits for the health check to pass, then starts GitArena. Migrations run automatically on first start.
+    Replace `change_me` with a strong password. Docker pulls the backend and frontend images, starts PostgreSQL, runs the migrations, configures the instance for `http://localhost`, then starts the backend, frontend and Caddy.
 
     ```bash
     docker compose ps
     ```
 
-    The backend is reachable at `http://127.0.0.1:8080` once both services show `running`.
-  </Step>
+    GitArena is reachable at `http://localhost` once `gitarena`, `frontend` and `caddy` show `running`.
 
-  <Step title="Set the repository path">
-    Configure the repository storage path to match the mounted volume:
-
-    ```bash
-    docker compose exec postgres psql -U gitarena -d gitarena -c \
-      "UPDATE settings SET value = '/repositories' WHERE key = 'repositories.base_dir';"
-    ```
+    <Tip>
+      To serve a real domain over HTTPS, or to add search, object storage and observability, see the [Docker guide](/self-hosting/docker).
+    </Tip>
   </Step>
 
   <Step title="Create your admin account">
-    Register your first account through the frontend connected to this backend.
+    Register your first account at `http://localhost/register`.
 
     Then grant yourself admin access:
 
@@ -100,7 +47,7 @@ description: "Start the current Docker backend and connect it to Postgres."
 
 <Columns cols={2}>
   <Card title="Configuration" icon="sliders" href="/self-hosting/configuration">
-    Set up `domain`, repository storage, SMTP, SSH, and more through the settings table.
+    Set up `domain.app`, repository storage, SMTP, SSH, and more through the settings table.
   </Card>
   <Card title="Reverse proxy" icon="shield-halved" href="/self-hosting/reverse-proxy">
     Put Nginx or Caddy in front of GitArena for TLS termination.

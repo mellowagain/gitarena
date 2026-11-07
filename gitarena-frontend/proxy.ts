@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PATHS = ["/new", "/import", "/settings", "/notifications", "/admin"];
 
+const BACKEND_URL = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
 export function proxy(request: NextRequest) {
-    const { pathname } = request.nextUrl;
+    const { pathname, search } = request.nextUrl;
+
+    if (pathname === "/api" || pathname.startsWith("/api/")) {
+        return NextResponse.rewrite(new URL(BACKEND_URL.replace(/\/$/, "") + pathname + search));
+    }
 
     // File paths in tree and commits routes are case-sensitive — skip lowercasing for those
     const CASE_SENSITIVE_PREFIXES = [/^\/[^/]+\/[^/]+\/tree\//, /^\/[^/]+\/[^/]+\/commits\//];
@@ -41,5 +47,7 @@ export const config = {
          *  - public folder assets (images, icons, etc.)
          */
         "/((?!_next|favicon|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|woff|woff2|ttf|otf|css|js|map)$).*)",
+        // The pattern above skips static file extensions, which api paths can end in too
+        "/api/:path*",
     ],
 };

@@ -1,0 +1,5 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+cd /app
+exec /app/gitarena-bin

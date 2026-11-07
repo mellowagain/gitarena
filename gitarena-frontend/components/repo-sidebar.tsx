@@ -184,8 +184,8 @@ export function RepoSidebar({
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
     const [allLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
     const instanceConfig = useInstanceConfig();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-    const host = apiUrl.replace(/^https?:\/\//, "");
+    const apiUrl = instanceConfig?.baseUrl ?? "";
+    const host = apiUrl ? new URL(apiUrl).hostname : "";
     const sshEnabled = instanceConfig?.sshPort != null;
     const sshCloneUrl =
         instanceConfig?.sshPort === 22
@@ -315,10 +315,14 @@ export function RepoSidebar({
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                    <div className="flex items-center rounded-md bg-card border border-border">
-                        <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-muted-foreground">{cloneUrl}</code>
-                        <CopyButton text={cloneUrl} />
-                    </div>
+                    {!instanceConfig ? (
+                        <Skeleton className="h-9 w-full rounded" />
+                    ) : (
+                        <div className="flex items-center rounded-md bg-card border border-border">
+                            <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-muted-foreground">{cloneUrl}</code>
+                            <CopyButton text={cloneUrl} />
+                        </div>
+                    )}
                     {branch && (
                         <div className="flex gap-2 mt-2">
                             <a

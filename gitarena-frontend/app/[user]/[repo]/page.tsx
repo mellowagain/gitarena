@@ -124,8 +124,8 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
     );
     const canAdmin = permsData?.permissions.admin ?? false;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-    const host = apiUrl.replace(/^https?:\/\//, "");
+    const apiUrl = instanceConfig?.baseUrl ?? "";
+    const host = apiUrl ? new URL(apiUrl).hostname : "";
     const sshEnabled = instanceConfig?.sshPort != null;
     const sshCloneUrl =
         instanceConfig?.sshPort === 22
@@ -177,7 +177,9 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
                             </div>
                         )}
 
-                        {!meta.archivedAt && (
+                        {!meta.archivedAt && !instanceConfig && <Skeleton className="h-48 w-full rounded-md" />}
+
+                        {!meta.archivedAt && instanceConfig && (
                             <Tabs defaultValue="create">
                                 <div className="flex items-center justify-between mb-3">
                                     <TabsList>
@@ -258,6 +260,7 @@ export function RepoPageContent({
     initialFile?: string | null;
 }) {
     const router = useRouter();
+    const instanceConfig = useInstanceConfig();
     const [selectedFile, setSelectedFile] = useState<string | null>(initialFile !== undefined ? initialFile : (defaultFile ?? null));
     const [showSource, setShowSource] = useState(false);
     const [showBlame, setShowBlame] = useState(false);
@@ -300,7 +303,9 @@ export function RepoPageContent({
     );
     const canPush = permsData?.permissions.push ?? false;
     const canAdmin = permsData?.permissions.admin ?? false;
-    const rawFileUrl = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/${user}/${repo}/tree/${branch}/~blob/${selectedFile}`;
+    const rawFileUrl = instanceConfig
+        ? `${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${selectedFile?.split("/").map(encodeURIComponent).join("/")}`
+        : undefined;
 
     function handleSelectFile(file: string | null) {
         setSelectedFile(file);
@@ -450,17 +455,19 @@ export function RepoPageContent({
                                                     <TooltipContent>Toggle blame</TooltipContent>
                                                 </Tooltip>
                                             )}
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                                className="hidden h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"
-                                            >
-                                                <a href={rawFileUrl} target="_blank" rel="noreferrer">
-                                                    <ExternalLink className="h-3.5 w-3.5" />
-                                                    Raw
-                                                </a>
-                                            </Button>
+                                            {rawFileUrl && (
+                                                <Button
+                                                    asChild
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="hidden h-8 px-3 gap-2 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"
+                                                >
+                                                    <a href={rawFileUrl} target="_blank" rel="noreferrer">
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                        Raw
+                                                    </a>
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -486,12 +493,14 @@ export function RepoPageContent({
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuItem asChild>
-                                                        <a href={rawFileUrl} target="_blank" rel="noreferrer">
-                                                            <ExternalLink className="h-3.5 w-3.5" />
-                                                            Raw
-                                                        </a>
-                                                    </DropdownMenuItem>
+                                                    {rawFileUrl && (
+                                                        <DropdownMenuItem asChild>
+                                                            <a href={rawFileUrl} target="_blank" rel="noreferrer">
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                                Raw
+                                                            </a>
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem asChild>
                                                         <Link
                                                             href={`/${user}/${repo}/commits/${encodeURIComponent(branch)}/${selectedFile.split("/").map(encodeURIComponent).join("/")}`}

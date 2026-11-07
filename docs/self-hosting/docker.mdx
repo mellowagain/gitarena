@@ -1,105 +1,215 @@
 ---
 title: "Docker"
-description: "Run the current GitArena backend Docker image with PostgreSQL."
+description: "Run GitArena with Docker Compose, from the backend alone up to the full stack with search, object storage and observability."
 ---
 
-The Dockerfile in this repository builds the Rust backend binary. It does not build or serve the Next.js frontend.
+The repository ships one Compose file per stack. Each larger stack builds on the smaller one, and they share a project name, so volumes carry over when you switch between them.
 
-<Warning>
-  Treat the current Docker setup as backend-focused. A full web instance needs a separately deployed frontend that points at the backend API.
-</Warning>
+| File | Services |
+|------|----------|
+| `docker-compose.backend.yml` | Backend only, against your own PostgreSQL |
+| `docker-compose.frontend.yml` | Frontend only, against your own backend |
+| `docker-compose.yml` | Backend, frontend, PostgreSQL and Caddy |
+| `docker-compose.all-in-one.yml` | `docker-compose.yml` plus Meilisearch, Zoekt and RustFS (S3) |
+| `docker-compose.observability.yml` | `docker-compose.all-in-one.yml` plus OpenObserve |
+| `docker-compose.dev.yml` | Services only, for [local development](/contributing/setup) |
 
-## Compose file
+The GitArena images are pulled from GHCR. See [images](#images) for building them yourself.
 
-```yaml docker-compose.yml
-services:
-  postgres:
-    image: postgres:trixie
-    environment:
-      POSTGRES_DB: gitarena
-      POSTGRES_USER: gitarena
-      POSTGRES_PASSWORD: change_me
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gitarena"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+## Default stack
 
-  gitarena:
-    build: .
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      BIND_ADDRESS: "0.0.0.0:8080"
-      DATABASE_URL: "postgres://gitarena:change_me@postgres/gitarena"
-    volumes:
-      - repos:/repositories
-    ports:
-      - "127.0.0.1:8080:8080"
-      - "2222:2222"
-
-volumes:
-  pgdata:
-  repos:
+```bash
+docker compose up -d
 ```
 
+GitArena is then available at `http://localhost`, with Git over SSH on port `2222`.
+
+On every start, Compose runs these steps in order:
+
+1. `migrate` applies database migrations and exits.
+2. `setup` writes the settings that belong to the stack, such as `domain.app`, `webauthn.origin` and `repositories.base_dir`. The scripts live in `deploy/compose/setup/`.
+3. `gitarena` starts and reads those settings.
+
 <Warning>
-  Binding to `127.0.0.1:8080` (instead of `0.0.0.0:8080`) means only your reverse proxy can reach GitArena. Do not expose port 8080 directly to the internet — put a reverse proxy in front of it. See the [reverse proxy guide](/self-hosting/reverse-proxy).
+  Because `setup` runs on every start, it overwrites changes to the settings it manages. Change them through the Compose variables instead.
 </Warning>
+
+Caddy is the single entry point. It forwards the backend's paths to the backend and everything else to the frontend, as described in [reverse proxy](/self-hosting/reverse-proxy#routing).
+
+## Variables
+
+Compose reads these from your shell or from a `.env` file next to the Compose files.
+
+| Variable | Default | Used by |
+|----------|---------|---------|
+| `GITARENA_DOMAIN` | `localhost` | All stacks with Caddy |
+| `GITARENA_SCHEME` | `http` | All stacks with Caddy. Use `https` with a real domain. |
+| `POSTGRES_PASSWORD` | `gitarena` | All stacks with PostgreSQL |
+| `MEILI_MASTER_KEY` | `gitarena-meilisearch-master-key` | All-in-one |
+| `RUSTFS_ACCESS_KEY` | Required | All-in-one |
+| `RUSTFS_SECRET_KEY` | Required | All-in-one |
+| `OPENOBSERVE_EMAIL` | `admin@gitarena.local` | Observability |
+| `OPENOBSERVE_PASSWORD` | Required | Observability |
+| `OPENOBSERVE_AUTH` | Required | Observability. Base64 of `email:password`. |
+| `DATABASE_URL` | Required | Backend only |
+| `BACKEND_URL` | Required | Frontend only |
+
+PostgreSQL and Meilisearch are only reachable inside the Compose network, so their defaults are not exposed. Object storage is public, so its keys have no default.
+
+## Public domain and TLS
+
+```bash
+GITARENA_SCHEME=https GITARENA_DOMAIN=git.example.com docker compose up -d
+```
+
+Caddy obtains a certificate automatically. Point the domain's DNS at the host and open ports `80`, `443` and `2222`.
+
+## All-in-one
+
+```bash
+RUSTFS_ACCESS_KEY=... RUSTFS_SECRET_KEY=... docker compose -f docker-compose.all-in-one.yml up -d
+```
+
+This stack enables [search](/self-hosting/search), code search and [object storage](/self-hosting/object-storage):
+
+- Meilisearch and Zoekt are internal only. Zoekt reads the index that the backend writes into a shared volume.
+- RustFS stores avatars and release assets. Browsers upload to it directly, so Caddy serves it at `s3.<GITARENA_DOMAIN>`, and that hostname needs a DNS record as well. With the default `localhost`, browsers resolve `s3.localhost` by themselves.
+- The RustFS web console is available at `http://127.0.0.1:9001` on the host.
+
+## Observability
+
+```bash
+export OPENOBSERVE_PASSWORD=...
+export OPENOBSERVE_AUTH=$(printf 'admin@gitarena.local:%s' "$OPENOBSERVE_PASSWORD" | base64 | tr -d '\n')
+RUSTFS_ACCESS_KEY=... RUSTFS_SECRET_KEY=... docker compose -f docker-compose.observability.yml up -d
+```
+
+The backend sends traces, metrics and logs over OTLP straight to OpenObserve, authenticating with `OPENOBSERVE_AUTH`. Compose can't encode it for you, so recompute it whenever you change `OPENOBSERVE_EMAIL` or `OPENOBSERVE_PASSWORD`. OpenObserve's UI is available at `http://127.0.0.1:5080` on the host.
+
+## Backend or frontend only
+
+Run the backend against an existing database:
+
+```bash
+DATABASE_URL=postgresql://user:password@host:5432/gitarena docker compose -f docker-compose.backend.yml up -d
+```
+
+It listens on `127.0.0.1:8080` and port `2222`. Migrations run on startup, but nothing configures the settings for you. At minimum, set `repositories.base_dir` to `/repositories`:
+
+```sql
+update settings set value = '/repositories' where key = 'repositories.base_dir';
+```
+
+Run the frontend against an existing backend:
+
+```bash
+BACKEND_URL=https://api.git.example.com docker compose -f docker-compose.frontend.yml up -d
+```
+
+It listens on `127.0.0.1:3000` and forwards `/api` requests to `BACKEND_URL`. Put a [reverse proxy](/self-hosting/reverse-proxy) in front of either one.
+
+## All-in-one image
+
+`ghcr.io/mellowagain/gitarena-all-in-one` runs the backend, frontend and Caddy in one container, supervised by [s6-overlay](https://github.com/just-containers/s6-overlay). PostgreSQL stays external. Search and object storage are optional and configured as described in [search](/self-hosting/search) and [object storage](/self-hosting/object-storage).
+
+```bash
+docker run -d --name gitarena \
+  -e DATABASE_URL=postgresql://user:password@host:5432/gitarena \
+  -e GITARENA_SCHEME=https -e GITARENA_DOMAIN=git.example.com \
+  -p 80:80 -p 443:443 -p 443:443/udp -p 2222:2222 \
+  -v gitarena_repos:/repositories -v gitarena_caddy:/data \
+  ghcr.io/mellowagain/gitarena-all-in-one:main
+```
+
+On start, the container runs the same steps as the Compose stacks: it applies migrations, writes `domain.app`, `webauthn.origin` and `repositories.base_dir` (overwriting changes to them), then starts the backend, frontend and Caddy. If a service crashes, s6 restarts it. If migrations or settings fail, the container exits.
+
+`GITARENA_SCHEME` and `GITARENA_DOMAIN` default to `http` and `localhost`. `/repositories` holds the Git repositories and `/data` the TLS certificates.
+
+## Images
+
+CI publishes these images to `ghcr.io/mellowagain` and `docker.io/mellowagain`, for `linux/amd64` and `linux/arm64`:
+
+| Image | Contents |
+|-------|----------|
+| `gitarena` | Backend, including `zoekt-git-index` |
+| `gitarena-frontend` | Frontend |
+| `gitarena-zoekt-webserver` | Zoekt webserver, built from the same Zoekt version as the backend's `zoekt-git-index` |
+| `gitarena-all-in-one` | Backend, frontend and Caddy |
+
+| Tag | Points at |
+|-----|-----------|
+| `main` | The latest build of the `main` branch |
+| `sha-<commit>` | A specific commit, for example `sha-1a2b3c4` |
+| `1.2.3`, `1.2`, `1` | A release. The backend, Zoekt and all-in-one images follow `gitarena-v*` git tags, the frontend follows `gitarena-frontend-v*`. |
+
+To build the images from your checkout instead, pass `--build` to Compose. Set `VERGEN_GIT_SHA` so the backend reports the commit it was built from, otherwise it reports `unknown`:
+
+```bash
+VERGEN_GIT_SHA=$(git rev-parse HEAD) docker compose up -d --build
+```
+
+The all-in-one image is built with Bake, which takes the same variable:
+
+```bash
+VERGEN_GIT_SHA=$(git rev-parse HEAD) docker buildx bake -f docker-bake.hcl --load all-in-one
+```
 
 ## Volumes
 
 | Volume | Purpose |
 |--------|---------|
 | `pgdata` | PostgreSQL data directory |
-| `repos` | Bare git repositories on disk |
+| `repos` | Bare Git repositories |
+| `caddy_data` | TLS certificates |
+| `meili_data` | Meilisearch index, rebuilt from the database on startup |
+| `zoekt_index` | Zoekt code search index |
+| `rustfs_data` | Avatars and release assets |
+| `openobserve_data` | Traces, metrics and logs |
 
-The `repos` volume is mounted at `/repositories` inside the container. Set `repositories.base_dir` to `/repositories` before creating repositories:
-
-```bash
-docker compose exec postgres psql -U gitarena -d gitarena -c \
-  "UPDATE settings SET value = '/repositories' WHERE key = 'repositories.base_dir';"
-```
-
-Back up both the database volume and repository volume.
+Back up at least `pgdata`, `repos` and `rustfs_data`.
 
 ## Database password secrets
 
 The main database pool supports `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE`, but the background queue currently requires `DATABASE_URL` directly. Keep the password in `DATABASE_URL` until queue startup supports file-based secrets.
 
-## Frontend deployment
-
-Run the frontend separately from `gitarena-frontend`:
-
-```bash
-cd gitarena-frontend
-pnpm install
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8080 pnpm run build
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8080 pnpm run start
-```
-
-For local development, use `pnpm run dev`; it listens on port `8321`.
-
 ## Upgrading
 
-Rebuild the backend image and restart:
+<Warning>
+  Older versions of `docker-compose.yml` mounted `pgdata` at `/var/lib/postgresql/data`. PostgreSQL 18 images keep their data in a versioned subdirectory of `/var/lib/postgresql` instead and don't see a cluster at the root of the volume, so GitArena would start with an empty database. Before switching, dump the database with the old Compose file still running, then copy the volume to a backup and remove it:
+
+  ```bash
+  docker compose exec -T postgres pg_dump -U gitarena -d gitarena > gitarena.sql && test -s gitarena.sql
+  volume=$(docker inspect -f '{{range .Mounts}}{{.Name}}{{end}}' "$(docker compose ps -q postgres)") && test -n "$volume"
+  docker compose down
+  docker run --rm -v "$volume":/from -v gitarena_pgdata_backup:/to alpine cp -a /from/. /to
+  docker volume rm "$volume"
+  ```
+
+  Then start only PostgreSQL with the new Compose file, wait until it's healthy and restore the dump. `ON_ERROR_STOP` makes `psql` fail on the first error, so the rest of the stack only starts after a complete restore:
+
+  ```bash
+  docker compose up -d --wait postgres
+  docker compose exec -T postgres psql -U gitarena -d gitarena -v ON_ERROR_STOP=1 -q < gitarena.sql && docker compose up -d
+  ```
+
+  `pg_dump` also moves the data across PostgreSQL major versions. Once GitArena shows your data, remove the backup with `docker volume rm gitarena_pgdata_backup`.
+</Warning>
+
+Pull the new images and restart:
 
 ```bash
-docker compose build gitarena
-docker compose up -d gitarena
+docker compose pull
+docker compose up -d
 ```
 
-Migrations run automatically on startup.
+Migrations run automatically before the backend starts.
 
 ## Health check
 
 GitArena exposes a health check endpoint at `/healthz`:
 
 ```bash
-curl http://localhost:8080/healthz
+curl http://localhost/healthz
 ```
 
 A 200 response means the HTTP server responded. Use `/api/admin/health` from an admin session for component health, including database connectivity.

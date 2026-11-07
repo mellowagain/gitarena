@@ -1,0 +1,3 @@
+{$GITARENA_SCHEME}://s3.{$GITARENA_DOMAIN} {
+	reverse_proxy rustfs:9000
+}

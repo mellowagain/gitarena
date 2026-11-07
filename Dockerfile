@@ -14,13 +14,24 @@ COPY --from=planner /usr/src/gitarena/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
-ARG VERGEN_GIT_SHA
+ARG VERGEN_GIT_SHA=unknown
 
 RUN cargo build --release
 
 FROM golang:trixie AS zoekt-builder
 
-RUN go install github.com/sourcegraph/zoekt/cmd/zoekt-git-index@latest
+ARG ZOEKT_VERSION=v0.0.0-20261103080450-a5a933bc043e
+
+RUN go install github.com/sourcegraph/zoekt/cmd/zoekt-git-index@${ZOEKT_VERSION} \
+    && go install github.com/sourcegraph/zoekt/cmd/zoekt-webserver@${ZOEKT_VERSION}
+
+# Built from the same stage as the backend's zoekt-git-index so the index format always matches
+FROM debian:trixie-slim AS zoekt-webserver
+
+COPY --from=zoekt-builder /go/bin/zoekt-webserver /usr/local/bin/zoekt-webserver
+
+EXPOSE 6070
+ENTRYPOINT ["/usr/local/bin/zoekt-webserver"]
 
 FROM debian:trixie-slim
 

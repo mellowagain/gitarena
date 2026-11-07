@@ -1,0 +1,22 @@
+{$GITARENA_SCHEME}://{$GITARENA_DOMAIN} {
+	@backend path /api /api/* /api-docs/* /rapidoc /healthz /logout
+	handle @backend {
+		reverse_proxy {$GITARENA_BACKEND:gitarena:8080} {
+			flush_interval -1
+		}
+	}
+
+	@backend_paths path_regexp ^/([^/]+\.keys|[^/]+/[^/]+\.git/.*|[^/]+/[^/]+/tree/.+/~blob/.*)$
+	handle @backend_paths {
+		reverse_proxy {$GITARENA_BACKEND:gitarena:8080} {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy {$GITARENA_FRONTEND:frontend:3000}
+	}
+}
+
+# The all-in-one stack mounts its object storage site in here
+import /etc/caddy/sites/*.caddy

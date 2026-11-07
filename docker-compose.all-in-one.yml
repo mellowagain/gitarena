@@ -1,0 +1,4 @@
+include:
+  - path:
+      - docker-compose.yml
+      - deploy/compose/all-in-one.yml

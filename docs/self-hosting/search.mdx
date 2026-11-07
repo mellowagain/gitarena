@@ -77,7 +77,7 @@ psql -U gitarena -d gitarena -c \
 ```
 
 <Tip>
-  `zoekt.index_binary_path` supports `~` expansion, so you can use `~/go/bin/zoekt-git-index` if GitArena runs as a user with a home directory.
+  `zoekt.index_binary_path` and `zoekt.index_dir` support `~` expansion, so you can use `~/go/bin/zoekt-git-index` if GitArena runs as a user with a home directory.
 </Tip>
 
 ## Initial index
@@ -88,30 +88,9 @@ From that point on, repositories are re-indexed automatically after every push.
 
 ## Docker Compose
 
-Add `zoekt-webserver` as a service alongside GitArena. Do not publish port `6070` — the `zoekt` container should only be reachable from within the Docker network by the `gitarena` container:
+`docker-compose.all-in-one.yml` already runs Zoekt and Meilisearch and configures both. See the [Docker guide](/self-hosting/docker#all-in-one).
 
-```yaml docker-compose.yml
-services:
-  zoekt:
-    image: ghcr.io/sourcegraph/zoekt
-    command: ["zoekt-webserver", "-index", "/data/index", "-listen", "0.0.0.0:6070", "-rpc"]
-    volumes:
-      - zoektindex:/data/index
-    # No ports: block — zoekt must not be reachable from outside the Docker network
-
-  gitarena:
-    # ... existing service config ...
-    environment:
-      # ... existing env vars ...
-    volumes:
-      - repos:/repositories
-      - zoektindex:/data/index   # shared so gitarena can write shards directly
-
-volumes:
-  zoektindex:
-```
-
-Set `zoekt.address` to `http://zoekt:6070` and `zoekt.index_dir` to `/data/index` when using this layout.
+The Zoekt service is built from the same `Dockerfile` stage as the backend's `zoekt-git-index`, so both always use the same index format. It shares the `zoekt_index` volume with the backend at `/data/index` and is only reachable inside the Compose network.
 
 ## Troubleshooting
 

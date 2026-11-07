@@ -215,26 +215,12 @@ function CIDot({ ci }: { ci: string }) {
     return <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />;
 }
 
-import { InstanceConfig } from "@/lib/instance-config";
 import { LabelBadge } from "@/components/label-badge";
 import { WipBadge } from "@/components/wip-badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
-async function getApiInfo(): Promise<InstanceConfig | null> {
-    try {
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-        const res = await fetch(`${backendUrl}/api`, { next: { revalidate: 3600 } });
-        if (!res.ok) {
-            return null;
-        }
-        return res.json();
-    } catch {
-        return null;
-    }
-}
-
 export default async function AboutPage() {
-    const [apiInfo, githubStats] = await Promise.all([getApiInfo(), getGithubStats()]);
+    const githubStats = await getGithubStats();
 
     const activityLabel = githubStats
         ? githubStats.openPRs > 0
@@ -491,7 +477,7 @@ export default async function AboutPage() {
                 <CTA />
             </main>
 
-            <Footer apiInfo={apiInfo} />
+            <Footer />
         </div>
     );
 }
