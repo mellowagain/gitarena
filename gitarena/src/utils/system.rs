@@ -1,27 +1,28 @@
-use std::time::Duration;
-
+use anyhow::{Context, Result};
 use futures_locks::RwLock;
-use once_cell::sync::Lazy;
+use std::sync::OnceLock;
+use std::time::Duration;
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
-use tracing::{Instrument, info_span};
 
-pub(crate) static SYSTEM_INFO: Lazy<RwLock<System>> = Lazy::new(init);
+pub(crate) static SYSTEM_INFO: OnceLock<RwLock<System>> = OnceLock::new();
 
-fn init() -> RwLock<System> {
+pub(crate) fn init() -> Result<()> {
     let mut interval = tokio::time::interval(Duration::from_mins(5));
 
-    let system = System::new_with_specifics(RefreshKind::nothing().with_memory(MemoryRefreshKind::everything()));
-    let lock = RwLock::new(system);
+    let system = System::new_with_specifics(RefreshKind::nothing().with_memory(MemoryRefreshKind::everything()))
+        .context("unable to initialize memory system info refresher")?;
 
-    tokio::spawn(
-        async move {
-            loop {
-                interval.tick().await;
-                SYSTEM_INFO.write().await.refresh_memory();
+    let _ = SYSTEM_INFO.set(RwLock::new(system));
+
+    tokio::spawn(async move {
+        loop {
+            interval.tick().await;
+
+            if let Some(system) = SYSTEM_INFO.get() {
+                system.write().await.refresh_memory();
             }
         }
-        .instrument(info_span!("system_memory_refresh_task")),
-    ); // idk if it even makes sense to instrument this task
+    });
 
-    lock
+    Ok(())
 }

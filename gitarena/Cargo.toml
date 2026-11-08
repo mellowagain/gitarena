@@ -18,7 +18,7 @@ workspace = true
 [dependencies]
 actix-identity = "0.9.0"
 actix-session = { version = "0.11.0", features = ["cookie-session"] }
-actix-web = { version = "4.18.1", features = ["cookies", "secure-cookies"] }
+actix-web = { version = "4.18.2", features = ["cookies", "secure-cookies"] }
 anyhow = { workspace = true }
 askalono = "0.5.0"
 askama = { version = "0.16.1", default-features = false, features = ["config", "derive", "std"] }
@@ -74,7 +74,7 @@ sha2 = "0.11.1"
 serde_cbor_2 = "0.13.0"
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", features = ["chrono", "ipnetwork", "json", "postgres", "runtime-tokio", "tls-rustls-ring-webpki", "uuid"] } # needs to be in sync with version fang uses
-sysinfo = "0.39.6"
+sysinfo = "0.40.1"
 strum = { version = "0.28.0", features = ["derive"] }
 tar-codec = "0.0.16"
 time = "0.3.55"
@@ -90,7 +90,7 @@ utoipa = { version = "6.0.0", features = ["actix_extras", "chrono", "url", "uuid
 utoipa-rapidoc = { version = "7.0.0", features = ["actix-web"] }
 uuid = { workspace = true, features = ["v4", "v5", "v7"] }
 webauthn-rs = { version = "0.6.2", features = ["danger-allow-state-serialisation", "conditional-ui"] }
-zip = { version = "9.1.0", default-features = false, features = ["deflate", "time", "chrono"] }
+zip = { version = "9.2.1", default-features = false, features = ["deflate", "time", "chrono"] }
 
 [build-dependencies]
 vergen-gix = "10.0.3"
