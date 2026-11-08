@@ -5,7 +5,7 @@ use crate::git::io::writer::GitWriter;
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
 use async_recursion::async_recursion;
-use git2::{Buf, Commit, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
+use git2::{Buf, Commit, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
 use std::collections::HashSet;
 use tracing::instrument;
 use tracing::warn;
@@ -237,7 +237,12 @@ pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid]) -> Result<H
 
     for reference in repo.references()? {
         let reference = reference?;
-        let peeled = reference.peel(ObjectType::Any)?.id();
+
+        let peeled = match reference.peel(ObjectType::Any) {
+            Ok(object) => object.id(),
+            Err(err) if err.code() == ErrorCode::NotFound => continue,
+            Err(err) => return Err(err.into()),
+        };
 
         for oid in reference.target().into_iter().chain([peeled]) {
             if pending.remove(&oid) {
@@ -254,15 +259,43 @@ pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid]) -> Result<H
         return Ok(reachable);
     }
 
+    let walk_trees = pending
+        .iter()
+        .any(|oid| repo.find_object(*oid, None).is_ok_and(|object| object.kind() != Some(ObjectType::Commit)));
+
+    let mut seen_trees = HashSet::new();
+
     for oid in revwalk {
         let oid = oid?;
 
         if pending.remove(&oid) {
             reachable.insert(oid);
+        }
 
-            if pending.is_empty() {
-                break;
+        if walk_trees && !pending.is_empty() {
+            let tree = repo.find_commit(oid)?.tree()?;
+
+            if seen_trees.insert(tree.id()) {
+                if pending.remove(&tree.id()) {
+                    reachable.insert(tree.id());
+                }
+
+                tree.walk(TreeWalkMode::PreOrder, |_, entry| {
+                    if pending.remove(&entry.id()) {
+                        reachable.insert(entry.id());
+                    }
+
+                    if entry.kind() == Some(ObjectType::Tree) && !seen_trees.insert(entry.id()) {
+                        TreeWalkResult::Skip
+                    } else {
+                        TreeWalkResult::Ok
+                    }
+                })?;
             }
+        }
+
+        if pending.is_empty() {
+            break;
         }
     }
 

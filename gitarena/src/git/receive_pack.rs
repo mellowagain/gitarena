@@ -217,7 +217,7 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
         let (should_block, writer) = spawn_blocking(move || -> Result<(bool, GitWriter)> {
             let _guard = span.entered();
 
-            let should_block = scan_push(&scan_repo, &tips, &mut output_writer)?;
+            let should_block = scan_push(&scan_repo, &tips, side_band, &mut output_writer)?;
             Ok((should_block, output_writer))
         })
         .await??;
@@ -227,11 +227,11 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
         if should_block {
             debug!("rejecting push because secrets were detected");
 
-            for update in &updates {
-                output_writer.write_no_good(side_band, &update.target_ref, "push contains secrets").await?;
-            }
-
             if report_status {
+                for update in &updates {
+                    output_writer.write_no_good(side_band, &update.target_ref, "push contains secrets").await?;
+                }
+
                 if side_band {
                     output_writer.flush_sideband(Band::Data).await?;
                 } else {

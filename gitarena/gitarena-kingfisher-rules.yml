@@ -3,17 +3,17 @@ rules:
     id: gitarena.personal-token
     pattern: |
       (?x)
-      \b
       (
         sk_gap_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gap_1955bd1d7e0759d3c7d41117fd42661e6ab51f8dd6d437cf6fc23bde26f32927179a9a7dfcc66706041ad94020fb132ef1cef931cc3f7825fa63661092fa57a4
+      - saved_sk_gap_1955bd1d7e0759d3c7d41117fd42661e6ab51f8dd6d437cf6fc23bde26f32927179a9a7dfcc66706041ad94020fb132ef1cef931cc3f7825fa63661092fa57a4_backup
     negative_examples:
       - sk_gao_703b8c36238a925737920a8006148c22dd8633c0abeb360e9666b38cfa9ef812816294f68c0fb1fbebfe62b71049bbc8d6442d4c01a71b561e606425cc2c6f19
       - sk-gap-fa996fa0f8caff528eeaee609ec2d8bc4c632d4a1e338d0a085c6cbd379e498cf8470a9883622ea043bf368362bf9b331b2822c260b854de8d1217979a2002e0
@@ -24,17 +24,17 @@ rules:
     id: gitarena.organization-token
     pattern: |
       (?x)
-      \b
       (
         sk_gao_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gao_220877f251301e5c3e64b7e38e1013649c132e0a7ac3ec143605a153f478a455c22280b815414ffbc7a41448be128d4dacec7138d1488fe5f5e8bcacbb39099e
+      - saved_sk_gao_220877f251301e5c3e64b7e38e1013649c132e0a7ac3ec143605a153f478a455c22280b815414ffbc7a41448be128d4dacec7138d1488fe5f5e8bcacbb39099e_backup
     negative_examples:
       - sk_gap_ecaa21cc08c682a7480aa621636498d333f09390cea36366205219f3b2307bfd06ce00bd40f0e18dfc074851f4395f2382d4292f305a9be76c304318286aca1c
       - sk-gao-37dc1ff21c477dc26988f49c0c7d2d9a2e1591463b308c71ea594e636f91fa12101ba0152f072c8464fac7ee33236a6ad405064a7962cc3f3eb59d7539945015
@@ -45,17 +45,17 @@ rules:
     id: gitarena.ci-token
     pattern: |
       (?x)
-      \b
       (
         sk_gac_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gac_45e606c0412ca9627b6d95f88d1bd6fed39c17b850fc3abdd7ff59a8fc56b7e0ba32a8faec4603aeaea100fd2badcd4ffbbc19d303bf7bb44a2f887e5db1b77a
+      - saved_sk_gac_45e606c0412ca9627b6d95f88d1bd6fed39c17b850fc3abdd7ff59a8fc56b7e0ba32a8faec4603aeaea100fd2badcd4ffbbc19d303bf7bb44a2f887e5db1b77a_backup
     negative_examples:
       - sk_gap_3d3fb3e5cdbc234aeac650013822c7ed32e82efae5980125531de9eb94220bec8fccb14fb8e9ae2266779d7971aca678ad5a38b03a1e42f79c927156451337bf
       - sk-gac-cf39a41487dc1f1769fbe36aaf8a005ffa85563bf9c967d0a3e9583619ca2f3c9e4816f656a728ae76de26b13845f679d1fb41c09ae2cca179a8c4f76ee56cc3
@@ -66,17 +66,17 @@ rules:
     id: gitarena.deploy-token
     pattern: |
       (?x)
-      \b
       (
         sk_gad_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gad_af674498f9d8381c81efbf5d732b03a9ce471c25db72ddd8b1d0fb1962debc5ab2f19c4025dc936863138c27814ae71f7d40eef93cdf4cedbabb99aa9835c40a
+      - saved_sk_gad_af674498f9d8381c81efbf5d732b03a9ce471c25db72ddd8b1d0fb1962debc5ab2f19c4025dc936863138c27814ae71f7d40eef93cdf4cedbabb99aa9835c40a_backup
     negative_examples:
       - sk_gap_85ac163bef3710bb80415fed10a27af109800dcf18bdb3ab4fdb615057745e97fcac8b2ee69c23280c4b7d03d35603767746fb86cc751d45ef72ab513ce49886
       - sk-gad-557bb70513ce31d8816ac0fe57e2ece72cbcdbd001ed3a3c7e0d738eccab35b51026beffeca6f22577999de29947ff895fc104c608954d4d3f0afb472fcdd9c7
@@ -87,17 +87,17 @@ rules:
     id: gitarena.runner-token
     pattern: |
       (?x)
-      \b
       (
         sk_gar_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gar_c840884dbc77c2748cf898e258853b0b1edfa7e41e9c6ee26ec56ad8fd5f69c44a3d39375c2eabfe6e6150b8d001b92113423bd2822cbf53e64cf824081b288a
+      - saved_sk_gar_c840884dbc77c2748cf898e258853b0b1edfa7e41e9c6ee26ec56ad8fd5f69c44a3d39375c2eabfe6e6150b8d001b92113423bd2822cbf53e64cf824081b288a_backup
     negative_examples:
       - sk_gap_6f5cc2d722f4e87c7fe50606c5071da6f3797b6b6fae49ea2b7dd19a32b39c810e327cfc22738b310c6b4908dbbab9906697729e09ac7116623510e8dcb0ef38
       - sk-gar-898c3bbd53d4f9df8f0b19ee88332c848b0cd74afc1000ffaceb404ba94c98d379e4ef5bff6de7070171671344c685bc2977831b397116078337da547b4e0bea
@@ -108,17 +108,17 @@ rules:
     id: gitarena.instance-token
     pattern: |
       (?x)
-      \b
       (
         sk_gai_
         [0-9a-f]{128}
       )
-      \b
+      (?:[^0-9a-f]|$)
     min_entropy: 3.0
     confidence: high
     visible: true
     examples:
       - sk_gai_ca675f83a4445eb7136c24fc2d970b2d10707570c41b18ca12ba137e1f4ef7bbd82f0e1c568b9e3d4956a081efcdf46892bab5feb3826d119817e6328a43f7c3
+      - saved_sk_gai_ca675f83a4445eb7136c24fc2d970b2d10707570c41b18ca12ba137e1f4ef7bbd82f0e1c568b9e3d4956a081efcdf46892bab5feb3826d119817e6328a43f7c3_backup
     negative_examples:
       - sk_gap_0f31b52390c67268b276fab81133a48f9ec1f1840dd529dda634c8c822fb7eabc9f8478610d3fbbaf51fa69d1702810f8b8faf400ca6f700ce5ccab59a69daaf
       - sk-gai-2e58189fcddb217e9af2f84f8a50096a747887f04806e40fea43e2a4233564d8dacd4bfdf99ff032c6252e5ac54fa0658ad2deb791256aac47610a9d7ad2f0fb

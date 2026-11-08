@@ -65,14 +65,14 @@ const sections: Section[] = [
         content: [
             "You must not use the Service to: distribute malware or malicious code; conduct phishing or fraud; infringe the intellectual property of others; harass or threaten any person; circumvent access controls or exploit vulnerabilities; generate unsolicited bulk communications.",
             "Public repositories must not contain content that is illegal under Swiss law or the law of the Federal Republic of Germany, that is sexually exploitative of minors, or that is designed to facilitate real-world violence.",
-            "Automated use (mirroring, scripted cloning, etc.) must stay within reasonable limits. Automated clients should identify themselves with a descriptive User-Agent header that names the tool or service making the requests. We may rate-limit or suspend access if automated use disrupts the Service for other users.",
+            "Automated use (mirroring, scripted cloning, etc.) must stay within reasonable limits. Automated HTTP clients should identify themselves with a descriptive User-Agent header that names the tool or service making the requests. We may rate-limit or suspend access if automated use disrupts the Service for other users.",
         ],
     },
     {
         id: "secret-scanning",
         title: "7. Secret scanning",
         content: [
-            "We automatically scan content pushed to the Service for credentials and other secrets, such as API keys, access tokens, and private keys. If we detect one, we try to reject the push so that it is not added to your repository. Content from a rejected push may remain on our servers until it is removed by garbage collection. During that time it is not accessible to any user of the Service.",
+            "We automatically scan the contents of files added or changed in pushes to the Service for credentials and other secrets, such as API keys, access tokens, and private keys. Commit messages and tag messages are not scanned. If we detect a secret, we try to reject the push so that it is not added to your repository. Content from a rejected push may remain on our servers until it is removed by garbage collection. During that time it is not accessible to any user of the Service.",
             "Secret scanning is provided on a best-effort basis. It cannot detect every secret and may flag content that is not a secret. We do not guarantee that a secret will be detected or that a push containing one will be rejected.",
             "Any secret you push to the Service must be treated as exposed, even if we rejected the push. By the time a push is rejected the secret has already been transmitted to and processed by our servers. Revoke or rotate it immediately.",
         ],

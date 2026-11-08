@@ -3,11 +3,13 @@ use crate::git::io::writer::GitWriter;
 use crate::git::io::band::Band;
 use anyhow::{Result, anyhow};
 use bstr::ByteSlice;
+use gix::object::Kind;
 use gix::object::tree::diff::ChangeDetached;
 use gix::{ObjectId, Repository};
 use kingfisher_rules::{Confidence, Rules, RulesDatabase, get_builtin_rules};
-use kingfisher_scanner::Scanner;
-use std::collections::HashSet;
+use kingfisher_scanner::{Finding, Scanner};
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::runtime::Handle;
@@ -15,6 +17,8 @@ use tokio::sync::OnceCell;
 use tracing::{Span, debug, info, instrument};
 
 pub(crate) static SECRET_SCANNER: OnceCell<Scanner> = OnceCell::const_new();
+
+const MAX_REPORTED_FINDINGS: usize = 50;
 
 #[instrument(err)]
 pub(crate) async fn init() -> Result<Scanner> {
@@ -48,10 +52,22 @@ pub(crate) async fn init() -> Result<Scanner> {
 }
 
 #[instrument(err, skip(repo, writer))]
-pub(crate) fn scan_push(repo: &Repository, tips: &[ObjectId], writer: &mut GitWriter) -> Result<bool> {
+pub(crate) fn scan_push(repo: &Repository, tips: &[ObjectId], side_band: bool, writer: &mut GitWriter) -> Result<bool> {
     let scanner = SECRET_SCANNER
         .get()
         .ok_or_else(|| anyhow!("secret scanning should only be used after the scanner has been initialized"))?;
+
+    let mut commit_tips = Vec::new();
+
+    for &tip in tips {
+        let object = repo.find_object(tip)?.peel_tags_to_end()?;
+
+        if object.kind == Kind::Commit {
+            commit_tips.push(object.id);
+        } else {
+            debug!(%tip, kind = %object.kind, "skipping secret scanning for tag that does not point to a commit");
+        }
+    }
 
     let mut hidden = Vec::new();
 
@@ -62,10 +78,12 @@ pub(crate) fn scan_push(repo: &Repository, tips: &[ObjectId], writer: &mut GitWr
     }
 
     let mut seen_blobs = HashSet::new();
+    let mut scan_results: HashMap<ObjectId, Vec<Finding>> = HashMap::new();
     let mut lines = Vec::new();
     let mut found = 0;
+    let mut truncated = false;
 
-    for info in repo.rev_walk(tips.iter().copied()).with_hidden(hidden).all()? {
+    'walk: for info in repo.rev_walk(commit_tips).with_hidden(hidden).all()? {
         let commit = info?.object()?;
 
         if commit.message_raw()?.contains_str("[skip secret scanning]") {
@@ -89,11 +107,18 @@ pub(crate) fn scan_push(repo: &Repository, tips: &[ObjectId], writer: &mut GitWr
                 continue;
             }
 
-            let blob = repo.find_blob(id)?;
-            let findings = scanner.scan_bytes(&blob.data)?;
+            let findings = match scan_results.entry(id) {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => entry.insert(scanner.scan_bytes(&repo.find_blob(id)?.data)?),
+            };
 
-            for finding in findings {
-                lines.push(format!("{}", finding.rule_name));
+            for finding in findings.iter() {
+                if found == MAX_REPORTED_FINDINGS {
+                    truncated = true;
+                    break 'walk;
+                }
+
+                lines.push(finding.rule_name.clone());
                 lines.push(format!("  secret: {}", mask_secret(&finding.secret)));
                 lines.push(format!("  location: {location}:{}:{}", finding.location.line, finding.location.column));
                 lines.push(format!("  confidence: {}", finding.confidence));
@@ -112,15 +137,24 @@ pub(crate) fn scan_push(repo: &Repository, tips: &[ObjectId], writer: &mut GitWr
         return Ok(false);
     }
 
-    let header = [
-        " ",
-        "SECRETS DETECTED IN PUSH",
-        "If this is a false positive, change your commit message to include `[skip secret scanning]`.",
-        " ",
+    if !side_band {
+        return Ok(true);
+    }
+
+    let mut header = vec![
+        " ".to_string(),
+        "SECRETS DETECTED IN PUSH".to_string(),
+        "If this is a false positive, change your commit message to include `[skip secret scanning]`.".to_string(),
     ];
 
+    if truncated {
+        header.push(format!("Only the first {MAX_REPORTED_FINDINGS} findings are shown."));
+    }
+
+    header.push(" ".to_string());
+
     Handle::current().block_on(async {
-        for line in header.into_iter().map(String::from).chain(lines) {
+        for line in header.into_iter().chain(lines) {
             writer.write_text_sideband(Band::Progress, line).await?;
         }
 
