@@ -4,12 +4,12 @@ use crate::error::error_renderer_middleware;
 use crate::metrics::db_pool::spawn_db_pool_metrics_task;
 use crate::routes::ApiDoc;
 use crate::sse::Broadcaster;
-use crate::utils::system::SYSTEM_INFO;
 
 use crate::database::{Pool, create_postgres_pool};
 use crate::log::init_logger;
 use crate::meili::MEILI_CLIENT;
 use crate::storage::STORAGE;
+use crate::utils::system;
 use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;
 use actix_session::config::{PersistentSession, SessionLifecycle, TtlExtensionPolicy};
@@ -102,8 +102,7 @@ async fn main() -> Result<()> {
 
     licenses::init();
 
-    // read the `Lazy` to initialize it but immediately drop the returned guard to prevent a deadlock
-    let _ = SYSTEM_INFO.read().await;
+    system::init()?;
 
     let bind_address = env::var("BIND_ADDRESS").context("Unable to read mandatory BIND_ADDRESS environment variable")?;
 
