@@ -1,6 +1,7 @@
 FROM rust:trixie AS chef
 
 RUN cargo install cargo-chef --locked
+RUN cargo install cargo-about --locked --features cli
 WORKDIR /usr/src/gitarena
 
 FROM chef AS planner
@@ -17,6 +18,7 @@ COPY . .
 ARG VERGEN_GIT_SHA=unknown
 
 RUN cargo build --release
+RUN cargo about generate about.hbs -o THIRD_PARTY_LICENSES.txt
 
 FROM golang:trixie AS zoekt-builder
 
@@ -40,6 +42,7 @@ RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=builder /usr/src/gitarena/target/release/gitarena /app/gitarena-bin
+COPY --from=builder /usr/src/gitarena/THIRD_PARTY_LICENSES.txt /app/THIRD_PARTY_LICENSES.txt
 COPY --from=zoekt-builder /go/bin/zoekt-git-index /usr/local/bin/zoekt-git-index
 
 EXPOSE 8080

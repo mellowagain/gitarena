@@ -2735,7 +2735,6 @@ dependencies = [
  "infer",
  "ipnetwork 0.20.0",
  "itertools 0.15.0",
- "kingfisher-core",
  "kingfisher-rules",
  "kingfisher-scanner",
  "lettre",
