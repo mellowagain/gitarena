@@ -51,6 +51,7 @@ const sections: Section[] = [
             "Session data — a random session token stored as a cookie, plus your IP address and the User-Agent string sent by your browser. These are recorded each time you make an authenticated request and are used for security monitoring and abuse prevention.",
             "SSH keys and passkeys — the public half of any SSH key you upload, and the public-key credential for any WebAuthn/passkey you register. Private keys never leave your device.",
             "Repository content — code, commits, and git objects are stored as bare repositories on disk on the backend server. Issues, merge request comments, and repository metadata are stored in the database. This content is used solely to provide the Service and is not used for any other purpose.",
+            "Secret scanning — content you push is automatically scanned on the backend server for credentials and other secrets, such as API keys and access tokens, so that pushes containing them can be rejected. We keep no separate record of detected secrets, but content from a rejected push may remain on the backend server until it is removed by garbage collection. During that time it is not accessible to any user of the Service. Detected secrets are not shared with any third party.",
             "Operational telemetry — HTTP request traces, performance metrics, and application logs are exported via OpenTelemetry to New Relic. These records may contain IP addresses and request paths. Retention periods on New Relic: logs 30 days, traces 8 days, metrics 8 days. Infrastructure metadata (host-level, no PII) is retained for 395 days.",
             "We do not use tracking pixels, third-party analytics scripts, or behavioural-advertising technologies of any kind.",
         ],
@@ -180,7 +181,7 @@ export default function PrivacyPage() {
                             <div>
                                 <h1 className="text-2xl font-semibold tracking-tight mb-1">Privacy Policy</h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Last updated: 6 June 2026 &nbsp;·&nbsp; Effective: 6 June 2026
+                                    Last updated: 8 November 2026 &nbsp;·&nbsp; Effective: 22 November 2026
                                 </p>
                             </div>
                         </div>

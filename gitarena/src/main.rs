@@ -23,6 +23,8 @@ use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::{Data, route};
 use actix_web::{App, HttpServer, web};
 use anyhow::{Context, Result, anyhow, bail};
+use git::hooks::secret_scanning;
+use git::hooks::secret_scanning::SECRET_SCANNER;
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use rustls::crypto::ring;
@@ -137,6 +139,11 @@ async fn main() -> Result<()> {
     contributions::init(&db_pool).await?;
 
     LocalSet::new().run_until(sso::provider::init(&db_pool)).await?;
+
+    let scanner = secret_scanning::init().await?;
+    SECRET_SCANNER
+        .set(scanner)
+        .map_err(|_| anyhow!("secret scanner should not be set more than once"))?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 

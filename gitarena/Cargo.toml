@@ -48,6 +48,9 @@ hmac = "0.13.0"
 infer = "0.22.0"
 ipnetwork = { version = "=0.20.0", features = ["serde"] } # needs to be in sync with the version sqlx uses
 itertools = "0.15.0"
+kingfisher-core = "1.0.6"
+kingfisher-rules = "3.1.0"
+kingfisher-scanner = "3.0.2"
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "hostname", "pool", "ring", "rustls-platform-verifier", "smtp-transport", "tokio1-rustls"] }
 linguist = "0.1.17"
 maxminddb = "0.32.0"

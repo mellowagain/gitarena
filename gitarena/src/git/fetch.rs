@@ -6,6 +6,7 @@ use actix_web::web::Bytes;
 use anyhow::{Context, Result};
 use async_recursion::async_recursion;
 use git2::{Buf, Commit, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository};
+use std::collections::HashSet;
 use tracing::instrument;
 use tracing::warn;
 
@@ -166,8 +167,16 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
         pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
         pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
 
-        for wanted_obj in &options.want {
-            match repo.find_object(Oid::from_str(wanted_obj.as_str())?, None) {
+        let wants = options.want.iter().map(|want| Oid::from_str(want)).collect::<Result<Vec<_>, _>>()?;
+        let reachable = reachable_objects(repo, &wants)?;
+
+        for (wanted_obj, &oid) in options.want.iter().zip(&wants) {
+            if !reachable.contains(&oid) {
+                warn!(wanted = ?wanted_obj, "wanted object is not reachable from any ref");
+                continue;
+            }
+
+            match repo.find_object(oid, None) {
                 Ok(object) => {
                     if let Some(kind) = object.kind() {
                         match kind {
@@ -218,6 +227,46 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
         .await?;
 
     Ok(Some(writer))
+}
+
+#[instrument(err, skip(repo))]
+pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid]) -> Result<HashSet<Oid>> {
+    let mut pending: HashSet<Oid> = oids.iter().copied().collect();
+    let mut reachable = HashSet::new();
+    let mut revwalk = repo.revwalk()?;
+
+    for reference in repo.references()? {
+        let reference = reference?;
+        let peeled = reference.peel(ObjectType::Any)?.id();
+
+        for oid in reference.target().into_iter().chain([peeled]) {
+            if pending.remove(&oid) {
+                reachable.insert(oid);
+            }
+        }
+
+        if let Ok(commit) = reference.peel_to_commit() {
+            revwalk.push(commit.id())?;
+        }
+    }
+
+    if pending.is_empty() {
+        return Ok(reachable);
+    }
+
+    for oid in revwalk {
+        let oid = oid?;
+
+        if pending.remove(&oid) {
+            reachable.insert(oid);
+
+            if pending.is_empty() {
+                break;
+            }
+        }
+    }
+
+    Ok(reachable)
 }
 
 #[instrument(err, skip(pack_builder))]

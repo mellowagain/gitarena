@@ -1,0 +1,126 @@
+rules:
+  - name: GitArena Personal Access Token
+    id: gitarena.personal-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gap_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gap_1955bd1d7e0759d3c7d41117fd42661e6ab51f8dd6d437cf6fc23bde26f32927179a9a7dfcc66706041ad94020fb132ef1cef931cc3f7825fa63661092fa57a4
+    negative_examples:
+      - sk_gao_703b8c36238a925737920a8006148c22dd8633c0abeb360e9666b38cfa9ef812816294f68c0fb1fbebfe62b71049bbc8d6442d4c01a71b561e606425cc2c6f19
+      - sk-gap-fa996fa0f8caff528eeaee609ec2d8bc4c632d4a1e338d0a085c6cbd379e498cf8470a9883622ea043bf368362bf9b331b2822c260b854de8d1217979a2002e0
+      - sk_gap_5832f4abfeb0790baf624a83d884647299f0050af64262dfc1b683089d2546736a721125c5d25b54cea7d74007a9de3d01d2c0f3929ea966092cf7ef5856a05
+      - sk_gap_0a79a03d597eeb940de3242474ab1342fa49d7e1743c318b5e566714dad30e90bce2bf636a1892de2df52df1b650315c3290cd7f8ee1ca359e185285db485ef07
+
+  - name: GitArena Organization Token
+    id: gitarena.organization-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gao_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gao_220877f251301e5c3e64b7e38e1013649c132e0a7ac3ec143605a153f478a455c22280b815414ffbc7a41448be128d4dacec7138d1488fe5f5e8bcacbb39099e
+    negative_examples:
+      - sk_gap_ecaa21cc08c682a7480aa621636498d333f09390cea36366205219f3b2307bfd06ce00bd40f0e18dfc074851f4395f2382d4292f305a9be76c304318286aca1c
+      - sk-gao-37dc1ff21c477dc26988f49c0c7d2d9a2e1591463b308c71ea594e636f91fa12101ba0152f072c8464fac7ee33236a6ad405064a7962cc3f3eb59d7539945015
+      - sk_gao_75b2000828598bdab72295692c1ae707811aed9ceaafafa5bf62df5e7b9bc8c8ae50dd1a6c5d0a06ee2fd8dc6d816c53f7a21a8ad1cc705383ea02c4fd2a8f5
+      - sk_gao_cfe2cbf25ef93819ee5404d46e9ee5159bd859a12176bb2cca7db1f2d13dcb3bfc75da12b68439e7a63c45ba1afc7ff13852a7aa4ffcb748c7438360ec5920a1b
+
+  - name: GitArena CI Token
+    id: gitarena.ci-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gac_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gac_45e606c0412ca9627b6d95f88d1bd6fed39c17b850fc3abdd7ff59a8fc56b7e0ba32a8faec4603aeaea100fd2badcd4ffbbc19d303bf7bb44a2f887e5db1b77a
+    negative_examples:
+      - sk_gap_3d3fb3e5cdbc234aeac650013822c7ed32e82efae5980125531de9eb94220bec8fccb14fb8e9ae2266779d7971aca678ad5a38b03a1e42f79c927156451337bf
+      - sk-gac-cf39a41487dc1f1769fbe36aaf8a005ffa85563bf9c967d0a3e9583619ca2f3c9e4816f656a728ae76de26b13845f679d1fb41c09ae2cca179a8c4f76ee56cc3
+      - sk_gac_972ea6a147f80b925fd08727b5d04ddc30a0a5811bdbc89bb98fa55190cbf06122626ba6abdf10d2c56491467f903714d7bd197df60b133585e38d87cf115c3
+      - sk_gac_9f9e3789f1f7c0fb199c27404d6471ffe90228084d2429a966c0866e9f2957b09d50856d7096b94d1ec492f96160fdf30968173733215bc9239d1c4bcc492731b
+
+  - name: GitArena Deploy Token
+    id: gitarena.deploy-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gad_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gad_af674498f9d8381c81efbf5d732b03a9ce471c25db72ddd8b1d0fb1962debc5ab2f19c4025dc936863138c27814ae71f7d40eef93cdf4cedbabb99aa9835c40a
+    negative_examples:
+      - sk_gap_85ac163bef3710bb80415fed10a27af109800dcf18bdb3ab4fdb615057745e97fcac8b2ee69c23280c4b7d03d35603767746fb86cc751d45ef72ab513ce49886
+      - sk-gad-557bb70513ce31d8816ac0fe57e2ece72cbcdbd001ed3a3c7e0d738eccab35b51026beffeca6f22577999de29947ff895fc104c608954d4d3f0afb472fcdd9c7
+      - sk_gad_b61d232c8222db2c6694a2a6ae0e81e4f5b58d25786a368027ad3388330294ef4053a384d70344f1474ec859903deb42723256f9649264727aa7f74a6a74830
+      - sk_gad_c1772e77ec411c5a40254d6866855fa74fa4867aae90f10afe44ddf71b52e77598c5d7e1b0031a439d7ce62c9076c88cf31d83036a50c3b6795c23ec7b0179471
+
+  - name: GitArena Runner Token
+    id: gitarena.runner-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gar_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gar_c840884dbc77c2748cf898e258853b0b1edfa7e41e9c6ee26ec56ad8fd5f69c44a3d39375c2eabfe6e6150b8d001b92113423bd2822cbf53e64cf824081b288a
+    negative_examples:
+      - sk_gap_6f5cc2d722f4e87c7fe50606c5071da6f3797b6b6fae49ea2b7dd19a32b39c810e327cfc22738b310c6b4908dbbab9906697729e09ac7116623510e8dcb0ef38
+      - sk-gar-898c3bbd53d4f9df8f0b19ee88332c848b0cd74afc1000ffaceb404ba94c98d379e4ef5bff6de7070171671344c685bc2977831b397116078337da547b4e0bea
+      - sk_gar_bad3421bb8235832ea512b04b2925ac78160808e18e715a14e51c95878becf168ae1254ca2cd019791e43289692814d47bcf44d935632df9782cf435db20909
+      - sk_gar_977ab75a86aabad3bf01cc8dd803172a70dad136b24094c688841dfa1e008244c89af6dccc9d59724791ebdeae443e903d2270ec247be01eb34af3908682818e1
+
+  - name: GitArena Instance Token
+    id: gitarena.instance-token
+    pattern: |
+      (?x)
+      \b
+      (
+        sk_gai_
+        [0-9a-f]{128}
+      )
+      \b
+    min_entropy: 3.0
+    confidence: high
+    visible: true
+    examples:
+      - sk_gai_ca675f83a4445eb7136c24fc2d970b2d10707570c41b18ca12ba137e1f4ef7bbd82f0e1c568b9e3d4956a081efcdf46892bab5feb3826d119817e6328a43f7c3
+    negative_examples:
+      - sk_gap_0f31b52390c67268b276fab81133a48f9ec1f1840dd529dda634c8c822fb7eabc9f8478610d3fbbaf51fa69d1702810f8b8faf400ca6f700ce5ccab59a69daaf
+      - sk-gai-2e58189fcddb217e9af2f84f8a50096a747887f04806e40fea43e2a4233564d8dacd4bfdf99ff032c6252e5ac54fa0658ad2deb791256aac47610a9d7ad2f0fb
+      - sk_gai_45b0a187dcc3df731a8b505c567dc796fe6e8469a188b121fd49ad79d43bf10466b610f474693dcb56e4a37534f829f01257d628c4c7797945d613eb297c1c0
+      - sk_gai_6f72354b58baa4927fb125c02d067879aa3bee07725f08079874fd9cfe2b5e4d65b6640198364affeb7943158267d0dc3a60563403ae9f2efb7511dc7182822d8

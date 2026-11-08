@@ -65,12 +65,21 @@ const sections: Section[] = [
         content: [
             "You must not use the Service to: distribute malware or malicious code; conduct phishing or fraud; infringe the intellectual property of others; harass or threaten any person; circumvent access controls or exploit vulnerabilities; generate unsolicited bulk communications.",
             "Public repositories must not contain content that is illegal under Swiss law or the law of the Federal Republic of Germany, that is sexually exploitative of minors, or that is designed to facilitate real-world violence.",
-            "Automated use (mirroring, scripted cloning, etc.) must stay within reasonable limits. We may rate-limit or suspend access if automated use disrupts the Service for other users.",
+            "Automated use (mirroring, scripted cloning, etc.) must stay within reasonable limits. Automated clients should identify themselves with a descriptive User-Agent header that names the tool or service making the requests. We may rate-limit or suspend access if automated use disrupts the Service for other users.",
+        ],
+    },
+    {
+        id: "secret-scanning",
+        title: "7. Secret scanning",
+        content: [
+            "We automatically scan content pushed to the Service for credentials and other secrets, such as API keys, access tokens, and private keys. If we detect one, we try to reject the push so that it is not added to your repository. Content from a rejected push may remain on our servers until it is removed by garbage collection. During that time it is not accessible to any user of the Service.",
+            "Secret scanning is provided on a best-effort basis. It cannot detect every secret and may flag content that is not a secret. We do not guarantee that a secret will be detected or that a push containing one will be rejected.",
+            "Any secret you push to the Service must be treated as exposed, even if we rejected the push. By the time a push is rejected the secret has already been transmitted to and processed by our servers. Revoke or rotate it immediately.",
         ],
     },
     {
         id: "availability",
-        title: "7. Service availability",
+        title: "8. Service availability",
         content: [
             "We aim to keep the Service available but cannot guarantee uptime. The Service may be suspended for maintenance, security incidents, or circumstances outside our control.",
             "We are not liable for loss or damage resulting from downtime, data loss, or service interruption.",
@@ -78,7 +87,7 @@ const sections: Section[] = [
     },
     {
         id: "termination",
-        title: "8. Termination",
+        title: "9. Termination",
         content: [
             "You may delete your account at any time from your account settings. Deletion is permanent; your personal data and repository data will be removed within 30 days.",
             "Accounts created without verifying the associated email address within 24 hours will be locked and scheduled for deletion 7 days after registration. You may prevent deletion by verifying your email before the 7-day period expires.",
@@ -88,7 +97,7 @@ const sections: Section[] = [
     },
     {
         id: "liability",
-        title: "9. Limitation of liability",
+        title: "10. Limitation of liability",
         content: [
             "The Service is provided 'as is' and 'as available', without warranties of any kind. We do not warrant that the Service will be uninterrupted, error-free, or free of harmful components.",
             "To the extent permitted by Swiss law, we are not liable for any indirect, incidental, or consequential damages arising from your use of, or inability to use, the Service — including loss of data or loss of revenue.",
@@ -98,7 +107,7 @@ const sections: Section[] = [
     },
     {
         id: "contact",
-        title: "10. Contact",
+        title: "11. Contact",
         content: [
             "Legal enquiries and copyright takedown requests: gitarena_legal@mari.zip. For copyright takedowns you may also use the form at git.mari.zip/takedown.",
         ],
@@ -149,7 +158,7 @@ export default function TermsPage() {
                             <div>
                                 <h1 className="text-2xl font-semibold tracking-tight mb-1">Terms of Service</h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Last updated: 2 May 2026 &nbsp;·&nbsp; Effective: 2 May 2026
+                                    Last updated: 8 November 2026 &nbsp;·&nbsp; Effective: 22 November 2026
                                 </p>
                             </div>
                         </div>
