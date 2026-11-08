@@ -3,6 +3,8 @@
 !Cargo.toml
 !Cargo.lock
 !rustfmt.toml
+!about.toml
+!about.hbs
 !migrations/
 !gitarena/
 !gitarena-macros/

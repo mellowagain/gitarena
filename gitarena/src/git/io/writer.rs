@@ -29,6 +29,7 @@ impl GitWriter {
             .write(str_ref.as_bytes())
             .await
             .with_context(|| format!("Unable to write text to Git writer: `{str_ref}`"))?;
+
         Ok(self)
     }
 
@@ -42,6 +43,7 @@ impl GitWriter {
             .write(with_band.as_slice())
             .await
             .with_context(|| format!("Unable to write text to sideband {band} in Git writer: `{str_ref}`"))?;
+
         Ok(self)
     }
 
@@ -56,7 +58,19 @@ impl GitWriter {
             .write(with_band.as_slice())
             .await
             .with_context(|| format!("Unable to write text to sideband {band} in Git writer: `{str_ref}`"))?;
+
         Ok(self)
+    }
+
+    #[instrument(err, skip(self))]
+    pub(crate) async fn write_no_good(&mut self, side_band: bool, target_ref: &str, reason: &str) -> Result<&mut GitWriter> {
+        let line = format!("ng {target_ref} {reason}");
+
+        if side_band {
+            self.write_text_sideband_pktline(Band::Data, line).await
+        } else {
+            self.write_text(line).await
+        }
     }
 
     #[instrument(err, skip_all)]
@@ -65,6 +79,7 @@ impl GitWriter {
             .write(text)
             .await
             .with_context(|| format!("Unable to write text bytes to Git writer: {text:?}"))?;
+
         Ok(self)
     }
 

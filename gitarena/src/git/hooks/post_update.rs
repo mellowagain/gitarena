@@ -53,7 +53,7 @@ impl AsyncRunnable for PostUpdateTask {
 
         if *GIT_CLI_AVAILABLE {
             let status = Command::new("git")
-                .args(["-c", "gc.autoDetach=false", "gc", "--auto", "--quiet"])
+                .args(["-c", "gc.autoDetach=false", "-c", "gc.pruneExpire=1.day.ago", "gc", "--auto", "--quiet"])
                 .current_dir(&path)
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())

@@ -1,0 +1,37 @@
+accepted = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-1-Clause",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CC-BY-SA-4.0",
+    "Unlicense",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+    "MPL-2.0",
+]
+
+[kingfisher-rules.clarify]
+license = "Apache-2.0 AND MIT AND CC-BY-SA-4.0"
+
+[[kingfisher-rules.clarify.files]]
+path = "LICENSE"
+license = "Apache-2.0"
+checksum = "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+
+[[kingfisher-rules.clarify.files]]
+path = "data/wordfreq-NOTICE.md"
+license = "CC-BY-SA-4.0"
+checksum = "d9b104dafe63886af55e7cea7484824e32e12d4e1f57f319923dd643b36d6b15"
+
+[[kingfisher-rules.clarify.files]]
+path = "data/wordfreq-LICENSE.txt"
+license = "CC-BY-SA-4.0"
+checksum = "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5"

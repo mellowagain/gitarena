@@ -2,6 +2,7 @@ use crate::contributions::{WalkCommit, record_commit_contributions, walk_new_com
 use crate::events::Event;
 use crate::git::hooks::index_zoekt::schedule_repo_indexing;
 use crate::git::hooks::post_update::PostUpdateTask;
+use crate::git::hooks::secret_scanning::scan_push;
 use crate::git::io::band::Band;
 use crate::git::io::reader::read_data_lines;
 use crate::git::io::writer::GitWriter;
@@ -38,7 +39,8 @@ use gix::refs::Target;
 use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
 use memmem::{Searcher, TwoWaySearcher};
 use serde_json::{Value, json};
-use tracing::{instrument, warn};
+use tokio::task::spawn_blocking;
+use tracing::{Span, debug, instrument, warn};
 use uuid::Uuid;
 
 const REF_LOCK_FAIL_MODE: Fail = Fail::AfterDurationWithBackoff(Duration::from_secs(5));
@@ -201,6 +203,47 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
 
         if report_status {
             write_report_line(side_band, &mut output_writer, "unpack ok").await?;
+        }
+
+        let tips = updates
+            .iter()
+            .filter(|update| update.new.is_some())
+            .map(|update| oid::from_hex_str(update.new.as_deref()))
+            .collect::<Result<Vec<_>>>()?;
+
+        let span = Span::current();
+        let scan_repo = gitoxide_repo.clone();
+
+        let (should_block, writer) = spawn_blocking(move || -> Result<(bool, GitWriter)> {
+            let _guard = span.entered();
+
+            let should_block = scan_push(&scan_repo, &tips, side_band, &mut output_writer)?;
+            Ok((should_block, output_writer))
+        })
+        .await??;
+
+        output_writer = writer;
+
+        if should_block {
+            debug!("rejecting push because secrets were detected");
+
+            if report_status {
+                for update in &updates {
+                    output_writer.write_no_good(side_band, &update.target_ref, "push contains secrets").await?;
+                }
+
+                if side_band {
+                    output_writer.flush_sideband(Band::Data).await?;
+                } else {
+                    output_writer.flush().await?;
+                }
+            }
+
+            if side_band {
+                output_writer.flush().await?;
+            }
+
+            return Ok(output_writer);
         }
 
         for update in &updates {

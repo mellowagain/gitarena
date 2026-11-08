@@ -27,6 +27,7 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
     - [x] Version tagging UI
   - [x] Archiving
   - [x] Download as `.zip` and `.tar.gz`
+  - [x] Automatic secret scanning on pushes
 - [x] Web-based code browser
   - [x] Syntax-highlighted file view
   - [x] Blame

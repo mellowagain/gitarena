@@ -3,6 +3,7 @@ use crate::repository::Repository;
 use crate::{die, err};
 
 use crate::database::Pool;
+use crate::git::fetch::reachable_objects;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use git2::{Delta, DiffFindOptions, DiffFormat, DiffOptions};
@@ -177,6 +178,10 @@ pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, Str
     let Ok(commit) = object.into_commit() else {
         die!(BAD_REQUEST, "OID does not refer to a commit");
     };
+
+    if !reachable_objects(&libgit2_repo, &[commit.id()])?.contains(&commit.id()) {
+        die!(NOT_FOUND, "Commit not found");
+    }
 
     let (author_name, author_uid, author_email) = commit.author().try_disassemble(&mut transaction).await;
     let (committer_name, committer_uid, committer_email) = commit.committer().try_disassemble(&mut transaction).await;
