@@ -34,7 +34,7 @@ jobs:
             docker compose up -d
 
       - name: wait for deploy
-        run: sleep 5
+        run: sleep 30
 
       - name: check if update succeeded
         run: |

@@ -65,7 +65,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./gitarena-frontend
+    build:
+      context: ./gitarena-frontend
+      additional_contexts:
+        license: .
     image: ghcr.io/mellowagain/gitarena-frontend:main
     environment:
       BACKEND_URL: http://gitarena:8080

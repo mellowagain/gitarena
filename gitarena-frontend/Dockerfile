@@ -20,6 +20,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
 RUN --mount=type=cache,target=/app/.next/cache pnpm build
+RUN pnpm dlx generate-license-file@4.2.5 --input package.json --output THIRD_PARTY_LICENSES.txt
 
 FROM node:${NODE_VERSION} AS runner
 
@@ -32,6 +33,8 @@ WORKDIR /app
 COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/THIRD_PARTY_LICENSES.txt ./THIRD_PARTY_LICENSES.txt
+COPY --from=license --chown=node:node LICENSE.txt ./LICENSE.txt
 
 USER node
 EXPOSE 3000

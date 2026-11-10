@@ -1,6 +1,9 @@
 services:
   frontend:
-    build: ./gitarena-frontend
+    build:
+      context: ./gitarena-frontend
+      additional_contexts:
+        license: .
     image: ghcr.io/mellowagain/gitarena-frontend:main
     environment:
       BACKEND_URL: ${BACKEND_URL:?set BACKEND_URL to the URL of your backend}

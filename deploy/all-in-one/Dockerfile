@@ -1,6 +1,34 @@
 # The backend, frontend, caddy and setup contexts only exist when built through docker-bake.hcl
 
-FROM caddy:2.11.9-alpine AS caddy-bin
+ARG CADDY_VERSION=2.11.9
+
+FROM caddy:${CADDY_VERSION}-alpine AS caddy-bin
+
+FROM golang:trixie AS caddy-licenses
+
+ARG CADDY_VERSION
+
+RUN go install github.com/google/go-licenses/v2@v2.0.1
+
+COPY <<'EOF' /go-licenses.tpl
+Third-party licenses
+====================
+
+Caddy includes the following third-party software.
+{{ range . }}
+--------------------------------------------------------------------------------
+{{ .Name }} {{ .Version }} ({{ .LicenseName }})
+
+{{ .LicenseText }}
+{{ end }}
+EOF
+
+WORKDIR /caddy-licenses
+RUN go mod init licenses \
+    && go get github.com/caddyserver/caddy/v2/cmd/caddy@v${CADDY_VERSION} \
+    && go-licenses report --template /go-licenses.tpl github.com/caddyserver/caddy/v2/cmd/caddy > THIRD_PARTY_LICENSES.txt \
+    && printf -- '--------------------------------------------------------------------------------\nGo standard library (BSD-3-Clause)\n\n' >> THIRD_PARTY_LICENSES.txt \
+    && cat "$(go env GOROOT)/LICENSE" >> THIRD_PARTY_LICENSES.txt
 
 FROM backend
 
@@ -8,7 +36,6 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 ARG TARGETARCH
 
-# Debian only ships psql 17, so take it from the PostgreSQL repository to match the server
 RUN install -d /usr/share/postgresql-common/pgdg \
     && curl -fsSLo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
@@ -32,7 +59,9 @@ RUN version=3.2.3.2; \
     rm /tmp/s6-*.tar.xz
 
 COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
+COPY --from=caddy-licenses /caddy-licenses/THIRD_PARTY_LICENSES.txt /usr/share/licenses/caddy/THIRD_PARTY_LICENSES.txt
 COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
+COPY --from=frontend /usr/local/LICENSE /usr/share/licenses/node/LICENSE
 COPY --from=frontend /app /frontend
 COPY --from=caddy Caddyfile /etc/caddy/Caddyfile
 COPY --from=setup 10-base.sql /setup/10-base.sql

@@ -59,6 +59,9 @@ target "zoekt-webserver" {
 target "frontend" {
   context    = "gitarena-frontend"
   dockerfile = "Dockerfile"
+  contexts = {
+    license = "."
+  }
   tags       = local_tags("frontend")
   cache-from = cache_from("frontend")
   cache-to   = cache_to("frontend")

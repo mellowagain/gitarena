@@ -5,6 +5,7 @@
 !rustfmt.toml
 !about.toml
 !about.hbs
+!LICENSE.txt
 !migrations/
 !gitarena/
 !gitarena-macros/
