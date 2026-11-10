@@ -62,6 +62,7 @@ Some settings are read at startup, while others are read per request. Restart Gi
 | Key | Default | Description |
 |-----|---------|-------------|
 | `domain.app` | `http://localhost:8080` | Public base URL of the instance. Session cookies use `Secure` when this starts with `https`. |
+| `domain.backend` | `null` | Public URL of the backend, used for clone URLs, the SSH clone host and raw file links. Set this when the backend runs on a different host than `domain.app`. Falls back to `domain.app` when unset. |
 | `secret` | Generated | Secret used for cookie key material. |
 | `allow_registrations` | `true` | Allow new users to register. Set to `false` to close registrations. |
 

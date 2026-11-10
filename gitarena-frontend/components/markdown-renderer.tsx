@@ -381,7 +381,7 @@ export function MarkdownRenderer({
                         <img
                             src={
                                 typeof src === "string" && instanceConfig
-                                    ? resolveImageUrl(src, instanceConfig.baseUrl, user, repo, branch, filePath)
+                                    ? resolveImageUrl(src, instanceConfig.backendUrl, user, repo, branch, filePath)
                                     : undefined
                             }
                             alt={alt}

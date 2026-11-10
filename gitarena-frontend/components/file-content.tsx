@@ -101,7 +101,7 @@ export function FileContent({
                     <EmptyContent>
                         <Button asChild variant="outline" size="sm">
                             <a
-                                href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
+                                href={`${instanceConfig.backendUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
                                 target="_blank"
                                 rel="noreferrer"
                             >
@@ -124,7 +124,7 @@ export function FileContent({
                 Content has been truncated to 5 MB because the file is too large to display in full.{" "}
                 {instanceConfig && (
                     <a
-                        href={`${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
+                        href={`${instanceConfig.backendUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${encodedFilename}`}
                         target="_blank"
                         rel="noreferrer"
                         className="underline underline-offset-2 hover:opacity-70 transition-opacity"

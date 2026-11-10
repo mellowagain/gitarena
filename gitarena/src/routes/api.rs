@@ -2,7 +2,7 @@ use crate::database::Pool;
 use crate::storage::Storage;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
-use gitarena_macros::{from_config, route};
+use gitarena_macros::{from_config, from_optional_config, route};
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -16,6 +16,8 @@ pub(crate) struct ApiInfoResponse {
     version: &'static str,
     /// Base url of this instance
     base_url: String,
+    /// Public URL of the backend, used for git clones and raw files
+    backend_url: String,
     /// Domain of the private forge email addresses
     user_email_domain: String,
     /// Link to the API documentation
@@ -50,11 +52,13 @@ pub(crate) async fn api(db_pool: web::Data<Pool>, storage: web::Data<Storage>) -
         "ssh.port" => i32,
         "smtp.enabled" => bool
     );
+    let backend_url = from_optional_config!("domain.backend" => String);
 
     Ok(HttpResponse::Ok().json(ApiInfoResponse {
         app: "GitArena",
         version: env!("CARGO_PKG_VERSION"),
-        base_url: domain,
+        base_url: domain.clone(),
+        backend_url: backend_url.unwrap_or(domain),
         user_email_domain,
         documentation: "https://git.mari.zip/rapidoc",
         repository: env!("CARGO_PKG_REPOSITORY"),

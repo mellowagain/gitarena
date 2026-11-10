@@ -21,7 +21,7 @@ The frontend and backend share one public origin. Route these paths to the backe
 
 Git over SSH is not HTTP. Expose the backend's SSH port (`2222` by default) directly.
 
-Set `domain.app` and `webauthn.origin` to the public URL. The frontend builds clone URLs and raw file links from `domain.app`, and GitArena adds the `Secure` flag to session cookies when `domain.app` starts with `https`:
+Set `domain.app` and `webauthn.origin` to the public URL. The frontend builds clone URLs and raw file links from `domain.app` (or `domain.backend` if set), and GitArena adds the `Secure` flag to session cookies when `domain.app` starts with `https`:
 
 ```sql
 UPDATE settings SET value = 'https://git.example.com' WHERE key = 'domain.app';

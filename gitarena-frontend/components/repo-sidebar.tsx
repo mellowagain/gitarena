@@ -184,7 +184,7 @@ export function RepoSidebar({
     const [protocol, setProtocol] = useState<"https" | "ssh">("https");
     const [allLanguages] = useLocalStorage<boolean>("gitarena:all-languages", false);
     const instanceConfig = useInstanceConfig();
-    const apiUrl = instanceConfig?.baseUrl ?? "";
+    const apiUrl = instanceConfig?.backendUrl ?? "";
     const host = apiUrl ? new URL(apiUrl).hostname : "";
     const sshEnabled = instanceConfig?.sshPort != null;
     const sshCloneUrl =

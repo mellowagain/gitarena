@@ -124,7 +124,7 @@ function EmptyRepoContent({ user, repo, meta }: { user: string; repo: string; me
     );
     const canAdmin = permsData?.permissions.admin ?? false;
 
-    const apiUrl = instanceConfig?.baseUrl ?? "";
+    const apiUrl = instanceConfig?.backendUrl ?? "";
     const host = apiUrl ? new URL(apiUrl).hostname : "";
     const sshEnabled = instanceConfig?.sshPort != null;
     const sshCloneUrl =
@@ -304,7 +304,7 @@ export function RepoPageContent({
     const canPush = permsData?.permissions.push ?? false;
     const canAdmin = permsData?.permissions.admin ?? false;
     const rawFileUrl = instanceConfig
-        ? `${instanceConfig.baseUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${selectedFile?.split("/").map(encodeURIComponent).join("/")}`
+        ? `${instanceConfig.backendUrl}/${user}/${repo}/tree/${encodeURIComponent(branch)}/~blob/${selectedFile?.split("/").map(encodeURIComponent).join("/")}`
         : undefined;
 
     function handleSelectFile(file: string | null) {
