@@ -70,7 +70,7 @@ pub(crate) async fn git_receive_pack(
     }
 
     let data = bytes.freeze();
-    let output_writer = execute_receive_pack(&db_pool, &repo, &data, user.id, Some(&request)).await?;
+    let output_writer = execute_receive_pack(&db_pool, &repo, &data, user.id, Either::Left(&request)).await?;
     let output = output_writer.serialize().await?;
 
     if output.is_empty() {

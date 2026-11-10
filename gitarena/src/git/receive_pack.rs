@@ -16,6 +16,7 @@ use crate::{die, err};
 
 use std::convert::TryInto;
 use std::io::Write;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -24,6 +25,7 @@ use crate::database::Pool;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow};
 use bstr::BString;
+use either::Either;
 use fang::{AsyncQueueable, AsyncRunnable};
 use git2::Repository as Git2Repository;
 use gitarena_issues::author::IDENTITIES_REF_PREFIX;
@@ -148,7 +150,13 @@ pub(crate) async fn process_delete(ref_update: &RefUpdate, gitoxide_repo: &gix::
 }
 
 #[instrument(err, skip(db_pool, data, request))]
-pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data: &[u8], actor_id: Uuid, request: Option<&HttpRequest>) -> Result<GitWriter> {
+pub(crate) async fn execute_receive_pack(
+    db_pool: &Pool,
+    repo: &Repository,
+    data: &[u8],
+    actor_id: Uuid,
+    request: Either<&HttpRequest, (Option<SocketAddr>, &str)>,
+) -> Result<GitWriter> {
     let mut readable_iter = StreamingPeekableIter::new(data, &[PacketLineRef::Flush], false);
     readable_iter.fail_on_err_lines(true);
 
@@ -345,13 +353,13 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
 
         for (event_type, mut payload) in events {
             let event = match request {
-                Some(req) => {
+                Either::Left(request) => {
                     payload["transport"] = Value::String("http".to_string());
-                    Event::new(event_type, actor_id, req, repo.into(), Some(payload))
+                    Event::new(event_type, actor_id, request, repo.into(), Some(payload))
                 }
-                None => {
+                Either::Right((ip, user_agent)) => {
                     payload["transport"] = Value::String("ssh".to_string());
-                    Event::new_without_request(event_type, actor_id, repo.into(), Some(payload))
+                    Event::new_with_explicit_ip_and_ua(event_type, actor_id, ip, user_agent.to_string(), repo.into(), Some(payload))
                 }
             };
 

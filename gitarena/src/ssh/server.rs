@@ -11,6 +11,7 @@ use crate::repository::{Repository, extract_repo_from_request};
 use crate::ssh::key::SshKey;
 use crate::user::User;
 use anyhow::{Context, Result, anyhow};
+use either::Either;
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::decode::{Stream, streaming};
 use opentelemetry::KeyValue;
@@ -35,8 +36,8 @@ pub(crate) struct SshServer {
 impl Server for SshServer {
     type Handler = SshHandler;
 
-    fn new_client(&mut self, _peer_addr: Option<SocketAddr>) -> Self::Handler {
-        SshHandler::new(self.db_pool.clone())
+    fn new_client(&mut self, peer_addr: Option<SocketAddr>) -> Self::Handler {
+        SshHandler::new(self.db_pool.clone(), peer_addr)
     }
 
     fn handle_session_error(&mut self, err: <Self::Handler as Handler>::Error) {
@@ -64,6 +65,7 @@ pub(crate) struct SshHandler {
 
     user: Option<User>,
     key: Option<SshKey>,
+    ip: Option<SocketAddr>,
 
     version: GitProtocol,
 
@@ -74,11 +76,12 @@ pub(crate) struct SshHandler {
 }
 
 impl SshHandler {
-    fn new(db_pool: Pool) -> Self {
+    fn new(db_pool: Pool, ip: Option<SocketAddr>) -> Self {
         Self {
             db_pool,
             user: None,
             key: None,
+            ip,
             version: GitProtocol::V1,
             operation: None,
             buffer: Vec::new(),
@@ -90,9 +93,11 @@ impl SshHandler {
         let vec = mem::take(&mut self.buffer);
         let db_pool = self.db_pool.clone();
         let actor_id = self.user.as_ref().map_or(Uuid::nil(), |user| user.id);
+        let ip = self.ip;
+        let user_agent = String::from_utf8_lossy(session.remote_sshid()).into_owned();
 
         // git objects are not `Send` so they need to be run in a separate task where they don't cross thread boundaries
-        let result = spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, repo, vec, actor_id))).await?;
+        let result = spawn_blocking(move || Handle::current().block_on(run_receive_pack(db_pool, repo, vec, actor_id, ip, user_agent))).await?;
 
         match result {
             Ok(output) if output.is_empty() => {
@@ -508,10 +513,10 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version:
 }
 
 #[instrument(err, skip(db_pool, vec))]
-async fn run_receive_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, actor_id: Uuid) -> Result<Vec<u8>> {
+async fn run_receive_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, actor_id: Uuid, ip: Option<SocketAddr>, user_agent: String) -> Result<Vec<u8>> {
     let start = Instant::now();
 
-    let output_writer = execute_receive_pack(&db_pool, &repo, vec.as_slice(), actor_id, None).await?;
+    let output_writer = execute_receive_pack(&db_pool, &repo, vec.as_slice(), actor_id, Either::Right((ip, &user_agent))).await?;
     let output = output_writer.serialize().await.map(|b| b.to_vec())?;
 
     let elapsed = start.elapsed().as_secs_f64();

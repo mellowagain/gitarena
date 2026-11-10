@@ -10,6 +10,7 @@ use opentelemetry::trace::{TraceContextExt, TraceId};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sqlx::{FromRow, Transaction};
+use std::net::SocketAddr;
 use tokio::sync::OnceCell;
 use tracing::{Span, instrument};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -73,6 +74,22 @@ impl Event {
 
         let mut event = Self::new_without_request(event, actor, subject, payload);
         event.ip_address = Some(ip_network);
+        event.user_agent = Some(user_agent);
+
+        event
+    }
+
+    #[must_use]
+    pub(crate) fn new_with_explicit_ip_and_ua(
+        event: &'static str,
+        actor: Uuid,
+        ip: Option<SocketAddr>,
+        user_agent: String,
+        subject: Subject,
+        payload: Option<Value>,
+    ) -> Self {
+        let mut event = Self::new_without_request(event, actor, subject, payload);
+        event.ip_address = ip.map(|a| a.ip().into());
         event.user_agent = Some(user_agent);
 
         event
