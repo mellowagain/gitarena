@@ -19,6 +19,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::config::get_setting;
 use crate::database::Pool;
 use actix_web::HttpRequest;
 use anyhow::{Result, anyhow};
@@ -211,39 +212,50 @@ pub(crate) async fn execute_receive_pack(db_pool: &Pool, repo: &Repository, data
             .map(|update| oid::from_hex_str(update.new.as_deref()))
             .collect::<Result<Vec<_>>>()?;
 
-        let span = Span::current();
-        let scan_repo = gitoxide_repo.clone();
+        let should_scan: bool = {
+            let mut tx = db_pool.begin().await?;
 
-        let (should_block, writer) = spawn_blocking(move || -> Result<(bool, GitWriter)> {
-            let _guard = span.entered();
+            let should_scan = get_setting("secret_scanning.enabled", &mut tx).await?;
 
-            let should_block = scan_push(&scan_repo, &tips, side_band, &mut output_writer)?;
-            Ok((should_block, output_writer))
-        })
-        .await??;
+            tx.commit().await?;
+            should_scan
+        };
 
-        output_writer = writer;
+        if should_scan {
+            let span = Span::current();
+            let scan_repo = gitoxide_repo.clone();
 
-        if should_block {
-            debug!("rejecting push because secrets were detected");
+            let (should_block, writer) = spawn_blocking(move || -> Result<(bool, GitWriter)> {
+                let _guard = span.entered();
 
-            if report_status {
-                for update in &updates {
-                    output_writer.write_no_good(side_band, &update.target_ref, "push contains secrets").await?;
+                let should_block = scan_push(&scan_repo, &tips, side_band, &mut output_writer)?;
+                Ok((should_block, output_writer))
+            })
+            .await??;
+
+            output_writer = writer;
+
+            if should_block {
+                debug!("rejecting push because secrets were detected");
+
+                if report_status {
+                    for update in &updates {
+                        output_writer.write_no_good(side_band, &update.target_ref, "push contains secrets").await?;
+                    }
+
+                    if side_band {
+                        output_writer.flush_sideband(Band::Data).await?;
+                    } else {
+                        output_writer.flush().await?;
+                    }
                 }
 
                 if side_band {
-                    output_writer.flush_sideband(Band::Data).await?;
-                } else {
                     output_writer.flush().await?;
                 }
-            }
 
-            if side_band {
-                output_writer.flush().await?;
+                return Ok(output_writer);
             }
-
-            return Ok(output_writer);
         }
 
         for update in &updates {
