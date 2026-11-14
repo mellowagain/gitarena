@@ -72,6 +72,7 @@ Some settings are read at startup, while others are read per request. Restart Gi
 |-----|---------|-------------|
 | `repositories.base_dir` | `null` | Filesystem directory where bare repositories are stored. Set this before creating repositories. |
 | `repositories.importing_enabled` | `true` | Enable repository imports through `POST /api/repo/import`. |
+| `secret_scanning.enabled` | `true` | Scan pushes for secrets and reject pushes that contain them. Set to `false` on instances with limited resources. See [secret scanning](/features/repositories#secret-scanning). |
 
 ### WebAuthn (passkeys)
 

@@ -53,6 +53,16 @@ git pull origin main
 
 See [SSH architecture](/architecture/ssh) for details on the server and key management API.
 
+## Secret scanning
+
+GitArena scans every push over smart HTTP and SSH for credentials such as API keys and access tokens. It checks the files added or changed in each new commit against a built-in rule set, which includes rules for GitArena's own tokens.
+
+If GitArena finds a secret, it rejects the whole push and no refs are updated. Git reports each ref as rejected with `push contains secrets`. Your git client also prints a `SECRETS DETECTED IN PUSH` report. Each finding lists the rule that matched (for example `GitArena Personal Access Token`), the masked secret, its location as `path:line:column`, and the confidence. The report shows at most 50 findings.
+
+To push anyway, for example after a false positive, add `[skip secret scanning]` to the commit message. GitArena then skips that commit, but still scans the other commits in the push.
+
+Admins can turn secret scanning off for the whole instance with the `secret_scanning.enabled` setting. See [configuration](/self-hosting/configuration#repositories).
+
 ## Post-push hooks
 
 After each push, GitArena runs background analysis:
