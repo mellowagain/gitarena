@@ -6,7 +6,7 @@ use crate::{die, err};
 
 use std::sync::Arc;
 
-use actix_web::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use actix_web::http::header::{CONTENT_DISPOSITION, CONTENT_SECURITY_POLICY, CONTENT_TYPE, X_CONTENT_TYPE_OPTIONS};
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use async_recursion::async_recursion;
@@ -38,6 +38,8 @@ pub(crate) async fn view_raw_blob(_repo: Repository, branch: Branch, uri: web::P
     Ok(HttpResponse::Ok()
         .insert_header((CONTENT_TYPE, mime))
         .insert_header((CONTENT_DISPOSITION, "inline"))
+        .insert_header((CONTENT_SECURITY_POLICY, "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"))
+        .insert_header((X_CONTENT_TYPE_OPTIONS, "nosniff"))
         .body(content))
 }
 
