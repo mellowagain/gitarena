@@ -37,7 +37,7 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG TARGETARCH
 
 RUN install -d /usr/share/postgresql-common/pgdg \
-    && curl -fsSLo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && curl --proto "=https" --tlsv1.2 -fsSLo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
     && apt-get install -y postgresql-client-18 xz-utils \
@@ -49,8 +49,8 @@ RUN version=3.2.3.2; \
         arm64) arch=aarch64; sum=b17f17a82e7a515c682a91edaf2ffdabb73f891981b6c1fd712115693a2f8b4c ;; \
     esac; \
     base="https://github.com/just-containers/s6-overlay/releases/download/v$version"; \
-    curl -fsSLo /tmp/s6-noarch.tar.xz "$base/s6-overlay-noarch.tar.xz"; \
-    curl -fsSLo /tmp/s6-arch.tar.xz "$base/s6-overlay-$arch.tar.xz"; \
+    curl --proto "=https" --tlsv1.2 -fsSLo /tmp/s6-noarch.tar.xz "$base/s6-overlay-noarch.tar.xz"; \
+    curl --proto "=https" --tlsv1.2 -fsSLo /tmp/s6-arch.tar.xz "$base/s6-overlay-$arch.tar.xz"; \
     printf '%s  %s\n' \
         5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb2eda12 /tmp/s6-noarch.tar.xz \
         "$sum" /tmp/s6-arch.tar.xz | sha256sum -c -; \

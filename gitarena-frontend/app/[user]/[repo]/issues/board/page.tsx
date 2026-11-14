@@ -219,7 +219,7 @@ export default function BoardPage() {
     const draggedIssue = draggedIndex !== null ? (localIssues.find((i) => i.index === draggedIndex) ?? null) : null;
 
     function handleDragStart(event: DragStartEvent) {
-        setDraggedIndex(parseInt(event.active.id as string));
+        setDraggedIndex(Number.parseInt(event.active.id as string));
         const rect = event.active.rect.current.initial;
         setDraggedWidth(rect ? rect.width : null);
     }
@@ -237,7 +237,7 @@ export default function BoardPage() {
             return;
         }
 
-        const issueIndex = parseInt(active.id as string);
+        const issueIndex = Number.parseInt(active.id as string);
         const newStatus = over.id as string;
         const issue = localIssues.find((i) => i.index === issueIndex);
 

@@ -256,8 +256,10 @@ export default function ImportRepositoryPage() {
 
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">Import source</label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <span id="import-source-label" className="text-sm font-medium">
+                                    Import source
+                                </span>
+                                <div role="group" aria-labelledby="import-source-label" className="grid grid-cols-2 gap-3">
                                     {sourceOptions.map((option) => {
                                         const Icon = option.icon;
                                         return (
@@ -290,11 +292,12 @@ export default function ImportRepositoryPage() {
 
                             {source === "url" ? (
                                 <div className="space-y-3">
-                                    <label className="text-sm font-medium">
+                                    <label htmlFor="import-url" className="text-sm font-medium">
                                         Repository URL <span className="text-red-500">*</span>
                                     </label>
                                     <InputGroup className="h-11">
                                         <InputGroupInput
+                                            id="import-url"
                                             type="url"
                                             value={repoUrl}
                                             onChange={(e) => handleUrlChange(e.target.value)}
@@ -349,14 +352,17 @@ export default function ImportRepositoryPage() {
                             )}
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">
+                                <span id="import-to-label" className="text-sm font-medium">
                                     Import to <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex items-center gap-3">
+                                </span>
+                                <div role="group" aria-labelledby="import-to-label" className="flex items-center gap-3">
                                     {namespaceOptions.length > 1 ? (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                                <button
+                                                    type="button"
+                                                    className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors"
+                                                >
                                                     {namespaceOptions.find((o) => o.value === selectedNamespace)?.isOrg ? (
                                                         <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary shrink-0">
                                                             <Building2 className="h-3.5 w-3.5" />
@@ -438,10 +444,11 @@ export default function ImportRepositoryPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">
+                                <span id="visibility-label" className="text-sm font-medium">
                                     Visibility <span className="text-red-500">*</span>
-                                </label>
+                                </span>
                                 <RadioGroup
+                                    aria-labelledby="visibility-label"
                                     value={visibility}
                                     onValueChange={(value) => setVisibility(value as Visibility)}
                                     className="grid-cols-3"
@@ -479,7 +486,7 @@ export default function ImportRepositoryPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">Options</label>
+                                <span className="text-sm font-medium">Options</span>
                                 <div
                                     className="flex items-center gap-3 p-4 rounded-lg border border-border text-left w-full opacity-50 cursor-not-allowed"
                                     title="Mirror support is coming soon"

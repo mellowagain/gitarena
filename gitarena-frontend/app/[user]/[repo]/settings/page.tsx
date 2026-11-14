@@ -343,7 +343,7 @@ function CollaborationTab({ namespace, repo }: { namespace: string; repo: string
                         placeholder="Username…"
                         onKeyDown={(e) => {
                             if (e.key === "Enter") {
-                                handleInvite();
+                                void handleInvite();
                             }
                         }}
                     />

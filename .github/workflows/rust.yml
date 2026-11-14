@@ -30,11 +30,11 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: build
-        run: cargo build --verbose --release
+        run: cargo build --locked --verbose --release
 
       - name: install git-bug v0.11.0 for tests
         run: |
-          curl -fsSL https://github.com/git-bug/git-bug/releases/download/v0.11.0/git-bug_linux_amd64 -o /usr/local/bin/git-bug
+          curl --proto "=https" --tlsv1.2 -sSf -L https://github.com/git-bug/git-bug/releases/download/v0.11.0/git-bug_linux_amd64 -o /usr/local/bin/git-bug
           chmod +x /usr/local/bin/git-bug
 
       - name: test

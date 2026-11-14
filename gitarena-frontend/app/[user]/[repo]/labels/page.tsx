@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
@@ -77,9 +77,9 @@ function randomHex(): string {
 }
 
 function hexToRgb(hex: string) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    const r = Number.parseInt(hex.slice(1, 3), 16);
+    const g = Number.parseInt(hex.slice(3, 5), 16);
+    const b = Number.parseInt(hex.slice(5, 7), 16);
     return { r, g, b };
 }
 
@@ -126,7 +126,7 @@ function LabelChip({ label }: { label: Label }) {
     );
 }
 
-function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ColorPicker({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
     const [inputVal, setInputVal] = useState(value);
 
     const handleInput = (v: string) => {
@@ -225,6 +225,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
 
             {/* Hex input */}
             <Input
+                id={id}
                 value={inputVal}
                 onChange={(e) => handleInput(e.target.value)}
                 placeholder="#000000"
@@ -549,14 +550,18 @@ function LabelForm({
     const canSave = state.name.trim().length > 0 && isValidHex(state.color);
     const { scope, value } = parseLabelName(state.name);
     const previewLabel: Label = { id: "", name: state.name || "preview", color: state.color, description: state.description };
+    const fieldId = useId();
 
     return (
         <div className="px-4 py-4 space-y-4">
             <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-start">
                 {/* Name */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</label>
+                    <label htmlFor={`${fieldId}-name`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Name
+                    </label>
                     <Input
+                        id={`${fieldId}-name`}
                         value={state.name}
                         onChange={(e) => onChange({ ...state, name: e.target.value })}
                         placeholder="e.g. bug or priority::high"
@@ -571,8 +576,14 @@ function LabelForm({
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+                    <label
+                        htmlFor={`${fieldId}-description`}
+                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    >
+                        Description
+                    </label>
                     <Input
+                        id={`${fieldId}-description`}
                         value={state.description}
                         onChange={(e) => onChange({ ...state, description: e.target.value })}
                         placeholder="Optional description"
@@ -587,8 +598,10 @@ function LabelForm({
 
             {/* Color picker */}
             <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Color</label>
-                <ColorPicker value={state.color} onChange={(c) => onChange({ ...state, color: c })} />
+                <label htmlFor={`${fieldId}-color`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Color
+                </label>
+                <ColorPicker id={`${fieldId}-color`} value={state.color} onChange={(c) => onChange({ ...state, color: c })} />
             </div>
 
             {/* Actions */}

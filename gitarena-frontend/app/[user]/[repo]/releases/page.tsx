@@ -39,6 +39,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 type OS = "linux" | "windows" | "macos" | "freebsd" | "openbsd" | "netbsd" | "android" | "ios" | "unknown";
 type Arch =
@@ -196,9 +197,14 @@ function AssetRow({ asset, user, repo, releaseId }: { asset: Asset; user: string
     const [copied, setCopied] = useState(false);
     const KindIcon = asset.kind ? KIND_ICON[asset.kind] : FileArchive;
 
-    function copyHash(e: React.MouseEvent) {
+    async function copyHash(e: React.MouseEvent) {
         e.preventDefault();
-        navigator.clipboard.writeText(asset.hash);
+        try {
+            await navigator.clipboard.writeText(asset.hash);
+        } catch {
+            toast.error("Failed to copy hash");
+            return;
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     }

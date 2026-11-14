@@ -69,8 +69,13 @@ export type RepoSidebarProps = {
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false);
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(text);
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            toast.error("Failed to copy to clipboard");
+            return;
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };

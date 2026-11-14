@@ -428,7 +428,7 @@ export default function NewReleasePage() {
                 <div className="space-y-6">
                     {/* Tag */}
                     <div>
-                        <label className="text-sm font-medium block mb-1.5">
+                        <label htmlFor="release-tag" className="text-sm font-medium block mb-1.5">
                             Tag <span className="text-red-500">*</span>
                         </label>
                         <InputGroup className="h-10">
@@ -436,6 +436,7 @@ export default function NewReleasePage() {
                                 <Tag />
                             </InputGroupAddon>
                             <InputGroupInput
+                                id="release-tag"
                                 value={tag}
                                 onChange={(e) => setTag(e.target.value)}
                                 placeholder="v1.0.0"
@@ -451,10 +452,11 @@ export default function NewReleasePage() {
 
                     {/* Title */}
                     <div>
-                        <label className="text-sm font-medium block mb-1.5">
+                        <label htmlFor="release-title" className="text-sm font-medium block mb-1.5">
                             Title <span className="text-red-500">*</span>
                         </label>
                         <Input
+                            id="release-title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Release title…"
@@ -465,7 +467,9 @@ export default function NewReleasePage() {
 
                     {/* Description */}
                     <div>
-                        <label className="text-sm font-medium block mb-1.5">Release notes</label>
+                        <label htmlFor="release-notes" className="text-sm font-medium block mb-1.5">
+                            Release notes
+                        </label>
                         <Tabs
                             value={preview ? "preview" : "write"}
                             onValueChange={(v) => setPreview(v === "preview")}
@@ -496,6 +500,7 @@ export default function NewReleasePage() {
                             </TabsContent>
                             <TabsContent value="write">
                                 <textarea
+                                    id="release-notes"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Describe this release… Markdown is supported."

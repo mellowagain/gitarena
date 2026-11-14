@@ -6,6 +6,7 @@ use crate::meili::MeiliClient;
 use crate::session::Session;
 use crate::sso::provider::{SSO_PROVIDERS, SsoProvider, SsoProviderType};
 use crate::user::{User, WebUser};
+use crate::utils::identifiers::{is_namespace_taken, validate_namespace};
 use crate::verification::send_verification_mail;
 use crate::{die, sso};
 use actix_identity::Identity;
@@ -107,12 +108,9 @@ pub(crate) async fn sso_callback(
             die!(FORBIDDEN, "registrations are currently disabled");
         }
 
-        let username_exists: bool = sqlx::query_scalar("select exists(select 1 from users where username = lower($1))")
-            .bind(&exchange_return.username)
-            .fetch_one(&mut *tx)
-            .await?;
+        validate_namespace(&exchange_return.username)?;
 
-        if username_exists {
+        if is_namespace_taken(&exchange_return.username, &mut tx).await? {
             exchange_return.username.push_str(&random_hex_string(6)?);
         }
 

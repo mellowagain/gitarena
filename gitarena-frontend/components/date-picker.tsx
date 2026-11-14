@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
+    id?: string;
     value: string;
     onChange: (value: string) => void;
     disabled?: Matcher | Matcher[];
@@ -17,14 +18,18 @@ interface DatePickerProps {
     className?: string;
 }
 
-export function DatePicker({ value, onChange, disabled, required, className }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, disabled, required, className }: DatePickerProps) {
     const [open, setOpen] = useState(false);
     const selected = value ? parse(value, "yyyy-MM-dd", new Date()) : undefined;
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("justify-start font-normal", !selected && "text-muted-foreground", className)}>
+                <Button
+                    id={id}
+                    variant="outline"
+                    className={cn("justify-start font-normal", !selected && "text-muted-foreground", className)}
+                >
                     <CalendarIcon />
                     {selected ? format(selected, "MMM d, yyyy") : "Pick a date"}
                 </Button>

@@ -45,7 +45,7 @@ function svelte(Prism: {
         },
         tag: {
             pattern:
-                /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?:"[^"]*"|'[^']*'|{[\s\S]+?}(?=[\s/>])))|(?=[\s/>])))+)?\s*\/?>/i,
+                /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>])|{[\s\S]+?}(?=[\s/>]))|(?=[\s/>])))+)?\s*\/?>/i,
             greedy: true,
             inside: {
                 tag: { pattern: /^<\/?[^\s>\/]+/i, inside: { punctuation: /^<\/?/, namespace: /^[^\s>\/:]+:/ } },
@@ -237,8 +237,8 @@ export function detectLanguage(filename: string): string {
 function parseLineHash(hash: string): { start: number; end: number } | null {
     const m = hash.match(/^#L(\d+)(?:-L(\d+))?$/);
     if (!m) return null;
-    const start = parseInt(m[1], 10);
-    const end = m[2] ? parseInt(m[2], 10) : start;
+    const start = Number.parseInt(m[1], 10);
+    const end = m[2] ? Number.parseInt(m[2], 10) : start;
     return { start, end };
 }
 
@@ -305,12 +305,13 @@ export function CodeBlockContent({ content, filename, wrapLines = false }: { con
                                 id={`L${lineNum}`}
                                 className={`flex group py-0.5 ${isHighlighted ? "bg-yellow-500/10 hover:bg-yellow-500/15" : "hover:bg-accent/30"}`}
                             >
-                                <span
+                                <button
+                                    type="button"
                                     onClick={(e) => handleLineClick(e, lineNum)}
                                     className={`w-14 shrink-0 text-right pr-4 select-none sticky left-0 cursor-pointer hover:text-primary ${isHighlighted ? "bg-yellow-500/20 text-yellow-600/60 group-hover:text-yellow-600/80" : "bg-background text-muted-foreground/40 group-hover:text-muted-foreground/60"}`}
                                 >
                                     {lineNum}
-                                </span>
+                                </button>
                                 <span className={`pl-2 ${wrapLines ? "whitespace-pre-wrap break-all" : "whitespace-pre"}`}>
                                     {row.children.map((node, j) => renderNode(node, stylesheet, j))}
                                 </span>

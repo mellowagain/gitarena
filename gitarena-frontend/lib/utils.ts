@@ -41,7 +41,7 @@ export const shortLocale: Locale = {
  */
 export function uuidToDate(uuid: string): Date {
     const hex = uuid.replace(/-/g, "").slice(0, 12);
-    const ms = parseInt(hex, 16);
+    const ms = Number.parseInt(hex, 16);
     return new Date(ms);
 }
 
@@ -49,6 +49,6 @@ export function uuidToDate(uuid: string): Date {
  * Builds the private forge email of a user, mirroring `User::forge_mail` in the backend.
  */
 export function forgeEmail(userId: string, domain: string): string {
-    const bytes = Uint8Array.from(userId.replace(/-/g, "").match(/../g)!, (byte) => parseInt(byte, 16));
+    const bytes = Uint8Array.from(userId.replace(/-/g, "").match(/../g)!, (byte) => Number.parseInt(byte, 16));
     return `${bs58.encode(bytes)}@${domain}`;
 }

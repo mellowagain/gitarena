@@ -17,7 +17,7 @@ COPY . .
 
 ARG VERGEN_GIT_SHA=unknown
 
-RUN cargo build --release
+RUN cargo build --locked --release
 RUN cargo about generate about.hbs -o THIRD_PARTY_LICENSES.txt
 
 FROM golang:trixie AS zoekt-builder

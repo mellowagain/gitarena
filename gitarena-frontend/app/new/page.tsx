@@ -237,14 +237,17 @@ function NewRepositoryForm() {
 
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">
+                                <span id="owner-label" className="text-sm font-medium">
                                     Owner <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex items-center gap-3">
+                                </span>
+                                <div role="group" aria-labelledby="owner-label" className="flex items-center gap-3">
                                     {namespaceOptions.length > 1 ? (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <button className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                                <button
+                                                    type="button"
+                                                    className="flex items-center gap-3 h-11 px-4 bg-card border border-border rounded-md hover:bg-accent/50 transition-colors"
+                                                >
                                                     {selectedOption?.isOrg ? (
                                                         <div className="flex items-center justify-center h-6 w-6 rounded bg-secondary shrink-0">
                                                             <Building2 className="h-3.5 w-3.5" />
@@ -337,10 +340,11 @@ function NewRepositoryForm() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">
+                                <span id="visibility-label" className="text-sm font-medium">
                                     Visibility <span className="text-red-500">*</span>
-                                </label>
+                                </span>
                                 <RadioGroup
+                                    aria-labelledby="visibility-label"
                                     value={visibility}
                                     onValueChange={(value) => setVisibility(value as Visibility)}
                                     className="grid-cols-3"
@@ -378,8 +382,10 @@ function NewRepositoryForm() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">Initialize repository</label>
-                                <div className="grid grid-cols-2 gap-4">
+                                <span id="initialize-label" className="text-sm font-medium">
+                                    Initialize repository
+                                </span>
+                                <div role="group" aria-labelledby="initialize-label" className="grid grid-cols-2 gap-4">
                                     <button
                                         type="button"
                                         onClick={() => setCreateReadme(!createReadme)}

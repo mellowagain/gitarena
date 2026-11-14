@@ -121,7 +121,7 @@ const SSH_KEYS_KEY = "/api/ssh-keys";
 const deviceDetector = new DeviceDetector();
 
 function uuidv7ToDate(uuid: string): Date {
-    const ms = parseInt(uuid.replace(/-/g, "").slice(0, 12), 16);
+    const ms = Number.parseInt(uuid.replace(/-/g, "").slice(0, 12), 16);
     return new Date(ms);
 }
 
@@ -482,8 +482,13 @@ function EmailsTab() {
                     <div className="flex items-center rounded-md bg-card border border-border">
                         <code className="flex-1 truncate px-3 py-2 text-sm font-mono text-foreground">{forgeAddress}</code>
                         <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(forgeAddress);
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(forgeAddress);
+                                } catch {
+                                    toast.error("Failed to copy commit email");
+                                    return;
+                                }
                                 toast.success("Commit email copied");
                             }}
                             aria-label="Copy commit email"

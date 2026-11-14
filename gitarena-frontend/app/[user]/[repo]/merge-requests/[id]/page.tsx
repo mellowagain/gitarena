@@ -49,6 +49,7 @@ import { LabelBadge } from "@/components/label-badge";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 const currentUser = { name: "Mari" };
 const repoData = { org: "mellowagain", name: "test" };
@@ -429,7 +430,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 
 function inlineMarkdown(text: string): React.ReactNode {
-    const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/);
+    const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^[\]]+\]\([^()]+\))/);
     return parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
             return <strong key={i}>{part.slice(2, -2)}</strong>;
@@ -755,8 +756,13 @@ export default function MergeRequestPage() {
     const StatusIcon = statusInfo.icon;
     const CIIcon = ciStatusConfig[mergeRequest.ciStatus].icon;
 
-    function copyHash(hash: string) {
-        navigator.clipboard.writeText(hash);
+    async function copyHash(hash: string) {
+        try {
+            await navigator.clipboard.writeText(hash);
+        } catch {
+            toast.error("Failed to copy hash");
+            return;
+        }
         setCopiedHash(hash);
         setTimeout(() => setCopiedHash(null), 1500);
     }

@@ -164,10 +164,11 @@ export default function NewIssuePage() {
                         <h1 className="text-2xl font-semibold mb-8">New Issue</h1>
 
                         <div className="mb-5">
-                            <label className="text-sm font-medium block mb-1.5">
+                            <label htmlFor="issue-title" className="text-sm font-medium block mb-1.5">
                                 Title <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                id="issue-title"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Short, descriptive title…"
@@ -176,7 +177,9 @@ export default function NewIssuePage() {
                         </div>
 
                         <div className="mb-8">
-                            <label className="text-sm font-medium block mb-1.5">Description</label>
+                            <label htmlFor="issue-description" className="text-sm font-medium block mb-1.5">
+                                Description
+                            </label>
                             <Tabs
                                 value={preview ? "preview" : "write"}
                                 onValueChange={(v) => setPreview(v === "preview")}
@@ -207,6 +210,7 @@ export default function NewIssuePage() {
                                 </TabsContent>
                                 <TabsContent value="write">
                                     <textarea
+                                        id="issue-description"
                                         value={body}
                                         onChange={(e) => setBody(e.target.value)}
                                         placeholder="Add a description… Markdown is supported."

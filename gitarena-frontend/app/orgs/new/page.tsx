@@ -79,10 +79,11 @@ export default function NewOrganizationPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
+                            <label htmlFor="org-name" className="text-sm font-medium">
                                 Organization name <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                id="org-name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value.toLowerCase())}
                                 placeholder="my-organization"
@@ -96,10 +97,11 @@ export default function NewOrganizationPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium flex items-center gap-2">
+                            <label htmlFor="org-description" className="text-sm font-medium flex items-center gap-2">
                                 Description <span className="text-muted-foreground font-normal">(optional)</span>
                             </label>
                             <Textarea
+                                id="org-description"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="A short description of your organization"

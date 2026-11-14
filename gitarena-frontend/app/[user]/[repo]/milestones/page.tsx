@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
@@ -92,13 +92,17 @@ function MilestoneForm({
     saveLabel: string;
 }) {
     const canSave = state.title.trim().length > 0;
+    const fieldId = useId();
 
     return (
         <div className="px-5 py-4 space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto]">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</label>
+                    <label htmlFor={`${fieldId}-title`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Title
+                    </label>
                     <Input
+                        id={`${fieldId}-title`}
                         value={state.title}
                         onChange={(e) => onChange({ ...state, title: e.target.value })}
                         placeholder="e.g. v1.0 release"
@@ -106,16 +110,29 @@ function MilestoneForm({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+                    <label
+                        htmlFor={`${fieldId}-description`}
+                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    >
+                        Description
+                    </label>
                     <Input
+                        id={`${fieldId}-description`}
                         value={state.description}
                         onChange={(e) => onChange({ ...state, description: e.target.value })}
                         placeholder="Optional description"
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</label>
-                    <DatePicker value={state.dueDate} onChange={(dueDate) => onChange({ ...state, dueDate })} className="flex w-44" />
+                    <label htmlFor={`${fieldId}-due-date`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Due date
+                    </label>
+                    <DatePicker
+                        id={`${fieldId}-due-date`}
+                        value={state.dueDate}
+                        onChange={(dueDate) => onChange({ ...state, dueDate })}
+                        className="flex w-44"
+                    />
                 </div>
             </div>
             <div className="flex items-center gap-2">

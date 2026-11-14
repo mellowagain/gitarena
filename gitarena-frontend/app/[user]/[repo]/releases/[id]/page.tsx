@@ -486,14 +486,16 @@ export default function EditReleasePage() {
                             </div>
 
                             <div>
-                                <label className="text-sm font-medium block mb-1.5">
+                                <label htmlFor="release-title" className="text-sm font-medium block mb-1.5">
                                     Title <span className="text-red-500">*</span>
                                 </label>
-                                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10" />
+                                <Input id="release-title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10" />
                             </div>
 
                             <div>
-                                <label className="text-sm font-medium block mb-1.5">Release notes</label>
+                                <label htmlFor="release-notes" className="text-sm font-medium block mb-1.5">
+                                    Release notes
+                                </label>
                                 <Tabs
                                     value={preview ? "preview" : "write"}
                                     onValueChange={(v) => setPreview(v === "preview")}
@@ -524,6 +526,7 @@ export default function EditReleasePage() {
                                     </TabsContent>
                                     <TabsContent value="write">
                                         <textarea
+                                            id="release-notes"
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                             placeholder="Describe this release… Markdown is supported."
@@ -640,8 +643,14 @@ export default function EditReleasePage() {
                                             </div>
 
                                             <div>
-                                                <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
+                                                <label
+                                                    htmlFor="asset-name"
+                                                    className="text-xs font-medium text-muted-foreground block mb-1"
+                                                >
+                                                    Name
+                                                </label>
                                                 <Input
+                                                    id="asset-name"
                                                     value={uploadState.name}
                                                     onChange={(e) =>
                                                         setUploadState((s) =>

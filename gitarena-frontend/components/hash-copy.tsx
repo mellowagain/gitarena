@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { toast } from "sonner";
 
 export function HashCopy({ shortHash, fullHash }: { shortHash: string; fullHash: string }) {
     const [copied, setCopied] = useState(false);
-    function copy(e: React.MouseEvent) {
+    async function copy(e: React.MouseEvent) {
         e.preventDefault();
-        navigator.clipboard.writeText(fullHash);
+        try {
+            await navigator.clipboard.writeText(fullHash);
+        } catch {
+            toast.error("Failed to copy hash");
+            return;
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     }
