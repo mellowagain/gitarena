@@ -103,15 +103,16 @@ Some settings are read at startup, while others are read per request. Restart Gi
 
 | Key | Description |
 |-----|-------------|
-| `sso.github.enabled` | Enable GitHub OAuth2 sign-in |
-| `sso.github.client_id` | GitHub OAuth app client ID |
-| `sso.github.client_secret` | GitHub OAuth app client secret |
-| `sso.gitlab.enabled` | Enable GitLab OAuth2 sign-in |
-| `sso.gitlab.app_id` | GitLab OAuth app application ID |
-| `sso.gitlab.client_secret` | GitLab OAuth app client secret |
-| `sso.bitbucket.enabled` | Enable Bitbucket OAuth2 sign-in |
-| `sso.bitbucket.key` | Bitbucket OAuth consumer key |
-| `sso.bitbucket.secret` | Bitbucket OAuth consumer secret |
+| `sso.oidc.<name>.client_id` | OIDC client ID. The provider is enabled when this has a value. |
+| `sso.oidc.<name>.client_secret` | OIDC client secret |
+| `sso.oidc.<name>.issuer_url` | OIDC issuer URL used for discovery |
+| `sso.oidc.<name>.scopes` | Comma-separated scopes to request, e.g. `profile,email` |
+
+`<name>` is a provider name you choose. The migrations do not create these keys; insert them as described in the [SSO guide](/self-hosting/sso). GitArena reads SSO settings at startup.
+
+<Warning>
+  Upgraded instances may have `sso.oauth2.<provider>.client_id` and `sso.oauth2.<provider>.client_secret` keys moved over from the old GitHub, GitLab, and Bitbucket settings. OAuth2 providers are not supported yet, and GitArena fails to start while any `sso.oauth2.*.client_id` has a value.
+</Warning>
 
 ### SSH
 
