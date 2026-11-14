@@ -1,0 +1,4 @@
+#!/command/with-contenv bash
+set -euo pipefail
+
+find /repositories /data /config \( ! -user gitarena -o ! -group gitarena \) -exec chown -h gitarena:gitarena {} +

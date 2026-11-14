@@ -4,5 +4,5 @@ set -euo pipefail
 export GITARENA_URL="$GITARENA_SCHEME://$GITARENA_DOMAIN"
 
 for file in /setup/*.sql; do
-    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$file"
+    s6-setuidgid gitarena psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$file"
 done

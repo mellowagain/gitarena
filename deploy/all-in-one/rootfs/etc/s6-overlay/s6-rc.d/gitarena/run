@@ -2,4 +2,4 @@
 set -euo pipefail
 
 cd /app
-exec /app/gitarena-bin
+exec s6-setuidgid gitarena /app/gitarena-bin

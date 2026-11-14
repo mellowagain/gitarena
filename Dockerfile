@@ -62,7 +62,23 @@ ENTRYPOINT ["/usr/local/bin/zoekt-webserver"]
 
 FROM debian:trixie-slim
 
-RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 10001 gitarena \
+    && useradd --system --uid 10001 --gid gitarena --create-home --home-dir /home/gitarena --shell /usr/sbin/nologin gitarena \
+    && install -d -o gitarena -g gitarena /repositories /data /data/index /app/logs
+
+COPY --chmod=0755 <<'EOF' /app/entrypoint
+#!/bin/bash
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+    exec /app/gitarena-bin "$@"
+fi
+
+find /repositories /data \( ! -user gitarena -o ! -group gitarena \) -exec chown -h gitarena:gitarena {} +
+exec setpriv --reuid=gitarena --regid=gitarena --init-groups /app/gitarena-bin "$@"
+EOF
 
 WORKDIR /app
 
@@ -75,5 +91,6 @@ COPY --from=zoekt-builder /zoekt-licenses/THIRD_PARTY_LICENSES.txt /usr/share/li
 EXPOSE 8080
 EXPOSE 2222
 
-ENV BIND_ADDRESS="0.0.0.0:8080"
-ENTRYPOINT ["/app/gitarena-bin"]
+ENV BIND_ADDRESS="0.0.0.0:8080" \
+    HOME="/home/gitarena"
+ENTRYPOINT ["/app/entrypoint"]

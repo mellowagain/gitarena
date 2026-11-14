@@ -40,7 +40,7 @@ RUN install -d /usr/share/postgresql-common/pgdg \
     && curl --proto "=https" --tlsv1.2 -fsSLo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
-    && apt-get install -y postgresql-client-18 xz-utils \
+    && apt-get install -y --no-install-recommends postgresql-client-18 xz-utils libcap2-bin \
     && rm -rf /var/lib/apt/lists/*
 
 RUN version=3.2.3.2; \
@@ -58,11 +58,14 @@ RUN version=3.2.3.2; \
     tar -C / -Jxpf /tmp/s6-arch.tar.xz; \
     rm /tmp/s6-*.tar.xz
 
+RUN install -d -o gitarena -g gitarena /config
+
 COPY --from=caddy-bin /usr/bin/caddy /usr/bin/caddy
+RUN setcap cap_net_bind_service=+ep /usr/bin/caddy
 COPY --from=caddy-licenses /caddy-licenses/THIRD_PARTY_LICENSES.txt /usr/share/licenses/caddy/THIRD_PARTY_LICENSES.txt
 COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
 COPY --from=frontend /usr/local/LICENSE /usr/share/licenses/node/LICENSE
-COPY --from=frontend /app /frontend
+COPY --from=frontend --chown=gitarena:gitarena /app /frontend
 COPY --from=caddy Caddyfile /etc/caddy/Caddyfile
 COPY --from=setup 10-base.sql /setup/10-base.sql
 COPY rootfs/ /

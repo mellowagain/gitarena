@@ -1,4 +1,4 @@
 #!/command/with-contenv bash
 set -euo pipefail
 
-exec /app/gitarena-bin migrate
+exec s6-setuidgid gitarena /app/gitarena-bin migrate

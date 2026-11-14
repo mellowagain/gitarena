@@ -168,6 +168,8 @@ VERGEN_GIT_SHA=$(git rev-parse HEAD) docker buildx bake -f docker-bake.hcl --loa
 
 Back up at least `pgdata`, `repos` and `rustfs_data`.
 
+The backend and all-in-one images run GitArena as the unprivileged `gitarena` user (uid and gid `10001`). On every start, they change the owner of everything in `/repositories` and `/data`, and `/config` in the all-in-one image, to `gitarena`. This includes directories bind-mounted from the host. If the backend image is started as a different user, for example with `--user`, this step is skipped and that user needs write access to the volumes.
+
 ## Database password secrets
 
 The main database pool supports `DATABASE_URL_FILE` and `DATABASE_PASSWORD_FILE`, but the background queue currently requires `DATABASE_URL` directly. Keep the password in `DATABASE_URL` until queue startup supports file-based secrets.
