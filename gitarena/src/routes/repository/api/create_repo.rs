@@ -16,6 +16,7 @@ use anyhow::Result;
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
+use std::mem::DropGuard;
 use tracing::{info, instrument};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -95,7 +96,7 @@ pub(crate) async fn create(
     .fetch_one(&mut *tx)
     .await?;
 
-    repo.create_fs(&mut tx).await?;
+    let repo_dir = repo.create_fs(&mut tx).await?;
     seed_default_labels(repo.id, &mut tx).await?;
 
     // Can be simplified once let chains are implemented: https://github.com/rust-lang/rust/issues/53667
@@ -130,6 +131,7 @@ pub(crate) async fn create(
     .await?;
 
     tx.commit().await?;
+    DropGuard::dismiss(repo_dir);
 
     repo.index_meili(&meili_client).await;
 

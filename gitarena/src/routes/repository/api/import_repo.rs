@@ -17,6 +17,7 @@ use fang::{AsyncQueue, AsyncQueueable, AsyncRunnable};
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
+use std::mem::DropGuard;
 use tracing::info;
 use url::Url;
 use utoipa::ToSchema;
@@ -129,7 +130,7 @@ pub(crate) async fn import(
     .fetch_one(&mut *tx)
     .await?;
 
-    repo.create_fs(&mut tx).await?;
+    let repo_dir = repo.create_fs(&mut tx).await?;
     seed_default_labels(repo.id, &mut tx).await?;
 
     let task = ImportTask {
@@ -159,6 +160,7 @@ pub(crate) async fn import(
     .await?;
 
     tx.commit().await?;
+    DropGuard::dismiss(repo_dir);
 
     repo.index_meili(&meili_client).await;
 

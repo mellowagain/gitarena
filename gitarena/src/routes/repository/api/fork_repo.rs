@@ -1,12 +1,13 @@
-use crate::config::get_optional_setting;
+use crate::config::{get_optional_setting, get_setting};
 use crate::database::Pool;
 use crate::die;
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
-use crate::utils::filesystem::copy_dir_all;
+use crate::utils::filesystem::{copy_dir_all, remove_dir_on_drop};
 use crate::zoekt::init_zoekt_config;
 
+use std::mem::DropGuard;
 use std::path::Path;
 
 use crate::events::Event;
@@ -96,7 +97,8 @@ pub(crate) async fn create_fork(
     .await?;
 
     let old_path = repo.get_fs_path(&mut tx).await?;
-    let new_path = new_repo.get_fs_path(&mut tx).await?;
+    let base_dir: String = get_setting("repositories.base_dir", &mut tx).await?;
+    let new_path = remove_dir_on_drop(new_repo.get_fs_path(&mut tx).await?, &base_dir);
 
     // TODO: turn this into a task
     copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
@@ -120,6 +122,7 @@ pub(crate) async fn create_fork(
     .await?;
 
     tx.commit().await?;
+    DropGuard::dismiss(new_path);
 
     repo.index_meili(&meili_client).await;
 

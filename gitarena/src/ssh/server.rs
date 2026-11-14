@@ -171,7 +171,7 @@ impl Handler for SshHandler {
         }
     }
 
-    #[instrument(skip(session))]
+    #[instrument(skip(self, session))]
     async fn channel_close(&mut self, channel: ChannelId, session: &mut Session) -> Result<(), Self::Error> {
         if self.operation.is_some() {
             debug!("SSH channel closed mid-operation, cancelling");
@@ -185,7 +185,7 @@ impl Handler for SshHandler {
         Ok(())
     }
 
-    #[instrument(skip(session))]
+    #[instrument(skip(self, session))]
     async fn channel_eof(&mut self, channel: ChannelId, session: &mut Session) -> Result<(), Self::Error> {
         let Some(operation) = self.operation.take() else {
             session.close(channel).context("failed to close ssh channel during eof")?;
@@ -209,7 +209,7 @@ impl Handler for SshHandler {
         Ok(())
     }
 
-    #[instrument(skip(session))]
+    #[instrument(skip(self, data, session), fields(len = data.len()))]
     async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
         if self.cancelled {
             return Ok(());
@@ -419,7 +419,7 @@ impl Handler for SshHandler {
         Ok(())
     }
 
-    #[instrument(skip(session))]
+    #[instrument(skip(self, session))]
     async fn signal(&mut self, channel: ChannelId, signal: russh::Sig, session: &mut Session) -> Result<(), Self::Error> {
         debug!(?signal, "SSH client sent signal, cancelling operation");
 

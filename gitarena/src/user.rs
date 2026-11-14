@@ -18,7 +18,7 @@ use ipnetwork::IpNetwork;
 use object_store::path::Path;
 use serde::Serialize;
 use sqlx::{FromRow, Transaction};
-use std::convert::{Infallible, TryFrom};
+use std::convert::TryFrom;
 use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -228,7 +228,7 @@ impl FromRequest for WebUser {
 }
 
 #[instrument(err, skip(db_pool, id_future))]
-async fn extract_webuser_from_request<F: Future<Output = Result<Option<Identity>, Infallible>>>(
+async fn extract_webuser_from_request<F: Future<Output = Result<Option<Identity>, !>>>(
     db_pool: Data<Pool>,
     id_future: F,
     ip_network: IpNetwork,

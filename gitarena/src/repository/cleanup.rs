@@ -7,17 +7,21 @@ use crate::repository::task::DeletedRepoCleanupTask;
 use anyhow::{Result, anyhow, bail};
 use fang::{AsyncQueueable, AsyncRunnable};
 use sqlx::Transaction;
+use std::fs::rename;
 use std::io::ErrorKind;
+use std::mem::DropGuard;
 use tokio::fs;
 use tracing::{error, instrument};
 use uuid::Uuid;
+
+type TrashGuard = DropGuard<(String, String), fn((String, String))>;
 
 #[derive(Debug)]
 pub(crate) struct RepoCleanup {
     repo_ids: Vec<Uuid>,
     issue_ids: Vec<Uuid>,
     s3_keys: Vec<String>,
-    moved: Option<(String, String)>,
+    moved: Option<TrashGuard>,
 }
 
 impl RepoCleanup {
@@ -59,7 +63,13 @@ impl RepoCleanup {
         fs::create_dir_all(&trash_dir).await?;
 
         match fs::rename(&path, &trash_path).await {
-            Ok(()) => self.moved = Some((path, trash_path)),
+            Ok(()) => {
+                self.moved = Some(DropGuard::new((path, trash_path), |(path, trash_path)| {
+                    if let Err(err) = rename(&trash_path, &path) {
+                        error!(?err, %trash_path, %path, "failed to restore directory after failed delete");
+                    }
+                }));
+            }
             Err(err) if err.kind() == ErrorKind::NotFound => {}
             Err(err) => bail!(err),
         }
@@ -69,18 +79,10 @@ impl RepoCleanup {
 
     #[instrument(skip(tx, meili_client))]
     pub(crate) async fn commit(self, tx: Transaction<'_, Database>, meili_client: &MeiliClient) -> Result<()> {
-        if let Err(err) = tx.commit().await {
-            if let Some((path, trash_path)) = &self.moved
-                && let Err(err) = fs::rename(trash_path, path).await
-            {
-                error!(?err, %trash_path, %path, "failed to restore directory after failed delete");
-            }
-
-            bail!(err);
-        }
+        tx.commit().await?;
 
         let task = DeletedRepoCleanupTask {
-            trash_path: self.moved.map(|(_, trash_path)| trash_path),
+            trash_path: self.moved.map(|moved| DropGuard::dismiss(moved).1),
             s3_keys: self.s3_keys,
         };
 

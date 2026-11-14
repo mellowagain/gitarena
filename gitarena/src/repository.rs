@@ -1,12 +1,15 @@
+use crate::config::get_setting;
 use crate::error::{ErrorDisplayType, GitArenaError};
 use crate::organization::Organization;
 use crate::privileges::privilege;
 use crate::privileges::repo_visibility::RepoVisibility;
 use crate::user::{User, WebUser};
+use crate::utils::filesystem::remove_dir_on_drop;
 use crate::{die, err};
 
 use std::collections::HashMap;
 use std::future::Future;
+use std::mem::DropGuard;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -99,15 +102,18 @@ impl Repository {
     }
 
     #[instrument(err, skip(tx))]
-    pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<()> {
+    pub(crate) async fn create_fs(&self, tx: &mut Transaction<'_, Database>) -> Result<DropGuard<String, impl FnOnce(String) + use<>>> {
         let mut init_ops = RepositoryInitOptions::new();
         init_ops.initial_head(self.default_branch.as_str());
         init_ops.bare(true);
 
-        Git2Repository::init_opts(self.get_fs_path(tx).await?, &init_ops)?;
+        let base_dir: String = get_setting("repositories.base_dir", tx).await?;
+        let path = remove_dir_on_drop(self.get_fs_path(tx).await?, &base_dir);
+
+        Git2Repository::init_opts(&*path, &init_ops)?;
 
         init_zoekt_config(self, tx).await?;
-        Ok(())
+        Ok(path)
     }
 
     #[instrument(err, skip(tx))]
