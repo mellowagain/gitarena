@@ -28,6 +28,16 @@ Admin access is checked on each request. You do not need to restart GitArena aft
 
 The dashboard shows user count, organization count, repository count, total repository disk space, and used repository disk space.
 
+## Update check
+
+GitArena checks whether a newer version is available by comparing the commit it was built from with the `main` branch of [mellowagain/gitarena](https://github.com/mellowagain/gitarena) through the GitHub API. The backend runs the check once on startup and caches the result for one hour.
+
+When an update is available, the dashboard shows a banner with the current and latest commit, the number of commits your instance is behind, and a **Show changes** list of their commit messages. If any of those commit messages references a security advisory (`GHSA-`) or a CVE (`CVE-`), the banner is marked as a security relevant update. On startup, the backend also logs a warning with the new version, plus a second warning if the update contains security fixes.
+
+The check needs outbound HTTPS access to `api.github.com`. If the request fails, the backend logs `update check failed` and starts normally. Builds without `VERGEN_GIT_SHA` report their version as `unknown` and skip the check. See [building images](/self-hosting/docker#images).
+
+Admins can also call `GET /api/admin/check-update` directly. Non-admin users receive `403 Forbidden`.
+
 ## Settings
 
 Instance settings are stored in the `settings` table. Edit settings directly in PostgreSQL for now. See the [configuration reference](/self-hosting/configuration) for available keys and their descriptions.
