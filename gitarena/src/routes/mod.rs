@@ -9,6 +9,7 @@ use crate::release::assets::{Arch, Kind, Libc, Os, ReleaseAssets};
 use crate::repository::Repository;
 use crate::routes::admin::health::{ComponentStatus, InstanceComponent, InstanceHealth};
 use crate::routes::admin::stats::InstanceStats;
+use crate::routes::admin::update_check::UpdateInfo;
 use crate::routes::admin::users::ExtendedUser;
 use crate::routes::api::ApiInfoResponse;
 use crate::routes::events::EventResponse;
@@ -166,6 +167,7 @@ impl Modify for CookieAuth {
         crate::routes::organization::api::members::remove_member,
         crate::routes::admin::stats::get_instance_stats,
         crate::routes::admin::health::get_instance_health,
+        crate::routes::admin::update_check::get_update_check,
         crate::routes::admin::users::get_instance_users,
         crate::routes::admin::users::delete_instance_user,
         crate::routes::admin::audit_log::get_admin_audit_log,
@@ -290,6 +292,7 @@ impl Modify for CookieAuth {
         InstanceHealth,
         InstanceComponent,
         ComponentStatus,
+        UpdateInfo,
         ExtendedUser,
         User,
         Email,

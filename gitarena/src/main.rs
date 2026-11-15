@@ -27,6 +27,7 @@ use git::hooks::secret_scanning;
 use git::hooks::secret_scanning::SECRET_SCANNER;
 use gitarena_macros::from_optional_config;
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
+use routes::admin::update_check;
 use rustls::crypto::ring;
 use std::env;
 use std::time::Duration;
@@ -146,6 +147,21 @@ async fn main() -> Result<()> {
         .map_err(|_| anyhow!("secret scanner should not be set more than once"))?;
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
+
+    match LocalSet::new().run_until(update_check::check_github()).await {
+        Ok(update_info) if update_info.available => {
+            warn!(" ");
+            warn!("new update for gitarena available: v0.0.0-{}", update_info.new_version.unwrap_or_default());
+
+            if update_info.security_relevant.unwrap_or_default() {
+                warn!("note: the update contains security fixes, please update ASAP");
+            }
+
+            warn!(" ");
+        }
+        Ok(_) => {}
+        Err(err) => warn!(?err, "update check failed"),
+    }
 
     let server = HttpServer::new(move || {
         let identity_middleware = IdentityMiddleware::builder()

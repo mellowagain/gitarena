@@ -29,6 +29,7 @@ awc = { version = "3.11.0", features = ["rustls-0_23-webpki-roots"] }
 base64 = { workspace = true }
 bstr = "1.13.1"
 bs58 = "0.5.1"
+cached = { version = "4.1.1", features = ["async"] }
 chrono = { workspace = true }
 console-subscriber = { version = "0.5.0", features = ["parking_lot"] }
 derive_more = { version = "2.1.1", features = ["debug"] }

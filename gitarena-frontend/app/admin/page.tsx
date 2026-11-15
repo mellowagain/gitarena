@@ -44,6 +44,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TopBar } from "@/components/top-bar";
 import { DeleteUserDialog } from "@/components/delete-user-dialog";
@@ -82,6 +83,14 @@ interface InstanceComponent {
 }
 
 type ComponentStatus = "healthy" | "unhealthy" | "disabled" | { degraded: string };
+
+interface UpdateInfo {
+    available: boolean;
+    currentVersion: string;
+    newVersion: string | null;
+    notes: string | null;
+    securityRelevant: boolean | null;
+}
 
 interface AdminUser {
     id: string;
@@ -201,6 +210,45 @@ function formatUserCreatedAt(user: AdminUser) {
     return formatDistanceToNow(uuidToDate(user.id), { addSuffix: true });
 }
 
+function UpdateBanner({ update }: { update: UpdateInfo }) {
+    const Icon = update.securityRelevant ? AlertTriangle : Download;
+    const behind = update.notes?.split("\n").length;
+
+    return (
+        <Alert variant={update.securityRelevant ? "warning" : "info"}>
+            <Icon />
+            <AlertTitle>
+                {update.securityRelevant ? "Security relevant update available - please update as soon as possible" : "Update available"}
+            </AlertTitle>
+            <AlertDescription>
+                <p>
+                    <code className="font-mono text-xs">v0.0.0-{update.currentVersion.slice(0, 7)}</code>
+                    {update.newVersion && (
+                        <>
+                            {" → "}
+                            <code className="font-mono text-xs">v0.0.0-{update.newVersion.slice(0, 7)}</code>
+                        </>
+                    )}
+                    {behind && ` (${behind} ${behind === 1 ? "update" : "updates"} behind)`}
+                </p>
+                {update.notes && (
+                    <Collapsible className="w-full">
+                        <CollapsibleTrigger className="group flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                            Show changes
+                            <ChevronDown className="h-3.5 w-3.5 group-data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <pre className="mt-2 text-xs font-mono bg-secondary/50 rounded p-2 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                                {update.notes}
+                            </pre>
+                        </CollapsibleContent>
+                    </Collapsible>
+                )}
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 function AuditTableRow({ event }: { event: EventResponse }) {
     const [expanded, setExpanded] = useState(false);
     const hasPayload = Object.keys(event.payload).length > 0;
@@ -286,6 +334,7 @@ export default function AdminDashboardPage() {
         mutate: refreshHealth,
         isValidating: isHealthRefreshing,
     } = useSWR<InstanceHealth>("/api/admin/health", jsonFetcher);
+    const { data: update } = useSWR<UpdateInfo>("/api/admin/check-update", jsonFetcher);
     const showHealthLoading = isHealthLoading || (!health && !healthError);
     const showHealthRefreshing = isHealthRefreshing && !showHealthLoading;
 
@@ -329,6 +378,8 @@ export default function AdminDashboardPage() {
                 <main className="flex-1 overflow-y-auto p-6">
                     {activeSection === "dashboard" && (
                         <div className="space-y-6">
+                            {update?.available && <UpdateBanner update={update} />}
+
                             <div className="grid grid-cols-4 gap-4">
                                 <div className="p-5 rounded-lg bg-card border border-border">
                                     <div className="flex items-center justify-between">
