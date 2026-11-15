@@ -142,7 +142,7 @@ CI publishes these images to `ghcr.io/mellowagain` and `docker.io/mellowagain`, 
 | `sha-<commit>` | A specific commit, for example `sha-1a2b3c4` |
 | `1.2.3`, `1.2`, `1` | A release. The backend, Zoekt and all-in-one images follow `gitarena-v*` git tags, the frontend follows `gitarena-frontend-v*`. |
 
-To build the images from your checkout instead, pass `--build` to Compose. Set `VERGEN_GIT_SHA` so the backend reports the commit it was built from, otherwise it reports `unknown`:
+To build the images from your checkout instead, pass `--build` to Compose. Set `VERGEN_GIT_SHA` so the backend reports the commit it was built from, otherwise it reports `unknown` and skips the [update check](/features/admin#update-check):
 
 ```bash
 VERGEN_GIT_SHA=$(git rev-parse HEAD) docker compose up -d --build
