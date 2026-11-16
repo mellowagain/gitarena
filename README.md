@@ -141,6 +141,7 @@ Optional environment variables:
 
 - `MAX_POOL_CONNECTIONS`: Max amount of connections the Postgres connection pool should keep open and ready to use.
 - `MAX_QUEUE_POOL_CONNECTIONS`: Max amount of Postgres connections the background job queue should use
+- `DISABLE_LICENSE_DETECTION`: Set to any value to skip loading the license database at startup and detecting repository licenses on push
 - `DISABLE_UPDATE_CHECK`: Set to any value to skip checking for a new GitArena version at startup
 - `NO_STDOUT_LOG`: Set to any value to only write logs to the log file (and Otel, if configured)
 - `OTEL_SERVICE_NAME`: Service name to be used for metrics, traces and logs

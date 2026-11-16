@@ -33,6 +33,7 @@ Set these before starting GitArena. In Docker, pass them under `environment:` in
 |----------|-------------|
 | `MAX_POOL_CONNECTIONS` | Maximum number of Postgres connections to keep open. |
 | `MAX_QUEUE_POOL_CONNECTIONS` | Maximum number of Postgres connections used by the background job queue. Defaults to the number of CPU threads + 1. |
+| `DISABLE_LICENSE_DETECTION` | Skip loading the license database at startup and detecting repository licenses on push when set. |
 | `DISABLE_UPDATE_CHECK` | Skip checking GitHub for a new GitArena version at startup when set. The admin panel update check still works. |
 | `NO_STDOUT_LOG` | Disable stdout logging when set. |
 | `DEBUG_FILE_LOG` | Enable rolling file logging in non-debug builds when set. |

@@ -103,7 +103,9 @@ async fn main() -> Result<()> {
 
     events::init(&db_pool).await?;
 
-    licenses::init();
+    if env::var_os("DISABLE_LICENSE_DETECTION").is_none() {
+        licenses::init();
+    }
 
     system::init()?;
 

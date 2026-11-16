@@ -27,6 +27,7 @@ use uuid::Uuid;
 const BOOT_ATTEMPTS: usize = 3;
 const BOOT_TIMEOUT: Duration = Duration::from_secs(60);
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(120);
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
 const AGENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub const AUTHOR_NAME: &str = "Test Author";
@@ -100,6 +101,7 @@ impl TestServer {
                 .env("MAX_POOL_CONNECTIONS", "3")
                 .env("MAX_QUEUE_POOL_CONNECTIONS", "2")
                 .env("DISABLE_UPDATE_CHECK", "1")
+                .env("DISABLE_LICENSE_DETECTION", "1")
                 .env("GIT_CONFIG_GLOBAL", "/dev/null")
                 .env("GIT_CONFIG_SYSTEM", "/dev/null")
                 .stdin(Stdio::null())
@@ -154,7 +156,8 @@ fn free_port() -> Result<u16> {
 }
 
 async fn seed_settings(pool: &PgPool, http_port: u16, ssh_port: u16, repos_dir: &Path) -> Result<()> {
-    let backend = format!("http://127.0.0.1:{http_port}");
+    // webauthn uses the domain as its relying party id, which has to be a hostname and not an ip
+    let backend = format!("http://localhost:{http_port}");
     let repos_dir = repos_dir.to_str().context("temp dir is not valid unicode")?;
     let ssh_port = ssh_port.to_string();
 
@@ -182,7 +185,7 @@ async fn seed_settings(pool: &PgPool, http_port: u16, ssh_port: u16, repos_dir: 
 }
 
 async fn wait_until_ready(child: &mut Child, http_port: u16, ssh_port: u16) -> Result<()> {
-    let client = Client::new();
+    let client = Client::builder().timeout(HEALTH_TIMEOUT).build()?;
     let deadline = Instant::now() + BOOT_TIMEOUT;
 
     loop {
@@ -314,7 +317,7 @@ impl TestUser {
             username: username.to_owned(),
             password: format!("password-{username}"),
             email: format!("{username}@example.com"),
-            client: Client::builder().cookie_store(true).build()?,
+            client: Client::builder().cookie_store(true).timeout(COMMAND_TIMEOUT).build()?,
             ssh_key: None,
             base_url: server.base_url(),
             key_dir: tempdir()?,
@@ -507,15 +510,18 @@ async fn run_with_timeout(command: &mut Command, input: Option<&[u8]>) -> Result
 
     let mut child = command.spawn()?;
 
-    if let Some(input) = input {
-        let mut stdin = child.stdin.take().context("child has no stdin")?;
-        stdin.write_all(input).await?;
-    }
+    let run = async {
+        if let Some(input) = input {
+            let mut stdin = child.stdin.take().context("child has no stdin")?;
+            stdin.write_all(input).await?;
+        }
 
-    timeout(COMMAND_TIMEOUT, child.wait_with_output())
+        Ok(child.wait_with_output().await?)
+    };
+
+    timeout(COMMAND_TIMEOUT, run)
         .await
         .with_context(|| format!("{command:?} did not finish within {COMMAND_TIMEOUT:?}"))?
-        .map_err(Into::into)
 }
 
 pub struct GitOutput {

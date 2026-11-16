@@ -20,6 +20,10 @@ fn init_askalono() -> Store {
     Store::from_cache(&bytes[..]).expect_or_log("Failed to parse askalono cache file")
 }
 
+pub(crate) fn is_loaded() -> bool {
+    LICENSE_STORE.get().is_some()
+}
+
 pub(crate) fn store() -> &'static Store {
     LICENSE_STORE.get().unwrap_or_log()
 }

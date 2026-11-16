@@ -69,7 +69,8 @@ pub async fn ls_remote_lists_all_refs(pool: PgPool, transport: Transport, protoc
     local.ok(&["push", "--quiet", "origin", "feature", "v1"]).await?;
 
     let refs = fixture
-        .checkout(&fixture.owner, "query")
+        .owner
+        .git(fixture.dir.path())
         .with_protocol(protocol)
         .ls_remote(&fixture.owner_remote())
         .await?;
@@ -94,7 +95,8 @@ pub async fn ls_remote_peels_annotated_tags(pool: PgPool, transport: Transport, 
     local.ok(&["push", "--quiet", "origin", "v1"]).await?;
 
     let refs = fixture
-        .checkout(&fixture.owner, "query")
+        .owner
+        .git(fixture.dir.path())
         .with_protocol(protocol)
         .ls_remote(&fixture.owner_remote())
         .await?;
