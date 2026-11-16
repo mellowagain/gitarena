@@ -1,0 +1,16 @@
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 3 }
+
+[test-groups]
+# every test boots its own server with a handful of Postgres connections, so this keeps the total under `max_connections`
+git-server = { max-threads = 8 }
+
+[[profile.default.overrides]]
+filter = "package(gitarena) & kind(test)"
+test-group = "git-server"
+
+[profile.ci]
+fail-fast = false
+
+[profile.ci.junit]
+path = "junit.xml"

@@ -95,5 +95,11 @@ uuid = { workspace = true, features = ["v4", "v5", "v7"] }
 webauthn-rs = { version = "0.6.2", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 zip = { version = "9.2.1", default-features = false, features = ["deflate", "time", "chrono"] }
 
+[dev-dependencies]
+pretty_assertions = { version = "=1.4.1", features = ["unstable"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["cookies", "json"] }
+tempfile = "3.23.0"
+test-with = { version = "0.17.2", default-features = false, features = ["executable"] }
+
 [build-dependencies]
 vergen-gix = "10.0.3"

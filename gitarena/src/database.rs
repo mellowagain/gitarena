@@ -18,9 +18,16 @@ pub type PoolOptions = sqlx::pool::PoolOptions<Database>;
 
 #[instrument(err)]
 pub async fn create_postgres_pool(max_conns: Option<u32>) -> Result<Pool> {
+    let cpus = cpu_count()?;
+
+    let max_connections = match max_conns {
+        Some(max_conns) => max_conns,
+        None => read_pool_size("MAX_POOL_CONNECTIONS", 5.max(cpus))?,
+    };
+
     let pool = PoolOptions::new()
-        .min_connections(num_cpus::get() as u32 + 1)
-        .max_connections(max_conns.ok_or(()).or_else(|()| get_max_connections())?)
+        .min_connections((cpus + 1).min(max_connections))
+        .max_connections(max_connections)
         .acquire_timeout(Duration::from_secs(10))
         .after_connect(move |connection, _meta| {
             Box::pin(async move {
@@ -70,14 +77,18 @@ async fn read_database_config() -> Result<ConnectOptions> {
     Ok(options)
 }
 
-fn get_max_connections() -> Result<u32> {
-    Ok(match env::var("MAX_POOL_CONNECTIONS") {
+pub(crate) fn read_pool_size(variable: &str, default: u32) -> Result<u32> {
+    Ok(match env::var(variable) {
         Ok(env_str) => env_str
             .parse::<u32>()
-            .context("Unable to parse MAX_POOL_CONNECTIONS environment variable into a u32")?,
-        Err(VarError::NotPresent) => 5.max(u32::try_from(num_cpus::get()).context("too many cpu threads to fit into u32")?),
+            .with_context(|| format!("Unable to parse {variable} environment variable into a u32"))?,
+        Err(VarError::NotPresent) => default,
         Err(VarError::NotUnicode(_)) => {
-            bail!("MAX_POOL_CONNECTIONS environment variable is not a valid unicode string")
+            bail!("{variable} environment variable is not a valid unicode string")
         }
     })
+}
+
+pub(crate) fn cpu_count() -> Result<u32> {
+    u32::try_from(num_cpus::get()).context("too many cpu threads to fit into u32")
 }

@@ -1,4 +1,5 @@
 use crate::contributions::task::CONTRIBUTIONS_TASK_TYPE;
+use crate::database::{cpu_count, read_pool_size};
 use crate::git::hooks::post_update::POST_UPDATE_TASK_TYPE;
 use crate::mail::task::MAIL_TASK_TYPE;
 use crate::passkey::ExpiredWebAuthnChallengesRemovalTask;
@@ -18,7 +19,7 @@ pub(crate) async fn init() -> Result<AsyncQueue> {
     // todo: this makes `DATABASE_URL` mandatory
     let mut queue = AsyncQueue::builder()
         .uri(env::var("DATABASE_URL").context("unable to find mandatory `DATABASE_URL` env variable")?)
-        .max_pool_size(num_cpus::get() as u32 + 1)
+        .max_pool_size(read_pool_size("MAX_QUEUE_POOL_CONNECTIONS", cpu_count()? + 1)?)
         .build();
 
     queue.connect().await.context("task queue failed to connect to postgres database")?;
