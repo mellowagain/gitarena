@@ -132,9 +132,11 @@ async fn collaboration(pool: PgPool, transport: Transport) -> Result<()> {
         assert_eq!(clone.rev_count("origin/main").await?, count + 2);
     }
 
+    let remote_refs = clone.ok(&["for-each-ref", "--format=%(refname)", "refs/remotes"]).await?;
+
     assert_eq!(
-        clone.ok(&["for-each-ref", "--format=%(refname)", "refs/remotes"]).await?.trim(),
-        "refs/remotes/origin/main"
+        remote_refs.lines().filter(|name| *name != "refs/remotes/origin/HEAD").collect::<Vec<_>>(),
+        vec!["refs/remotes/origin/main"]
     );
 
     clone.ok(&["merge", "--quiet", "--ff-only", "origin/main"]).await?;
