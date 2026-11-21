@@ -1,6 +1,7 @@
 use anyhow::{Result, bail};
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
+use std::io::ErrorKind;
 use tracing::instrument;
 use tracing::warn;
 use tracing_unwrap::OptionExt;
@@ -49,8 +50,9 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
                     body.push(data[..length].to_vec());
                 }
             }
-            Ok(Err(err)) => warn!(?err, "Failed to read Git data line"),
-            Err(err) => warn!(?err, "Failed to read Git data line"),
+            Ok(Err(err)) => return Err(err.context("failed to read git data line")),
+            Err(err) if err.kind() == ErrorKind::UnexpectedEof => break,
+            Err(err) => return Err(err.into()),
         }
     }
 
