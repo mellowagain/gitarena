@@ -97,7 +97,7 @@ impl TestServer {
                 .env("HOME", home.path())
                 .env("DATABASE_URL", &database_url)
                 .env("BIND_ADDRESS", format!("127.0.0.1:{http_port}"))
-                .env("RUST_LOG", "gitarena=debug")
+                .env("RUST_LOG", "gitarena=debug,gitarena::git::io::reader=error")
                 .env("MAX_POOL_CONNECTIONS", "3")
                 .env("MAX_QUEUE_POOL_CONNECTIONS", "2")
                 .env("DISABLE_UPDATE_CHECK", "1")
