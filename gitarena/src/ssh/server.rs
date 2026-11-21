@@ -5,6 +5,7 @@ use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::ref_update;
 use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
+use crate::issue::hidden_bug_refs;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::privileges::privilege;
 use crate::repository::{Repository, extract_repo_from_request};
@@ -237,9 +238,10 @@ impl Handler for SshHandler {
 
             let db_pool = self.db_pool.clone();
             let repo = repo.clone();
+            let user = self.user.clone();
             let version = self.version;
 
-            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, request, version))).await?;
+            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, user, request, version))).await?;
 
             match result {
                 Ok(output) => session.data(channel, output)?,
@@ -348,18 +350,20 @@ impl Handler for SshHandler {
                 let db_pool = self.db_pool.clone();
                 let version = self.version;
                 let repo_clone = repo.clone();
+                let user = self.user.clone();
 
                 let advert = spawn_blocking(move || {
                     Handle::current().block_on(async move {
                         let mut tx = db_pool.begin().await?;
 
+                        let hidden_refs = hidden_bug_refs(&repo_clone, user.as_ref(), &mut tx).await?;
                         let git2repo = repo_clone.libgit2(&mut tx).await?;
 
                         tx.commit().await?;
 
                         match version {
                             GitProtocol::V2 => capabilities(None).await,
-                            GitProtocol::V1 => ls_refs_all_upload_pack(&git2repo, None).await,
+                            GitProtocol::V1 => ls_refs_all_upload_pack(&git2repo, None, &hidden_refs).await,
                         }
                     })
                 })
@@ -386,16 +390,18 @@ impl Handler for SshHandler {
 
                 let db_pool = self.db_pool.clone();
                 let repo_clone = repo.clone();
+                let user = self.user.clone();
 
                 let advert = spawn_blocking(move || {
                     Handle::current().block_on(async move {
                         let mut tx = db_pool.begin().await?;
 
+                        let hidden_refs = hidden_bug_refs(&repo_clone, user.as_ref(), &mut tx).await?;
                         let git2repo = repo_clone.libgit2(&mut tx).await?;
 
                         tx.commit().await?;
 
-                        ls_refs_all(&git2repo, None).await
+                        ls_refs_all(&git2repo, None, &hidden_refs).await
                     })
                 })
                 .await??;
@@ -485,15 +491,16 @@ async fn is_delete_only_push(buffer: &[u8]) -> Result<bool> {
 }
 
 #[instrument(err, skip(db_pool, vec))]
-async fn run_upload_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, version: GitProtocol) -> Result<Vec<u8>> {
+async fn run_upload_pack(db_pool: Pool, repo: Repository, user: Option<User>, vec: Vec<u8>, version: GitProtocol) -> Result<Vec<u8>> {
     let mut tx = db_pool.begin().await?;
+    let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut tx).await?;
     let git2repo = repo.libgit2(&mut tx).await?;
 
     let start = Instant::now();
 
     let output = match version {
-        GitProtocol::V2 => execute_upload_pack_v2(vec.as_slice(), &git2repo).await?,
-        GitProtocol::V1 => execute_upload_pack_v1(vec.as_slice(), &git2repo).await?,
+        GitProtocol::V2 => execute_upload_pack_v2(vec.as_slice(), &git2repo, &hidden_refs).await?,
+        GitProtocol::V1 => execute_upload_pack_v1(vec.as_slice(), &git2repo, &hidden_refs).await?,
     };
 
     let elapsed = start.elapsed().as_secs_f64();

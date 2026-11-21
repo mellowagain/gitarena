@@ -89,6 +89,8 @@ git bug list
 git bug show <id>
 ```
 
+Confidential issues are visible only to the repository owner. When anyone else fetches or clones the repository over smart HTTP or SSH, GitArena omits the `refs/bugs/<id>` refs of confidential issues from the advertised refs and refuses to send objects reachable only from them. The commit detail API (`GET /api/repos/{namespace}/{repository}/commits/{oid}`) returns `404 Not Found` for those commits.
+
 ## What works with git-bug CLI
 
 | Operation | Works |
@@ -101,7 +103,7 @@ git bug show <id>
 | `git bug title edit` | Yes |
 | `git bug push` | Blocked |
 
-GitArena blocks direct pushes to `refs/bugs/*`. All writes must go through the web interface or API. Read access is unrestricted — fetch the refs and use `git-bug` locally in read-only mode.
+GitArena blocks direct pushes to `refs/bugs/*`. All writes must go through the web interface or API. Read access follows issue visibility: fetch the refs and use `git-bug` locally in read-only mode.
 
 ## Postgres read cache
 

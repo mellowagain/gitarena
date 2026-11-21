@@ -1,9 +1,11 @@
 use crate::prelude::LibGit2SignatureExtensions;
 use crate::repository::Repository;
+use crate::user::WebUser;
 use crate::{die, err};
 
 use crate::database::Pool;
 use crate::git::fetch::reachable_objects;
+use crate::issue::hidden_bug_refs;
 use actix_web::{HttpResponse, Responder, web};
 use anyhow::Result;
 use git2::{Delta, DiffFindOptions, DiffFormat, DiffOptions};
@@ -167,10 +169,16 @@ pub(crate) struct CommitDetailResponse {
     tag = "repository"
 )]
 #[route("/api/repos/{namespace}/{repository}/commits/{oid}", method = "GET", err = "json")]
-pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, String, String)>, db_pool: web::Data<Pool>) -> Result<impl Responder> {
+pub(crate) async fn commit_detail(
+    repo: Repository,
+    web_user: WebUser,
+    path: web::Path<(String, String, String)>,
+    db_pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     let mut transaction = db_pool.begin().await?;
 
     let (_, _, oid_str) = path.into_inner();
+    let hidden_refs = hidden_bug_refs(&repo, web_user.as_ref(), &mut transaction).await?;
     let libgit2_repo = repo.libgit2(&mut transaction).await?;
 
     let object = libgit2_repo.revparse_single(&oid_str).map_err(|_| err!(NOT_FOUND, "Commit not found"))?;
@@ -179,7 +187,7 @@ pub(crate) async fn commit_detail(repo: Repository, path: web::Path<(String, Str
         die!(BAD_REQUEST, "OID does not refer to a commit");
     };
 
-    if !reachable_objects(&libgit2_repo, &[commit.id()])?.contains(&commit.id()) {
+    if !reachable_objects(&libgit2_repo, &[commit.id()], &hidden_refs)?.contains(&commit.id()) {
         die!(NOT_FOUND, "Commit not found");
     }
 

@@ -1,6 +1,7 @@
 use crate::git::io::writer::GitWriter;
 
 use core::result::Result as CoreResult;
+use std::collections::HashSet;
 use std::fmt::Write as _;
 use std::sync::Once;
 
@@ -13,8 +14,8 @@ use tracing::{error, warn};
 // TODO: Combine ls_refs and ls_refs_all to be shared (currently some code is duplicated)
 
 // Used by git-upload-pack ref discovery
-#[instrument(err, skip(repo))]
-pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Result<Bytes> {
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository, hidden_refs: &HashSet<String>) -> Result<Bytes> {
     let mut options = LsRefs::default();
     let mut writer = GitWriter::new();
 
@@ -47,7 +48,8 @@ pub(crate) async fn ls_refs(input: Vec<Vec<u8>>, repo: &Git2Repository) -> Resul
 
     for result in repo.references()? {
         if let Ok(reference) = &result
-            && !options.matches(reference.name().unwrap_or_default())
+            && let name = reference.name().unwrap_or_default()
+            && (!options.matches(name) || hidden_refs.contains(name))
         {
             continue;
         }
@@ -109,22 +111,27 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
     }
 }
 
-pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
-    ls_refs_all_inner(repo, service_header, |_| receive_pack_capabilities().to_string()).await
+pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>, hidden_refs: &HashSet<String>) -> Result<Bytes> {
+    ls_refs_all_inner(repo, service_header, hidden_refs, |_| receive_pack_capabilities().to_string()).await
 }
 
-pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_header: Option<&str>) -> Result<Bytes> {
+pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_header: Option<&str>, hidden_refs: &HashSet<String>) -> Result<Bytes> {
     let head_symref = repo.find_reference("HEAD")?.symbolic_target()?.map(ToString::to_string);
 
-    ls_refs_all_inner(repo, service_header, |_| {
+    ls_refs_all_inner(repo, service_header, hidden_refs, |_| {
         let symref = head_symref.as_deref().map(|target| format!(" symref=HEAD:{target}")).unwrap_or_default();
         upload_pack_v1_capabilities(&symref)
     })
     .await
 }
 
-#[instrument(err, skip(repo, capabilities))]
-async fn ls_refs_all_inner(repo: &Git2Repository, service_header: Option<&str>, capabilities: impl Fn(&str) -> String) -> Result<Bytes> {
+#[instrument(err, skip(repo, hidden_refs, capabilities))]
+async fn ls_refs_all_inner(
+    repo: &Git2Repository,
+    service_header: Option<&str>,
+    hidden_refs: &HashSet<String>,
+    capabilities: impl Fn(&str) -> String,
+) -> Result<Bytes> {
     let mut writer = GitWriter::new();
 
     if let Some(service) = service_header {
@@ -138,6 +145,7 @@ async fn ls_refs_all_inner(repo: &Git2Repository, service_header: Option<&str>, 
         match result {
             Ok(reference) => {
                 if let Ok(name) = reference.name()
+                    && !hidden_refs.contains(name)
                     && let Some(oid) = reference.target()
                 {
                     let mut line = format!("{oid} {name}");

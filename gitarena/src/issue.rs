@@ -1,12 +1,19 @@
+use std::collections::HashSet;
+
+use anyhow::Result;
 use chrono::{DateTime, Utc};
+use gitarena_issues::bug::BUGS_REF_PREFIX;
 use gitarena_issues::operation::BugStatus;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Type};
+use sqlx::{FromRow, Transaction, Type};
 use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::database::Database;
 use crate::meili::{ISSUES_MEILI_INDEX, MeiliClient};
+use crate::repository::Repository;
+use crate::user::User;
 
 #[derive(FromRow, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -80,4 +87,17 @@ pub(crate) struct IssueCommentCache {
     pub(crate) author_id: Uuid,
     pub(crate) body: String,
     pub(crate) edited_at: Option<DateTime<Utc>>,
+}
+
+pub(crate) async fn hidden_bug_refs(repo: &Repository, user: Option<&User>, tx: &mut Transaction<'_, Database>) -> Result<HashSet<String>> {
+    if user.is_some_and(|user| repo.owner_user == Some(user.id)) {
+        return Ok(HashSet::new());
+    }
+
+    let bug_ids: Vec<String> = sqlx::query_scalar("select git_bug_id from issue_cache where repo_id = $1 and confidential = true")
+        .bind(repo.id)
+        .fetch_all(&mut **tx)
+        .await?;
+
+    Ok(bug_ids.into_iter().map(|id| format!("{BUGS_REF_PREFIX}{id}")).collect())
 }
