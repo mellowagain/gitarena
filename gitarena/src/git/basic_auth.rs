@@ -126,3 +126,69 @@ pub(crate) async fn parse_basic_auth(auth_header: &str) -> Result<(String, Strin
 pub(crate) fn is_present(request: &HttpRequest) -> bool {
     request.get_header("authorization").is_some()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn header(credentials: &str) -> String {
+        format!("Basic {}", BASE64_STANDARD.encode(credentials))
+    }
+
+    #[tokio::test]
+    async fn parses_username_and_password() -> Result<()> {
+        let (username, password) = parse_basic_auth(&header("alice:hunter22")).await?;
+
+        assert_eq!(username, "alice");
+        assert_eq!(password, "hunter22");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn password_may_contain_colons() -> Result<()> {
+        let (username, password) = parse_basic_auth(&header("alice:a:b:c")).await?;
+
+        assert_eq!(username, "alice");
+        assert_eq!(password, "a:b:c");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn empty_password_is_parsed() -> Result<()> {
+        let (username, password) = parse_basic_auth(&header("alice:")).await?;
+
+        assert_eq!(username, "alice");
+        assert_eq!(password, "");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn missing_scheme_is_rejected() {
+        assert!(parse_basic_auth(&BASE64_STANDARD.encode("alice:hunter22")).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn non_basic_scheme_is_rejected() {
+        assert!(parse_basic_auth("Bearer abcdef").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn invalid_base64_is_rejected() {
+        assert!(parse_basic_auth("Basic !!!not-base64!!!").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn credentials_without_colon_are_rejected() {
+        assert!(parse_basic_auth(&header("alice")).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn non_utf8_credentials_are_rejected() {
+        assert!(
+            parse_basic_auth(&format!("Basic {}", BASE64_STANDARD.encode([0xff, b':', 0xfe])))
+                .await
+                .is_err()
+        );
+    }
+}

@@ -103,7 +103,9 @@ async fn main() -> Result<()> {
 
     events::init(&db_pool).await?;
 
-    licenses::init();
+    if env::var_os("DISABLE_LICENSE_DETECTION").is_none() {
+        licenses::init();
+    }
 
     system::init()?;
 
@@ -148,19 +150,21 @@ async fn main() -> Result<()> {
 
     let ssh_handle = ssh::init(db_pool.clone(), &bind_address).await?;
 
-    match LocalSet::new().run_until(update_check::check_github()).await {
-        Ok(update_info) if update_info.available => {
-            warn!(" ");
-            warn!("new update for gitarena available: v0.0.0-{}", update_info.new_version.unwrap_or_default());
+    if env::var_os("DISABLE_UPDATE_CHECK").is_none() {
+        match LocalSet::new().run_until(update_check::check_github()).await {
+            Ok(update_info) if update_info.available => {
+                warn!(" ");
+                warn!("new update for gitarena available: v0.0.0-{}", update_info.new_version.unwrap_or_default());
 
-            if update_info.security_relevant.unwrap_or_default() {
-                warn!("note: the update contains security fixes, please update ASAP");
+                if update_info.security_relevant.unwrap_or_default() {
+                    warn!("note: the update contains security fixes, please update ASAP");
+                }
+
+                warn!(" ");
             }
-
-            warn!(" ");
+            Ok(_) => {}
+            Err(err) => warn!(?err, "update check failed"),
         }
-        Ok(_) => {}
-        Err(err) => warn!(?err, "update check failed"),
     }
 
     let server = HttpServer::new(move || {

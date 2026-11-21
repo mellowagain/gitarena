@@ -194,3 +194,171 @@ impl LsRefs {
         self.prefixes.is_empty() || self.prefixes.iter().any(|prefix| name.starts_with(prefix.as_str()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Context;
+    use git2::{Oid, Signature, Time};
+    use pretty_assertions::assert_eq;
+    use tempfile::{TempDir, tempdir};
+
+    fn args(input: &[&str]) -> Vec<Vec<u8>> {
+        input.iter().map(|line| line.as_bytes().to_vec()).collect()
+    }
+
+    fn pkt_lines(bytes: &[u8]) -> Result<Vec<String>> {
+        let mut lines = Vec::new();
+        let mut rest = bytes;
+
+        while !rest.is_empty() {
+            let length = usize::from_str_radix(str::from_utf8(&rest[..4])?, 16)?;
+
+            if length == 0 {
+                lines.push("0000".to_owned());
+                rest = &rest[4..];
+                continue;
+            }
+
+            lines.push(String::from_utf8(rest[4..length].to_vec())?.trim_end_matches('\n').to_owned());
+            rest = &rest[length..];
+        }
+
+        Ok(lines)
+    }
+
+    fn empty_repo() -> Result<(TempDir, Git2Repository)> {
+        let dir = tempdir()?;
+        let repo = Git2Repository::init_bare(dir.path())?;
+        repo.set_head("refs/heads/main")?;
+
+        Ok((dir, repo))
+    }
+
+    fn repo_with_commit() -> Result<(TempDir, Git2Repository, Oid)> {
+        let (dir, repo) = empty_repo()?;
+
+        let commit = {
+            let signature = Signature::new("tester", "tester@example.com", &Time::new(1_700_000_000, 0))?;
+            let blob = repo.blob(b"hello\n")?;
+
+            let mut builder = repo.treebuilder(None)?;
+            builder.insert("README.md", blob, 0o100_644)?;
+            let tree = repo.find_tree(builder.write()?)?;
+
+            repo.commit(Some("refs/heads/main"), &signature, &signature, "initial", &tree, &[])?
+        };
+
+        repo.reference("refs/tags/v1", commit, false, "lightweight tag")?;
+
+        Ok((dir, repo, commit))
+    }
+
+    #[test]
+    fn empty_prefix_list_matches_everything() {
+        let options = LsRefs::default();
+
+        assert!(options.matches("HEAD"));
+        assert!(options.matches("refs/heads/main"));
+    }
+
+    #[test]
+    fn prefixes_match_by_string_prefix() {
+        let options = LsRefs {
+            prefixes: vec!["refs/heads/".to_owned(), "HEAD".to_owned()],
+            ..LsRefs::default()
+        };
+
+        assert!(options.matches("HEAD"));
+        assert!(options.matches("refs/heads/main"));
+        assert!(!options.matches("refs/tags/v1"));
+    }
+
+    #[tokio::test]
+    async fn without_prefixes_all_refs_are_listed() -> Result<()> {
+        let (_dir, repo, commit) = repo_with_commit()?;
+
+        let mut lines = pkt_lines(&ls_refs(args(&["command=ls-refs", "symrefs"]), &repo).await?)?;
+        lines.sort();
+
+        assert_eq!(
+            lines,
+            vec![
+                "0000".to_owned(),
+                format!("{commit} HEAD symref-target:refs/heads/main"),
+                format!("{commit} refs/heads/main"),
+                format!("{commit} refs/tags/v1"),
+            ]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn ref_prefix_filters_refs() -> Result<()> {
+        let (_dir, repo, commit) = repo_with_commit()?;
+
+        let lines = pkt_lines(&ls_refs(args(&["ref-prefix refs/tags/"]), &repo).await?)?;
+
+        assert_eq!(lines, vec![format!("{commit} refs/tags/v1"), "0000".to_owned()]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn head_prefix_lists_only_head() -> Result<()> {
+        let (_dir, repo, commit) = repo_with_commit()?;
+
+        let lines = pkt_lines(&ls_refs(args(&["ref-prefix HEAD"]), &repo).await?)?;
+
+        assert_eq!(lines, vec![format!("{commit} HEAD symref-target:refs/heads/main"), "0000".to_owned()]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn unborn_head_is_only_listed_when_requested() -> Result<()> {
+        let (_dir, repo) = empty_repo()?;
+
+        let without = pkt_lines(&ls_refs(args(&["ref-prefix HEAD"]), &repo).await?)?;
+        let with = pkt_lines(&ls_refs(args(&["ref-prefix HEAD", "unborn"]), &repo).await?)?;
+
+        assert_eq!(without, vec!["0000".to_owned()]);
+        assert_eq!(with, vec!["unborn HEAD symref-target:refs/heads/main".to_owned(), "0000".to_owned()]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn ls_refs_all_on_empty_repo_advertises_capabilities_line() -> Result<()> {
+        let (_dir, repo) = empty_repo()?;
+
+        let lines = pkt_lines(&ls_refs_all(&repo, Some("git-receive-pack")).await?)?;
+
+        assert_eq!(lines.len(), 4);
+        assert_eq!(lines[0], "# service=git-receive-pack");
+        assert_eq!(lines[1], "0000");
+        assert!(
+            lines[2].starts_with("0000000000000000000000000000000000000000 capabilities^{}\0report-status"),
+            "{}",
+            lines[2]
+        );
+        assert_eq!(lines[3], "0000");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn ls_refs_all_puts_capabilities_on_first_ref_only() -> Result<()> {
+        let (_dir, repo, commit) = repo_with_commit()?;
+
+        let lines = pkt_lines(&ls_refs_all_upload_pack(&repo, None).await?)?;
+
+        let (_, capabilities) = lines[0].split_once('\0').context("first ref has no capabilities")?;
+        let mut refs = lines.iter().map(|line| line.split('\0').next().unwrap_or_default()).collect::<Vec<_>>();
+        refs.sort_unstable();
+
+        assert!(capabilities.contains("symref=HEAD:refs/heads/main"), "{capabilities}");
+        assert!(!lines[1].contains('\0'));
+        assert_eq!(
+            refs,
+            vec!["0000".to_owned(), format!("{commit} refs/heads/main"), format!("{commit} refs/tags/v1")]
+        );
+        Ok(())
+    }
+}

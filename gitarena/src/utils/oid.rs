@@ -62,3 +62,38 @@ pub(crate) fn from_hex_str(option: Option<&str>) -> Result<ObjectId> {
         None => Ok(ObjectId::null(GIT_HASH_KIND)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    const OID: &str = "b52f683ce73e8be06428b8c6cf0eb421eae21772";
+
+    #[test]
+    fn normalize_str_maps_null_oid_to_none() {
+        assert_eq!(normalize_str(Some(OID)), Some(OID));
+        assert_eq!(normalize_str(Some("0000000000000000000000000000000000000000")), None);
+        assert_eq!(normalize_str(None), None);
+    }
+
+    #[test]
+    fn from_hex_str_parses_valid_oids() -> Result<()> {
+        assert_eq!(from_hex_str(Some(OID))?.to_string(), OID);
+        Ok(())
+    }
+
+    #[test]
+    fn from_hex_str_maps_none_to_null_oid() -> Result<()> {
+        assert!(from_hex_str(None)?.is_null());
+        Ok(())
+    }
+
+    #[test]
+    fn from_hex_str_rejects_invalid_input() {
+        assert!(from_hex_str(Some("invalid length string")).is_err());
+        assert!(from_hex_str(Some("yZ0r3ny0K55qqxoz0HZhCWzqAdyFdZ3L9GmXG7EU")).is_err());
+        assert!(from_hex_str(Some("b52f683c")).is_err());
+        assert!(from_hex_str(Some("")).is_err());
+    }
+}

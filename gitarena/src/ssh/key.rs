@@ -137,3 +137,76 @@ impl TryFrom<&Algorithm> for KeyType {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use russh::keys::PrivateKey;
+    use russh::keys::ssh_encoding::Encode;
+    use uuid::Uuid;
+
+    const KEY_TYPES: [&str; 9] = [
+        "ssh-rsa",
+        "ecdsa-sha2-nistp256",
+        "ecdsa-sha2-nistp384",
+        "ecdsa-sha2-nistp521",
+        "ssh-ed25519",
+        "sk-ssh-ed25519@openssh.com",
+        "sk-ecdsa-sha2-nistp256@openssh.com",
+        "rsa-sha2-256",
+        "rsa-sha2-512",
+    ];
+
+    #[test]
+    fn key_type_round_trips_through_display() -> Result<()> {
+        for name in KEY_TYPES {
+            assert_eq!(KeyType::try_from(name)?.to_string(), name);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn key_type_rejects_unknown_names() {
+        assert!(KeyType::try_from("ssh-dss").is_err());
+        assert!(KeyType::try_from("").is_err());
+        assert!(KeyType::try_from("SSH-ED25519").is_err());
+    }
+
+    #[test]
+    fn key_type_from_algorithm() -> Result<()> {
+        assert_eq!(KeyType::try_from(&Algorithm::Ed25519)?.to_string(), "ssh-ed25519");
+        assert_eq!(KeyType::try_from(&Algorithm::SkEd25519)?.to_string(), "sk-ssh-ed25519@openssh.com");
+        assert_eq!(KeyType::try_from(&Algorithm::Rsa { hash: None })?.to_string(), "ssh-rsa");
+        assert_eq!(KeyType::try_from(&Algorithm::Rsa { hash: Some(HashAlg::Sha512) })?.to_string(), "rsa-sha2-512");
+        assert_eq!(
+            KeyType::try_from(&Algorithm::Ecdsa { curve: EcdsaCurve::NistP384 })?.to_string(),
+            "ecdsa-sha2-nistp384"
+        );
+        assert!(KeyType::try_from(&Algorithm::Dsa).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn as_string_matches_openssh_public_key_format() -> Result<()> {
+        let private_key = PrivateKey::random(&mut rand::rng(), Algorithm::Ed25519)?;
+        let public_key = private_key.public_key();
+
+        let mut encoded = Vec::new();
+        public_key.key_data().encode(&mut encoded)?;
+
+        let key = SshKey {
+            id: Uuid::now_v7(),
+            owner: Uuid::now_v7(),
+            title: "laptop".to_owned(),
+            fingerprint: String::new(),
+            algorithm: KeyType::try_from(&public_key.algorithm())?,
+            key: encoded,
+            expires_at: None,
+        };
+
+        assert_eq!(key.as_string(), public_key.to_openssh()?);
+        Ok(())
+    }
+}
