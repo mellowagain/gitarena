@@ -1,6 +1,7 @@
 use crate::config::{get_optional_setting, get_setting};
 use crate::database::Pool;
 use crate::die;
+use crate::git::GIT_CLI_AVAILABLE;
 use crate::repository::{RepoOwner, Repository};
 use crate::routes::repository::api::{CreateJsonResponse, determine_namespace};
 use crate::user::WebUser;
@@ -9,15 +10,19 @@ use crate::zoekt::init_zoekt_config;
 
 use std::mem::DropGuard;
 use std::path::Path;
+use std::process::Stdio;
 
 use crate::events::Event;
 use crate::meili::MeiliClient;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, web};
 use anyhow::{Context, Result, anyhow};
+use gitarena_issues::author::IDENTITIES_REF_PREFIX;
+use gitarena_issues::bug::BUGS_REF_PREFIX;
 use gitarena_macros::route;
 use serde::Deserialize;
 use serde_json::json;
-use tracing::info;
+use tokio::process::Command;
+use tracing::{info, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -104,6 +109,36 @@ pub(crate) async fn create_fork(
     copy_dir_all(Path::new(old_path.as_str()), Path::new(new_path.as_str()))
         .await
         .context("Failed to copy repository")?;
+
+    let fork_git2 = new_repo.libgit2(&mut tx).await?;
+
+    let issue_refs = fork_git2
+        .references_glob(&format!("{BUGS_REF_PREFIX}*"))?
+        .chain(fork_git2.references_glob(&format!("{IDENTITIES_REF_PREFIX}*"))?)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for mut reference in issue_refs {
+        reference.delete()?;
+    }
+
+    if *GIT_CLI_AVAILABLE {
+        let status = Command::new("git")
+            .args(["gc", "--prune=now", "--quiet"])
+            .current_dir(new_path.as_str())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await;
+
+        match status {
+            Ok(status) if !status.success() => {
+                let exit_code = status.code().map_or_else(|| "unknown".to_string(), |code| code.to_string());
+                warn!(exit_code, "Git garbage collector exited with non-zero status");
+            }
+            Ok(_) => {}
+            Err(err) => warn!(?err, "Failed to execute Git garbage collector"),
+        }
+    }
 
     init_zoekt_config(&new_repo, &mut tx).await?;
 
