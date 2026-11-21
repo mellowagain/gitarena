@@ -10,8 +10,8 @@ use std::collections::HashSet;
 use tracing::instrument;
 use tracing::warn;
 
-#[instrument(err, skip(repo))]
-pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: bool) -> Result<Bytes> {
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: bool, hidden_refs: &HashSet<String>) -> Result<Bytes> {
     let mut options = Fetch {
         sideband,
         ..Default::default()
@@ -80,7 +80,7 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: 
     }
 
     if options.done {
-        if let Some(wants) = process_wants(repo, &options).await? {
+        if let Some(wants) = process_wants(repo, &options, hidden_refs).await? {
             writer.append(wants).await?;
         }
     } else {
@@ -93,7 +93,7 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: 
         if sent_ready {
             writer.delimiter().await?;
 
-            if let Some(wants) = process_wants(repo, &options).await? {
+            if let Some(wants) = process_wants(repo, &options, hidden_refs).await? {
                 writer.append(wants).await?;
             }
         }
@@ -148,8 +148,8 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
     Ok((Some(writer), written_one))
 }
 
-#[instrument(err, skip(repo))]
-pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<Option<GitWriter>> {
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
@@ -168,7 +168,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
         pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
 
         let wants = options.want.iter().map(|want| Oid::from_str(want)).collect::<Result<Vec<_>, _>>()?;
-        let reachable = reachable_objects(repo, &wants)?;
+        let reachable = reachable_objects(repo, &wants, hidden_refs)?;
 
         for (wanted_obj, &oid) in options.want.iter().zip(&wants) {
             if !reachable.contains(&oid) {
@@ -229,14 +229,18 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch) -> Res
     Ok(Some(writer))
 }
 
-#[instrument(err, skip(repo))]
-pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid]) -> Result<HashSet<Oid>> {
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid], hidden_refs: &HashSet<String>) -> Result<HashSet<Oid>> {
     let mut pending: HashSet<Oid> = oids.iter().copied().collect();
     let mut reachable = HashSet::new();
     let mut revwalk = repo.revwalk()?;
 
     for reference in repo.references()? {
         let reference = reference?;
+
+        if reference.name().is_ok_and(|name| hidden_refs.contains(name)) {
+            continue;
+        }
 
         let peeled = match reference.peel(ObjectType::Any) {
             Ok(object) => object.id(),

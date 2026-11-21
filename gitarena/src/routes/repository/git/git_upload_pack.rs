@@ -2,6 +2,7 @@ use crate::database::Pool;
 use crate::die;
 use crate::git::basic_auth;
 use crate::git::upload_pack::execute_upload_pack_v2;
+use crate::issue::hidden_bug_refs;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
 use crate::privileges::privilege;
@@ -53,6 +54,7 @@ pub(crate) async fn git_upload_pack(
         die!(NOT_FOUND);
     }
 
+    let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut transaction).await?;
     let git2repo = repo.libgit2(&mut transaction).await?;
 
     let mut bytes = web::BytesMut::new();
@@ -64,7 +66,7 @@ pub(crate) async fn git_upload_pack(
 
     let start = Instant::now();
 
-    let output = execute_upload_pack_v2(bytes.as_ref(), &git2repo).await?;
+    let output = execute_upload_pack_v2(bytes.as_ref(), &git2repo, &hidden_refs).await?;
 
     let elapsed = start.elapsed().as_secs_f64();
 

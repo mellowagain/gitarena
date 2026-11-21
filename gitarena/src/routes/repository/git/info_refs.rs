@@ -2,6 +2,7 @@ use crate::die;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::ls_refs_all;
+use crate::issue::hidden_bug_refs;
 use crate::organization::Organization;
 use crate::prelude::*;
 use crate::repository::Repository;
@@ -100,8 +101,9 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
         die!(NOT_FOUND);
     }
 
+    let hidden_refs = hidden_bug_refs(&repo, Some(&user), &mut tx).await?;
     let git2repo = repo.libgit2(&mut tx).await?;
-    let output = ls_refs_all(&git2repo, Some("git-receive-pack")).await?;
+    let output = ls_refs_all(&git2repo, Some("git-receive-pack"), &hidden_refs).await?;
 
     tx.commit().await?;
 
