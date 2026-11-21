@@ -80,6 +80,8 @@ Star counts are included in repository metadata and the backend exposes star end
 
 The backend exposes `POST /api/repo/{namespace}/{repository}/fork`. The current frontend does not yet include a fork flow.
 
+A fork copies the repository's git data but not its issues. GitArena removes the `refs/bugs/*` and `refs/identities/*` refs from the fork, so the fork starts with an empty issue tracker. See [git-bug compatibility](/features/git-bug-compatibility) for how issues are stored.
+
 ## API
 
 All repository endpoints are documented in the [API reference](/api-reference/introduction).
