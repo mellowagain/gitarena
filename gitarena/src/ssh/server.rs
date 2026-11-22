@@ -217,6 +217,10 @@ impl Handler for SshHandler {
             return Ok(());
         }
 
+        if matches!(self.operation, Some(SshOperation::UploadPack(_))) && self.upload_pack_v1.finished() {
+            return Ok(());
+        }
+
         self.buffer.extend_from_slice(data);
 
         if let Some(SshOperation::ReceivePack(repo)) = &self.operation
@@ -267,6 +271,10 @@ impl Handler for SshHandler {
                     return Ok(());
                 }
             }
+        }
+
+        if self.upload_pack_v1.finished() {
+            self.buffer.clear();
         }
 
         Ok(())

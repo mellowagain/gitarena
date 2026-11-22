@@ -6,7 +6,7 @@ use crate::git::ls_refs::ls_refs;
 use std::collections::HashSet;
 
 use anyhow::{Result, bail};
-use git2::{Object, ObjectType, Oid, Repository};
+use git2::{Oid, Repository};
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::async_io::StreamingPeekableIter;
 use gix::protocol::transport::packetline::decode::{Stream, streaming};
@@ -144,13 +144,8 @@ impl UploadPackV1 {
             return Ok(());
         }
 
-        let tips = wanted_objects(repo, &self.fetch, hidden_refs)?
-            .iter()
-            .filter(|object| object.kind() == Some(ObjectType::Commit))
-            .map(Object::id)
-            .collect::<Vec<_>>();
-
-        let walk = walk_commits(repo, &tips, &self.fetch)?;
+        let tips = wanted_objects(repo, &self.fetch, hidden_refs)?.commits;
+        let walk = walk_commits(repo, &tips, self.fetch.deepen, &self.fetch.shallow)?;
 
         for oid in walk
             .commits
@@ -291,7 +286,7 @@ impl UploadPackV1 {
     async fn send_pack(&mut self, repo: &Repository, hidden_refs: &HashSet<String>, writer: &mut GitWriter) -> Result<()> {
         self.finished = true;
 
-        writer.append(write_pack(repo, &self.fetch, hidden_refs).await?).await?;
+        writer.append(write_pack(repo, &self.fetch, &self.common, hidden_refs).await?).await?;
 
         if self.fetch.sideband {
             writer.flush().await?;

@@ -1,10 +1,11 @@
+use crate::die;
 use crate::git::io::band::Band;
 use crate::git::io::progress_writer::ProgressWriter;
 use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
-use git2::{Buf, ErrorCode, Object, ObjectType, Oid, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
+use git2::{Buf, ErrorCode, ObjectType, Oid, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
 use std::collections::{HashSet, VecDeque};
 use tracing::instrument;
 use tracing::warn;
@@ -137,16 +138,18 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
 pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<Option<GitWriter>> {
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
-    writer.append(write_pack(repo, options, hidden_refs).await?).await?;
+
+    let common = options.have.iter().filter_map(|have| Oid::from_str(have).ok()).collect::<Vec<_>>();
+    writer.append(write_pack(repo, options, &common, hidden_refs).await?).await?;
 
     Ok(Some(writer))
 }
 
 #[instrument(err, skip(repo, hidden_refs))]
-pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<GitWriter> {
+pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, common: &[Oid], hidden_refs: &HashSet<String>) -> Result<GitWriter> {
     let mut writer = GitWriter::new();
 
-    if options.sideband {
+    if options.sideband && !options.no_progress {
         writer
             .write_text_sideband(Band::Progress, format!("Enumerating objects: {}, done.", options.want.len()))
             .await?;
@@ -160,18 +163,24 @@ pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, hidden_re
         pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
         pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
 
-        let mut tips = Vec::new();
+        let wanted = wanted_objects(repo, options, hidden_refs)?;
 
-        for object in wanted_objects(repo, options, hidden_refs)? {
-            match object.kind() {
-                Some(ObjectType::Commit) => tips.push(object.id()),
-                Some(ObjectType::Tree) => pack_builder.insert_tree(object.id())?,
-                _ => pack_builder.insert_object(object.id(), None)?,
-            }
+        for &oid in wanted.tags.iter().chain(&wanted.blobs) {
+            pack_builder.insert_object(oid, None)?;
         }
 
-        for commit in walk_commits(repo, &tips, options)?.commits {
-            pack_builder.insert_commit(commit)?;
+        for &tree in &wanted.trees {
+            pack_builder.insert_tree(tree)?;
+        }
+
+        let common_commits: Vec<_> = common.iter().copied().filter(|oid| repo.find_commit(*oid).is_ok()).collect();
+
+        let known: HashSet<_> = walk_commits(repo, &common_commits, None, &options.shallow)?.commits.into_iter().collect();
+
+        for commit in walk_commits(repo, &wanted.commits, options.deepen, &options.shallow)?.commits {
+            if !known.contains(&commit) {
+                pack_builder.insert_commit(commit)?;
+            }
         }
 
         let mut buf = Buf::new();
@@ -187,44 +196,64 @@ pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, hidden_re
 
     let max_chunk = if options.small_sideband { 995 } else { 65515 };
 
-    writer.append(progress_writer.to_writer().await?).await?;
+    if !options.no_progress {
+        writer.append(progress_writer.to_writer().await?).await?;
+    }
+
     writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref(), max_chunk).await?;
 
-    let total = object_count;
-    let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
+    if !options.no_progress {
+        let total = object_count;
+        let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
 
-    let reused = total.saturating_sub(written);
-    let reused_delta = total_delta.saturating_sub(reused);
+        let reused = total.saturating_sub(written);
+        let reused_delta = total_delta.saturating_sub(reused);
 
-    writer
-        .write_text_sideband(
-            Band::Progress,
-            format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta})"),
-        )
-        .await?;
+        writer
+            .write_text_sideband(
+                Band::Progress,
+                format!("Total {total} (delta {total_delta}), reused {reused} (delta {reused_delta})"),
+            )
+            .await?;
+    }
 
     Ok(writer)
 }
 
 #[instrument(err, skip(repo, hidden_refs))]
-pub(crate) fn wanted_objects<'a>(repo: &'a Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<Vec<Object<'a>>> {
+pub(crate) fn wanted_objects(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<WantedObjects> {
     let wants = options.want.iter().map(|want| Oid::from_str(want)).collect::<Result<Vec<_>, _>>()?;
     let reachable = reachable_objects(repo, &wants, hidden_refs)?;
-    let mut objects = Vec::new();
+    let mut wanted = WantedObjects::default();
 
     for oid in wants {
         if !reachable.contains(&oid) {
-            warn!(wanted = %oid, "wanted object is not reachable from any ref");
-            continue;
+            die!(BAD_REQUEST, "wanted object {oid} is not reachable from any ref");
         }
 
-        match repo.find_object(oid, None) {
-            Ok(object) => objects.push(object),
-            Err(err) => warn!(?err, "Unable to find wanted object: {oid}"),
+        let mut object = repo.find_object(oid, None)?;
+
+        while let Some(tag) = object.as_tag() {
+            wanted.tags.push(tag.id());
+            object = tag.target()?;
+        }
+
+        match object.kind() {
+            Some(ObjectType::Commit) => wanted.commits.push(object.id()),
+            Some(ObjectType::Tree) => wanted.trees.push(object.id()),
+            _ => wanted.blobs.push(object.id()),
         }
     }
 
-    Ok(objects)
+    Ok(wanted)
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct WantedObjects {
+    pub(crate) tags: Vec<Oid>,
+    pub(crate) commits: Vec<Oid>,
+    pub(crate) trees: Vec<Oid>,
+    pub(crate) blobs: Vec<Oid>,
 }
 
 #[derive(Debug, Default)]
@@ -233,8 +262,8 @@ pub(crate) struct CommitWalk {
     pub(crate) boundary: HashSet<Oid>,
 }
 
-#[instrument(err, skip(repo))]
-pub(crate) fn walk_commits(repo: &Git2Repository, tips: &[Oid], options: &Fetch) -> Result<CommitWalk> {
+#[instrument(err, skip(repo, shallow))]
+pub(crate) fn walk_commits(repo: &Git2Repository, tips: &[Oid], deepen: Option<u32>, shallow: &HashSet<Oid>) -> Result<CommitWalk> {
     let mut walk = CommitWalk::default();
     let mut seen = HashSet::new();
     let mut queue = VecDeque::new();
@@ -250,13 +279,13 @@ pub(crate) fn walk_commits(repo: &Git2Repository, tips: &[Oid], options: &Fetch)
 
         let commit = repo.find_commit(oid)?;
 
-        let descend = match options.deepen {
+        let descend = match deepen {
             Some(deepen) => depth < deepen,
-            None => !options.shallow.contains(&oid),
+            None => !shallow.contains(&oid),
         };
 
         if !descend {
-            if options.deepen.is_some() && commit.parent_count() > 0 {
+            if deepen.is_some() && commit.parent_count() > 0 {
                 walk.boundary.insert(oid);
             }
 

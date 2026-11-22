@@ -40,7 +40,7 @@ pub(crate) static GIT_CLI_AVAILABLE: Lazy<bool> = Lazy::new(|| {
     }
 });
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum GitProtocol {
     V0,
     V1,
@@ -51,8 +51,9 @@ impl GitProtocol {
     pub(crate) fn from_parameters(parameters: &str) -> GitProtocol {
         parameters
             .split(':')
-            .find_map(|parameter| parameter.strip_prefix("version="))
-            .and_then(|version| version.parse().ok())
+            .filter_map(|parameter| parameter.strip_prefix("version="))
+            .filter_map(|version| version.parse().ok())
+            .max()
             .unwrap_or(GitProtocol::V0)
     }
 }
