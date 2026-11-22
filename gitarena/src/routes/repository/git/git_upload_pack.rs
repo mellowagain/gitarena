@@ -33,22 +33,24 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, body: web::Paylo
 
     let version = GitProtocol::from_parameters(request.get_header("git-protocol").unwrap_or_default());
 
-    let mut transaction = db_pool.begin().await?;
+    let mut tx = db_pool.begin().await?;
 
-    let owner_id = resolve_namespace(&uri.namespace, &mut transaction).await?;
-    let repo_option = Repository::open(owner_id, &uri.repository, &mut transaction).await;
+    let owner_id = resolve_namespace(&uri.namespace, &mut tx).await?;
+    let repo_option = Repository::open(owner_id, &uri.repository, &mut tx).await;
 
-    let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut transaction).await? {
+    let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", &request, &mut tx).await? {
         Either::Left(tuple) => tuple,
         Either::Right(response) => return Ok(response),
     };
 
-    if !privilege::check_access(&repo, user.as_ref(), &mut transaction).await? {
+    if !privilege::check_access(&repo, user.as_ref(), &mut tx).await? {
         die!(NOT_FOUND);
     }
 
-    let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut transaction).await?;
-    let git2repo = repo.libgit2(&mut transaction).await?;
+    let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut tx).await?;
+    let git2repo = repo.libgit2(&mut tx).await?;
+
+    tx.commit().await?;
 
     // git gzips request bodies larger than 1kb
     let mut body = Decompress::from_headers(body.into_inner(), request.headers());
@@ -78,8 +80,6 @@ pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, body: web::Paylo
     );
 
     OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "upload-pack"), KeyValue::new("transport", "http")]);
-
-    transaction.commit().await?;
 
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, accept_header)).body(output))
 }

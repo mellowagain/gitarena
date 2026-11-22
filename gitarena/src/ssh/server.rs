@@ -523,6 +523,8 @@ async fn run_upload_pack(
     let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut tx).await?;
     let git2repo = repo.libgit2(&mut tx).await?;
 
+    tx.commit().await?;
+
     let start = Instant::now();
 
     let output = match version {

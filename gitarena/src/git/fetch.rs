@@ -5,7 +5,7 @@ use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
-use git2::{Buf, ErrorCode, ObjectType, Oid, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
+use git2::{Buf, ErrorCode, Object, ObjectType, Oid, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
 use std::collections::{HashSet, VecDeque};
 use tracing::instrument;
 use tracing::warn;
@@ -176,10 +176,18 @@ pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, common: &
         let common_commits: Vec<_> = common.iter().copied().filter(|oid| repo.find_commit(*oid).is_ok()).collect();
 
         let known: HashSet<_> = walk_commits(repo, &common_commits, None, &options.shallow)?.commits.into_iter().collect();
+        let mut packed: HashSet<_> = wanted.trees.iter().chain(&wanted.blobs).copied().collect();
 
         for commit in walk_commits(repo, &wanted.commits, options.deepen, &options.shallow)?.commits {
             if !known.contains(&commit) {
                 pack_builder.insert_commit(commit)?;
+                packed.insert(commit);
+            }
+        }
+
+        if options.include_tag {
+            for tag in included_tags(repo, &packed, hidden_refs)? {
+                pack_builder.insert_object(tag, None)?;
             }
         }
 
@@ -231,12 +239,7 @@ pub(crate) fn wanted_objects(repo: &Git2Repository, options: &Fetch, hidden_refs
             die!(BAD_REQUEST, "wanted object {oid} is not reachable from any ref");
         }
 
-        let mut object = repo.find_object(oid, None)?;
-
-        while let Some(tag) = object.as_tag() {
-            wanted.tags.push(tag.id());
-            object = tag.target()?;
-        }
+        let object = peel_tag_chain(repo.find_object(oid, None)?, &mut wanted.tags)?;
 
         match object.kind() {
             Some(ObjectType::Commit) => wanted.commits.push(object.id()),
@@ -246,6 +249,40 @@ pub(crate) fn wanted_objects(repo: &Git2Repository, options: &Fetch, hidden_refs
     }
 
     Ok(wanted)
+}
+
+fn peel_tag_chain<'a>(mut object: Object<'a>, tags: &mut Vec<Oid>) -> Result<Object<'a>> {
+    while let Some(tag) = object.as_tag() {
+        tags.push(tag.id());
+        object = tag.target()?;
+    }
+
+    Ok(object)
+}
+
+fn included_tags(repo: &Git2Repository, packed: &HashSet<Oid>, hidden_refs: &HashSet<String>) -> Result<Vec<Oid>> {
+    let mut included = Vec::new();
+
+    for reference in repo.references_glob("refs/tags/*")? {
+        let reference = reference?;
+
+        if reference.name().is_ok_and(|name| hidden_refs.contains(name)) {
+            continue;
+        }
+
+        let Some(object) = reference.target().and_then(|oid| repo.find_object(oid, None).ok()) else {
+            continue;
+        };
+
+        let mut chain = Vec::new();
+        let target = peel_tag_chain(object, &mut chain)?;
+
+        if packed.contains(&target.id()) {
+            included.extend(chain);
+        }
+    }
+
+    Ok(included)
 }
 
 #[derive(Debug, Default)]
@@ -308,7 +345,8 @@ pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid], hidden_refs
     let mut reachable = HashSet::new();
     let mut revwalk = repo.revwalk()?;
 
-    for reference in repo.references()? {
+    // HEAD is advertised to clients but not listed by `repo.references`, which matters when it is detached
+    for reference in repo.head().ok().map(Ok).into_iter().chain(repo.references()?) {
         let reference = reference?;
 
         if reference.name().is_ok_and(|name| hidden_refs.contains(name)) {
