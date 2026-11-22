@@ -4,9 +4,8 @@ use crate::git::io::writer::GitWriter;
 
 use actix_web::web::Bytes;
 use anyhow::{Context, Result};
-use async_recursion::async_recursion;
-use git2::{Buf, Commit, ErrorCode, ObjectType, Oid, PackBuilder, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
-use std::collections::HashSet;
+use git2::{Buf, ErrorCode, Object, ObjectType, Oid, Repository as Git2Repository, TreeWalkMode, TreeWalkResult};
+use std::collections::{HashSet, VecDeque};
 use tracing::instrument;
 use tracing::warn;
 
@@ -21,21 +20,7 @@ pub(crate) async fn fetch(input: Vec<Vec<u8>>, repo: &Git2Repository, sideband: 
     for raw_line in &input {
         let line = String::from_utf8(raw_line.clone())?;
 
-        if line == "thin-pack" {
-            options.thin_pack = true;
-        }
-
-        if line == "no-progress" {
-            options.no_progress = true;
-        }
-
-        if line == "include-tag" {
-            options.include_tag = true;
-        }
-
-        if line == "ofs-delta" {
-            options.ofs_delta = true;
-        }
+        options.set_capability(&line);
 
         if let Some(stripped) = line.strip_prefix("have ") {
             options.have.push(stripped.to_owned());
@@ -152,6 +137,14 @@ pub(crate) async fn process_haves(repo: &Git2Repository, options: &Fetch) -> Res
 pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<Option<GitWriter>> {
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
+    writer.append(write_pack(repo, options, hidden_refs).await?).await?;
+
+    Ok(Some(writer))
+}
+
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) async fn write_pack(repo: &Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<GitWriter> {
+    let mut writer = GitWriter::new();
 
     if options.sideband {
         writer
@@ -167,36 +160,18 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden
         pack_builder.set_threads(u32::try_from(num_cpus::get()).context("cpu threads available is larger than u32")?);
         pack_builder.set_progress_callback(progress_writer.pack_builder_callback())?;
 
-        let wants = options.want.iter().map(|want| Oid::from_str(want)).collect::<Result<Vec<_>, _>>()?;
-        let reachable = reachable_objects(repo, &wants, hidden_refs)?;
+        let mut tips = Vec::new();
 
-        for (wanted_obj, &oid) in options.want.iter().zip(&wants) {
-            if !reachable.contains(&oid) {
-                warn!(wanted = ?wanted_obj, "wanted object is not reachable from any ref");
-                continue;
+        for object in wanted_objects(repo, options, hidden_refs)? {
+            match object.kind() {
+                Some(ObjectType::Commit) => tips.push(object.id()),
+                Some(ObjectType::Tree) => pack_builder.insert_tree(object.id())?,
+                _ => pack_builder.insert_object(object.id(), None)?,
             }
+        }
 
-            match repo.find_object(oid, None) {
-                Ok(object) => {
-                    if let Some(kind) = object.kind() {
-                        match kind {
-                            ObjectType::Commit => {
-                                // Can be simplified with if let guards: https://github.com/rust-lang/rust/issues/51114
-                                if let Some(commit) = object.as_commit() {
-                                    insert_commit_with_parents(commit, &mut pack_builder).await?;
-                                }
-                            }
-                            ObjectType::Tree => pack_builder.insert_tree(object.id())?,
-                            _ => pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?,
-                        }
-                    } else {
-                        pack_builder.insert_object(object.id(), Some(wanted_obj.as_str()))?;
-                    }
-                }
-                Err(err) => {
-                    warn!(?err, "Unable to find wanted object: {}", &wanted_obj);
-                }
-            }
+        for commit in walk_commits(repo, &tips, options)?.commits {
+            pack_builder.insert_commit(commit)?;
         }
 
         let mut buf = Buf::new();
@@ -207,11 +182,13 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden
 
     if !options.sideband {
         writer.write_raw(buffer.as_ref()).await?;
-        return Ok(Some(writer));
+        return Ok(writer);
     }
 
+    let max_chunk = if options.small_sideband { 995 } else { 65515 };
+
     writer.append(progress_writer.to_writer().await?).await?;
-    writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref()).await?;
+    writer.write_binary_sideband_chunked(Band::Data, buffer.as_ref(), max_chunk).await?;
 
     let total = object_count;
     let total_delta = progress_writer.delta_total.unwrap_or_default() as usize;
@@ -226,7 +203,74 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden
         )
         .await?;
 
-    Ok(Some(writer))
+    Ok(writer)
+}
+
+#[instrument(err, skip(repo, hidden_refs))]
+pub(crate) fn wanted_objects<'a>(repo: &'a Git2Repository, options: &Fetch, hidden_refs: &HashSet<String>) -> Result<Vec<Object<'a>>> {
+    let wants = options.want.iter().map(|want| Oid::from_str(want)).collect::<Result<Vec<_>, _>>()?;
+    let reachable = reachable_objects(repo, &wants, hidden_refs)?;
+    let mut objects = Vec::new();
+
+    for oid in wants {
+        if !reachable.contains(&oid) {
+            warn!(wanted = %oid, "wanted object is not reachable from any ref");
+            continue;
+        }
+
+        match repo.find_object(oid, None) {
+            Ok(object) => objects.push(object),
+            Err(err) => warn!(?err, "Unable to find wanted object: {oid}"),
+        }
+    }
+
+    Ok(objects)
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct CommitWalk {
+    pub(crate) commits: Vec<Oid>,
+    pub(crate) boundary: HashSet<Oid>,
+}
+
+#[instrument(err, skip(repo))]
+pub(crate) fn walk_commits(repo: &Git2Repository, tips: &[Oid], options: &Fetch) -> Result<CommitWalk> {
+    let mut walk = CommitWalk::default();
+    let mut seen = HashSet::new();
+    let mut queue = VecDeque::new();
+
+    for &tip in tips {
+        if seen.insert(tip) {
+            queue.push_back((tip, 1));
+        }
+    }
+
+    while let Some((oid, depth)) = queue.pop_front() {
+        walk.commits.push(oid);
+
+        let commit = repo.find_commit(oid)?;
+
+        let descend = match options.deepen {
+            Some(deepen) => depth < deepen,
+            None => !options.shallow.contains(&oid),
+        };
+
+        if !descend {
+            if options.deepen.is_some() && commit.parent_count() > 0 {
+                walk.boundary.insert(oid);
+            }
+
+            continue;
+        }
+
+        for parent in commit.parent_ids() {
+            if seen.insert(parent) {
+                queue.push_back((parent, depth + 1));
+            }
+        }
+    }
+
+    Ok(walk)
 }
 
 #[instrument(err, skip(repo, hidden_refs))]
@@ -306,18 +350,6 @@ pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid], hidden_refs
     Ok(reachable)
 }
 
-#[instrument(err, skip(pack_builder))]
-#[async_recursion(?Send)]
-async fn insert_commit_with_parents(commit: &Commit<'_>, pack_builder: &mut PackBuilder<'_>) -> Result<()> {
-    pack_builder.insert_commit(commit.id())?;
-
-    for parent in commit.parents() {
-        insert_commit_with_parents(&parent, pack_builder).await?;
-    }
-
-    Ok(())
-}
-
 /*pub(crate) async fn process_shallows(repo: &Git2Repository, options: &Fetch) -> Result<Option<GitWriter>> {
     if !repo.is_shallow() || options.shallow.is_empty() {
         return Ok(None);
@@ -341,9 +373,22 @@ pub(crate) struct Fetch {
     pub(crate) sideband: bool,
     pub(crate) have: Vec<String>,
     pub(crate) want: Vec<String>,
-    /*pub(crate) shallow: Vec<String>,
-    pub(crate) deepen: Option<i32>,
-    pub(crate) deepen_relative: bool,
+    pub(crate) shallow: HashSet<Oid>,
+    pub(crate) deepen: Option<u32>,
+    pub(crate) small_sideband: bool,
+    /*pub(crate) deepen_relative: bool,
     pub(crate) deepen_since: Option<DateTime<Utc>>,
     pub(crate) deepen_not: Option<String>*/
+}
+
+impl Fetch {
+    pub(crate) fn set_capability(&mut self, capability: &str) {
+        match capability {
+            "thin-pack" => self.thin_pack = true,
+            "no-progress" => self.no_progress = true,
+            "include-tag" => self.include_tag = true,
+            "ofs-delta" => self.ofs_delta = true,
+            _ => {}
+        }
+    }
 }

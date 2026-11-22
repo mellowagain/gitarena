@@ -1,7 +1,8 @@
 use crate::database::Pool;
 use crate::die;
+use crate::git::GitProtocol;
 use crate::git::basic_auth;
-use crate::git::upload_pack::execute_upload_pack_v2;
+use crate::git::upload_pack::{UploadPackV1, execute_upload_pack_v2};
 use crate::issue::hidden_bug_refs;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::prelude::*;
@@ -12,6 +13,7 @@ use crate::routes::repository::git::info_refs::resolve_namespace;
 
 use std::time::Instant;
 
+use actix_web::dev::Decompress;
 use actix_web::http::header::CONTENT_TYPE;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use anyhow::Result;
@@ -21,12 +23,7 @@ use gitarena_macros::route;
 use opentelemetry::KeyValue;
 
 #[route("/{namespace}/{repository}.git/git-upload-pack", method = "POST", err = "git")]
-pub(crate) async fn git_upload_pack(
-    uri: web::Path<GitRequest>,
-    mut body: web::Payload,
-    request: HttpRequest,
-    db_pool: web::Data<Pool>,
-) -> Result<impl Responder> {
+pub(crate) async fn git_upload_pack(uri: web::Path<GitRequest>, body: web::Payload, request: HttpRequest, db_pool: web::Data<Pool>) -> Result<impl Responder> {
     let content_type = request.get_header("content-type").unwrap_or_default();
     let accept_header = request.get_header("accept").unwrap_or_default();
 
@@ -34,11 +31,7 @@ pub(crate) async fn git_upload_pack(
         die!(BAD_REQUEST);
     }
 
-    let git_protocol = request.get_header("git-protocol").unwrap_or_default();
-
-    if git_protocol != "version=2" {
-        die!(BAD_REQUEST, "Unsupported Git protocol version");
-    }
+    let version = GitProtocol::from_parameters(request.get_header("git-protocol").unwrap_or_default());
 
     let mut transaction = db_pool.begin().await?;
 
@@ -57,6 +50,8 @@ pub(crate) async fn git_upload_pack(
     let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut transaction).await?;
     let git2repo = repo.libgit2(&mut transaction).await?;
 
+    // git gzips request bodies larger than 1kb
+    let mut body = Decompress::from_headers(body.into_inner(), request.headers());
     let mut bytes = web::BytesMut::new();
 
     while let Some(item) = body.next().await {
@@ -66,7 +61,10 @@ pub(crate) async fn git_upload_pack(
 
     let start = Instant::now();
 
-    let output = execute_upload_pack_v2(bytes.as_ref(), &git2repo, &hidden_refs).await?;
+    let output = match version {
+        GitProtocol::V2 => execute_upload_pack_v2(bytes.as_ref(), &git2repo, &hidden_refs).await?,
+        GitProtocol::V0 | GitProtocol::V1 => UploadPackV1::stateless().process(bytes.as_ref(), &git2repo, &hidden_refs).await?,
+    };
 
     let elapsed = start.elapsed().as_secs_f64();
 

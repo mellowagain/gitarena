@@ -1,7 +1,8 @@
 use crate::die;
+use crate::git::GitProtocol;
 use crate::git::basic_auth;
 use crate::git::capabilities::capabilities;
-use crate::git::ls_refs::ls_refs_all;
+use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::issue::hidden_bug_refs;
 use crate::organization::Organization;
 use crate::prelude::*;
@@ -68,20 +69,30 @@ async fn upload_pack_info_refs(
     request: &HttpRequest,
     tx: &mut sqlx::Transaction<'_, Database>,
 ) -> Result<HttpResponse> {
-    let git_protocol = request.get_header("git-protocol").unwrap_or_default();
+    let version = GitProtocol::from_parameters(request.get_header("git-protocol").unwrap_or_default());
 
-    if git_protocol != "version=2" {
-        die!(BAD_REQUEST, "Unsupported Git protocol version");
-    }
-
-    let (_, _) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, tx).await? {
+    let (user, repo) = match basic_auth::validate_repo_access(repo_option, "application/x-git-upload-pack-advertisement", request, tx).await? {
         Either::Left(tuple) => tuple,
         Either::Right(response) => return Ok(response),
     };
 
+    let body = match version {
+        GitProtocol::V2 => capabilities(Some(service)).await?,
+        GitProtocol::V0 | GitProtocol::V1 => {
+            if !privilege::check_access(&repo, user.as_ref(), tx).await? {
+                die!(NOT_FOUND);
+            }
+
+            let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), tx).await?;
+            let git2repo = repo.libgit2(tx).await?;
+
+            ls_refs_all_upload_pack(&git2repo, Some(service), version, &hidden_refs).await?
+        }
+    };
+
     Ok(HttpResponse::Ok()
         .append_header((CONTENT_TYPE, "application/x-git-upload-pack-advertisement"))
-        .body(capabilities(Some(service)).await?))
+        .body(body))
 }
 
 #[instrument(err, skip(request, db_pool))]
@@ -103,7 +114,8 @@ async fn receive_pack_info_refs(repo_option: Option<Repository>, request: &HttpR
 
     let hidden_refs = hidden_bug_refs(&repo, Some(&user), &mut tx).await?;
     let git2repo = repo.libgit2(&mut tx).await?;
-    let output = ls_refs_all(&git2repo, Some("git-receive-pack"), &hidden_refs).await?;
+    let version = GitProtocol::from_parameters(request.get_header("git-protocol").unwrap_or_default());
+    let output = ls_refs_all(&git2repo, Some("git-receive-pack"), version, &hidden_refs).await?;
 
     tx.commit().await?;
 

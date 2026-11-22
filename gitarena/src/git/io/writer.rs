@@ -98,12 +98,10 @@ impl GitWriter {
     }
 
     #[instrument(err, skip(self, binary))]
-    pub(crate) async fn write_binary_sideband_chunked(&mut self, band: Band, binary: &[u8]) -> Result<&mut GitWriter> {
-        const MAX_CHUNK: usize = 65515;
-
+    pub(crate) async fn write_binary_sideband_chunked(&mut self, band: Band, binary: &[u8], max_chunk: usize) -> Result<&mut GitWriter> {
         self.inner.enable_binary_mode();
 
-        for chunk in binary.chunks(MAX_CHUNK) {
+        for chunk in binary.chunks(max_chunk) {
             let with_band = [band.serialize(), chunk].concat();
 
             self.inner
