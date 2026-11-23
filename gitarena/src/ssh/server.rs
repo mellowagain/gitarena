@@ -628,21 +628,25 @@ mod tests {
     }
 
     #[test]
-    fn v1_request_ends_at_done() -> Result<()> {
-        let request = concat(&[
-            &pkt(&format!("want {NEW} side-band-64k\n")),
-            b"0000",
-            &pkt(&format!("have {OLD}\n")),
-            &pkt("done\n"),
-        ]);
+    fn v1_wants_and_each_have_batch_end_at_flush() -> Result<()> {
+        let wants = concat(&[&pkt(&format!("want {NEW} multi_ack_detailed side-band-64k\n")), b"0000"]);
+        let haves = concat(&[&pkt(&format!("have {OLD}\n")), b"0000"]);
+        let done = pkt("done\n");
+        let mut buffer = concat(&[&wants, &haves, &done]);
 
-        assert_eq!(next_request_length(&request, GitProtocol::V1)?, Some(request.len()));
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(wants.len()));
+
+        buffer.drain(..wants.len());
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(haves.len()));
+
+        buffer.drain(..haves.len());
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(done.len()));
         Ok(())
     }
 
     #[test]
-    fn v1_flush_does_not_end_request() -> Result<()> {
-        let request = concat(&[&pkt(&format!("want {NEW}\n")), b"0000", &pkt(&format!("have {OLD}\n")), b"0000"]);
+    fn v1_haves_without_flush_or_done_are_incomplete() -> Result<()> {
+        let request = pkt(&format!("have {OLD}\n"));
 
         assert_eq!(next_request_length(&request, GitProtocol::V1)?, None);
         Ok(())
@@ -650,9 +654,15 @@ mod tests {
 
     #[test]
     fn v1_done_without_newline_ends_request() -> Result<()> {
-        let request = concat(&[&pkt(&format!("want {NEW}\n")), b"0000", &pkt("done")]);
+        let request = concat(&[&pkt(&format!("have {OLD}\n")), &pkt("done")]);
 
         assert_eq!(next_request_length(&request, GitProtocol::V1)?, Some(request.len()));
+        Ok(())
+    }
+
+    #[test]
+    fn v1_up_to_date_fetch_is_a_lone_flush() -> Result<()> {
+        assert_eq!(next_request_length(b"0000", GitProtocol::V1)?, Some(4));
         Ok(())
     }
 

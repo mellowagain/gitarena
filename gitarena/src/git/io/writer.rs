@@ -268,7 +268,7 @@ mod tests {
         let payload = vec![b'a'; 65516];
 
         let mut writer = GitWriter::new();
-        writer.write_binary_sideband_chunked(Band::Data, &payload).await?;
+        writer.write_binary_sideband_chunked(Band::Data, &payload, 65515).await?;
         writer.write_text("x").await?;
 
         let bytes = serialized(writer).await?;
@@ -284,7 +284,7 @@ mod tests {
         let payload = vec![b'a'; 65515];
 
         let mut writer = GitWriter::new();
-        writer.write_binary_sideband_chunked(Band::Data, &payload).await?;
+        writer.write_binary_sideband_chunked(Band::Data, &payload, 65515).await?;
 
         let bytes = serialized(writer).await?;
 

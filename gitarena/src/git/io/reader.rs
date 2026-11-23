@@ -16,9 +16,7 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
                         continue;
                     }
 
-                    for i in 0..index {
-                        body.remove(i);
-                    }
+                    body.drain(..index);
 
                     return Ok((value.to_owned(), body));
                 }

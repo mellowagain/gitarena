@@ -153,13 +153,13 @@ mod tests {
 
     #[tokio::test]
     async fn parse_line_reads_capabilities_after_nul() -> Result<()> {
-        let line = format!("{NULL} {NEW} refs/heads/main\0 report-status report-status-v2 side-band-64k quiet agent=git/2.47.0");
+        let line = format!("{NULL} {NEW} refs/heads/main\0 report-status-v2 side-band-64k quiet object-format=sha1 agent=git/2.56.0-Linux");
         let update = parse_line(line.into_bytes()).await?;
 
-        assert!(update.report_status);
+        assert!(!update.report_status);
         assert!(update.report_status_v2);
         assert!(update.side_band_64k);
-        assert_eq!(update.push_options, Some(vec!["quiet".to_owned(), "agent=git/2.47.0".to_owned()]));
+        assert_eq!(update.push_options, None);
         Ok(())
     }
 
