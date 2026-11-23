@@ -38,22 +38,25 @@ flowchart LR
 
 ## Git protocol versions
 
-The SSH transport defaults to protocol v1. To use v2, the client must set the `GIT_PROTOCOL` environment variable explicitly before connecting:
+GitArena supports git protocol v0, v1 and v2 over both SSH and smart HTTP. The git client picks the version with its `protocol.version` setting. Over SSH, git sends the choice in the `GIT_PROTOCOL` environment variable. Over smart HTTP, it sends the `Git-Protocol` header.
 
-```bash
-GIT_PROTOCOL=version=2 git clone git@your-instance:username/repo.git
-```
-
-To make this permanent, add it to your shell profile or git config:
+When the client sends no version, GitArena uses v0. To choose a version for every repository, set it in your git config:
 
 ```bash
 git config --global protocol.version 2
 ```
 
-| Version | How to enable                | Upload-pack advertisement       |
-|---------|------------------------------|---------------------------------|
-| v1      | Default                      | Full ref list with capabilities |
-| v2      | Set `GIT_PROTOCOL=version=2` | Capabilities only (no refs)     |
+To choose a version for a single command, pass `-c protocol.version`:
+
+```bash
+git -c protocol.version=1 clone git@your-instance:username/repo.git
+```
+
+| Version | Client sends         | Upload-pack advertisement                              |
+|---------|----------------------|--------------------------------------------------------|
+| v0      | No version (default) | Full ref list with capabilities                        |
+| v1      | `version=1`          | `version 1` line, then full ref list with capabilities |
+| v2      | `version=2`          | Capabilities only (no refs)                            |
 
 ## Authentication
 
