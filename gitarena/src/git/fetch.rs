@@ -139,7 +139,7 @@ pub(crate) async fn process_wants(repo: &Git2Repository, options: &Fetch, hidden
     let mut writer = GitWriter::new();
     writer.write_text("packfile").await?;
 
-    let common = options.have.iter().filter_map(|have| Oid::from_str(have).ok()).collect::<Vec<_>>();
+    let common: Vec<_> = options.have.iter().filter_map(|have| Oid::from_str(have).ok()).collect();
     writer.append(write_pack(repo, options, &common, hidden_refs).await?).await?;
 
     Ok(Some(writer))
@@ -345,7 +345,6 @@ pub(crate) fn reachable_objects(repo: &Git2Repository, oids: &[Oid], hidden_refs
     let mut reachable = HashSet::new();
     let mut revwalk = repo.revwalk()?;
 
-    // HEAD is advertised to clients but not listed by `repo.references`, which matters when it is detached
     for reference in repo.head().ok().map(Ok).into_iter().chain(repo.references()?) {
         let reference = reference?;
 

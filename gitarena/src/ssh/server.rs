@@ -475,7 +475,6 @@ fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usi
         offset += consumed;
 
         match (line, version) {
-            // v0/v1 is answered after every flush (want list and each batch of haves) and after `done`
             (PacketLineRef::Flush, _) => return Ok(Some(offset)),
             (PacketLineRef::Data(data), GitProtocol::V0 | GitProtocol::V1) if data.trim_ascii_end() == b"done" => return Ok(Some(offset)),
             _ => {}

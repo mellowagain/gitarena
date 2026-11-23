@@ -134,7 +134,6 @@ impl UploadPackV1 {
     async fn end_wants(&mut self, repo: &Repository, hidden_refs: &HashSet<String>, writer: &mut GitWriter) -> Result<()> {
         self.received_wants = true;
 
-        // a flush without any wants means the client is already up to date
         if self.fetch.want.is_empty() {
             self.finished = true;
             return Ok(());
@@ -261,7 +260,6 @@ impl UploadPackV1 {
         for want in &self.fetch.want {
             let object = repo.find_object(Oid::from_str(want)?, None)?;
 
-            // trees and blobs have no history to negotiate
             let Ok(commit) = object.peel_to_commit() else {
                 continue;
             };
