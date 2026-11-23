@@ -251,7 +251,7 @@ fn write_pack_as_commit(git_repo: &Repository, pack: &OperationPack, create_cloc
 
     let ops_blob_id = git_repo.write_object(gix::objs::BlobRef { data: &ops_json }).map_err(Error::git)?.detach();
 
-    let empty_blob_id = ObjectId::empty_blob(git_repo.object_hash());
+    let empty_blob_id = git_repo.write_object(gix::objs::BlobRef { data: &[] }).map_err(Error::git)?.detach();
 
     let mut entries = vec![
         Entry {

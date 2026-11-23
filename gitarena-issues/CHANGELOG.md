@@ -1,3 +1,7 @@
+# v0.2.2
+
+Write empty blob to the repo
+
 # v0.2.1
 
 Update to base64 v0.23.1
