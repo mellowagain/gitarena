@@ -4,14 +4,14 @@ use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::ref_update;
-use crate::git::upload_pack::{execute_upload_pack_v1, execute_upload_pack_v2};
+use crate::git::upload_pack::{UploadPackV1, execute_upload_pack_v2};
 use crate::issue::hidden_bug_refs;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
 use crate::privileges::privilege;
 use crate::repository::{Repository, extract_repo_from_request};
 use crate::ssh::key::SshKey;
 use crate::user::User;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use either::Either;
 use gix::protocol::transport::packetline::PacketLineRef;
 use gix::protocol::transport::packetline::decode::{Stream, streaming};
@@ -22,7 +22,6 @@ use russh::{Channel, ChannelId};
 use std::io;
 use std::mem;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::time::Instant;
 use tokio::runtime::Handle;
 use tokio::task::spawn_blocking;
@@ -69,6 +68,7 @@ pub(crate) struct SshHandler {
     ip: Option<SocketAddr>,
 
     version: GitProtocol,
+    upload_pack_v1: UploadPackV1,
 
     operation: Option<SshOperation>,
     buffer: Vec<u8>,
@@ -83,7 +83,8 @@ impl SshHandler {
             user: None,
             key: None,
             ip,
-            version: GitProtocol::V1,
+            version: GitProtocol::V0,
+            upload_pack_v1: UploadPackV1::default(),
             operation: None,
             buffer: Vec::new(),
             cancelled: false,
@@ -216,6 +217,10 @@ impl Handler for SshHandler {
             return Ok(());
         }
 
+        if matches!(self.operation, Some(SshOperation::UploadPack(_))) && self.upload_pack_v1.finished() {
+            return Ok(());
+        }
+
         self.buffer.extend_from_slice(data);
 
         if let Some(SshOperation::ReceivePack(repo)) = &self.operation
@@ -233,18 +238,27 @@ impl Handler for SshHandler {
 
         let repo = repo.clone();
 
-        while let Some(length) = next_request_length(&self.buffer, self.version)? {
+        while !self.upload_pack_v1.finished()
+            && let Some(length) = next_request_length(&self.buffer, self.version)?
+        {
             let request = self.buffer.drain(..length).collect::<Vec<u8>>();
 
             let db_pool = self.db_pool.clone();
             let repo = repo.clone();
             let user = self.user.clone();
             let version = self.version;
+            let upload_pack_v1 = mem::take(&mut self.upload_pack_v1);
 
-            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, user, request, version))).await?;
+            let result = spawn_blocking(move || Handle::current().block_on(run_upload_pack(db_pool, repo, user, request, version, upload_pack_v1))).await?;
 
             match result {
-                Ok(output) => session.data(channel, output)?,
+                Ok((output, upload_pack_v1)) => {
+                    self.upload_pack_v1 = upload_pack_v1;
+
+                    if !output.is_empty() {
+                        session.data(channel, output)?;
+                    }
+                }
                 Err(err) => {
                     warn!(?err, "SSH git upload-pack round failed");
 
@@ -259,6 +273,10 @@ impl Handler for SshHandler {
             }
         }
 
+        if self.upload_pack_v1.finished() {
+            self.buffer.clear();
+        }
+
         Ok(())
     }
 
@@ -266,8 +284,7 @@ impl Handler for SshHandler {
     async fn env_request(&mut self, channel: ChannelId, variable_name: &str, variable_value: &str, session: &mut Session) -> Result<(), Self::Error> {
         match variable_name {
             "GIT_PROTOCOL" => {
-                let (_, number) = variable_value.split_once('=').ok_or_else(|| anyhow!("received malformed GIT_PROTOCOL"))?;
-                self.version = GitProtocol::from_str(number)?;
+                self.version = GitProtocol::from_parameters(variable_value);
 
                 session.channel_success(channel)?;
             }
@@ -345,10 +362,11 @@ impl Handler for SshHandler {
             return Ok(());
         };
 
+        let version = self.version;
+
         match command {
             "git-upload-pack" => {
                 let db_pool = self.db_pool.clone();
-                let version = self.version;
                 let repo_clone = repo.clone();
                 let user = self.user.clone();
 
@@ -363,13 +381,14 @@ impl Handler for SshHandler {
 
                         match version {
                             GitProtocol::V2 => capabilities(None).await,
-                            GitProtocol::V1 => ls_refs_all_upload_pack(&git2repo, None, &hidden_refs).await,
+                            GitProtocol::V0 | GitProtocol::V1 => ls_refs_all_upload_pack(&git2repo, None, version, &hidden_refs).await,
                         }
                     })
                 })
                 .await??;
 
                 self.operation = Some(SshOperation::UploadPack(repo));
+                self.upload_pack_v1 = UploadPackV1::default();
                 self.buffer = Vec::new();
 
                 session.data(channel, advert.to_vec())?;
@@ -401,7 +420,7 @@ impl Handler for SshHandler {
 
                         tx.commit().await?;
 
-                        ls_refs_all(&git2repo, None, &hidden_refs).await
+                        ls_refs_all(&git2repo, None, version, &hidden_refs).await
                     })
                 })
                 .await??;
@@ -456,8 +475,8 @@ fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usi
         offset += consumed;
 
         match (line, version) {
-            (PacketLineRef::Flush, GitProtocol::V2) => return Ok(Some(offset)),
-            (PacketLineRef::Data(data), GitProtocol::V1) if data.trim_ascii_end() == b"done" => return Ok(Some(offset)),
+            (PacketLineRef::Flush, _) => return Ok(Some(offset)),
+            (PacketLineRef::Data(data), GitProtocol::V0 | GitProtocol::V1) if data.trim_ascii_end() == b"done" => return Ok(Some(offset)),
             _ => {}
         }
     }
@@ -490,17 +509,26 @@ async fn is_delete_only_push(buffer: &[u8]) -> Result<bool> {
     }
 }
 
-#[instrument(err, skip(db_pool, vec))]
-async fn run_upload_pack(db_pool: Pool, repo: Repository, user: Option<User>, vec: Vec<u8>, version: GitProtocol) -> Result<Vec<u8>> {
+#[instrument(err, skip(db_pool, vec, upload_pack_v1))]
+async fn run_upload_pack(
+    db_pool: Pool,
+    repo: Repository,
+    user: Option<User>,
+    vec: Vec<u8>,
+    version: GitProtocol,
+    mut upload_pack_v1: UploadPackV1,
+) -> Result<(Vec<u8>, UploadPackV1)> {
     let mut tx = db_pool.begin().await?;
     let hidden_refs = hidden_bug_refs(&repo, user.as_ref(), &mut tx).await?;
     let git2repo = repo.libgit2(&mut tx).await?;
+
+    tx.commit().await?;
 
     let start = Instant::now();
 
     let output = match version {
         GitProtocol::V2 => execute_upload_pack_v2(vec.as_slice(), &git2repo, &hidden_refs).await?,
-        GitProtocol::V1 => execute_upload_pack_v1(vec.as_slice(), &git2repo, &hidden_refs).await?,
+        GitProtocol::V0 | GitProtocol::V1 => upload_pack_v1.process(vec.as_slice(), &git2repo, &hidden_refs).await?,
     };
 
     let elapsed = start.elapsed().as_secs_f64();
@@ -516,7 +544,7 @@ async fn run_upload_pack(db_pool: Pool, repo: Repository, user: Option<User>, ve
 
     OPERATION_DURATION.record(elapsed, &[KeyValue::new("operation", "upload-pack"), KeyValue::new("transport", "ssh")]);
 
-    Ok(output)
+    Ok((output, upload_pack_v1))
 }
 
 #[instrument(err, skip(db_pool, vec))]
