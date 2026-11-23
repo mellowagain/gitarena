@@ -140,6 +140,7 @@ async fn main() -> Result<()> {
 
     zoekt::init(&db_pool).await?;
     contributions::init(&db_pool).await?;
+    issue::init(&db_pool).await?;
 
     LocalSet::new().run_until(sso::provider::init(&db_pool)).await?;
 

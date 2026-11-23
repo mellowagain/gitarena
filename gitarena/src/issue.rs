@@ -1,19 +1,62 @@
 use std::collections::HashSet;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
+use fang::{AsyncQueueable, AsyncRunnable};
 use gitarena_issues::bug::BUGS_REF_PREFIX;
 use gitarena_issues::operation::BugStatus;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Transaction, Type};
-use tracing::error;
+use tracing::{debug, error, info};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::database::Database;
+use crate::config::{get_setting, set_setting};
+use crate::database::{Database, Pool};
+use crate::issue::task::WriteEmptyBlobTask;
 use crate::meili::{ISSUES_MEILI_INDEX, MeiliClient};
+use crate::queue::GLOBAL_QUEUE;
 use crate::repository::Repository;
 use crate::user::User;
+
+pub(crate) mod task;
+
+const ISSUES_GITARENA_VERSION: i32 = 1;
+
+pub(crate) async fn init(db_pool: &Pool) -> Result<()> {
+    let mut tx = db_pool.begin().await?;
+    let version: i32 = get_setting("issues.gitarena_version", &mut tx).await?;
+
+    if version >= ISSUES_GITARENA_VERSION {
+        tx.commit().await?;
+        return Ok(());
+    }
+
+    info!(
+        found = version,
+        expected = ISSUES_GITARENA_VERSION,
+        "issues gitarena version out of date, writing empty blob to all repos with issues..."
+    );
+
+    let repo_ids: Vec<Uuid> = sqlx::query_scalar("select distinct repo_id from issue_cache").fetch_all(&mut *tx).await?;
+
+    for repo_id in repo_ids {
+        let task = WriteEmptyBlobTask { repo_id };
+
+        let queued_task = GLOBAL_QUEUE
+            .get()
+            .ok_or_else(|| anyhow!("empty blob write should only be scheduled after queue has been initialized"))?
+            .insert_task(&task as &dyn AsyncRunnable)
+            .await?;
+
+        debug!(task.id = %queued_task.id, %repo_id, "queued repo for empty blob write");
+    }
+
+    set_setting("issues.gitarena_version", ISSUES_GITARENA_VERSION, &mut tx).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
 
 #[derive(FromRow, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
