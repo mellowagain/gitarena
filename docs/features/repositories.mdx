@@ -41,6 +41,8 @@ git pull origin main
 
 Authentication for push operations uses HTTP Basic Auth — provide your GitArena username and password when prompted.
 
+GitArena supports git protocol v0, v1 and v2 over smart HTTP and SSH. See [Git protocol versions](/architecture/ssh#git-protocol-versions) for how clients choose one.
+
 ## Git over SSH
 
 GitArena includes a built-in SSH server for git push and pull. Add your SSH public key in account settings, then use the `git@` URL format:

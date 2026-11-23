@@ -1,13 +1,13 @@
+use crate::git::GitProtocol;
 use crate::git::io::writer::GitWriter;
 
 use core::result::Result as CoreResult;
 use std::collections::HashSet;
 use std::fmt::Write as _;
-use std::sync::Once;
 
 use actix_web::web::Bytes;
 use anyhow::Result;
-use git2::{Error as Git2Error, ErrorCode, Reference, Repository as Git2Repository};
+use git2::{Error as Git2Error, ErrorCode, ObjectType, Oid, Reference, Repository as Git2Repository};
 use tracing::instrument;
 use tracing::{error, warn};
 
@@ -94,7 +94,7 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
             }
 
             if options.peel
-                && let Some(peel) = reference.target_peel()
+                && let Some(peel) = reference.target().and_then(|oid| peeled_tag_target(repo, oid))
             {
                 let _ = write!(line, " peeled:{peel}");
             }
@@ -111,14 +111,19 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
     }
 }
 
-pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>, hidden_refs: &HashSet<String>) -> Result<Bytes> {
-    ls_refs_all_inner(repo, service_header, hidden_refs, |_| receive_pack_capabilities().to_string()).await
+pub(crate) async fn ls_refs_all(repo: &Git2Repository, service_header: Option<&str>, version: GitProtocol, hidden_refs: &HashSet<String>) -> Result<Bytes> {
+    ls_refs_all_inner(repo, service_header, version, hidden_refs, false, |_| receive_pack_capabilities().to_string()).await
 }
 
-pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_header: Option<&str>, hidden_refs: &HashSet<String>) -> Result<Bytes> {
+pub(crate) async fn ls_refs_all_upload_pack(
+    repo: &Git2Repository,
+    service_header: Option<&str>,
+    version: GitProtocol,
+    hidden_refs: &HashSet<String>,
+) -> Result<Bytes> {
     let head_symref = repo.find_reference("HEAD")?.symbolic_target()?.map(ToString::to_string);
 
-    ls_refs_all_inner(repo, service_header, hidden_refs, |_| {
+    ls_refs_all_inner(repo, service_header, version, hidden_refs, true, |_| {
         let symref = head_symref.as_deref().map(|target| format!(" symref=HEAD:{target}")).unwrap_or_default();
         upload_pack_v1_capabilities(&symref)
     })
@@ -129,7 +134,9 @@ pub(crate) async fn ls_refs_all_upload_pack(repo: &Git2Repository, service_heade
 async fn ls_refs_all_inner(
     repo: &Git2Repository,
     service_header: Option<&str>,
+    version: GitProtocol,
     hidden_refs: &HashSet<String>,
+    upload_pack: bool,
     capabilities: impl Fn(&str) -> String,
 ) -> Result<Bytes> {
     let mut writer = GitWriter::new();
@@ -139,7 +146,18 @@ async fn ls_refs_all_inner(
         writer.flush().await?;
     }
 
-    let once = Once::new();
+    if matches!(version, GitProtocol::V1) {
+        writer.write_text("version 1").await?;
+    }
+
+    let mut refs = Vec::new();
+
+    if upload_pack
+        && let Ok(head) = repo.head()
+        && let Some(oid) = head.target()
+    {
+        refs.push((oid, "HEAD".to_owned()));
+    }
 
     for result in repo.references()? {
         match result {
@@ -148,14 +166,7 @@ async fn ls_refs_all_inner(
                     && !hidden_refs.contains(name)
                     && let Some(oid) = reference.target()
                 {
-                    let mut line = format!("{oid} {name}");
-
-                    // Git ignores capabilities written after the first line
-                    once.call_once(|| {
-                        line.push_str(&capabilities(name));
-                    });
-
-                    writer.write_text(line).await?;
+                    refs.push((oid, name.to_owned()));
                 }
             }
             Err(err) => {
@@ -164,7 +175,22 @@ async fn ls_refs_all_inner(
         }
     }
 
-    if !once.is_completed() {
+    for (index, (oid, name)) in refs.iter().enumerate() {
+        let mut line = format!("{oid} {name}");
+
+        // Git ignores capabilities written after the first line
+        if index == 0 {
+            line.push_str(&capabilities(name));
+        }
+
+        writer.write_text(line).await?;
+
+        if upload_pack && let Some(peeled) = peeled_tag_target(repo, *oid) {
+            writer.write_text(format!("{peeled} {name}^{{}}")).await?;
+        }
+    }
+
+    if refs.is_empty() {
         writer
             .write_text(format!("0000000000000000000000000000000000000000 capabilities^{{}}{}", capabilities("")))
             .await?;
@@ -172,6 +198,11 @@ async fn ls_refs_all_inner(
 
     writer.flush().await?;
     writer.serialize().await
+}
+
+fn peeled_tag_target(repo: &Git2Repository, oid: Oid) -> Option<Oid> {
+    let tag = repo.find_object(oid, Some(ObjectType::Tag)).ok()?;
+    tag.peel(ObjectType::Any).ok().map(|object| object.id())
 }
 
 const fn receive_pack_capabilities() -> &'static str {

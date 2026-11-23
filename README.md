@@ -15,6 +15,9 @@ To see a demo, you may browse the source code of GitArena itself on my hosted Gi
 - [x] Git protocol support
   - [x] HTTP(S)
   - [x] SSH
+  - [x] Git Protocol v0
+  - [x] Git Protocol v1
+  - [x] Git Protocol v2
 - [x] Repository management
   - [x] Create
   - [x] Fork
