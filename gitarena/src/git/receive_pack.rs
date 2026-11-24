@@ -174,6 +174,20 @@ pub(crate) async fn execute_receive_pack(
 
     ref_update::propagate_capabilities(&mut updates);
 
+    if updates[0].push_options.is_some() {
+        readable_iter.reset();
+
+        let push_options: Vec<String> = read_data_lines(&mut readable_iter)
+            .await?
+            .into_iter()
+            .map(String::from_utf8)
+            .collect::<Result<_, _>>()?;
+
+        for update in &mut updates {
+            update.push_options = Some(push_options.clone());
+        }
+    }
+
     let report_status = updates[0].report_status || updates[0].report_status_v2;
     let side_band = updates[0].side_band_64k;
 

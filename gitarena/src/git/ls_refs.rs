@@ -77,14 +77,18 @@ pub(crate) async fn build_ref_line(ref_result: CoreResult<Reference<'_>, Git2Err
                 match repo.find_reference(sym_target).ok() {
                     Some(sym_target_ref) => {
                         if let Some(sym_target_oid) = sym_target_ref.target() {
-                            line = format!("{} {} symref-target:{}", sym_target_oid, name, sym_target_ref.name().unwrap_or_default());
-                        } else if options.unborn {
-                            line = format!("unborn {} symref-target:{}", name, sym_target_ref.name().unwrap_or_default());
+                            line = format!("{sym_target_oid} {name}");
+                        } else if options.unborn && options.symrefs {
+                            line = format!("unborn {name}");
                         } else {
                             return None;
                         }
+
+                        if options.symrefs {
+                            let _ = write!(line, " symref-target:{}", sym_target_ref.name().unwrap_or_default());
+                        }
                     }
-                    None if options.unborn => line = format!("unborn {name} symref-target:{sym_target}"),
+                    None if options.unborn && options.symrefs => line = format!("unborn {name} symref-target:{sym_target}"),
                     None => return None, // Reference points to a symbolic target that doesn't exist?
                 }
             } else if options.unborn {
@@ -207,7 +211,7 @@ fn peeled_tag_target(repo: &Git2Repository, oid: Oid) -> Option<Oid> {
 
 const fn receive_pack_capabilities() -> &'static str {
     concat!(
-        "\x00report-status report-status-v2 delete-refs side-band-64k quiet object-format=sha1 agent=git/gitarena-",
+        "\x00report-status report-status-v2 delete-refs side-band-64k quiet push-options object-format=sha1 agent=git/gitarena-",
         env!("CARGO_PKG_VERSION")
     )
 }

@@ -4,6 +4,7 @@ use crate::git::capabilities::capabilities;
 use crate::git::ls_refs::{ls_refs_all, ls_refs_all_upload_pack};
 use crate::git::receive_pack::execute_receive_pack;
 use crate::git::ref_update;
+use crate::git::ref_update::RefUpdate;
 use crate::git::upload_pack::{UploadPackV1, execute_upload_pack_v2};
 use crate::issue::hidden_bug_refs;
 use crate::metrics::git::{OPERATION_COUNT, OPERATION_DURATION};
@@ -484,8 +485,9 @@ fn next_request_length(buffer: &[u8], version: GitProtocol) -> Result<Option<usi
 
 // git only sends EOF once `pack-objects` exits so a delete only push (no pack) waits for the report-status after the command list flush-pkt instead
 async fn is_delete_only_push(buffer: &[u8]) -> Result<bool> {
-    let mut updates = Vec::new();
+    let mut updates = Vec::<RefUpdate>::new();
     let mut offset = 0;
+    let mut in_push_options = false;
 
     loop {
         let (line, consumed) = match streaming(&buffer[offset..])? {
@@ -496,7 +498,11 @@ async fn is_delete_only_push(buffer: &[u8]) -> Result<bool> {
         offset += consumed;
 
         match line {
+            PacketLineRef::Flush if !in_push_options && updates.first().is_some_and(|update| update.push_options.is_some()) => {
+                in_push_options = true;
+            }
             PacketLineRef::Flush => return Ok(!updates.is_empty() && ref_update::is_only_deletions(&updates).unwrap_or(true)),
+            PacketLineRef::Data(_) if in_push_options => {}
             PacketLineRef::Data(data) => match ref_update::parse_line(data.to_vec()).await {
                 Ok(update) => updates.push(update),
                 Err(_) => {
