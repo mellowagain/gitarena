@@ -1,0 +1,127 @@
+---
+title: "Features"
+description: "Every feature GitArena includes today: git hosting, code browsing, issues, releases, search, accounts, organizations, and administration."
+---
+
+This page lists every feature available in GitArena. Each section links to the page that covers it in detail.
+
+## Git hosting
+
+| Feature | Description |
+|---------|-------------|
+| Smart HTTP | Clone, fetch, and push over HTTP(S) with any standard git client. See [Git over HTTP](/features/repositories#git-over-http). |
+| SSH | Push and pull through GitArena's built-in SSH server. See [SSH](/architecture/ssh). |
+| Git protocol versions | Git protocol v0, v1, and v2 over smart HTTP and SSH. See [Git protocol versions](/architecture/ssh#git-protocol-versions). |
+| Secret scanning | Rejects pushes that contain credentials such as API keys and access tokens. See [Secret scanning](/features/repositories#secret-scanning). |
+| Language and license detection | Computes a language breakdown and detects the license after each push. See [Post-push hooks](/features/repositories#post-push-hooks). |
+
+## Repositories
+
+| Feature | Description |
+|---------|-------------|
+| Create | Create public or private repositories at `/new`. See [Creating a repository](/features/repositories#creating-a-repository). |
+| Import | Import an existing repository from a remote URL at `/import`. See [Importing a repository](/features/repositories#importing-a-repository). |
+| Fork | Copy a repository's git data into your namespace. The fork starts with an empty issue tracker. See [Forking](/features/repositories#forking). |
+| Stars | Star repositories. Star counts appear on repository pages and in [Explore](/features/explore). |
+| Branches and tags | List branches and tags, and delete tags. |
+| Archives | Download any branch as a `.zip` or `.tar.gz` file. |
+| Collaborators | Add and remove collaborators on a repository. |
+| Archiving and deletion | Archive a repository to make it read-only, or delete it, from the repository settings. |
+
+## Code browsing
+
+| Feature | Description |
+|---------|-------------|
+| File browser | Browse the file tree of any branch with syntax-highlighted file views. |
+| Blame | See which commit last changed each line of a file. |
+| Raw view | Open the raw contents of a file. |
+| Commit history | Browse the commits of a branch and view each commit's diff. |
+| Markdown rendering | Render README and markdown files with GitHub Flavored Markdown and a safe subset of HTML. See [Markdown rendering](/features/markdown). |
+
+## Issues
+
+| Feature | Description |
+|---------|-------------|
+| Issue tracker | Open, edit, close, reopen, and delete issues with Markdown bodies. See [Issues and merge requests](/features/issues-and-merge-requests). |
+| Comments and reactions | Comment on issues and react to issues and comments with emoji. |
+| Labels | Create per-repository labels with a name and color. |
+| Milestones | Group issues into milestones with an optional due date. |
+| Assignees and priority | Assign users and set a priority from `none` to `urgent`. |
+| Board | Drag issues between **Open**, **In Progress**, **Completed**, and **Not Planned** columns on the issue board. |
+| Timeline | See the history of changes to an issue. |
+| Confidential issues | Hide an issue from everyone except the repository owner, including over git. See [Fetching issues locally](/features/git-bug-compatibility#fetching-issues-locally). |
+| git-bug compatibility | Issues are stored as git objects in the git-bug format, so you can read them offline with the `git-bug` CLI. See [git-bug compatibility](/features/git-bug-compatibility). |
+
+## Releases
+
+| Feature | Description |
+|---------|-------------|
+| Releases | Publish releases tied to git tags, with Markdown release notes and a pre-release flag. GitArena creates the tag if it does not exist. See [Releases](/features/releases). |
+| Assets | Upload release assets directly to object storage. Each asset shows its SHA-256 hash for verification. See [Uploading assets](/features/releases#uploading-assets). |
+
+## Search and discovery
+
+| Feature | Description |
+|---------|-------------|
+| Code search | Search code across the instance or within one repository with Zoekt. See [Search](/features/search). |
+| Repository, issue, and user search | Search repositories, issues, and users with Meilisearch. |
+| Explore | Browse all public repositories on the instance without an account. See [Explore](/features/explore). |
+| User profiles | View a user's public repositories, stats, and contribution graph at `/{username}`. See [User profiles](/features/explore#user-profiles). |
+| Dashboard | See your activity feed and the issues assigned to you on the home page. |
+
+## Accounts and authentication
+
+| Feature | Description |
+|---------|-------------|
+| Password login | Sign in with a username and password. See [Authentication](/features/authentication). |
+| Passkeys | Register a passkey and use it instead of a password. See [Passkeys](/features/authentication#passkeys-webauthn). |
+| SSO | Sign in with any OpenID Connect provider the admin configures. See [SSO](/self-hosting/sso). |
+| Sessions | View active sessions per device and revoke them individually or all at once. See [Session management](/features/authentication#session-management). |
+| SSH keys | Add and remove SSH public keys for git over SSH. See [SSH keys](/features/authentication#ssh-keys). |
+| Email addresses | Add multiple email addresses, verify them, and choose a primary one. See [Email addresses](/features/authentication#email-addresses). |
+| Access tokens | Create personal access tokens with fine-grained permissions, a repository scope, and an optional expiry. |
+| Avatars | Upload a profile picture. |
+| Audit log | Review the events recorded for your account. |
+| Account deletion | Delete your own account. |
+
+## Organizations
+
+| Feature | Description |
+|---------|-------------|
+| Organizations | Create organizations that own repositories. |
+| Members and roles | Add and remove members with the `owner`, `admin`, or `member` role. |
+| Organization audit log | Review events across the organization. |
+
+## Administration
+
+| Feature | Description |
+|---------|-------------|
+| Admin panel | View instance stats, component health, and user accounts at `/admin`. See [Admin panel](/features/admin). |
+| Instance audit log | Review events across the whole instance. |
+| Update check | Get notified when a newer GitArena version is available, including security fixes. See [Update check](/features/admin#update-check). |
+| Settings table | Configure the instance in the `settings` table. See [Configuration](/self-hosting/configuration). |
+| REST API | Use every feature through a REST API described by an OpenAPI spec. See the [API reference](/api-reference/introduction). |
+
+## Self-hosting
+
+| Feature | Description |
+|---------|-------------|
+| Docker | Run GitArena with Docker Compose. See [Docker](/self-hosting/docker). |
+| Object storage | Store avatars and release assets in S3-compatible object storage. See [Object storage](/self-hosting/object-storage). |
+| Email | Send verification emails over SMTP. See [Email](/self-hosting/email). |
+| Search backends | Connect Zoekt for code search. See [Search](/self-hosting/search). |
+| Reverse proxy | Terminate TLS with Nginx or Caddy in front of GitArena. See [Reverse proxy](/self-hosting/reverse-proxy). |
+
+## Under active development
+
+<Note>
+  These features have pages or settings in the frontend but are not complete yet:
+
+  - Merge requests: list and detail pages exist, but creating, reviewing, and merging merge requests is not implemented.
+  - Merge request search.
+  - Two-factor authentication.
+  - Organization teams, security settings, and webhooks.
+  - Renaming and transferring repositories and organizations.
+  - Editing instance settings in the admin panel.
+  - CAPTCHA on registration. See [CAPTCHA](/self-hosting/captcha).
+</Note>
