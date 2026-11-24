@@ -34,6 +34,7 @@
           {
             "group": "Features",
             "pages": [
+              "features/overview",
               "features/repositories",
               "features/releases",
               "features/markdown",
