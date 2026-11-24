@@ -61,7 +61,7 @@ jobs:
           git-bug version
 
       - name: test
-        run: cargo nextest run --locked -p gitarena --profile ci -E 'kind(test)'
+        run: cargo nextest run --locked --workspace --profile ci
 
       - name: upload test report
         if: ${{ !cancelled() }}
