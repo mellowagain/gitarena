@@ -34,14 +34,8 @@ pub(crate) async fn parse_line(raw_line: Vec<u8>) -> Result<RefUpdate> {
             "report-status" => ref_update.report_status = true,
             "report-status-v2" => ref_update.report_status_v2 = true,
             "side-band-64k" => ref_update.side_band_64k = true,
-            _ => {
-                if let Some(ref mut options) = ref_update.push_options {
-                    options.push(option.to_owned());
-                } else {
-                    let vec = vec![option.to_owned()];
-                    ref_update.push_options = Some(vec);
-                }
-            }
+            "push-options" => ref_update.push_options = Some(Vec::new()),
+            _ => {}
         }
     }
 
