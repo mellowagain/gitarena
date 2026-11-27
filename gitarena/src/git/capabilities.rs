@@ -26,3 +26,37 @@ pub(crate) async fn capabilities(service_header: Option<&str>) -> Result<Bytes> 
 
     writer.serialize().await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn expected_capabilities() -> String {
+        let agent = concat!("agent=git/gitarena-", env!("CARGO_PKG_VERSION"));
+
+        format!(
+            "000eversion 2\n{:04x}{agent}\n0013ls-refs=unborn\n000afetch\n0012server-option\n0017object-format=sha1\n0000",
+            agent.len() + 5
+        )
+    }
+
+    #[tokio::test]
+    async fn without_service_header_only_capabilities_are_advertised() -> Result<()> {
+        let bytes = capabilities(None).await?;
+
+        assert_eq!(String::from_utf8(bytes.to_vec())?, expected_capabilities());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn service_header_is_prepended_and_flushed() -> Result<()> {
+        let bytes = capabilities(Some("git-upload-pack")).await?;
+
+        assert_eq!(
+            String::from_utf8(bytes.to_vec())?,
+            format!("001e# service=git-upload-pack\n0000{}", expected_capabilities())
+        );
+        Ok(())
+    }
+}

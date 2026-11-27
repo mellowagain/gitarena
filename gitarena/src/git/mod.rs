@@ -69,3 +69,23 @@ impl FromStr for GitProtocol {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_matches;
+
+    #[test]
+    fn git_protocol_parses_known_versions() {
+        assert_matches!(GitProtocol::from_str("1"), Ok(GitProtocol::V1));
+        assert_matches!(GitProtocol::from_str("2"), Ok(GitProtocol::V2));
+    }
+
+    #[test]
+    fn git_protocol_rejects_unknown_versions() {
+        assert!(GitProtocol::from_str("0").is_err());
+        assert!(GitProtocol::from_str("3").is_err());
+        assert!(GitProtocol::from_str("version=2").is_err());
+        assert!(GitProtocol::from_str("").is_err());
+    }
+}

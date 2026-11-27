@@ -575,3 +575,161 @@ async fn run_receive_pack(db_pool: Pool, repo: Repository, vec: Vec<u8>, actor_i
 
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    const NULL: &str = "0000000000000000000000000000000000000000";
+    const OLD: &str = "b52f683ce73e8be06428b8c6cf0eb421eae21772";
+    const NEW: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+    fn pkt(data: &str) -> Vec<u8> {
+        format!("{:04x}{data}", data.len() + 4).into_bytes()
+    }
+
+    fn concat(parts: &[&[u8]]) -> Vec<u8> {
+        parts.concat()
+    }
+
+    #[test]
+    fn v2_request_ends_at_flush() -> Result<()> {
+        let request = concat(&[&pkt("command=ls-refs\n"), b"0001", &pkt("peel\n"), b"0000"]);
+
+        assert_eq!(next_request_length(&request, GitProtocol::V2)?, Some(request.len()));
+        Ok(())
+    }
+
+    #[test]
+    fn v2_request_without_flush_is_incomplete() -> Result<()> {
+        let request = concat(&[&pkt("command=ls-refs\n"), b"0001", &pkt("peel\n")]);
+
+        assert_eq!(next_request_length(&request, GitProtocol::V2)?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn partial_packet_line_is_incomplete() -> Result<()> {
+        let request = pkt("command=fetch\n");
+
+        assert_eq!(next_request_length(&request[..2], GitProtocol::V2)?, None);
+        assert_eq!(next_request_length(&request[..request.len() - 1], GitProtocol::V2)?, None);
+        assert_eq!(next_request_length(b"", GitProtocol::V2)?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn v2_buffer_with_multiple_requests_returns_first_length() -> Result<()> {
+        let first = concat(&[&pkt("command=ls-refs\n"), b"0000"]);
+        let second = concat(&[&pkt("command=fetch\n"), b"0001", &pkt("done\n"), b"0000"]);
+        let mut buffer = concat(&[&first, &second]);
+
+        assert_eq!(next_request_length(&buffer, GitProtocol::V2)?, Some(first.len()));
+
+        buffer.drain(..first.len());
+
+        assert_eq!(next_request_length(&buffer, GitProtocol::V2)?, Some(second.len()));
+        Ok(())
+    }
+
+    #[test]
+    fn v1_wants_and_each_have_batch_end_at_flush() -> Result<()> {
+        let wants = concat(&[&pkt(&format!("want {NEW} multi_ack_detailed side-band-64k\n")), b"0000"]);
+        let haves = concat(&[&pkt(&format!("have {OLD}\n")), b"0000"]);
+        let done = pkt("done\n");
+        let mut buffer = concat(&[&wants, &haves, &done]);
+
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(wants.len()));
+
+        buffer.drain(..wants.len());
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(haves.len()));
+
+        buffer.drain(..haves.len());
+        assert_eq!(next_request_length(&buffer, GitProtocol::V1)?, Some(done.len()));
+        Ok(())
+    }
+
+    #[test]
+    fn v1_haves_without_flush_or_done_are_incomplete() -> Result<()> {
+        let request = pkt(&format!("have {OLD}\n"));
+
+        assert_eq!(next_request_length(&request, GitProtocol::V1)?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn v1_done_without_newline_ends_request() -> Result<()> {
+        let request = concat(&[&pkt(&format!("have {OLD}\n")), &pkt("done")]);
+
+        assert_eq!(next_request_length(&request, GitProtocol::V1)?, Some(request.len()));
+        Ok(())
+    }
+
+    #[test]
+    fn v1_up_to_date_fetch_is_a_lone_flush() -> Result<()> {
+        assert_eq!(next_request_length(b"0000", GitProtocol::V1)?, Some(4));
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_length_prefix_is_an_error() {
+        assert!(next_request_length(b"zzzz", GitProtocol::V2).is_err());
+    }
+
+    #[tokio::test]
+    async fn delete_only_push_is_complete_after_flush() -> Result<()> {
+        let buffer = concat(&[&pkt(&format!("{OLD} {NULL} refs/heads/feature\0report-status side-band-64k")), b"0000"]);
+
+        assert!(is_delete_only_push(&buffer).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn multiple_deletions_are_delete_only() -> Result<()> {
+        let buffer = concat(&[
+            &pkt(&format!("{OLD} {NULL} refs/heads/feature\0report-status")),
+            &pkt(&format!("{NEW} {NULL} refs/tags/v1")),
+            b"0000",
+        ]);
+
+        assert!(is_delete_only_push(&buffer).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn push_with_create_or_update_is_not_delete_only() -> Result<()> {
+        let create = concat(&[&pkt(&format!("{NULL} {NEW} refs/heads/feature\0report-status")), b"0000"]);
+        let mixed = concat(&[
+            &pkt(&format!("{OLD} {NULL} refs/heads/old\0report-status")),
+            &pkt(&format!("{OLD} {NEW} refs/heads/main")),
+            b"0000",
+        ]);
+
+        assert!(!is_delete_only_push(&create).await?);
+        assert!(!is_delete_only_push(&mixed).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn deletion_without_flush_is_incomplete() -> Result<()> {
+        let buffer = pkt(&format!("{OLD} {NULL} refs/heads/feature\0report-status"));
+
+        assert!(!is_delete_only_push(&buffer).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn flush_without_commands_is_not_delete_only() -> Result<()> {
+        assert!(!is_delete_only_push(b"0000").await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn invalid_command_completes_the_request() -> Result<()> {
+        let buffer = concat(&[&pkt(&format!("{OLD} {NULL} feature")), b"0000"]);
+
+        assert!(is_delete_only_push(&buffer).await?);
+        Ok(())
+    }
+}

@@ -16,9 +16,7 @@ pub(crate) async fn read_until_command(mut body: Vec<Vec<u8>>) -> Result<(String
                         continue;
                     }
 
-                    for i in 0..index {
-                        body.remove(i);
-                    }
+                    body.drain(..index);
 
                     return Ok((value.to_owned(), body));
                 }
@@ -57,4 +55,61 @@ pub(crate) async fn read_data_lines(iter: &mut StreamingPeekableIter<&[u8]>) -> 
     }
 
     Ok(body)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gix::protocol::transport::packetline::PacketLineRef;
+    use pretty_assertions::assert_eq;
+
+    fn lines(input: &[&str]) -> Vec<Vec<u8>> {
+        input.iter().map(|line| line.as_bytes().to_vec()).collect()
+    }
+
+    #[tokio::test]
+    async fn read_until_command_with_command_first_keeps_every_line() -> Result<()> {
+        let (command, body) = read_until_command(lines(&["command=ls-refs", "peel", "symrefs"])).await?;
+
+        assert_eq!(command, "ls-refs");
+        assert_eq!(body, lines(&["command=ls-refs", "peel", "symrefs"]));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn read_until_command_strips_only_lines_before_command() -> Result<()> {
+        let body = lines(&["agent=git/2.43", "object-format=sha1", "command=fetch", "thin-pack", "ofs-delta"]);
+        let (command, body) = read_until_command(body).await?;
+
+        assert_eq!(command, "fetch");
+        assert_eq!(body, lines(&["command=fetch", "thin-pack", "ofs-delta"]));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn read_until_command_without_command_fails() {
+        assert!(read_until_command(lines(&["agent=git/2.43", "peel"])).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn read_data_lines_strips_one_trailing_lf() -> Result<()> {
+        let input = b"000ahello\n0009world000cdouble\n\n0000";
+        let mut iter = StreamingPeekableIter::new(&input[..], &[PacketLineRef::Flush], false);
+
+        let body = read_data_lines(&mut iter).await?;
+
+        assert_eq!(body, lines(&["hello", "world", "double\n"]));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn read_data_lines_skips_delimiters() -> Result<()> {
+        let input = b"0014command=ls-refs\n00010009peel\n0000";
+        let mut iter = StreamingPeekableIter::new(&input[..], &[PacketLineRef::Flush], false);
+
+        let body = read_data_lines(&mut iter).await?;
+
+        assert_eq!(body, lines(&["command=ls-refs", "peel"]));
+        Ok(())
+    }
 }

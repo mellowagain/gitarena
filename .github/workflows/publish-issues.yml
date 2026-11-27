@@ -46,9 +46,6 @@ jobs:
       - name: rust cache
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-      - name: test
-        run: cargo test -p gitarena-issues --all-features
-
       - name: check if version is already published
         id: version
         run: |

@@ -2,7 +2,7 @@
 
 import { GitCommit, ChevronDown, ChevronRight, Folder, FileText, FileCode, Link2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { BranchBar } from "@/components/branch-bar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -264,22 +264,22 @@ export function RepoFileSidebar({
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+    const [prevSelectedFile, setPrevSelectedFile] = useState<string | null>(null);
     const sidebarRef = useRef<HTMLDivElement>(null);
 
-    const effectiveExpandedFolders = useMemo(() => {
-        if (!selectedFile) {
-            return expandedFolders;
+    if (selectedFile !== prevSelectedFile) {
+        setPrevSelectedFile(selectedFile);
+        const parts = selectedFile?.split("/") ?? [];
+        if (parts.length > 1) {
+            setExpandedFolders((prev) => {
+                const next = new Set(prev);
+                for (let i = 1; i < parts.length; i++) {
+                    next.add(parts.slice(0, i).join("/"));
+                }
+                return next;
+            });
         }
-        const parts = selectedFile.split("/");
-        if (parts.length <= 1) {
-            return expandedFolders;
-        }
-        const merged = new Set(expandedFolders);
-        for (let i = 1; i < parts.length; i++) {
-            merged.add(parts.slice(0, i).join("/"));
-        }
-        return merged;
-    }, [selectedFile, expandedFolders]);
+    }
 
     const { data, error, isLoading } = useSWR<{ files: BranchFile[]; truncated: boolean }>(
         `/api/repos/${user}/${repo}/branch/${branch}/files`
@@ -352,7 +352,7 @@ export function RepoFileSidebar({
                             node={node}
                             selectedFile={selectedFile}
                             onSelect={setSelectedFile}
-                            expandedFolders={effectiveExpandedFolders}
+                            expandedFolders={expandedFolders}
                             onToggleFolder={toggleFolder}
                             sidebarWidth={sidebarWidth}
                         />

@@ -106,15 +106,38 @@ Then restart the backend. Zoekt indexing also needs `zoekt-git-index` on the hos
 
 ## Running tests
 
-```bash
-# All tests
-cargo test
+Unit tests need no services:
 
-# A specific crate
-cargo test -p gitarena
+```bash
+# Every crate except the gitarena integration tests
+cargo test --workspace --exclude gitarena
+
+# gitarena unit tests
+cargo test -p gitarena --bins
+```
+
+### Git integration tests
+
+The tests in `gitarena/tests/` boot a real GitArena binary per test and drive it with `git`, `ssh`, and `git-bug` over Smart HTTP and SSH. Each test gets its own database, created by `#[sqlx::test]` from `DATABASE_URL`, so the user needs permission to create databases. Never point `DATABASE_URL` at a shared database for these tests.
+
+They need on your `PATH`:
+
+- `git` and OpenSSH (`ssh`, `ssh-keygen`, `ssh-agent`, `ssh-add`, `ssh-keyscan`)
+- [git-bug](https://github.com/git-bug/git-bug) v0.11.0 for `git_bug.rs` and `git_bug_e2e.rs`. Without it those tests are ignored. The check runs at compile time, so rebuild after installing or removing it.
+- [cargo-nextest](https://nexte.st), which applies the timeouts and concurrency limit from `.config/nextest.toml`
+
+```bash
+docker compose -f docker-compose.dev.yml up -d postgres
+export DATABASE_URL=postgres://gitarena:gitarena@localhost/gitarena
+
+# All git tests
+cargo nextest run -p gitarena -E 'kind(test)'
+
+# A single file
+cargo nextest run -p gitarena --test git_ssh
 
 # A specific test by name
-cargo test -p gitarena your_test_name
+cargo nextest run -p gitarena your_test_name
 ```
 
 ## Before submitting a PR

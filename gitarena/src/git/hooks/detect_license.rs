@@ -14,6 +14,10 @@ use tracing::{debug, instrument};
 
 #[instrument(err, skip(store))]
 pub(crate) async fn detect_license(store: Arc<Store>, gitoxide_repo: &gix::Repository, repo: &mut Repository) -> Result<()> {
+    if !licenses::is_loaded() {
+        return Ok(());
+    }
+
     let mut buffer = Vec::<u8>::new();
 
     let tree = repo_files_at_head(store.clone(), gitoxide_repo, &mut buffer).await?;
